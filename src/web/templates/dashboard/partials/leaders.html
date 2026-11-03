@@ -1,5 +1,50 @@
 {# templates/dashboard/partials/leaders.html #}
 {% from "dashboard/partials/_rookie.html" import rk with context %}
+{% macro leader_grid(cats) %}
+<div class="tab-body" style="
+            display:grid;
+            grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+            gap:12px;">
+  {% for cat in cats %}
+  <div class="card" style="min-width:0;">
+    <div class="card-header" style="padding:8px 12px;">
+      <span class="card-title" style="font-size:13px;letter-spacing:.06em;">{{ cat.label }}</span>
+    </div>
+    {% if not cat.rows %}
+    <div style="padding:12px;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">—</div>
+    {% else %}
+    {% for row in cat.rows %}
+    <div onclick="openPlayerPanel('{{ row.player_id }}')"
+         style="display:grid;grid-template-columns:20px 1fr auto;gap:6px;
+                align-items:baseline;padding:5px 12px;cursor:pointer;
+                border-top:{% if loop.first %}none{% else %}1px solid var(--border){% endif %};
+                background:{% if row.is_mine %}var(--green-dim){% else %}transparent{% endif %};
+                transition:background .08s;"
+         onmouseover="if(!{{ row.is_mine | lower }})this.style.background='var(--bg-3)'"
+         onmouseout="this.style.background='{% if row.is_mine %}var(--green-dim){% else %}transparent{% endif %}'">
+      <span style="font-family:var(--font-mono);font-size:10px;color:var(--muted);">{{ row.rank }}</span>
+      <div style="min-width:0;">
+        <div style="font-family:var(--font-sans);font-size:12px;font-weight:600;
+                    color:{% if row.is_mine %}var(--green){% else %}var(--text){% endif %};
+                    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+          {{ row.name }}{{ rk(row.player_id) }}
+        </div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);
+                    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+          {{ row.team }}
+        </div>
+      </div>
+      <span style="font-family:var(--font-mono);font-size:13px;font-weight:600;
+                   color:{% if row.is_mine %}var(--green){% else %}var(--amber){% endif %};">
+        {{ row.val }}
+      </span>
+    </div>
+    {% endfor %}
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endmacro %}
 <div class="tab-head" style="padding-top:12px;padding-bottom:12px;">
   <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
     <h1 class="page-title" style="white-space:nowrap;">Leaders</h1>
@@ -22,6 +67,14 @@
                      background:transparent;color:var(--text-dim);">
         Defense
       </button>
+      {% if rookie_cats %}
+      <button id="lb-btn-rook" onclick="lbSwitch('rookies')"
+              style="padding:5px 16px;font-family:var(--font-mono);font-size:11px;
+                     border:none;border-left:1px solid var(--border);cursor:pointer;
+                     background:transparent;color:var(--text-dim);">
+        Rookies
+      </button>
+      {% endif %}
     </div>
     {% if leaders_seasons and leaders_seasons|length > 1 %}
     <select onchange="htmx.ajax('GET','/leagues/{{ league_id }}/leaders?season='+this.value,{target:'#tab-content',swap:'innerHTML'})"
@@ -44,53 +97,11 @@
   Not enough games played yet.
 </div>
 {% else %}
-<div class="tab-body" style="
-            display:grid;
-            grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
-            gap:12px;">
-  {% for cat in bat_cats %}
-  <div class="card" style="min-width:0;">
-    <div class="card-header" style="padding:8px 12px;">
-      <span class="card-title" style="font-size:13px;letter-spacing:.06em;">{{ cat.label }}</span>
-    </div>
-    {% if not cat.rows %}
-    <div style="padding:12px;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">—</div>
-    {% else %}
-    {% for row in cat.rows %}
-    <div onclick="openPlayerPanel('{{ row.player_id }}')"
-         style="display:grid;grid-template-columns:20px 1fr auto;gap:6px;
-                align-items:baseline;padding:5px 12px;cursor:pointer;
-                border-top:{% if loop.first %}none{% else %}1px solid var(--border){% endif %};
-                background:{% if row.is_mine %}var(--green-dim){% else %}transparent{% endif %};
-                transition:background .08s;"
-         onmouseover="if(!{{ row.is_mine | lower }})this.style.background='var(--bg-3)'"
-         onmouseout="this.style.background='{% if row.is_mine %}var(--green-dim){% else %}transparent{% endif %}'">
-      <span style="font-family:var(--font-mono);font-size:10px;color:var(--muted);">{{ row.rank }}</span>
-      <div style="min-width:0;">
-        <div style="font-family:var(--font-sans);font-size:12px;font-weight:600;
-                    color:{% if row.is_mine %}var(--green){% else %}var(--text){% endif %};
-                    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-          {{ row.name }}{{ rk(row.player_id) }}
-        </div>
-        <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);
-                    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-          {{ row.team }}
-        </div>
-      </div>
-      <span style="font-family:var(--font-mono);font-size:13px;font-weight:600;
-                   color:{% if row.is_mine %}var(--green){% else %}var(--amber){% endif %};">
-        {{ row.val }}
-      </span>
-    </div>
-    {% endfor %}
-    {% endif %}
-  </div>
-  {% endfor %}
-</div>
+{{ leader_grid(bat_cats) }}
 {% endif %}
 </div>
 
-{# ── Pitching pane ─────────────────────────────────────────────────────────── #}
+{# ── Pitching pane: everyone, then relievers ──────────────────────────────── #}
 <div id="lb-pane-pitching" style="display:none;">
 {% if not pit_cats %}
 <div style="padding:48px 0;text-align:center;font-family:var(--font-mono);
@@ -98,49 +109,15 @@
   Not enough games played yet.
 </div>
 {% else %}
-<div class="tab-body" style="
-            display:grid;
-            grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
-            gap:12px;">
-  {% for cat in pit_cats %}
-  <div class="card" style="min-width:0;">
-    <div class="card-header" style="padding:8px 12px;">
-      <span class="card-title" style="font-size:13px;letter-spacing:.06em;">{{ cat.label }}</span>
-    </div>
-    {% if not cat.rows %}
-    <div style="padding:12px;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">—</div>
-    {% else %}
-    {% for row in cat.rows %}
-    <div onclick="openPlayerPanel('{{ row.player_id }}')"
-         style="display:grid;grid-template-columns:20px 1fr auto;gap:6px;
-                align-items:baseline;padding:5px 12px;cursor:pointer;
-                border-top:{% if loop.first %}none{% else %}1px solid var(--border){% endif %};
-                background:{% if row.is_mine %}var(--green-dim){% else %}transparent{% endif %};
-                transition:background .08s;"
-         onmouseover="if(!{{ row.is_mine | lower }})this.style.background='var(--bg-3)'"
-         onmouseout="this.style.background='{% if row.is_mine %}var(--green-dim){% else %}transparent{% endif %}'">
-      <span style="font-family:var(--font-mono);font-size:10px;color:var(--muted);">{{ row.rank }}</span>
-      <div style="min-width:0;">
-        <div style="font-family:var(--font-sans);font-size:12px;font-weight:600;
-                    color:{% if row.is_mine %}var(--green){% else %}var(--text){% endif %};
-                    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-          {{ row.name }}{{ rk(row.player_id) }}
-        </div>
-        <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);
-                    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-          {{ row.team }}
-        </div>
-      </div>
-      <span style="font-family:var(--font-mono);font-size:13px;font-weight:600;
-                   color:{% if row.is_mine %}var(--green){% else %}var(--amber){% endif %};">
-        {{ row.val }}
-      </span>
-    </div>
-    {% endfor %}
-    {% endif %}
-  </div>
-  {% endfor %}
+{{ leader_grid(pit_cats) }}
+{% if rel_cats %}
+<div class="tab-body" style="padding-top:4px;padding-bottom:0;">
+  <div style="font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;
+              text-transform:uppercase;color:var(--text-dim);">Relievers</div>
+  <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:2px;">Fewer than half their games started. Rates need 0.5 IP per team game.</div>
 </div>
+{{ leader_grid(rel_cats) }}
+{% endif %}
 {% endif %}
 </div>
 
@@ -152,59 +129,31 @@
   Not enough games played yet.
 </div>
 {% else %}
-<div class="tab-body" style="
-            display:grid;
-            grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
-            gap:12px;">
-  {% for cat in def_cats %}
-  <div class="card" style="min-width:0;">
-    <div class="card-header" style="padding:8px 12px;">
-      <span class="card-title" style="font-size:13px;letter-spacing:.06em;">{{ cat.label }}</span>
-    </div>
-    {% if not cat.rows %}
-    <div style="padding:12px;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">—</div>
-    {% else %}
-    {% for row in cat.rows %}
-    <div onclick="openPlayerPanel('{{ row.player_id }}')"
-         style="display:grid;grid-template-columns:20px 1fr auto;gap:6px;
-                align-items:baseline;padding:5px 12px;cursor:pointer;
-                border-top:{% if loop.first %}none{% else %}1px solid var(--border){% endif %};
-                background:{% if row.is_mine %}var(--green-dim){% else %}transparent{% endif %};
-                transition:background .08s;"
-         onmouseover="if(!{{ row.is_mine | lower }})this.style.background='var(--bg-3)'"
-         onmouseout="this.style.background='{% if row.is_mine %}var(--green-dim){% else %}transparent{% endif %}'">
-      <span style="font-family:var(--font-mono);font-size:10px;color:var(--muted);">{{ row.rank }}</span>
-      <div style="min-width:0;">
-        <div style="font-family:var(--font-sans);font-size:12px;font-weight:600;
-                    color:{% if row.is_mine %}var(--green){% else %}var(--text){% endif %};
-                    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-          {{ row.name }}{{ rk(row.player_id) }}
-        </div>
-        <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);
-                    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-          {{ row.team }}
-        </div>
-      </div>
-      <span style="font-family:var(--font-mono);font-size:13px;font-weight:600;
-                   color:{% if row.is_mine %}var(--green){% else %}var(--amber){% endif %};">
-        {{ row.val }}
-      </span>
-    </div>
-    {% endfor %}
-    {% endif %}
-  </div>
-  {% endfor %}
-</div>
+{{ leader_grid(def_cats) }}
 {% endif %}
 </div>
 
+{# ── Rookies pane ──────────────────────────────────────────────────────────── #}
+{% if rookie_cats %}
+<div id="lb-pane-rookies" style="display:none;">
+<div class="tab-body" style="padding-top:4px;padding-bottom:0;">
+  <div style="font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;
+              text-transform:uppercase;color:var(--text-dim);">Rookies</div>
+  <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:2px;">Rates need 1.55 PA or 0.5 IP per team game.</div>
+</div>
+{{ leader_grid(rookie_cats) }}
+</div>
+{% endif %}
+
 <script>
 function lbSwitch(cat) {
-  var panes = ['batting', 'pitching', 'defense'];
-  var btns  = ['lb-btn-bat', 'lb-btn-pit', 'lb-btn-def'];
+  var panes = ['batting', 'pitching', 'defense', 'rookies'];
+  var btns  = ['lb-btn-bat', 'lb-btn-pit', 'lb-btn-def', 'lb-btn-rook'];
   panes.forEach(function(p, i) {
     var on = p === cat;
-    document.getElementById('lb-pane-' + p).style.display = on ? '' : 'none';
+    var pane = document.getElementById('lb-pane-' + p);
+    if (!pane) return;  // no rookies pane in a season without rookies
+    pane.style.display = on ? '' : 'none';
     document.getElementById(btns[i]).style.background = on ? 'var(--green-dim)' : 'transparent';
     document.getElementById(btns[i]).style.color      = on ? 'var(--green)'     : 'var(--text-dim)';
   });

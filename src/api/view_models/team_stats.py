@@ -11,7 +11,7 @@ from src.db.repositories.player_games import PlayerGameRepository
 from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
-from src.stats import formulas
+from src.stats import formulas, qualifiers as q
 
 
 def team_stats_context(
@@ -60,18 +60,20 @@ def team_stats_context(
         team_games = pss_repo.get_max_games_played_for_team(
             selected_season_id, selected_team_id, is_postseason
         )
-        min_ab = int(3.1 * team_games) if not is_postseason else 0
-        min_outs = int(3 * team_games) if not is_postseason else 0
+        # Qualifying is per team game; in the postseason everyone qualifies.
+        qual_games = 0 if is_postseason else team_games
 
         rows = pss_repo.get_for_team(
             selected_season_id, selected_team_id, is_postseason
         )
 
-        batters, pitchers = stat_lines(rows, min_ab, min_outs)
+        batters, pitchers = stat_lines(rows, qual_games)
         fielders = fielding_lines(
             PlayerGameRepository(db).get_team_fielding_lines(
                 selected_season_id, selected_team_id
-            )
+            ),
+            qual_games,
+            {r["player_id"]: r.get("pitch_outs") or 0 for r in rows},
         )
 
     # Attach injury status only for current season
@@ -103,8 +105,12 @@ def team_stats_context(
     }
 
 
-def stat_lines(rows: list, min_ab: int, min_outs: int) -> tuple[list, list]:
-    """Batting and pitching lines from a team's player_season_stats rows."""
+def stat_lines(rows: list, team_games: int) -> tuple[list, list]:
+    """Batting and pitching lines from a team's player_season_stats rows,
+    each flagged qualified when he's played enough for his rate stats to
+    count: 3.1 PA a team game; an inning a team game for a starter, half
+    that for a reliever (fewer than half his games started)."""
+    min_pa = q.min_pa(team_games)
     batters = []
     pitchers = []
     for s in rows:
@@ -127,7 +133,7 @@ def stat_lines(rows: list, min_ab: int, min_outs: int) -> tuple[list, list]:
             obp = round(formulas.on_base_pct(h, bb, hbp, ab, sf), 3)
             tb = formulas.total_bases(h, d, tr, hr)
             slg = round(formulas.slugging_pct(tb, ab), 3)
-            qualifies_bat = ab >= min_ab
+            qualifies_bat = q.plate_appearances(s) >= min_pa
             ab_k = round(ab / k, 2) if k else None
             hr_ab = round(hr / ab, 3) if ab else None
             batters.append(
@@ -174,7 +180,9 @@ def stat_lines(rows: list, min_ab: int, min_outs: int) -> tuple[list, list]:
             k9 = round(formulas.per_nine(pk, outs), 2)
             gs = s.get("pitch_games_started") or 0
             ip_disp = formulas.ip_str(outs)
-            qualifies_pit = outs >= min_outs
+            qualifies_pit = outs >= q.min_outs(
+                team_games, reliever=q.is_reliever(pg, gs)
+            )
             pitchers.append(
                 {
                     "player_id": s["player_id"],
@@ -206,12 +214,25 @@ def stat_lines(rows: list, min_ab: int, min_outs: int) -> tuple[list, list]:
     return batters, pitchers
 
 
-def fielding_lines(def_rows: list) -> list:
+def fielding_lines(
+    def_rows: list, team_games: int, pitcher_outs: dict[str, int] | None = None
+) -> list:
+    """Fielding lines at each position, flagged qualified for FPCT: games
+    there, half the team's games at catcher and two thirds elsewhere; for a
+    pitcher an inning pitched a team game (pitcher_outs, by player)."""
+    pitcher_outs = pitcher_outs or {}
     fielders = []
     for r in def_rows:
         po, a, e = r["po"] or 0, r["a"] or 0, r["e"] or 0
         denom = po + a + e
         fpct = round((po + a) / denom, 3) if denom else 1.0
+        pos = r["position"]
+        if pos == "p":
+            qualified = pitcher_outs.get(r["player_id"], 0) >= q.min_field_outs(
+                team_games
+            )
+        else:
+            qualified = (r["g"] or 0) >= q.min_field_games(pos, team_games)
         fielders.append(
             {
                 "player_id": r["player_id"],
@@ -225,6 +246,7 @@ def fielding_lines(def_rows: list) -> list:
                 "TP": r["tp"] or 0,
                 "PB": r["pb"] if r["pb"] else None,
                 "FPCT": fpct,
+                "qualified": qualified,
             }
         )
 

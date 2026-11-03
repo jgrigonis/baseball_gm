@@ -8,7 +8,15 @@ from __future__ import annotations
 from src.db.repositories.player_games import PlayerGameRepository
 from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
 from src.db.repositories.season_repo import SeasonRepository
-from src.stats import formulas
+from src.stats import formulas, qualifiers as q
+
+# The rookie cards: (pane, label) from the full batting and pitching cards.
+ROOKIE_CATS = [
+    ("bat", "AVG"), ("bat", "OBP"), ("bat", "OPS"),
+    ("bat", "HR"), ("bat", "RBI"), ("bat", "SB"),
+    ("pit", "ERA"), ("pit", "WHIP"), ("pit", "K/9"),
+    ("pit", "K"), ("pit", "W"), ("pit", "SV"),
+]  # fmt: skip
 
 
 def leaders_context(
@@ -31,25 +39,29 @@ def leaders_context(
 
     bat_cats = []
     pit_cats = []
+    rel_cats = []
+    rookie_cats = []
     def_cats = []
+    rookie_ids: set[str] = set()
 
     if season_id:
         pss_repo = PlayerSeasonStatsRepository(db)
+        team_games = pss_repo.get_max_games_played(season_id)
+        bat = pss_repo.get_batting_for_league(league_id, season_id)
+        pit = pss_repo.get_pitching_for_league(league_id, season_id)
 
-        team_games, min_ab, min_outs = qualifiers(pss_repo, season_id)
-
-        bat_cats = batting_leaders(
-            pss_repo.get_batting_for_league(league_id, season_id), my_team_id, min_ab
+        bat_cats = batting_leaders(bat, my_team_id, q.min_pa(team_games))
+        pit_cats = pitching_leaders(pit, my_team_id, q.min_outs(team_games))
+        rel_cats = relief_leaders(
+            pit, my_team_id, q.min_outs(team_games, reliever=True)
         )
-        pit_cats = pitching_leaders(
-            pss_repo.get_pitching_for_league(league_id, season_id),
-            my_team_id,
-            min_outs,
-        )
+        rookie_ids = pss_repo.get_rookie_ids(league_id, season_id)
+        rookie_cats = rookie_leaders(bat, pit, my_team_id, rookie_ids, team_games)
         def_cats = defense_leaders(
             PlayerGameRepository(db).get_league_fielding_by_position(season_id),
             my_team_id,
             team_games,
+            {r["player_id"]: r["pitch_outs"] or 0 for r in pit},
         )
 
     return {
@@ -58,17 +70,11 @@ def leaders_context(
         "leaders_seasons": all_seasons,
         "bat_cats": bat_cats,
         "pit_cats": pit_cats,
+        "rel_cats": rel_cats,
+        "rookie_cats": rookie_cats,
         "def_cats": def_cats,
+        "rookie_ids": rookie_ids,
     }
-
-
-def qualifiers(pss_repo, season_id: str) -> tuple[int, int, int]:
-    """Games played by the busiest team, and the at bats and outs a player
-    needs to qualify for the rate stats (AVG, ERA and the like)."""
-    team_games = pss_repo.get_max_games_played(season_id)
-    min_ab = int(3.1 * team_games)  # 3.1 PA per team game
-    min_outs = int(3 * team_games)  # 1 IP per team game
-    return team_games, min_ab, min_outs
 
 
 def team_leaders(
@@ -77,10 +83,11 @@ def team_leaders(
     """One team's leader in each of `cats`, a (pane, label) list with pane
     "bat" or "pit": the label plus the top row of the league-wide card,
     counting only this team's players. Rate stats still need the league's
-    qualifying at bats or innings; a category no one on the team qualifies
-    for is left out."""
+    qualifying plate appearances or innings; a category no one on the team
+    qualifies for is left out."""
     pss_repo = PlayerSeasonStatsRepository(db)
-    _, min_ab, min_outs = qualifiers(pss_repo, season_id)
+    team_games = pss_repo.get_max_games_played(season_id)
+    min_pa, min_outs = q.min_pa(team_games), q.min_outs(team_games)
     bat = [
         r
         for r in pss_repo.get_batting_for_league(league_id, season_id)
@@ -92,7 +99,7 @@ def team_leaders(
         if r["team_id"] == team_id
     ]
     by_label = {
-        "bat": {c["label"]: c for c in batting_leaders(bat, team_id, min_ab)},
+        "bat": {c["label"]: c for c in batting_leaders(bat, team_id, min_pa)},
         "pit": {c["label"]: c for c in pitching_leaders(pit, team_id, min_outs)},
     }
     out = []
@@ -103,7 +110,36 @@ def team_leaders(
     return out
 
 
-def batting_leaders(bat_rows: list, my_team_id: str | None, min_ab: int) -> list:
+def rookie_leaders(
+    bat_rows: list,
+    pit_rows: list,
+    my_team_id: str | None,
+    rookie_ids: set[str],
+    team_games: int,
+) -> list:
+    """The ROOKIE_CATS cards among this season's rookies, who qualify for the
+    rate stats at half the usual playing time (1.55 PA or 0.5 IP a team
+    game). None in a season without rookies."""
+    bat = [r for r in bat_rows if r["player_id"] in rookie_ids]
+    pit = [r for r in pit_rows if r["player_id"] in rookie_ids]
+    if not bat and not pit:
+        return []
+    by_label = {
+        "bat": {
+            c["label"]: c
+            for c in batting_leaders(bat, my_team_id, q.min_pa(team_games, rookie=True))
+        },
+        "pit": {
+            c["label"]: c
+            for c in pitching_leaders(
+                pit, my_team_id, q.min_outs(team_games, rookie=True)
+            )
+        },
+    }
+    return [by_label[pane][label] for pane, label in ROOKIE_CATS]
+
+
+def batting_leaders(bat_rows: list, my_team_id: str | None, min_pa: int) -> list:
     batters = []
     for r in bat_rows:
         ab = r["bat_ab"] or 0
@@ -121,7 +157,7 @@ def batting_leaders(bat_rows: list, my_team_id: str | None, min_ab: int) -> list
         avg = formulas.batting_average(h, ab)
         obp = formulas.on_base_pct(h, bb, hbp, ab, sf)
         slg = formulas.slugging_pct(formulas.total_bases(h, d, tr, hr), ab)
-        qualifies = ab >= min_ab
+        qualifies = q.plate_appearances(r) >= min_pa
         ab_k = ab / k if k else 0.0
         ab_hr = ab / hr if hr else None
         bb_k = bb / k if k else None
@@ -219,7 +255,7 @@ def batting_leaders(bat_rows: list, my_team_id: str | None, min_ab: int) -> list
     return bat_cats
 
 
-def pitching_leaders(pit_rows: list, my_team_id: str | None, min_outs: int) -> list:
+def _pitchers(pit_rows: list, my_team_id: str | None, min_outs: int) -> list:
     pitchers = []
     for r in pit_rows:
         outs = r["pitch_outs"] or 0
@@ -228,13 +264,8 @@ def pitching_leaders(pit_rows: list, my_team_id: str | None, min_outs: int) -> l
         pbb = r["pitch_walks"] or 0
         pk = r["pitch_strike_outs"] or 0
         hr = r["pitch_home_runs"] or 0
-        ip_f = formulas.innings(outs)
-        era = formulas.era(er, outs)
-        whip = formulas.whip(ph, pbb, outs)
-        qualifies_p = outs >= min_outs
-        bb9 = formulas.per_nine(pbb, outs)
-        hr9 = formulas.per_nine(hr, outs)
-        k9 = formulas.per_nine(pk, outs)
+        g = r.get("pitch_games_played") or 0
+        gs = r.get("pitch_games_started") or 0
         pitchers.append(
             {
                 "player_id": r["player_id"],
@@ -242,73 +273,111 @@ def pitching_leaders(pit_rows: list, my_team_id: str | None, min_outs: int) -> l
                 "team": f"{r['city']} {r['mascot']}",
                 "team_id": r["team_id"],
                 "is_mine": r["team_id"] == my_team_id,
-                "qualifies": qualifies_p,
-                "ERA": era,
-                "WHIP": whip,
+                "qualifies": outs >= min_outs,
+                "reliever": q.is_reliever(g, gs),
+                "ERA": formulas.era(er, outs),
+                "WHIP": formulas.whip(ph, pbb, outs),
                 "W": r["pitch_wins"] or 0,
                 "K": pk,
                 "SV": r["pitch_saves"] or 0,
+                "HLD": r.get("pitch_holds") or 0,
                 "CG": r.get("pitch_complete_games") or 0,
                 "SHO": r.get("pitch_shutouts") or 0,
-                "IP": ip_f,
-                "BB/9": bb9,
-                "HR/9": hr9,
-                "K/9": k9,
+                "IP": formulas.innings(outs),
+                "BB/9": formulas.per_nine(pbb, outs),
+                "HR/9": formulas.per_nine(hr, outs),
+                "K/9": formulas.per_nine(pk, outs),
             }
         )
+    return pitchers
 
-    def pit_card(label, key, pool=None, asc=False, fmt=None):
-        srt = sorted(
-            pool if pool is not None else pitchers,
-            key=lambda r: r[key],
-            reverse=not asc,
-        )[:10]
-        rows = []
-        for i, r in enumerate(srt, 1):
-            val = r[key]
-            if fmt:
-                disp = fmt(val)
-            elif key == "IP":
-                disp = formulas.ip_str(round(val * formulas.OUTS_PER_INNING))
-            else:
-                disp = str(int(val)) if val == int(val) else f"{val:.2f}"
-            rows.append(
-                {
-                    "rank": i,
-                    "name": r["name"],
-                    "team": r["team"],
-                    "player_id": r["player_id"],
-                    "is_mine": r["is_mine"],
-                    "val": disp,
-                }
-            )
-        return {"label": label, "rows": rows}
 
+def _pit_card(pitchers, label, key, pool=None, asc=False, fmt=None):
+    srt = sorted(
+        pool if pool is not None else pitchers,
+        key=lambda r: r[key],
+        reverse=not asc,
+    )[:10]
+    rows = []
+    for i, r in enumerate(srt, 1):
+        val = r[key]
+        if fmt:
+            disp = fmt(val)
+        elif key == "IP":
+            disp = formulas.ip_str(round(val * formulas.OUTS_PER_INNING))
+        else:
+            disp = str(int(val)) if val == int(val) else f"{val:.2f}"
+        rows.append(
+            {
+                "rank": i,
+                "name": r["name"],
+                "team": r["team"],
+                "player_id": r["player_id"],
+                "is_mine": r["is_mine"],
+                "val": disp,
+            }
+        )
+    return {"label": label, "rows": rows}
+
+
+def _f2(v):
+    return f"{v:.2f}"
+
+
+def pitching_leaders(pit_rows: list, my_team_id: str | None, min_outs: int) -> list:
+    """The pitching cards. Rate stats need min_outs, the full inning a team
+    game for starters and relievers alike."""
+    pitchers = _pitchers(pit_rows, my_team_id, min_outs)
     q_pit = [p for p in pitchers if p["qualifies"]]
-    all_pit = pitchers
 
-    def pit_card_q(label, key, asc=False, fmt=None):
-        return pit_card(label, key, pool=q_pit, asc=asc, fmt=fmt)
+    def card(label, key, pool=None, asc=False, fmt=None):
+        return _pit_card(pitchers, label, key, pool, asc, fmt)
 
-    pit_cats = [
-        pit_card_q("ERA", "ERA", asc=True, fmt=lambda v: f"{v:.2f}"),
-        pit_card_q("WHIP", "WHIP", asc=True, fmt=lambda v: f"{v:.2f}"),
-        pit_card("W", "W", pool=all_pit),
-        pit_card("K", "K", pool=all_pit),
-        pit_card("SV", "SV", pool=all_pit),
-        pit_card("CG", "CG", pool=[p for p in all_pit if p["CG"]]),
-        pit_card("SHO", "SHO", pool=[p for p in all_pit if p["SHO"]]),
-        pit_card_q("IP", "IP"),
-        pit_card_q("BB/9", "BB/9", asc=True, fmt=lambda v: f"{v:.2f}"),
-        pit_card_q("HR/9", "HR/9", asc=True, fmt=lambda v: f"{v:.2f}"),
-        pit_card_q("K/9", "K/9", fmt=lambda v: f"{v:.2f}"),
+    return [
+        card("ERA", "ERA", pool=q_pit, asc=True, fmt=_f2),
+        card("WHIP", "WHIP", pool=q_pit, asc=True, fmt=_f2),
+        card("W", "W"),
+        card("K", "K"),
+        card("SV", "SV"),
+        card("CG", "CG", pool=[p for p in pitchers if p["CG"]]),
+        card("SHO", "SHO", pool=[p for p in pitchers if p["SHO"]]),
+        card("IP", "IP", pool=q_pit),
+        card("BB/9", "BB/9", pool=q_pit, asc=True, fmt=_f2),
+        card("HR/9", "HR/9", pool=q_pit, asc=True, fmt=_f2),
+        card("K/9", "K/9", pool=q_pit, fmt=_f2),
     ]
-    return pit_cats
+
+
+def relief_leaders(pit_rows: list, my_team_id: str | None, min_outs: int) -> list:
+    """Cards for relievers only (fewer than half their games started). Rate
+    stats need min_outs, half an inning a team game."""
+    pitchers = [p for p in _pitchers(pit_rows, my_team_id, min_outs) if p["reliever"]]
+    q_rel = [p for p in pitchers if p["qualifies"]]
+
+    def card(label, key, pool=None, asc=False, fmt=None):
+        return _pit_card(pitchers, label, key, pool, asc, fmt)
+
+    return [
+        card("SV", "SV", pool=[p for p in pitchers if p["SV"]]),
+        card("HLD", "HLD", pool=[p for p in pitchers if p["HLD"]]),
+        card("ERA", "ERA", pool=q_rel, asc=True, fmt=_f2),
+        card("WHIP", "WHIP", pool=q_rel, asc=True, fmt=_f2),
+        card("K/9", "K/9", pool=q_rel, fmt=_f2),
+        card("BB/9", "BB/9", pool=q_rel, asc=True, fmt=_f2),
+    ]
 
 
 def defense_leaders(
-    def_rows_raw: list, my_team_id: str | None, team_games: int
+    def_rows_raw: list,
+    my_team_id: str | None,
+    team_games: int,
+    pitcher_outs: dict[str, int] | None = None,
 ) -> list:
+    """FPCT, putouts and the like at each position. FPCT needs games there:
+    half the team's games at catcher, two thirds elsewhere. Pitchers (P
+    FPCT, from pitcher_outs, each pitcher's outs pitched) need an inning a
+    team game, unless one with fewer has a better FPCT in more chances."""
+    pitcher_outs = pitcher_outs or {}
     def_cats = []
     def_data = []
     for r in def_rows_raw:
@@ -335,11 +404,13 @@ def defense_leaders(
                 "PB": pb,
                 "PB/G": round(pb / g, 2) if g else 0.0,
                 "FPCT": fpct,
+                "TC": denom,
             }
         )
 
     def def_card(label, key, pool, asc=False, fmt=None):
-        srt = sorted(pool, key=lambda r: r[key], reverse=not asc)[:10]
+        # Ties (a lot of 1.000s) go to the one with more chances.
+        srt = sorted(pool, key=lambda r: (r[key], r["TC"]), reverse=not asc)[:10]
         rows = []
         for i, r in enumerate(srt, 1):
             val = r[key]
@@ -371,13 +442,12 @@ def defense_leaders(
         ("CF", "CF"),
         ("RF", "RF"),
     ]
-    min_g_qual = max(5, team_games // 4)
-
     for pos_val, pos_label in field_positions:
         pool = [r for r in def_data if r["pos"] == pos_val]
         if not pool:
             continue
-        q_pool = [r for r in pool if r["G"] >= min_g_qual] or pool
+        min_g = q.min_field_games(pos_val, team_games)
+        q_pool = [r for r in pool if r["G"] >= min_g] or pool
         def_cats.append(
             def_card(f"{pos_label} FPCT", "FPCT", q_pool, fmt=lambda v: f"{v:.3f}")
         )
@@ -389,4 +459,16 @@ def defense_leaders(
             def_cats.append(
                 def_card("C PB/G", "PB/G", q_pool, asc=True, fmt=lambda v: f"{v:.2f}")
             )
+
+    pitchers = [r for r in def_data if r["pos"] == "P"]
+    if pitchers:
+        for r in pitchers:
+            r["outs"] = pitcher_outs.get(r["player_id"], 0)
+        p_pool = q.pitcher_fpct_pool(
+            [{**r, "fpct": r["FPCT"], "chances": r["TC"]} for r in pitchers],
+            team_games,
+        )
+        def_cats.append(
+            def_card("P FPCT", "FPCT", p_pool or pitchers, fmt=lambda v: f"{v:.3f}")
+        )
     return def_cats

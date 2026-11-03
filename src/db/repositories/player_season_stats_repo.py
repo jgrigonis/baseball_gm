@@ -263,6 +263,7 @@ class PlayerSeasonStatsRepository:
                 "pitch_wins",
                 "pitch_losses",
                 "pitch_saves",
+                "pitch_holds",
                 "pitch_outs",
                 "pitch_hits",
                 "pitch_earned_runs",

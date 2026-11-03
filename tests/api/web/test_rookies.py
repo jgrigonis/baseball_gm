@@ -131,3 +131,11 @@ def test_tabs_that_draw_names_in_js_get_the_rookie_ids(client, league, tab):
     assert r.status_code == 200
     assert "window.ROOKIE_IDS" in r.text
     assert league["players"]["new"] in r.text.split("window.ROOKIE_IDS", 1)[1][:400]
+
+
+def test_leaders_have_a_rookies_pane(client, league):
+    lid, sid = league["league"].id, league["current"].id
+    r = client.get(f"/leagues/{lid}/leaders?season={sid}")
+    assert 'id="lb-pane-rookies"' in r.text
+    pane = r.text.split('id="lb-pane-rookies"', 1)[1]
+    assert "New Kid" in pane and "Old Vet" not in pane
