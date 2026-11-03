@@ -1,7 +1,6 @@
 {# templates/dashboard/partials/history.html #}
 {# League History — one row per completed season #}
-<div style="position:sticky;top:0;z-index:10;background:var(--bg);
-            padding:12px 24px;border-bottom:1px solid var(--border);">
+<div class="tab-head">
   <h1 class="page-title">History</h1>
   {% if league_state == 'complete' %}
   <div style="font-family:var(--font-mono);font-size:12px;color:var(--amber);margin-top:4px;">
@@ -10,14 +9,14 @@
   {% endif %}
 </div>
 
-<div style="padding:16px 24px 32px;">
+<div class="tab-body">
   {% if not history_rows %}
   <div style="padding:48px 0;text-align:center;font-family:var(--font-mono);
               font-size:13px;color:var(--text-dim);">
     No completed seasons yet.
   </div>
   {% else %}
-  <div class="card">
+  <div class="card table-scroll pin-first">
     <table class="data-table" style="width:100%;">
       <thead>
         <tr>

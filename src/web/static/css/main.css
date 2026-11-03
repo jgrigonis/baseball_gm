@@ -1195,8 +1195,8 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
   border-bottom: 1px dotted var(--muted);
   outline: none;
 }
+/* The tip only exists while shown, so a hidden one can't widen the page. */
 .setting-tip::after {
-  content: attr(data-tip);
   position: absolute;
   left: 0;
   top: calc(100% + 6px);
@@ -1217,7 +1217,11 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
   transition: opacity 0.12s;
 }
 .setting-tip:hover::after,
-.setting-tip:focus::after { opacity: 1; visibility: visible; }
+.setting-tip:focus::after { content: attr(data-tip); opacity: 1; visibility: visible; }
+/* Phones: the tip shows along the bottom of the screen, where it always fits. */
+@media (max-width: 700px) {
+  .setting-tip::after { position: fixed; left: 16px; right: 16px; top: auto; bottom: 16px; width: auto; }
+}
 
 /* ── Admin pages ─────────────────────────────────────────────────────────── */
 .admin-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
@@ -1549,3 +1553,48 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
 
 /* A player still rusty after an injury (lineup rows) */
 .lu-rust { font-size:10px;color:var(--amber);letter-spacing:.04em;margin-left:6px; }
+
+/* ── Phone layout (shared) ─────────────────────────────────────────────────── */
+/* One breakpoint for the whole app, 700px (the player panel uses it too).
+   .tab-head is a tab's sticky title strip and .tab-body its content, so they
+   get phone padding in one place. Wide tables go in .table-scroll, so only the
+   table slides sideways, never the whole tab. */
+.tab-head {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--bg);
+  padding: 16px 24px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.tab-body { padding: 16px 24px 24px; }
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.table-scroll > .data-table { min-width: 100%; }
+
+@media (max-width: 700px) {
+  /* The shell fits the visible screen, not the area behind the phone
+     browser's toolbar (100vh on iOS Safari). */
+  .app-shell { height: 100dvh; }
+
+  /* One column, and its cards may shrink below their content, so a wide
+     table scrolls inside its card instead of widening the page. */
+  .grid-2, .grid-3 { grid-template-columns: minmax(0, 1fr); }
+  .grid-2 > *, .grid-3 > * { min-width: 0; }
+  .content-inner { padding: 20px 16px; }
+
+  /* Page headers wrap: title and details first, buttons on the next row.
+     The !importants beat inline margins on header buttons. */
+  .page-header { flex-wrap: wrap; align-items: center; row-gap: 8px; column-gap: 10px; }
+  .page-header > * { margin-left: 0 !important; margin-right: 0 !important; }
+  .page-header > .spacer { flex: 1 0 100%; height: 0; }
+  .page-header .btn { padding: 7px 12px; }
+
+  /* Sticky title strips scroll away on phones: once the buttons wrap they'd
+     cover too much of the screen. */
+  .tab-head { position: static; padding: 12px 16px 10px; }
+  .tab-body { padding: 12px 16px 20px; }
+
+  /* Wide tables: the first column stays put while the rest slides. */
+  .table-scroll.pin-first .data-table th:first-child,
+  .table-scroll.pin-first .data-table td:first-child {
+    position: sticky; left: 0; z-index: 1; background: var(--pin-bg, var(--bg-2));
+  }
+}
