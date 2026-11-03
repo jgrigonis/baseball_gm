@@ -4,7 +4,7 @@ Play games in a season.
 """
 
 import argparse
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 import logging
 import random
 import traceback
@@ -441,6 +441,21 @@ def play_game(
     return result
 
 
+def _resolve_returns(conn, league_id: str, game_info: dict) -> None:
+    """Roll the lasting outcome of every injury in the league that's over
+    by the day after this game. Uses its own randomness, so the game's
+    seeded rng plays out the same."""
+    row = conn.execute(
+        "SELECT game_date FROM games WHERE id = %s", (game_info["game_id"],)
+    ).fetchone()
+    if not row or not row["game_date"]:
+        return
+    tomorrow = datetime.fromisoformat(str(row["game_date"])[:10]).date() + timedelta(
+        days=1
+    )
+    InjuryRepository(conn, league_id=league_id).resolve_returns(as_of=tomorrow)
+
+
 def _play_game(
     conn,
     args,
@@ -455,6 +470,11 @@ def _play_game(
     league_mode: str,
 ):
     blitz = is_blitz_style(league_mode)
+
+    # Injuries that are over by tomorrow get their lasting outcome now, before
+    # anyone's skills are loaded: the first game of each day does it for the
+    # whole league, so it's in place when the GMs see who's back.
+    _resolve_returns(conn, league_id, game_info)
 
     home_record = team_repo.get(game_info["home_team_id"])
     away_record = team_repo.get(game_info["away_team_id"])

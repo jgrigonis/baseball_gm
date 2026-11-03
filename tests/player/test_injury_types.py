@@ -137,3 +137,106 @@ def test_days_to_clear_counts_to_the_last_whole_point():
     assert rust_days_to_clear({"speed": 4.0}, 20, 0, 0) == 18
     assert rust_days_to_clear({"speed": 4.0}, 20, 10, 10) == 8
     assert rust_days_to_clear({"speed": 4.0}, 20, 30, 30) == 0
+
+
+# ── Lasting effects ──────────────────────────────────────────────────────────
+
+from src.player.injury_types import (  # noqa: E402
+    LASTING,
+    OUTCOME_LABELS,
+    cap_drop_chance,
+    effects_text,
+    outcome_odds,
+    roll_lasting,
+)
+
+
+def test_every_lasting_table_is_a_known_injury_with_labelled_outcomes():
+    for key, outcomes in LASTING.items():
+        assert key in INJURY_TYPES
+        for o in outcomes:
+            assert o.key in OUTCOME_LABELS
+            for lo, hi in o.effects.values():
+                assert lo <= hi
+
+
+def test_minor_injuries_leave_nothing():
+    assert roll_lasting("blister", pitcher=True, age=28) is None
+    assert roll_lasting(None, pitcher=False, age=28) is None
+
+
+def test_odds_sum_to_one_and_age_moves_them_from_best_to_worst():
+    prime = dict((o.key, p) for o, p in outcome_odds("tommy_john", age=27))
+    old = dict((o.key, p) for o, p in outcome_odds("tommy_john", age=35))
+    young = dict((o.key, p) for o, p in outcome_odds("tommy_john", age=22))
+    for odds in (prime, old, young):
+        assert sum(odds.values()) == pytest.approx(1)
+    assert prime == pytest.approx({"stronger": 0.25, "full": 0.55, "bad": 0.20})
+    assert old["stronger"] == pytest.approx(0.10)
+    assert old["bad"] == pytest.approx(0.35)
+    assert young["stronger"] == pytest.approx(0.34)
+    assert young["bad"] == pytest.approx(0.11)
+
+
+def test_durable_hitters_heal_better():
+    tough = dict((o.key, p) for o, p in outcome_odds("torn_acl", 28, durability=100))
+    frail = dict((o.key, p) for o, p in outcome_odds("torn_acl", 28, durability=0))
+    assert tough["full"] > 0.15 > frail["full"]
+
+
+def test_tommy_john_outcomes_over_many_rolls():
+    rng = random.Random(7)
+    rolls = [roll_lasting("tommy_john", True, 28, rng=rng) for _ in range(4000)]
+    share = {
+        k: sum(r.outcome == k for r in rolls) / len(rolls)
+        for k in ("stronger", "full", "bad")
+    }
+    assert share["stronger"] == pytest.approx(0.25, abs=0.03)
+    assert share["bad"] == pytest.approx(0.20, abs=0.03)
+    for r in rolls:
+        if r.outcome == "stronger":
+            assert 2 <= r.effects["strikes"] <= 5 and 1 <= r.effects["arm"] <= 3
+        if r.outcome == "bad":
+            assert -8 <= r.effects["strikes"] <= -3
+
+
+def test_pitchers_never_lose_durability_and_back_trouble_hits_stamina():
+    rng = random.Random(3)
+    for _ in range(500):
+        r = roll_lasting("back_surgery", pitcher=True, age=33, durability=10, rng=rng)
+        assert "durability" not in r.effects
+        assert "power" not in r.effects
+    # And durability doesn't move a pitcher's odds
+    assert roll_lasting("torn_acl", True, 30, 1, random.Random(5)) == roll_lasting(
+        "torn_acl", True, 30, 99, random.Random(5)
+    )
+
+
+def test_a_position_players_arm_takes_the_pitching_damage():
+    rng = random.Random(4)
+    seen = set()
+    for _ in range(300):
+        r = roll_lasting("torn_rotator_cuff", pitcher=False, age=29, rng=rng)
+        seen |= set(r.effects)
+    assert seen == {"arm"}
+
+
+def test_cap_drop_is_about_one_in_ten_and_worse_with_age():
+    assert cap_drop_chance(30, None) == pytest.approx(0.10)
+    assert cap_drop_chance(22, None) == pytest.approx(0.05)
+    assert cap_drop_chance(38, None) == pytest.approx(0.18)
+    assert cap_drop_chance(30, 100) < cap_drop_chance(30, 50) < cap_drop_chance(30, 0)
+
+
+def test_only_losses_can_drop_the_cap():
+    rng = random.Random(11)
+    for _ in range(2000):
+        r = roll_lasting("tommy_john", True, 40, rng=rng)
+        if r.cap_drop:
+            assert any(v < 0 for v in r.effects.values())
+
+
+def test_effects_text():
+    assert effects_text({"speed": -4, "base_running": -2}) == "SP −4 · BR −2"
+    assert effects_text({"strikes": 3}) == "KK +3"
+    assert effects_text({}) == ""

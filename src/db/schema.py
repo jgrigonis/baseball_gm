@@ -383,6 +383,8 @@ CREATE TABLE IF NOT EXISTS player_injuries (
     injury_type             TEXT,                        -- src/player/injury_types.py key; NULL before migration 57
     rust                    JSONB,                       -- points each skill is down on return (injury_types.roll_rust)
     rust_days               REAL,                        -- days the rust lasts if he plays every day
+    log_id                  INTEGER,                     -- this injury's player_injury_log row
+    lasting_done            BOOLEAN NOT NULL DEFAULT FALSE, -- lasting outcome rolled (on return)
     PRIMARY KEY (player_id, league_id),
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
@@ -397,6 +399,11 @@ CREATE TABLE IF NOT EXISTS player_injury_log (
     activity        TEXT,
     games_missed    INTEGER NOT NULL,       -- days missed (games, before migration 2)
     injury_type     TEXT,                   -- src/player/injury_types.py key; NULL before migration 57
+    outcome         TEXT,                   -- lasting outcome rolled on return (injury_types.LASTING)
+    effects         JSONB,                  -- {{skill: points}} it moved for good
+    cap_drop        BOOLEAN,                -- the losses lowered his talent caps too
+    resolved_on     TEXT,                   -- league date the outcome was rolled
+    resolved_season_id TEXT,                -- season it was rolled in
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 

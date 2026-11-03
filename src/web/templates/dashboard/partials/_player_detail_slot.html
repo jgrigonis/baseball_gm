@@ -187,6 +187,8 @@
    <span class="pd-skill-label">{{ inj.injury_date }}</span>
    <span class="ss-sev-{{ inj.severity }}">{{ injury_label(inj.injury_type, inj.severity) }}</span>
    <span class="pd-skill-label">{{ inj.games_missed }}d</span>
+   {% set eff = injury_effect(inj) %}
+   {% if eff %}<span class="inj-effect inj-effect-{{ eff.dir }}" title="{{ eff.title }}">{{ eff.text or eff.label }}{% if inj.cap_drop %} ▾{% endif %}</span>{% endif %}
  </div>
  {% endfor %}
 </div>

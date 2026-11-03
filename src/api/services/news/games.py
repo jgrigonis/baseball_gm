@@ -1,13 +1,13 @@
 # src/api/services/news/games.py
 """
 Stories from the days just played (after ``since``, through ``through``):
-winning and losing streaks, big games, season and career milestones, and
-long injuries.
+winning and losing streaks, big games, season and career milestones, long
+injuries, and players back from surgery (better, worse, or the same).
 """
 
 from __future__ import annotations
 
-from src.player.injury_types import injury_phrase
+from src.player.injury_types import INJURY_TYPES, injury_phrase
 from src.api.services.news.names import Names, possessive
 from src.db.repositories.news_repo import NewsRepository
 
@@ -44,6 +44,7 @@ def write(conn, names: Names, league_id: str, season_id: str, since, through) ->
     _big_games(conn, news, names, league_id, season_id, since, through)
     _milestones(conn, news, names, league_id, season_id, since, through)
     _injuries(conn, news, names, league_id, season_id, since, through)
+    _returns(conn, news, names, league_id, season_id, since)
 
 
 def _after(since) -> str:
@@ -348,6 +349,88 @@ def _injuries(conn, news, names, league_id, season_id, since, through) -> None:
             weight=3 if r["all_star"] and days >= 60 else 2 if r["all_star"] or days >= 60 else 1,
             team_ids=[team], player_ids=[pid], gm_ids=names.gm_ids(team),
         )  # fmt: skip
+
+
+# How a story names a skill a comeback moved.
+_SKILL_WORDS = {
+    "strikes": "stuff",
+    "accuracy": "control",
+    "base_running": "base running",
+}
+
+# Headline for a return from surgery, by outcome. Tommy John has its own.
+_RETURN_HEADLINES = {
+    "stronger": "{who} back from {phrase}, and better than ever",
+    "full": "{who} makes a full recovery from {phrase}",
+    "typical": "{who} back from {phrase}, but not quite the same",
+    "diminished": "{who} back from {phrase}, but diminished",
+    "bad": "{who} back from {phrase}, but hasn't been the same",
+}
+_TOMMY_JOHN_HEADLINES = {
+    "stronger": "{who} back from Tommy John, and throwing harder",
+    "full": "{who} back from Tommy John, good as new",
+    "bad": "{who} back from Tommy John, but hasn't found his stuff",
+}
+
+
+def _returns(conn, news, names, league_id, season_id, since) -> None:
+    """A story when a player comes back from surgery, saying how it went.
+    The outcome is rolled the day he's back (InjuryRepository.resolve_returns)."""
+    rows = conn.execute(
+        """SELECT l.id, l.player_id, l.injury_type, l.games_missed, l.outcome,
+                  l.effects, l.cap_drop, l.resolved_on, p.position,
+                  (SELECT tp.team_id FROM team_players tp
+                   JOIN league_season_teams lst ON lst.team_id = tp.team_id
+                   WHERE tp.player_id = l.player_id AND lst.league_id = %s
+                     AND lst.season_id = %s LIMIT 1) AS team_id,
+                  EXISTS (SELECT 1 FROM all_stars a
+                          WHERE a.player_id = l.player_id) AS all_star
+           FROM player_injury_log l JOIN players p ON p.id = l.player_id
+           WHERE l.resolved_season_id = %s AND l.resolved_on > %s
+             AND l.severity = 'surgery' AND l.outcome IS NOT NULL""",
+        (league_id, season_id, season_id, _after(since)),
+    ).fetchall()
+    names.load_players(r["player_id"] for r in rows)
+    for r in rows:
+        pid, team, outcome = r["player_id"], r["team_id"], r["outcome"]
+        t = INJURY_TYPES.get(r["injury_type"] or "")
+        if not t:
+            continue
+        who = names.player(pid)
+        last = names.last(pid)
+        table = _TOMMY_JOHN_HEADLINES if t.key == "tommy_john" else _RETURN_HEADLINES
+        headline = table.get(outcome, _RETURN_HEADLINES["typical"]).format(
+            who=who, phrase=t.phrase
+        )
+        body = f"{who}"
+        if r["position"]:
+            body += f" ({r['position'].upper()})"
+        body += " is back"
+        if team:
+            body += f" with the {names.full_team(team)}"
+        body += f" after {round(r['games_missed'] / 30)} months out."
+        effects = r["effects"] or {}
+        ups = [k for k, v in sorted(effects.items(), key=lambda kv: -kv[1]) if v > 0]
+        downs = [k for k, v in sorted(effects.items(), key=lambda kv: kv[1]) if v < 0]
+        if ups:
+            body += f" His {_skills(ups)} {'is' if len(ups) == 1 else 'are'} better than before."
+        if downs:
+            body += f" His {_skills(downs)} {'has' if len(downs) == 1 else 'have'} taken a lasting hit"
+            body += ", and his ceiling with it." if r["cap_drop"] else "."
+        if not effects:
+            body += f" {last} looks like his old self."
+        news.add(
+            league_id, season_id, r["resolved_on"], "injury", f"injury-return:{r['id']}",
+            headline, body,
+            weight=2 if r["all_star"] or outcome in ("stronger", "bad") else 1,
+            team_ids=[team] if team else [], player_ids=[pid],
+            gm_ids=names.gm_ids(team) if team else [],
+        )  # fmt: skip
+
+
+def _skills(keys: list[str]) -> str:
+    words = [_SKILL_WORDS.get(k, k.replace("_", " ")) for k in keys]
+    return words[0] if len(words) == 1 else ", ".join(words[:-1]) + " and " + words[-1]
 
 
 def _span(days: int) -> str:
