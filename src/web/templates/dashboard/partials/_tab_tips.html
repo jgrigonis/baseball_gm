@@ -37,6 +37,7 @@
     card.setAttribute('role', 'note');
     var text = document.createElement('span');
     text.textContent = TIPS[key];
+    text.onclick = function() { card.classList.toggle('open'); };
     var ok = document.createElement('button');
     ok.type = 'button';
     ok.className = 'btn btn-secondary';
@@ -66,4 +67,10 @@
 .tab-tip::before { content: "ⓘ"; color: var(--amber); font-size: 14px; }
 .tab-tip span { flex: 1; }
 .tab-tip .btn { font-size: 10px; padding: 4px 10px; flex: none; }
+/* Phones: two lines of the tip, tap it for the rest. */
+@media (max-width: 700px) {
+  .tab-tip { margin: 10px 16px 0; padding: 8px 10px; gap: 10px; line-height: 1.45; }
+  .tab-tip span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; cursor: pointer; }
+  .tab-tip.open span { -webkit-line-clamp: unset; }
+}
 </style>

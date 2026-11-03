@@ -1,8 +1,7 @@
 {# templates/dashboard/partials/leaders.html #}
 {% from "dashboard/partials/_rookie.html" import rk with context %}
-<div style="position:sticky;top:0;z-index:10;background:var(--bg);
-            padding:12px 24px;border-bottom:1px solid var(--border);">
-  <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;">
+<div class="tab-head" style="padding-top:12px;padding-bottom:12px;">
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
     <h1 class="page-title" style="white-space:nowrap;">Leaders</h1>
     <div style="display:flex;gap:0;border:1px solid var(--border);">
       <button id="lb-btn-bat" onclick="lbSwitch('batting')"
@@ -45,7 +44,7 @@
   Not enough games played yet.
 </div>
 {% else %}
-<div style="padding:16px 24px 24px;
+<div class="tab-body" style="
             display:grid;
             grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
             gap:12px;">
@@ -99,7 +98,7 @@
   Not enough games played yet.
 </div>
 {% else %}
-<div style="padding:16px 24px 24px;
+<div class="tab-body" style="
             display:grid;
             grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
             gap:12px;">
@@ -153,7 +152,7 @@
   Not enough games played yet.
 </div>
 {% else %}
-<div style="padding:16px 24px 24px;
+<div class="tab-body" style="
             display:grid;
             grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
             gap:12px;">
