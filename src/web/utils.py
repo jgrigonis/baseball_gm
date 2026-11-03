@@ -82,16 +82,17 @@ def _compute_visible_tabs(state: str, draft_complete: bool = False) -> list[str]
     if state == "lobby":
         return []
 
-    # If draft isn't done, show the draft tab prominently
+    # Before the draft is done there are fewer tabs. The Draft tab is at the
+    # right end either way, so it stays put when it turns into the results.
     if not draft_complete:
         return [
-            "draft",
             "roster",
             "lineup",
             "standings",
             "leaders",
             "stats",
             "strategy",
+            "draft",
         ]
 
     # Standard season tabs
@@ -268,10 +269,10 @@ def _shell_ctx(
                 }
             )
             tabs = _compute_visible_tabs(league["state"], draft_complete)
-            # Leagues that trade get a Trades tab once the draft is done, next
-            # to the roster. It stays for the trade history once trades close.
-            if draft_complete and "roster" in tabs and trades_enabled_for(league):
-                tabs.insert(tabs.index("roster") + 1, "trades")
+            # Leagues that trade get a Trades tab once the draft is done, after
+            # the lineup. It stays for the trade history once trades close.
+            if draft_complete and "lineup" in tabs and trades_enabled_for(league):
+                tabs.insert(tabs.index("lineup") + 1, "trades")
                 if not ctx["is_viewer"]:
                     # Offers and votes waiting on this GM: the tab's badge.
                     ctx["trade_inbox"] = trades.inbox_count(db, league_id, gm)

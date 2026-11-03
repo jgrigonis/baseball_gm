@@ -70,6 +70,12 @@ class TestCompleteLeagueIsReadOnly:
         for tab in ("standings", "leaders", "stats", "schedule", "playoffs"):
             assert tab in tabs
 
+    @pytest.mark.parametrize("state", ["draft", "season", "complete"])
+    def test_draft_tab_stays_at_the_right_end(self, state):
+        # Draft before the draft is done, Draft results after: same place.
+        for done in (False, True):
+            assert _compute_visible_tabs(state, draft_complete=done)[-1] == "draft"
+
     def test_every_league_changing_route_checks(self):
         import src.api.routers as routers
 
