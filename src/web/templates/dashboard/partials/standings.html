@@ -12,18 +12,18 @@
       <tr>
         <th style="width:28px;">#</th>
         <th>Team</th>
-        <th>GM</th>
+        <th class="phone-hide">GM</th>
         <th style="text-align:center;">W</th>
         <th style="text-align:center;">L</th>
         <th style="text-align:center;">PCT</th>
         <th style="text-align:center;">GB</th>
-        <th style="text-align:center;">Home</th>
-        <th style="text-align:center;">Away</th>
-        <th style="text-align:center;">L10</th>
-        <th style="text-align:center;">RS</th>
-        <th style="text-align:center;">RA</th>
-        <th style="text-align:center;">Streak</th>
-        <th title="Where each front office sees its team">Direction</th>
+        <th class="phone-hide" style="text-align:center;">Home</th>
+        <th class="phone-hide" style="text-align:center;">Away</th>
+        <th class="phone-hide" style="text-align:center;">L10</th>
+        <th class="phone-hide" style="text-align:center;">RS</th>
+        <th class="phone-hide" style="text-align:center;">RA</th>
+        <th style="text-align:center;"><span class="phone-hide">Streak</span><span class="phone-only">Strk</span></th>
+        <th class="phone-hide" title="Where each front office sees its team">Direction</th>
       </tr>
     </thead>
     <tbody>
@@ -36,11 +36,11 @@
                  title="Roster and stats{% if is_admin %} · team_id: {{ team.team_id }}{% endif %}"
                  style="font-family:var(--font-sans);font-weight:600;text-decoration:none;
                         color:{% if team.is_mine %}var(--green){% elif team.is_human %}var(--sky){% else %}var(--text){% endif %};">
-                {{ team_badge(team.city, team.mascot) }}{{ team.city }} {{ team.mascot }}
+                {{ team_badge(team.city, team.mascot) }}<span class="phone-hide">{{ team.city }} </span>{{ team.mascot }}
               </a>
               {% if team.is_mine %}<span style="font-family:var(--font-mono);font-size:10px;color:var(--green);margin-left:6px;">YOU</span>{% endif %}
             </td>
-            <td class="dim" style="font-size:12px;white-space:nowrap;">
+            <td class="dim phone-hide" style="font-size:12px;white-space:nowrap;">
               {% if team.gm and team.gm.persona_id %}
                 <a href="/leagues/{{ league_id }}/personas/{{ team.gm.persona_id }}?back=standings"
                    hx-get="/leagues/{{ league_id }}/personas/{{ team.gm.persona_id }}?back=standings" hx-target="#tab-content" hx-push-url="true"
@@ -52,16 +52,16 @@
             <td class="tc mono">{{ team.losses }}</td>
             <td class="tc mono">{{ team.pct }}</td>
             <td class="tc mono dim">{{ team.gb }}</td>
-            <td class="tc mono dim">{{ team.home }}</td>
-            <td class="tc mono dim">{{ team.away }}</td>
-            <td class="tc mono">
+            <td class="tc mono dim phone-hide">{{ team.home }}</td>
+            <td class="tc mono dim phone-hide">{{ team.away }}</td>
+            <td class="tc mono phone-hide">
               {% set l10parts = team.l10.split('-') %}
               <span style="color:{% if l10parts[0]|int > l10parts[1]|int %}var(--green){% elif l10parts[0]|int < l10parts[1]|int %}var(--red){% else %}var(--text-dim){% endif %};">
                 {{ team.l10 }}
               </span>
             </td>
-            <td class="tc mono">{{ team.rs }}</td>
-            <td class="tc mono dim">{{ team.ra }}</td>
+            <td class="tc mono phone-hide">{{ team.rs }}</td>
+            <td class="tc mono dim phone-hide">{{ team.ra }}</td>
             <td class="tc">
               {% if team.streak and team.streak != '—' %}
               <span style="font-family:var(--font-mono);font-size:12px;
@@ -70,7 +70,7 @@
               </span>
               {% else %}<span style="color:var(--muted);">—</span>{% endif %}
             </td>
-            <td class="mono dim" style="font-size:11px;white-space:nowrap;">
+            <td class="mono dim phone-hide" style="font-size:11px;white-space:nowrap;">
               {% if team.state_label %}<span class="team-state team-state-{{ team.state }}">{{ team.state_label }}</span>{% else %}<span style="color:var(--muted);">—</span>{% endif %}
             </td>
           </tr>
@@ -106,7 +106,7 @@
   </div>
 </div>
 
-<div style="padding:16px 24px 24px;display:flex;flex-direction:column;gap:16px;">
+<div class="tab-body" style="display:flex;flex-direction:column;gap:16px;">
 
   {% if not past_season %}{% include "dashboard/partials/_headlines.html" %}{% endif %}
 
@@ -247,6 +247,9 @@
 .dim  { color: var(--text-dim); }
 /* Give the table more room; sidebar stays fixed */
 .standings-grid { display: grid; grid-template-columns: 1fr 280px; gap: 16px; align-items: start; }
+/* Narrow screens: the sidebar goes below the standings. */
+@media (max-width: 1000px) { .standings-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 700px) { .standings-grid .data-table td { white-space: nowrap; } }
 /* Team states: buyers green, sellers amber, the rest plain */
 .standings-gm { color: var(--text-dim); text-decoration: none; }
 .standings-views { display: flex; gap: 6px; }

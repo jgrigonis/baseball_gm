@@ -1,9 +1,8 @@
 {# templates/dashboard/partials/playoffs.html #}
 {# ── Playoffs Tab ──────────────────────────────────────────────────────────── #}
 
-<div style="position:sticky;top:0;z-index:10;background:var(--bg);
-            padding:12px 24px;border-bottom:1px solid var(--border);">
-  <div style="display:flex;align-items:center;gap:16px;">
+<div class="tab-head" style="padding-top:12px;padding-bottom:12px;">
+  <div class="page-header" style="margin-bottom:0;align-items:center;">
     <h1 class="page-title">{% if past_season %}{{ past_season.year }} {% endif %}Playoffs</h1>
     {% if champion %}
     <span style="font-family:var(--font-mono);font-size:13px;color:var(--amber);font-weight:600;">
@@ -17,7 +16,7 @@
       View Season Summary →
     </a>
     {% endif %}
-    <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+    <div style="margin-left:auto;display:flex;flex-wrap:wrap;align-items:center;gap:8px;">
       <span id="po-feedback" style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);"></span>
       {% if not champion and not multiplayer and not past_season and not is_viewer %}
       <button id="po-day-btn" onclick="simPlayoffs('game')"

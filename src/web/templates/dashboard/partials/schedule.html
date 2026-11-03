@@ -9,7 +9,7 @@
   </div>
 </div>
 
-<div class="tab-body grid-2" style="align-items:start;">
+<div class="tab-body grid-2 sched-grid" style="align-items:start;">
 
   <div class="card">
     <div class="card-header">
@@ -19,23 +19,24 @@
     {% if upcoming %}
     <div class="table-scroll">
       <table class="data-table" style="width:100%;">
-        <thead><tr><th>Date</th><th>Opponent</th><th>GM</th><th style="text-align:center;">Record</th><th style="text-align:center;">H/A</th></tr></thead>
+        <thead><tr><th>Date</th><th>Opponent</th><th class="phone-hide">GM</th><th style="text-align:center;">Record</th><th style="text-align:center;">H/A</th></tr></thead>
         <tbody>
           {% for g in upcoming %}
           <tr>
-            <td style="font-family:var(--font-mono);color:var(--text-dim);font-size:11px;">{{ g.date }}</td>
-            <td>
+            {# The season's year goes without saying: month and day only. #}
+            <td style="font-family:var(--font-mono);color:var(--text-dim);font-size:11px;white-space:nowrap;" title="{{ g.date }}">{{ (g.date|string)[5:] }}</td>
+            <td style="white-space:nowrap;">
               {# The opponent's roster and stats #}
               <a href="/leagues/{{ league_id }}/stats?team_id={{ g.opp_id }}"
                  title="Roster and stats" style="color:inherit;text-decoration:none;">
-                {{ team_badge(g.opp_city, g.opp_mascot) }}{{ g.opp_city }} {{ g.opp_mascot }}
+                {{ team_badge(g.opp_city, g.opp_mascot) }}<span class="phone-hide">{{ g.opp_city }} </span>{{ g.opp_mascot }}
               </a>
             </td>
-            <td style="font-size:12px;white-space:nowrap;color:var(--text-dim);">{% with gm = g.opp_gm %}{% include "dashboard/partials/_gm_name.html" %}{% endwith %}</td>
+            <td class="phone-hide" style="font-size:12px;white-space:nowrap;color:var(--text-dim);">{% with gm = g.opp_gm %}{% include "dashboard/partials/_gm_name.html" %}{% endwith %}</td>
             <td style="text-align:center;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">{{ g.opp_record }}</td>
             <td style="text-align:center;font-family:var(--font-mono);font-size:11px;
                        color:{% if g.is_home %}var(--green){% else %}var(--text-dim){% endif %};">
-              {{ "HOME" if g.is_home else "AWAY" }}
+              <span class="phone-hide">{{ "HOME" if g.is_home else "AWAY" }}</span><span class="phone-only">{{ "vs" if g.is_home else "@" }}</span>
             </td>
           </tr>
           {% endfor %}
@@ -54,20 +55,21 @@
     {% if recent %}
     <div class="table-scroll">
       <table class="data-table" style="width:100%;">
-        <thead><tr><th>Date</th><th style="text-align:center;">W/L</th><th style="text-align:center;">Score</th><th>Opponent</th><th>GM</th><th style="text-align:center;">H/A</th></tr></thead>
+        <thead><tr><th>Date</th><th style="text-align:center;">W/L</th><th style="text-align:center;">Score</th><th>Opponent</th><th class="phone-hide">GM</th><th class="phone-hide" style="text-align:center;">H/A</th></tr></thead>
         <tbody>
           {% for g in recent %}
           <tr onclick="openGamePanel('{{ g.game_id }}')"
               style="cursor:pointer;"
               onmouseover="this.style.background='var(--bg-3)'"
               onmouseout="this.style.background=''">
-            <td style="font-family:var(--font-mono);color:var(--text-dim);font-size:11px;">{{ g.date }}</td>
+            {# The season's year goes without saying: month and day only. #}
+            <td style="font-family:var(--font-mono);color:var(--text-dim);font-size:11px;white-space:nowrap;" title="{{ g.date }}">{{ (g.date|string)[5:] }}</td>
             <td style="text-align:center;font-family:var(--font-mono);font-weight:600;
                        color:{% if g.result == 'W' %}var(--green){% else %}var(--red){% endif %};">{{ g.result }}</td>
-            <td style="text-align:center;font-size:17px;white-space:nowrap;"><span class="num-tile {% if g.result == 'W' %}lit{% endif %}">{{ g.my_score }}</span><span class="num-tile">{{ g.opp_score }}</span>{% if g.extra %}<span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-left:4px;">{{ g.extra }}</span>{% endif %}</td>
-            <td>{{ team_badge(g.opp_city, g.opp_mascot) }}{{ g.opp_city }} {{ g.opp_mascot }}</td>
-            <td style="font-size:12px;white-space:nowrap;color:var(--text-dim);">{% with gm = g.opp_gm %}{% include "dashboard/partials/_gm_name.html" %}{% endwith %}</td>
-            <td style="text-align:center;font-family:var(--font-mono);font-size:11px;
+            <td class="sched-score"><span class="num-tile {% if g.result == 'W' %}lit{% endif %}">{{ g.my_score }}</span><span class="num-tile">{{ g.opp_score }}</span>{% if g.extra %}<span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-left:4px;">{{ g.extra }}</span>{% endif %}</td>
+            <td style="white-space:nowrap;"><span class="phone-only" style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-right:4px;">{{ g.home_away }}</span>{{ team_badge(g.opp_city, g.opp_mascot) }}<span class="phone-hide">{{ g.opp_city }} </span>{{ g.opp_mascot }}</td>
+            <td class="phone-hide" style="font-size:12px;white-space:nowrap;color:var(--text-dim);">{% with gm = g.opp_gm %}{% include "dashboard/partials/_gm_name.html" %}{% endwith %}</td>
+            <td class="phone-hide" style="text-align:center;font-family:var(--font-mono);font-size:11px;
                        color:{% if g.home_away == 'vs' %}var(--green){% else %}var(--text-dim){% endif %};">
               {{ "HOME" if g.home_away == 'vs' else "AWAY" }}
             </td>
@@ -82,5 +84,12 @@
   </div>
 
 </div>
+
+<style>
+.sched-score { text-align: center; font-size: 17px; white-space: nowrap; }
+@media (max-width: 700px) { .sched-score { font-size: 14px; } }
+/* The two tables only fit side by side on a wide screen. */
+@media (max-width: 1240px) { .sched-grid { grid-template-columns: minmax(0, 1fr); } }
+</style>
 
 {% include "dashboard/partials/_play_script.html" %}

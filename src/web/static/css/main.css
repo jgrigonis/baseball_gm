@@ -1567,6 +1567,7 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
 }
 .tab-body { padding: 16px 24px 24px; }
 .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.phone-only { display: none; }
 .table-scroll > .data-table { min-width: 100%; }
 
 @media (max-width: 700px) {
@@ -1591,6 +1592,11 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
      cover too much of the screen. */
   .tab-head { position: static; padding: 12px 16px 10px; }
   .tab-body { padding: 12px 16px 20px; }
+
+  /* Columns and words a table can do without on a phone. */
+  .phone-hide { display: none !important; }
+  .phone-only { display: inline; }
+  .data-table thead th, .data-table tbody td { padding-left: 6px; padding-right: 6px; }
 
   /* Wide tables: the first column stays put while the rest slides. */
   .table-scroll.pin-first .data-table th:first-child,
