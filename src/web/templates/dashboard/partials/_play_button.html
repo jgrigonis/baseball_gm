@@ -1,5 +1,5 @@
 {# templates/dashboard/partials/_play_button.html #}
-<div style="display:flex;align-items:center;gap:8px;">
+<div class="play-bar" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;">
   {% if league_state == 'playoffs' %}
   <a href="/leagues/{{ league_id }}/playoffs"
      hx-get="/leagues/{{ league_id }}/playoffs"
