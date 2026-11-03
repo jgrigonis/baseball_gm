@@ -301,3 +301,60 @@ def test_a_person_picks_their_team_from_their_row(client, db_conn, lobby):
         ai["lobby_mascot"],
     )
     assert dict(them) == dict(before)
+
+
+def _start_midway(db_conn, factory, league, ai):
+    """Where a start job stands once it has dealt the teams and committed,
+    with the league still in the lobby: the AI GMs have their teams, and the
+    one the start brought in for an open team has no lobby team."""
+    from src.db.repositories.sim_job_repo import SimJobRepository
+
+    jobs = SimJobRepository(db_conn)
+    jobs.mark_running(jobs.add(league.id, "start", {}, None))
+    for i, g in enumerate(ai):
+        team = factory.team(city=f"Seat{i}", mascot="Sox")
+        db_conn.execute("UPDATE gms SET team_id = %s WHERE id = %s", (team.id, g["id"]))
+    db_conn.execute(
+        "UPDATE gms SET lobby_city = NULL, lobby_mascot = NULL WHERE id = %s",
+        (ai[-1]["id"],),
+    )
+
+
+def test_ai_gms_stay_listed_while_the_league_starts(client, db_conn, factory, lobby):
+    """The start gives the AI GMs their teams and commits while the league is
+    still in the lobby (setting up the schedule & draft). They stayed on the
+    list as 'AI GM (picked at start)' placeholders."""
+    league, gm = lobby
+    db_conn.execute(
+        "UPDATE leagues SET commissioner_gm_id = %s WHERE id = %s", (gm.id, league.id)
+    )
+    ai = _fill(db_conn, league)
+    _start_midway(db_conn, factory, league, ai)
+
+    r = _gms(client, league)
+
+    assert r.text.count('class="ai-gm"') == 3
+    assert 'class="ai-slot"' not in r.text
+    assert "picked at start" not in r.text
+    for g in ai:
+        assert g["display_name"] in r.text
+    assert "Seat2 Sox" in r.text  # no lobby team: its real one
+    assert "reroll-btn" not in r.text
+    assert 'class="lobby-team-pick"' not in r.text
+
+
+def test_no_reroll_while_the_league_starts(client, db_conn, factory, lobby):
+    league, gm = lobby
+    db_conn.execute(
+        "UPDATE leagues SET commissioner_gm_id = %s WHERE id = %s", (gm.id, league.id)
+    )
+    ai = _fill(db_conn, league)
+    from src.db.repositories.sim_job_repo import SimJobRepository
+
+    jobs = SimJobRepository(db_conn)
+    jobs.mark_running(jobs.add(league.id, "start", {}, None))
+
+    r = client.post(f"/leagues/{league.id}/lobby/gms/{ai[0]['id']}/reroll")
+
+    assert r.status_code == 200
+    assert personas.lobby_ai_gms(db_conn, league.id) == ai
