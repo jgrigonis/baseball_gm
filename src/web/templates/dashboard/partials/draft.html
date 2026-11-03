@@ -46,6 +46,8 @@
       {% if pick_position %}<span class="page-subtitle" style="color:var(--amber);margin-left:8px;">Pick #{{ pick_position }}</span>{% endif %}
 
       <div class="spacer"></div>
+      {# On phones these move into the bottom dock (placeDraftActions). #}
+      <span id="draft-actions" class="draft-actions">
       <button class="btn btn-primary" id="submit-btn" onclick="saveStrategy()"
               style="margin-left:8px;">Save Strategy</button>
       <span id="submit-check"
@@ -66,6 +68,7 @@
           </button>
         </form>
       {% endif %}
+      </span>
     {% else %}
       <span class="page-subtitle" style="color:var(--text-dim);">Draft not yet open</span>
     {% endif %}
@@ -79,7 +82,7 @@
               font-family:var(--font-mono);font-size:11px;color:var(--amber);
               display:flex;align-items:center;gap:10px;">
     <span id="draft-unsaved-text">⚠ Strategy not yet saved</span>
-    <button class="btn btn-secondary" onclick="saveStrategy()"
+    <button class="btn btn-secondary draft-save-now" onclick="saveStrategy()"
             style="font-size:10px;padding:3px 8px;border-color:var(--amber);color:var(--amber);">
       Save now
     </button>
@@ -95,11 +98,18 @@
 
 {% if draft_id %}
 
+{# Phones show one column at a time, picked here (showDraftCol). #}
+<div class="draft-seg" role="tablist" aria-label="Draft board">
+  <button type="button" data-col="strategy" onclick="showDraftCol('strategy')">Strategy <b id="seg-pin-count"></b></button>
+  <button type="button" data-col="players" onclick="showDraftCol('players')">Players <b>{{ board|length }}</b></button>
+  <button type="button" data-col="picks" onclick="showDraftCol('picks')">My picks</button>
+</div>
+
 {# ── Three-column layout ───────────────────────────────────────────────────── #}
 <div class="draft-cols">
 
   {# ── Left: Strategy ───────────────────────────────────────────────────────── #}
-  <div class="draft-col">
+  <div class="draft-col" data-col="strategy">
     <div class="strategy-pane">
       <div class="draft-col-hdr">
         <div style="display:flex;align-items:center;justify-content:space-between;">
@@ -156,7 +166,7 @@
   </div>
 
   {# ── Middle: Explore / Sort ───────────────────────────────────────────────── #}
-  <div class="draft-col">
+  <div class="draft-col" data-col="players">
     <div class="draft-col-hdr">
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
         <span class="col-label" style="color:var(--amber);">Explore/Search</span>
@@ -171,7 +181,7 @@
               style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);
                      margin-left:2px;"></span>
       </div>
-      <div style="display:flex;align-items:center;gap:3px;flex-wrap:nowrap;margin-top:7px;
+      <div class="draft-sorts" style="display:flex;align-items:center;gap:3px;flex-wrap:nowrap;margin-top:7px;
                   font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">
         <span>Sort</span>
         <select id="s1" onchange="applyExploreSort()" style="width:auto;font-size:10px;">
@@ -193,7 +203,7 @@
   </div>
 
   {# ── Right: Projected picks ───────────────────────────────────────────────── #}
-  <div class="draft-col">
+  <div class="draft-col" data-col="picks">
     <div id="preview-section">
       <div class="draft-col-hdr">
         <span class="col-label" style="color:var(--amber);">Your first 5 picks · projected</span>
@@ -206,6 +216,9 @@
   </div>
 
 </div>
+
+{# Phones: Save and Run Draft (and the unsaved note) stay pinned at the bottom. #}
+<div id="draft-dock" class="draft-dock"></div>
 {% endif %}
 
 <style>
@@ -340,6 +353,55 @@
 .prev-slot { font-family: var(--font-mono); font-size: 10px; color: var(--amber); line-height: 1.3; }
 .prev-empty { padding: 10px 12px; font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); }
 #preview-section { flex-shrink: 0; }
+.draft-actions { display: contents; }
+.draft-seg, .draft-dock { display: none; }
+
+/* ── Phones: one column at a time, actions pinned at the bottom ───────────── */
+@media (max-width: 700px) {
+  .draft-seg {
+    display: flex; position: sticky; top: 0; z-index: 20;
+    margin: 0 12px; border: 1px solid var(--border); background: var(--bg-2);
+  }
+  .draft-seg button {
+    flex: 1; padding: 10px 4px; background: none; border: none;
+    border-right: 1px solid var(--border); color: var(--text-dim); cursor: pointer;
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+  }
+  .draft-seg button:last-child { border-right: none; }
+  .draft-seg button.on { background: var(--amber-lo); color: var(--amber); }
+  .draft-seg b { color: var(--text-hi); margin-left: 4px; font-weight: 600; }
+  .draft-cols {
+    grid-template-columns: minmax(0, 1fr); height: auto; overflow: visible; padding: 10px 12px 16px;
+  }
+  .draft-col.phone-off { display: none; }
+  .draft-col-body { overflow: visible; }
+  /* The switcher names these two columns already. */
+  .draft-col[data-col="strategy"] .col-label, .draft-col[data-col="players"] .col-label { display: none; }
+  .draft-sorts { flex-wrap: wrap !important; }
+  .draft-sorts select { flex: 1 1 0; min-width: 0; font-size: 12px !important; padding: 6px 4px; }
+  .draft-sorts span { display: none; }
+  .need-chip { font-size: 13px; padding: 7px 10px; }
+  .pin-arrow { font-size: 14px; padding: 4px 6px; }
+  .pin-btn { font-size: 20px; padding: 6px 8px; }
+  .exp-row { padding: 8px 10px; }
+  /* The pane becomes a column so a short tab still puts the dock at the bottom. */
+  #tab-content:has(> #draft-dock) { display: flex; flex-direction: column; }
+  #tab-content:has(> #draft-dock) > * { flex-shrink: 0; }
+  .draft-dock {
+    display: block; position: sticky; bottom: 0; z-index: 20; margin-top: auto;
+    background: var(--bg-2); border-top: 1px solid var(--border-hi);
+  }
+  .draft-dock #draft-unsaved-banner { margin: 0 !important; border-width: 0 0 1px !important; }
+  .draft-dock #draft-unsaved-banner > span { flex: 1; }
+  .draft-dock .draft-save-now { display: none; }
+  .draft-dock .draft-actions {
+    display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+  }
+  .draft-dock .draft-actions > * { margin-left: 0 !important; }
+  .draft-dock .draft-actions .btn { padding: 9px 12px; font-size: 12px; }
+  .draft-dock .draft-actions form { margin-left: auto !important; }
+  .draft-dock .draft-actions a.btn { margin-left: auto !important; }
+}
 </style>
 
 <script>
@@ -355,6 +417,7 @@ window.clearStrategy    = clearStrategy;
 window.setAgePref       = setAgePref;
 window.useSuggested     = useSuggested;
 window.revertStrategy   = revertStrategy;
+window.showDraftCol     = showDraftCol;
 
 /* ── Data ───────────────────────────────────────────────────────────────────── */
 const DRAFT_ID    = "{{ draft_id }}";
@@ -382,6 +445,7 @@ let strategy       = normStrategy(savedStrategy || SUGGESTED_STRATEGY);
 let previewTimer   = null;
 let previewSeq     = 0;
 let pinsGone       = {};  // pinned player_id → the pick another team takes them at
+let phoneCol       = 'strategy';  // the column phones show
 
 /* ── Grade helpers ──────────────────────────────────────────────────────────── */
 function skillVal(p, key) { return gradeVal(p[key] || null); }
@@ -553,6 +617,8 @@ function renderStrategy() {
   document.getElementById('age-pref').value = strategy.age_pref;
   document.getElementById('pin-count').textContent =
     `(${strategy.pins.length}/${MAX_PINS})`;
+  document.getElementById('seg-pin-count').textContent =
+    strategy.pins.length ? `★${strategy.pins.length}` : '';
 
   const pins = document.getElementById('pins-list');
   if (!strategy.pins.length) {
@@ -752,7 +818,7 @@ function onExecute(form) {
 function saveToStorage() {
   try {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
-      exploreFilter, exploreSort, exploreReversed, strategy,
+      exploreFilter, exploreSort, exploreReversed, strategy, phoneCol,
     }));
   } catch (e) {}
 }
@@ -786,6 +852,35 @@ function restoreUiState(data) {
   }
 }
 
+/* ── Phones: one column at a time ────────────────────────────────────────────── */
+function showDraftCol(col) {
+  phoneCol = col;
+  document.querySelectorAll('.draft-seg button').forEach(b =>
+    b.classList.toggle('on', b.dataset.col === col));
+  document.querySelectorAll('.draft-col').forEach(c =>
+    c.classList.toggle('phone-off', c.dataset.col !== col));
+  // Keep the switcher in view: start the new column at its top.
+  const pane = document.getElementById('tab-content');
+  const seg  = document.querySelector('.draft-seg');
+  if (pane && seg && pane.scrollTop > seg.offsetTop) pane.scrollTop = seg.offsetTop;
+  saveToStorage();
+}
+
+// Save and Run Draft sit in the page header, or in the bottom dock on phones.
+const PHONE = window.matchMedia('(max-width: 700px)');
+function placeDraftActions() {
+  const dock    = document.getElementById('draft-dock');
+  const actions = document.getElementById('draft-actions');
+  const banner  = document.getElementById('draft-unsaved-banner');
+  if (!dock || !actions || !banner) return;
+  if (PHONE.matches) {
+    dock.append(banner, actions);
+  } else if (dock.contains(actions)) {
+    document.querySelector('#draft-header .page-header').appendChild(actions);
+    document.getElementById('draft-header').appendChild(banner);
+  }
+}
+
 /* ── Measure header height ───────────────────────────────────────────────────── */
 function measureHeader() {
   const h = document.getElementById('draft-header')?.offsetHeight || 64;
@@ -797,7 +892,11 @@ const stored = loadFromStorage();
 if (stored) {
   restoreUiState(stored);
   if (stored.strategy) strategy = normStrategy(stored.strategy);
+  if (stored.phoneCol) phoneCol = stored.phoneCol;
 }
+showDraftCol(phoneCol);
+placeDraftActions();
+PHONE.addEventListener('change', placeDraftActions);
 
 renderStrategy();
 updateSortConstraints();
