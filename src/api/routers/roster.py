@@ -45,7 +45,9 @@ def roster(
     if team_id:
         player_repo = PlayerRepository(db)
         for row in player_repo.get_team_roster_with_skills(team_id):
-            players.append(roster_card(row))
+            card = roster_card(row)
+            card["jersey_number"] = row.get("jersey_number")
+            players.append(card)
 
     # Season stats for display on roster cards
     season_id = ctx.get("season_id")

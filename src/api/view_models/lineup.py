@@ -37,6 +37,7 @@ def lineup_context(db, league_id: str, gm: dict, season_id: str | None) -> dict:
     team = TeamRepository(db).get_city_and_mascot(team_id) or {}
     for row in player_repo.get_active_roster_with_skills(team_id):
         g = lineup_card(row)
+        g["jersey_number"] = row.get("jersey_number")
         g["face_url"] = face_url(
             g["player_id"], g.get("age"), team.get("city"), team.get("mascot")
         )

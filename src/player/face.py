@@ -924,7 +924,9 @@ def player_face(player: dict, size: str = "lg") -> Markup:
     )
     name = f"{player.get('first_name', '')} {player.get('last_name', '')}".strip()
     team = f"{player.get('team_city') or ''} {player.get('team_mascot') or ''}".strip()
-    caption = " · ".join(x for x in (name, team if team != "—" else "") if x)
+    number = player.get("jersey_number")
+    shown = f"#{number} {name}" if name and number is not None else name
+    caption = " · ".join(x for x in (shown, team if team != "—" else "") if x)
     return Markup(
         '<button type="button" class="player-face player-face--{size}" '
         'onclick="this.nextElementSibling.showModal()" title="See a bigger face" '

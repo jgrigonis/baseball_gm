@@ -96,6 +96,11 @@ function pitcherTrailStatsHtml(p) {
     : '';
 }
 
+// "#7" before a player's name: the number he wears for his team.
+function jerseyTag(p) {
+  return p.jersey_number != null ? `<span class="lu-jersey">#${p.jersey_number}</span>` : '';
+}
+
 // "IL (12d)" after an injured player's name; the hover names the injury.
 function ilTag(p) {
   if (!p.injured) return '';

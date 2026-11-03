@@ -12,6 +12,7 @@
   {{ player_face(player) }}
   <div class="pd-who-text">
    <div class="pd-name">
+     {% if player.jersey_number is not none %}<span class="pd-num" title="Jersey number">#{{ player.jersey_number }}</span>{% endif %}
      {{ player.first_name }} {{ player.last_name }}{{ rk(player.player_id) }}
      <button onclick="openCareerPage('{{ player.player_id }}')"
              style="font-size:10px;font-weight:400;color:var(--text-dim);margin-left:8px;background:none;border:none;cursor:pointer;padding:0;font-family:var(--font-mono);">

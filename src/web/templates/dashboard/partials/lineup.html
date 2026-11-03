@@ -643,7 +643,7 @@ function renderBattingOrder() {
         ${faceImgHtml(p)}
         <div style="min-width:0;">
           <div class="lu-name" style="cursor:pointer;color:${p.returning?'#f5c518':p.injured?'var(--red)':''};"
-               onclick="openPlayerPanel('${p.player_id}')">${p.first_name} ${p.last_name}${rookieTag(p.player_id)}${nameTrailHtml(p, [`${p.bats}/${p.throws}`, `Age ${p.age}`])}
+               onclick="openPlayerPanel('${p.player_id}')">${jerseyTag(p)}${p.first_name} ${p.last_name}${rookieTag(p.player_id)}${nameTrailHtml(p, [`${p.bats}/${p.throws}`, `Age ${p.age}`])}
             ${p.injured?`<span style="font-size:10px;color:var(--red);"${p.injury_name?` title="${p.injury_name}"`:''}>IL${p.injury_days?' ('+p.injury_days+'d)':''}</span>`:''}${rustTag(p)}
           </div>
           {# Always show batting grades; hitter stats sit next to the name #}
@@ -762,7 +762,7 @@ function renderFieldingTable() {
     }
     return `<div class="fd-row" style="cursor:pointer;" onclick="openPlayerPanel('${p.player_id}')">
       <span class="fd-pos">${POS_LABEL[pos]}</span>
-      <span class="fd-name filled">${p.first_name} ${p.last_name}${rookieTag(p.player_id)}${gradeHtml}</span>
+      <span class="fd-name filled">${jerseyTag(p)}${p.first_name} ${p.last_name}${rookieTag(p.player_id)}${gradeHtml}</span>
       ${statsHtml}
     </div>`;
   }).join('');
@@ -893,7 +893,7 @@ function renderRoster() {
     card.innerHTML = `
       <span class="${gradeClass(p.bat_overall)} lu-grade">${p.bat_overall}</span>
       <div style="min-width:0;">
-        <div class="lu-name" style="color:${p.returning?'#f5c518':p.injured?'var(--red)':''};">${p.first_name} ${p.last_name}${rookieTag(p.player_id)}${nameTrailHtml(p, [p.position||'?', `${p.bats}/${p.throws}`, `Age ${p.age}`])}
+        <div class="lu-name" style="color:${p.returning?'#f5c518':p.injured?'var(--red)':''};">${jerseyTag(p)}${p.first_name} ${p.last_name}${rookieTag(p.player_id)}${nameTrailHtml(p, [p.position||'?', `${p.bats}/${p.throws}`, `Age ${p.age}`])}
           ${p.injured?`<span style="font-size:10px;color:var(--red);"${p.injury_name?` title="${p.injury_name}"`:''}>IL${p.injury_days?' ('+p.injury_days+'d)':''}</span>`:''}${rustTag(p)}
         </div>
         ${hitterGradesHtml(p, null)}
@@ -1176,7 +1176,7 @@ function renderRotation() {
       ${faceImgHtml(p)}
       <div style="min-width:0;">
         <div class="lu-name" style="cursor:pointer;color:${p.returning?'#f5c518':p.injured?'var(--red)':''};"
-             onclick="openPlayerPanel('${p.player_id}')">${p.first_name} ${p.last_name}${rookieTag(p.player_id)}
+             onclick="openPlayerPanel('${p.player_id}')">${jerseyTag(p)}${p.first_name} ${p.last_name}${rookieTag(p.player_id)}
           ${p.injured?`<span style="font-size:10px;color:var(--red);"${p.injury_name?` title="${p.injury_name}"`:''}>IL${p.injury_days?' ('+p.injury_days+'d)':''}</span>`:''}${rustTag(p)}
           <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-left:5px;">${p.throws} • Age ${p.age}</span>
         </div>
@@ -1354,7 +1354,7 @@ function renderBullpen() {
         <div style="display:flex;align-items:baseline;gap:8px;">
           <span class="${gradeClass(p.overall)} lu-grade">${p.overall}</span>
           <span class="lu-name" style="cursor:pointer;color:${p.returning?'#f5c518':p.injured?'var(--red)':''};"
-                onclick="openPlayerPanel('${p.player_id}')">${p.first_name} ${p.last_name}${rookieTag(p.player_id)}
+                onclick="openPlayerPanel('${p.player_id}')">${jerseyTag(p)}${p.first_name} ${p.last_name}${rookieTag(p.player_id)}
             ${p.injured?`<span style="font-size:10px;color:var(--red);"${p.injury_name?` title="${p.injury_name}"`:''}>IL${p.injury_days?' ('+p.injury_days+'d)':''} </span>`:''}${rustTag(p)}
             <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-left:5px;">${p.throws} • Age ${p.age}</span>
           </span>
