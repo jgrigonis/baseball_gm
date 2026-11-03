@@ -22,6 +22,7 @@ from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.team_repo import TeamRepository
+from src.player.contracts import format_salary
 from src.player.face import face_url
 from src.team.roster_limits import MIN_PLAYING_ROSTER
 from src.web.utils import _shell_ctx, tab_response
