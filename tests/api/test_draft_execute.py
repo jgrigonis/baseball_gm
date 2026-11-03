@@ -16,6 +16,7 @@ Coverage:
 import random
 from unittest.mock import patch, MagicMock
 import uuid
+from types import SimpleNamespace
 
 import pytest
 
@@ -116,6 +117,25 @@ class TestExecuteBlitzDraftStateTransitions:
             "SELECT state FROM leagues WHERE id = %s", (league.id,)
         ).fetchone()
         assert row["state"] == "preseason"
+
+    def test_draft_class_signs_rookie_deals(self, setup, factory):
+        db_conn, draft, league, season = setup
+        teams = db_conn.execute(
+            "SELECT team_id FROM draft_order WHERE draft_id = %s", (draft.id,)
+        ).fetchall()
+        for t in teams:
+            factory.league_season_team(league, season, SimpleNamespace(id=t["team_id"]))
+        execute_blitz_draft(draft.id, db_conn)
+        rows = db_conn.execute(
+            """SELECT dp.pick_number, c.kind, c.pick_number AS c_pick, c.years
+               FROM draft_picks dp
+               LEFT JOIN player_contracts c ON c.player_id = dp.player_id
+               WHERE dp.draft_id = %s""",
+            (draft.id,),
+        ).fetchall()
+        assert rows
+        assert all(r["kind"] == "rookie" and r["years"] == 3 for r in rows)
+        assert all(r["c_pick"] == r["pick_number"] for r in rows)
 
     def test_returns_correct_keys(self, setup):
         db_conn, draft, _, _ = setup

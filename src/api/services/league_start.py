@@ -6,6 +6,7 @@ import datetime
 import random
 
 from src.api.services import lobby_teams, personas
+from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.gm_repo import GMRepository
@@ -175,6 +176,9 @@ def start_league(
         )
         personas.give_persona(conn, league_id, ai_gm_id, persona_rng)
     human_gm_team = gm_repo.get_human_gm_city_mascot(league_id)
+
+    # ── 5c. Contracts for the starting rosters (src/player/contracts.py) ──────
+    ContractRepository(conn).sign_unsigned(league_id, year)
 
     # ── 6. Generate prospect pool ─────────────────────────────────────────────
     # Only delete prospects that belong to THIS league — don't touch other leagues.

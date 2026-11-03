@@ -993,6 +993,11 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
   font-family: var(--font-mono); font-size: 11px;
   color: var(--text-dim); margin-top: 3px;
 }
+.pd-contract {
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--text-dim); margin-top: 2px;
+}
+.pd-contract-rookie { color: var(--text); }
 .pd-overall {
   font-family: var(--font-mono); font-size: 22px;
   font-weight: 600; line-height: 1;

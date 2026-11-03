@@ -16,6 +16,8 @@ from src.api.view_models.player_cards import (
     rust_view,
 )
 from src.db.repositories.all_star_repo import AllStarRepository
+from src.db.repositories import contract_repo
+from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.jersey_repo import JerseyRepository
 from src.db.repositories.league_repo import LeagueRepository
@@ -47,6 +49,15 @@ def league_current_date(db, league_id: str) -> date | None:
             except ValueError:
                 pass
     return current_date
+
+
+def _contract(db, league_id: str, pid: str) -> dict | None:
+    """The deal he plays under this season, for the panel."""
+    repo = ContractRepository(db)
+    year = repo.current_year(league_id)
+    if year is None:
+        return None
+    return contract_repo.view(repo.active(pid, year), year)
 
 
 def player_panel_data(
@@ -199,6 +210,7 @@ def player_panel_data(
         "jersey_number": (
             JerseyRepository(db).number_of(team["id"], pid) if team else None
         ),
+        "contract": _contract(db, league_id, pid),
         "grades": grade_map,
         "overall_grade": overall_grade,
         "overall_value": round(overall_value) if overall_value is not None else None,

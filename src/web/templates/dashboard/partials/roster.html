@@ -9,6 +9,8 @@
   <div class="page-header" style="margin-bottom:0;">
     <h1 class="page-title">Roster</h1>
     <span id="forty-count" class="page-subtitle" style="margin-left:8px;"></span>
+    {% if payroll_text %}<span class="page-subtitle" style="margin-left:12px;"
+          title="This season's salaries for everyone the team holds: 26-man, 40-man and minors">Payroll {{ payroll_text }}</span>{% endif %}
     <div class="spacer"></div>
     <span id="save-feedback"
           style="font-family:var(--font-mono);font-size:11px;margin-right:10px;"></span>
@@ -473,6 +475,12 @@ function updateUnsavedBanner() {
 }
 
 /* ── Card rendering ──────────────────────────────────────────────────────────── */
+// "$4.5M" on the name trail: his salary this season.
+function salaryPiece(p) {
+  if (!p.salary_text) return [];
+  return [`<span title="${p.rookie_deal ? 'Rookie deal' : 'Salary'} this season">${p.salary_text}</span>`];
+}
+
 function makeCard(p, isIn40) {
   const el = document.createElement('div');
   el.className = 'r-card';
@@ -493,7 +501,7 @@ function makeCard(p, isIn40) {
   el.innerHTML = `
     <span class="${gradeClass(p.overall)} lu-grade">${p.overall}</span>
     <div style="min-width:0;">
-      <div class="lu-name" style="color:${p.returning?'#f5c518':p.injured?'var(--red)':''};">${jerseyTag(p)}${p.first_name} ${p.last_name}${rookieTag(p.player_id)}${nameTrailHtml(p, [p.position||'?', `${p.bats}/${p.throws}`, `Age ${p.age}`], stats)}${ilTag(p)}${rustTag(p)}</div>
+      <div class="lu-name" style="color:${p.returning?'#f5c518':p.injured?'var(--red)':''};">${jerseyTag(p)}${p.first_name} ${p.last_name}${rookieTag(p.player_id)}${nameTrailHtml(p, [p.position||'?', `${p.bats}/${p.throws}`, `Age ${p.age}`, ...salaryPiece(p)], stats)}${ilTag(p)}${rustTag(p)}</div>
       ${isPitcher ? `<div class="lu-skills">${pitcherGradesHtml(p)}</div>` : hitterGradesHtml(p, null)}
     </div>
     ${btnHtml}`;

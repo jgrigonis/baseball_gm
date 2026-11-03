@@ -15,6 +15,7 @@ from datetime import datetime, UTC
 
 from src.api.services import front_office, trades
 from src.api.services.draft_needs import draft_strategies
+from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.league_repo import LeagueRepository
@@ -253,6 +254,10 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
         tilts = {tid: o.tilt for tid, o in outlooks.items()}
         pipeline = OffseasonPipeline(conn, random.Random(), tilts=tilts)
         pipeline.run(prev_season_id, league_id=league_id, skip_auto_draft=True)
+
+    # Rookie deals for the draft class, and new deals for anyone whose last
+    # one ran out with the old season (src/player/contracts.py).
+    ContractRepository(conn).sign_unsigned(league_id, year)
 
     return {
         "draft_id": draft_id,

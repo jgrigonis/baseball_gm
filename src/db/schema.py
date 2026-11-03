@@ -1400,6 +1400,26 @@ CREATE INDEX IF NOT EXISTS idx_season_awards_player ON season_awards(player_id);
 CREATE INDEX IF NOT EXISTS idx_season_awards_gm ON season_awards(gm_id);
 CREATE INDEX IF NOT EXISTS idx_season_awards_team ON season_awards(team_id);
 
+-- Player contracts (src/player/contracts.py, src/db/repositories/contract_repo.py):
+--   one row per deal. It covers seasons start_year .. start_year + years - 1
+--   at salary dollars a season. team_id is the team he signed with; a
+--   traded player keeps his deal. pick_number is set on rookie deals.
+CREATE TABLE IF NOT EXISTS player_contracts (
+    id          SERIAL PRIMARY KEY,
+    player_id   TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    league_id   TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    team_id     TEXT REFERENCES teams(id) ON DELETE SET NULL,
+    kind        TEXT NOT NULL CHECK (kind IN ('rookie', 'standard')),
+    salary      INTEGER NOT NULL CHECK (salary > 0),
+    start_year  INTEGER NOT NULL,
+    years       INTEGER NOT NULL CHECK (years >= 1),
+    pick_number INTEGER,
+    created_at  TEXT NOT NULL DEFAULT (NOW()),
+    UNIQUE (player_id, start_year)
+);
+CREATE INDEX IF NOT EXISTS idx_player_contracts_league ON player_contracts(league_id);
+CREATE INDEX IF NOT EXISTS idx_player_contracts_team ON player_contracts(team_id);
+
 CREATE INDEX IF NOT EXISTS idx_all_star_votes_team   ON all_star_votes(team_id);
 CREATE INDEX IF NOT EXISTS idx_all_star_votes_player ON all_star_votes(player_id);
 CREATE INDEX IF NOT EXISTS idx_all_stars_player      ON all_stars(player_id);
