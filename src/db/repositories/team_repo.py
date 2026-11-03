@@ -16,6 +16,7 @@ NOT create domain Team objects
 
 import uuid
 
+from src.db.repositories.jersey_repo import JerseyRepository
 from src.player.player_record import PlayerRecord
 from src.player.player_skills import PlayerSkills
 from src.team.team_record import TeamRecord
@@ -73,7 +74,7 @@ class TeamRepository:
 
     def add_player(self, team_id: str, player_id: str):
         """
-        Add player to team roster.
+        Add player to team roster and give him a jersey number there.
         Idempotent.
         """
         self.conn.execute(
@@ -84,6 +85,7 @@ class TeamRepository:
             """,
             (team_id, player_id),
         )
+        JerseyRepository(self.conn).assign(team_id, player_id)
 
     def remove_player(self, team_id: str, player_id: str) -> None:
         """Remove a player from a team's roster."""

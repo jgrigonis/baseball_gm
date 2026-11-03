@@ -493,7 +493,7 @@ function makeCard(p, isIn40) {
   el.innerHTML = `
     <span class="${gradeClass(p.overall)} lu-grade">${p.overall}</span>
     <div style="min-width:0;">
-      <div class="lu-name" style="color:${p.returning?'#f5c518':p.injured?'var(--red)':''};">${p.first_name} ${p.last_name}${rookieTag(p.player_id)}${nameTrailHtml(p, [p.position||'?', `${p.bats}/${p.throws}`, `Age ${p.age}`], stats)}${ilTag(p)}${rustTag(p)}</div>
+      <div class="lu-name" style="color:${p.returning?'#f5c518':p.injured?'var(--red)':''};">${jerseyTag(p)}${p.first_name} ${p.last_name}${rookieTag(p.player_id)}${nameTrailHtml(p, [p.position||'?', `${p.bats}/${p.throws}`, `Age ${p.age}`], stats)}${ilTag(p)}${rustTag(p)}</div>
       ${isPitcher ? `<div class="lu-skills">${pitcherGradesHtml(p)}</div>` : hitterGradesHtml(p, null)}
     </div>
     ${btnHtml}`;

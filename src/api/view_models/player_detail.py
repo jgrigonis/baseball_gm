@@ -17,6 +17,7 @@ from src.api.view_models.player_cards import (
 )
 from src.db.repositories.all_star_repo import AllStarRepository
 from src.db.repositories.injury_repo import InjuryRepository
+from src.db.repositories.jersey_repo import JerseyRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.pitcher_state import PitcherStateRepository
 from src.db.repositories.player_energy import PlayerEnergyRepository
@@ -195,6 +196,9 @@ def player_panel_data(
         "team_id": team["id"] if team else None,
         "team_city": team["city"] if team else "—",
         "team_mascot": team["mascot"] if team else "",
+        "jersey_number": (
+            JerseyRepository(db).number_of(team["id"], pid) if team else None
+        ),
         "grades": grade_map,
         "overall_grade": overall_grade,
         "overall_value": round(overall_value) if overall_value is not None else None,

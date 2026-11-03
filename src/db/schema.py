@@ -146,6 +146,7 @@ CREATE TABLE IF NOT EXISTS players (
     throws     TEXT NOT NULL,
     position   TEXT,  -- Affinity position used in creation, can be NULL
     league_id  TEXT,
+    jersey_prefs TEXT[], -- numbers he wants, favorite first (src/player/jersey_numbers.py)
     created_at TEXT DEFAULT (NOW()),
     updated_at TEXT,
 
@@ -590,12 +591,16 @@ CREATE TABLE IF NOT EXISTS player_talent_caps (
 CREATE TABLE IF NOT EXISTS team_players (
     team_id   TEXT NOT NULL,
     player_id TEXT NOT NULL,
+    jersey_number TEXT, -- '0'..'99' or '00'; unique on the team
 
     PRIMARY KEY (team_id, player_id),
 
     FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE,
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_team_players_jersey
+    ON team_players (team_id, jersey_number) WHERE jersey_number IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS team_rotations (
     team_id TEXT NOT NULL,

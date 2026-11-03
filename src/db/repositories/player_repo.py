@@ -16,6 +16,7 @@ Uses tables:
 
 import datetime
 from src.db.repositories.player_status_repo import PlayerStatusRepository
+from src.player.jersey_numbers import prefs_for
 from src.player.player_record import PlayerRecord
 from src.player.player_skills import PlayerSkills
 
@@ -71,12 +72,22 @@ class PlayerRepository:
         self.conn.execute(
             """
             INSERT INTO players (
-                id, first_name, last_name, bats, throws, position, league_id
+                id, first_name, last_name, bats, throws, position, league_id,
+                jersey_prefs
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT DO NOTHING
             """,
-            (id, first_name, last_name, bats, throws, position, league_id),
+            (
+                id,
+                first_name,
+                last_name,
+                bats,
+                throws,
+                position,
+                league_id,
+                prefs_for(id),
+            ),
         )
 
         # Insert or update skills
@@ -506,7 +517,7 @@ class PlayerRepository:
     def get_team_roster_with_skills(self, team_id: str) -> list[dict]:
         """Return all players on a team with status and skills merged into flat dicts."""
         rows = self.conn.execute(
-            """SELECT p.*, ps_stat.status, sk.*
+            """SELECT p.*, ps_stat.status, sk.*, tp.jersey_number
                FROM players p
                JOIN team_players tp ON tp.player_id = p.id AND tp.team_id = %s
                JOIN player_status ps_stat ON ps_stat.player_id = p.id
@@ -519,7 +530,7 @@ class PlayerRepository:
     def get_active_roster_with_skills(self, team_id: str) -> list[dict]:
         """Return 26-man/40-man players with skills merged, ordered by last name."""
         rows = self.conn.execute(
-            """SELECT p.*, ps.status, sk.*
+            """SELECT p.*, ps.status, sk.*, tp.jersey_number
                FROM players p
                JOIN team_players tp ON tp.player_id = p.id AND tp.team_id = %s
                JOIN player_status ps ON ps.player_id = p.id

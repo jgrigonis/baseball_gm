@@ -982,6 +982,13 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
   font-family: var(--font-sans); font-weight: 600;
   font-size: 15px; color: var(--text-hi);
 }
+.pd-num {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 0.8em;
+  color: var(--text-dim);
+  margin-right: 6px;
+}
 .pd-meta {
   font-family: var(--font-mono); font-size: 11px;
   color: var(--text-dim); margin-top: 3px;
@@ -1416,6 +1423,7 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
 /* A small face in a player row (faceImgHtml in grades.js) */
 .lu-face   { display: block; width: 36px; height: 36px; border-radius: 4px; background: var(--bg-3); cursor: pointer; }
 .lu-name   { font-family: var(--font-sans); font-weight: 600; font-size: 13px; color: var(--text-hi); }
+.lu-jersey { font-family: var(--font-mono); font-weight: 500; font-size: 11px; color: var(--text-dim); margin-right: 5px; }
 .lu-skills { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); margin-top: 2px; display: flex; gap: 6px; flex-wrap: wrap; }
 .lu-skills .gl { color: var(--muted); margin-right: 1px; }
 /* Stats, B/T and age after the name, on the same line */
