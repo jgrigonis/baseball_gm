@@ -202,8 +202,14 @@ def test_stats_header_shows_the_teams_record(client, db_conn, factory):
                    home_team_id, away_team_id, home_score, away_score,
                    winner_id, completed)
                VALUES (%s, '2025-10-01', %s, %s, %s, %s, 1, 4, %s, 1)""",
-            (playoff_id, game["season_id"], series_id, home.id,
-             game["away_team_id"], game["away_team_id"]),
+            (
+                playoff_id,
+                game["season_id"],
+                series_id,
+                home.id,
+                game["away_team_id"],
+                game["away_team_id"],
+            ),
         )
         _team_game(db_conn, playoff_id, game["away_team_id"], home.id)
 
