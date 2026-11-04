@@ -243,6 +243,41 @@ def age_profile(players: list[PlayerRecord]) -> dict | None:
     }
 
 
+def age_rank(team_id: str, rosters: dict[str, list[PlayerRecord]]) -> dict | None:
+    """Where the team's average age ranks in the league: counted from the
+    young end in the younger half of the league, from the old end in the
+    older half, so a team reads as "3rd youngest" or "2nd oldest" and never
+    "18th youngest". Ties share a rank."""
+    averages = {
+        tid: sum(p.age for p in players) / len(players)
+        for tid, players in rosters.items()
+        if players
+    }
+    if team_id not in averages or len(averages) < 2:
+        return None
+    mine = round(averages[team_id], 1)
+    rounded = [round(a, 1) for a in averages.values()]
+    n = len(rounded)
+    younger = sum(1 for a in rounded if a < mine)
+    older = sum(1 for a in rounded if a > mine)
+    tied = n - younger - older > 1
+    if younger <= older:
+        rank, end = younger + 1, "youngest"
+    else:
+        rank, end = older + 1, "oldest"
+    place = end.capitalize() if rank == 1 else f"{ordinal(rank)} {end}"
+    if tied:
+        place = f"Tied for {place.lower() if rank == 1 else place}"
+    return {
+        "rank": rank,
+        "end": end,
+        "tied": tied,
+        "of": n,
+        "label": f"{place} of {n} teams",
+        "league_average": round(sum(averages.values()) / n, 1),
+    }
+
+
 def _named(p: PlayerRecord) -> dict:
     return {"player_id": p.id, "name": f"{p.first_name} {p.last_name}", "age": p.age}
 
@@ -483,6 +518,9 @@ def welcome(db, league: dict, gm: dict) -> dict | None:
         "stars": [star_card(p, r) for p, r in stars],
         "weak": weak,
         "ages": age_profile([p for p, _ in mine]),
+        "age_rank": age_rank(
+            team_id, {tid: [p for p, _ in ps] for tid, ps in rated.items()}
+        ),
         "pick": draft_repo.get_pick_position(draft["id"], team_id),
         "num_teams": len(order),
         "blitz": draft["format"] == "preference",
