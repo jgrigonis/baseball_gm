@@ -69,10 +69,12 @@ def load_bracket(
         },
         {"name": "Finals", "series_names": ["Finals"], "best_of": 7},
     ]
-    # Map semifinal series name → which round-1 series feed into it
-    _SEMI_FEEDERS = {
-        "[1,8]v[4,5]": ("1v8", "4v5"),
-        "[2,7]v[3,6]": ("2v7", "3v6"),
+    # Map a later-round series → the series that feed into it, and their
+    # best-of (to know when a feeder has a winner).
+    _FEEDERS = {
+        "[1,8]v[4,5]": (("1v8", "4v5"), 5),
+        "[2,7]v[3,6]": (("2v7", "3v6"), 5),
+        "Finals": (("[1,8]v[4,5]", "[2,7]v[3,6]"), 7),
     }
 
     def _team_name(tid):
@@ -104,12 +106,13 @@ def load_bracket(
                     seen.add(tid)
 
         # If this series has no games yet (prior round not fully complete),
-        # try to show the known winner(s) from the feeder round-1 series.
-        if not team_ids and series_name in _SEMI_FEEDERS:
-            for feeder_name in _SEMI_FEEDERS[series_name]:
+        # try to show the known winner(s) from the feeder series.
+        if not team_ids and series_name in _FEEDERS:
+            feeders, feeder_best_of = _FEEDERS[series_name]
+            for feeder_name in feeders:
                 feeder_sid = por.get_series_id(season_id, feeder_name)
                 if feeder_sid:
-                    w = por.get_series_winner(feeder_sid, 5)
+                    w = por.get_series_winner(feeder_sid, feeder_best_of)
                     if w and w not in seen:
                         team_ids.append(w)
                         seen.add(w)
