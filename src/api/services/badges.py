@@ -10,7 +10,9 @@
 #
 # Rules are checked after every sim job for the people in that league
 # (sim_jobs.run), when someone leaves a league (before the team stops being
-# theirs), and when an email or the paid contributor flag is set.
+# theirs), when an email or the paid contributor flag is set, and when an
+# email is verified. Verified Email and Paid Contributor are the only badges
+# that can be taken back: when the email changes, or the flag is unset.
 # Tutorial leagues count only toward Rookie GM.
 
 from __future__ import annotations
@@ -47,7 +49,8 @@ class _Person:
         self.conn = conn
         self.id = user_id
         self.user = conn.execute(
-            "SELECT email, is_contributor FROM users WHERE id = %s", (user_id,)
+            "SELECT email, is_verified, is_contributor FROM users WHERE id = %s",
+            (user_id,),
         ).fetchone()
         # Oldest first, so the first match is where a badge was first earned.
         self.seasons = sorted(
@@ -89,6 +92,12 @@ def _rookie_gm(p: _Person) -> Check:
 
 def _email(p: _Person) -> Check:
     return Check(bool(p.user and p.user["email"]))
+
+
+def _verified_email(p: _Person) -> Check:
+    """Clicked a verify link (email_verify.py). Taken back if the email
+    changes, until the new one is verified."""
+    return Check(bool(p.user and p.user["email"] and p.user["is_verified"]))
 
 
 def _contributor(p: _Person) -> Check:
@@ -265,6 +274,7 @@ BADGES: list[tuple[Badge, Callable[[_Person], Check]]] = [
     (Badge("derby_boss", "💥", "Derby Boss", "Your player won the Home Run Derby"), _derby_boss),
     (Badge("rookie_gm", "🎓", "Rookie GM", "Played a tutorial league season through the Finals"), _rookie_gm),
     (Badge("email", "✉️", "Email on File", "Added an email to the account"), _email),
+    (Badge("verified_email", "✅", "Verified Email", "Verified the account's email"), _verified_email),
     (Badge("contributor", "❤️", "Paid Contributor", "Supports the game"), _contributor),
 ]  # fmt: skip
 BY_KEY = {b.key: b for b, _ in BADGES}
@@ -308,7 +318,8 @@ def award(conn, user_id: str) -> list[str]:
 
 
 def take_back(conn, user_id: str, key: str) -> None:
-    """For a badge an admin sets by hand (Paid Contributor), when unset."""
+    """For a badge whose reason went away: Paid Contributor unset by an
+    admin, or Verified Email after the email changed."""
     conn.execute(
         "DELETE FROM gm_badges WHERE user_id = %s AND badge = %s", (user_id, key)
     )
