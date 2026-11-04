@@ -1274,6 +1274,7 @@ CREATE TABLE IF NOT EXISTS all_star_games (
     score2       INTEGER,
     innings      INTEGER,
     line_score   JSONB,
+    swingoff     JSONB,  -- the home run swing-off after a 9-inning tie (migration 070)
     mvp_player_id TEXT REFERENCES players(id) ON DELETE SET NULL
 );
 
@@ -1348,6 +1349,7 @@ CREATE TABLE IF NOT EXISTS rookie_games (
     score2       INTEGER,
     innings      INTEGER,
     line_score   JSONB,
+    swingoff     JSONB,  -- the home run swing-off after a 9-inning tie (migration 070)
     mvp_player_id TEXT REFERENCES players(id) ON DELETE SET NULL
 );
 

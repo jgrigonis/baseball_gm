@@ -17,7 +17,7 @@ from src.api.services.career import ROUND_OF_SERIES, _finishes
 from src.api.services.news.names import Names, and_list, is_deadline_deal, possessive
 from src.db.repositories.news_repo import NewsRepository
 from src.league import awards as awards_mod
-from src.league import divisions
+from src.league import divisions, swing_off
 
 # ── Trades ────────────────────────────────────────────────────────────────────
 
@@ -237,15 +237,28 @@ def all_stars(conn, names: Names, league_id: str, season_id: str) -> None:
         (season_id,),
     ).fetchone()
     if g and not news.has(league_id, f"allstar:game:{season_id}"):
-        winner = 1 if (g["score1"] or 0) > (g["score2"] or 0) else 2
+        winner = swing_off.winner(g)
         cap_w = g[f"captain{winner}_team_id"]
         cap_l = g[f"captain{3 - winner}_team_id"]
         hi, lo = (
             max(g["score1"] or 0, g["score2"] or 0),
             min(g["score1"] or 0, g["score2"] or 0),
         )
-        headline = f"Team {names.city(cap_w)} wins the All-Star Game {hi}-{lo}"
-        body = f"Team {names.city(cap_w)} beat Team {names.city(cap_l)}."
+        if g["swingoff"]:
+            so = g["swingoff"]
+            headline = (
+                f"Team {names.city(cap_w)} wins the All-Star Game"
+                " in a home run swing-off"
+            )
+            body = (
+                f"Team {names.city(cap_w)} and Team {names.city(cap_l)} were"
+                f" tied {hi}-{lo} after nine. Team {names.city(cap_w)} won the"
+                f" swing-off {swing_off.total(so, winner)}-"
+                f"{swing_off.total(so, 3 - winner)}."
+            )
+        else:
+            headline = f"Team {names.city(cap_w)} wins the All-Star Game {hi}-{lo}"
+            body = f"Team {names.city(cap_w)} beat Team {names.city(cap_l)}."
         players = []
         if g["mvp_player_id"]:
             mvp = g["mvp_player_id"]
