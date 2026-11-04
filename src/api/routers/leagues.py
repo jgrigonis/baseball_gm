@@ -542,6 +542,7 @@ PERSONA_BACK = {
     "welcome": ("welcome", "your team"),
     "headlines": ("headlines", "News"),
     "standings": ("standings", "Standings"),
+    "power": ("power", "Power Rankings"),
     "schedule": ("schedule", "Schedule"),
     "trades": ("trades", "Trades"),
 }

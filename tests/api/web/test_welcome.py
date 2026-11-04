@@ -4,6 +4,8 @@ The welcome screen: once per GM when a league starts, before the draft, it
 shows their new team (plans/welcome-screen.md).
 """
 
+from types import SimpleNamespace
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -358,3 +360,29 @@ def test_the_draft_page_links_to_it(client, db_conn, league):
         in html
     )
     assert ">Meet your team</a>" in html
+
+
+def test_every_team_link_goes_to_the_power_rankings(client, league):
+    lg, _, _ = league
+    html = client.get(f"/leagues/{lg.id}/welcome").text
+    assert f'href="/leagues/{lg.id}/power" class="wl-meta wl-link"' in html
+
+
+def test_power_rankings_lean_on_paper_early(client, db_conn, factory, league):
+    lg, _, mine = league
+    season_id = db_conn.execute(
+        "SELECT season_id FROM drafts WHERE league_id = %s", (lg.id,)
+    ).fetchone()["season_id"]
+    teams = db_conn.execute(
+        "SELECT team_id FROM gms WHERE league_id = %s", (lg.id,)
+    ).fetchall()
+    for t in teams:
+        factory.league_season_team(
+            lg, SimpleNamespace(id=season_id), SimpleNamespace(id=t["team_id"])
+        )
+    html = client.get(f"/leagues/{lg.id}/power").text
+    assert "Power Rankings" in html and "After 1 game" in html
+    # One game in, the rosters still decide: Denver's 70s beat Chicago's 50s
+    assert "Ranked 97% on roster strength" in html
+    assert html.index("Beans") < html.index("Wind")
+    assert "Run diff" in html

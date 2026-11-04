@@ -93,6 +93,7 @@ def _compute_visible_tabs(state: str, draft_complete: bool = False) -> list[str]
             "roster",
             "lineup",
             "standings",
+            "power",
             "leaders",
             "stats",
             "strategy",
@@ -105,6 +106,7 @@ def _compute_visible_tabs(state: str, draft_complete: bool = False) -> list[str]
         "lineup",
         "schedule",
         "standings",
+        "power",
         "headlines",
         "leaders",
         "stats",
@@ -124,7 +126,15 @@ def _compute_visible_tabs(state: str, draft_complete: bool = False) -> list[str]
 
 # The tabs a viewer of a public league sees: the ones that read the same
 # whoever is looking. Schedule, roster, lineup and strategy are one GM's own.
-_VIEWER_TABS = ("standings", "headlines", "leaders", "stats", "playoffs", "allstar")
+_VIEWER_TABS = (
+    "standings",
+    "power",
+    "headlines",
+    "leaders",
+    "stats",
+    "playoffs",
+    "allstar",
+)
 
 
 def _viewer_tabs(tabs: list[str], draft_complete: bool) -> list[str]:
