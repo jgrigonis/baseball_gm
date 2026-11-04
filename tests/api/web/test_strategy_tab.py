@@ -105,3 +105,11 @@ def test_stats_vs_scouting_saves_and_shows_nearest_step(client, db_conn, gm):
         'name="stats_vs_scouting" min="0" max="4" step="1"\n         value="2"' in html
     )
     assert "Stats vs Scouting" in html
+
+
+def test_page_has_unsaved_bar_with_draft_key(client, gm):
+    r = client.get(f"/leagues/{gm.league_id}/strategy", headers={"HX-Request": "true"})
+    html = r.text
+    assert 'id="strategy-unsaved-banner"' in html
+    assert "Save now" in html and "strategyRevert()" in html
+    assert f'data-draft-key="strategy_draft_{gm.league_id}_{gm.id}"' in html

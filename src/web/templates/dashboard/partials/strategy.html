@@ -36,7 +36,15 @@
   <form hx-post="/leagues/{{ league_id }}/strategy"
         hx-target="#strategy-feedback"
         hx-swap="innerHTML"
-        id="strategy-form">
+        id="strategy-form"
+        data-draft-key="{{ draft_key }}">
+
+    <div id="strategy-unsaved-banner" class="unsaved-bar">
+      <span>⚠ Strategy changes not saved</span>
+      <button type="submit" class="btn btn-secondary unsaved-save">Save now</button>
+      <button type="button" class="btn btn-secondary" onclick="strategyRevert()"
+              title="Undo your changes: back to your saved strategy">Revert</button>
+    </div>
 
     <div class="grid-2 strategy-grid" style="gap: 24px; align-items: start;">
 
@@ -86,6 +94,8 @@
 .ss-value { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--amber); min-width: 120px; text-align: right; }
 .ss-ends { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 10px; color: var(--muted); margin-top: -2px; }
 .ss-hint { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); line-height: 1.7; }
+/* The not-saved bar stays in view at the top while you scroll the sliders. */
+#strategy-unsaved-banner { position: sticky; top: 0; z-index: 10; margin: 0 0 16px; }
 
 /* ── Phones: one column, short hints, bigger thumbs, Save pinned at the bottom ── */
 @media (max-width: 700px) {
@@ -99,6 +109,13 @@
     border-top: 1px solid var(--border-hi);
   }
   .strategy-save .btn { padding: 10px 16px; }
+  /* Unsaved changes: the bar takes the Save row's place at the bottom. */
+  #strategy-unsaved-banner {
+    position: fixed; left: 0; right: 0; top: auto; bottom: 0; z-index: 50; margin: 0;
+    padding: 10px 12px; border-width: 1px 0 0;
+  }
+  #strategy-unsaved-banner .btn { font-size: 11px; padding: 7px 12px; }
+  #strategy-form.dirty .strategy-save { visibility: hidden; }
   /* Hints show two lines; a tap opens the rest. */
   .ss-hint {
     display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
@@ -138,10 +155,64 @@ input[type=range]::-moz-range-thumb {
 </style>
 
 <script>
-function updateLabel(input) {
-  const labels = JSON.parse(input.dataset.labels);
-  document.getElementById('val-' + input.name).textContent = labels[parseInt(input.value)];
-  const fb = document.getElementById('strategy-feedback');
-  if (fb) fb.innerHTML = '<span style="color:var(--amber);">Not saved yet</span>';
-}
+(function() {
+  // Unsaved slider moves live in localStorage until they're saved, so they
+  // come back after a look at another tab. The draft is per league and GM,
+  // and cleared on a save or once the sliders match the saved strategy again.
+  var form = document.getElementById('strategy-form');
+  if (!form) return;
+  var key = form.dataset.draftKey;
+  function sliders() { return form.querySelectorAll('input[type=range]'); }
+  function values() {
+    var out = {};
+    sliders().forEach(function(s) { out[s.name] = s.value; });
+    return out;
+  }
+  function setValues(vals) {
+    sliders().forEach(function(s) {
+      var v = vals[s.name];
+      if (v == null || +v < +s.min || +v > +s.max) return;
+      s.value = v;
+      showLabel(s);
+    });
+  }
+  function showLabel(input) {
+    var labels = JSON.parse(input.dataset.labels);
+    document.getElementById('val-' + input.name).textContent = labels[parseInt(input.value)];
+  }
+  var saved = values();
+  function check() {
+    var now = values();
+    var dirty = Object.keys(now).some(function(k) { return now[k] !== saved[k]; });
+    try {
+      if (dirty) localStorage.setItem(key, JSON.stringify(now));
+      else localStorage.removeItem(key);
+    } catch (e) {}
+    document.getElementById('strategy-unsaved-banner').classList.toggle('on', dirty);
+    form.classList.toggle('dirty', dirty);
+    return dirty;
+  }
+  window.updateLabel = function(input) {
+    showLabel(input);
+    var fb = document.getElementById('strategy-feedback');
+    if (fb) fb.textContent = '';
+    check();
+  };
+  window.strategyRevert = function() {
+    setValues(saved);
+    var fb = document.getElementById('strategy-feedback');
+    if (fb) fb.textContent = '';
+    check();
+  };
+  try {
+    var draft = JSON.parse(localStorage.getItem(key) || 'null');
+    if (draft) setValues(draft);
+  } catch (e) {}
+  check();
+  form.addEventListener('htmx:afterRequest', function(e) {
+    if (e.detail.elt !== form || !e.detail.successful) return;
+    saved = values();
+    check();
+  });
+})();
 </script>
