@@ -52,7 +52,7 @@ SPEED_BLITZ = LeagueMode(
     label="Speed Blitz",
     description=(
         "A faster Blitz: preference-list draft and 40-man rosters. Trades "
-        "and injuries start off."
+        "and injuries are off by default."
     ),
     form_presets={
         "sim_period_days": 30,

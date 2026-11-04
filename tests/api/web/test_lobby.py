@@ -142,7 +142,7 @@ def test_lobby_settings_explain_themselves_on_hover(client, db_conn, lobby):
     # Thirteen settings, plus the GM list's and the settings card's own headers.
     assert r.text.count('class="setting-tip"') == 15
     assert "Speed Blitz" in r.text
-    assert "Trades and injuries start off" in r.text
+    assert "Trades and injuries are off by default" in r.text
     assert "trade with each other." in r.text
     assert "Off: nobody gets hurt" in r.text
     assert "Total teams in the league" in r.text
