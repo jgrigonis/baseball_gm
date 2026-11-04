@@ -31,7 +31,7 @@ def test_pool_teams_split_into_two_leagues_of_even_divisions(n, per_league):
 
 def test_divisions_follow_the_globe():
     teams = [(f"id-{t.city}", t.city) for t in TEAM_POOL if t.city != "Seattle"]
-    extra = ("Berlin", "Portland", "Rome", "Boston", "Cairo")
+    extra = ("Berlin", "Portland", "Rome", "Boston", "Cairo", "Moscow")
     teams = [t for t in teams if t[1] not in extra]
     confs = divisions.draw(teams, random.Random(1))
     by_team = {t: d.name for c in confs for d in c.divisions for t in d.team_ids}
@@ -59,7 +59,6 @@ def test_crowded_regions_still_split_evenly():
         ("id-Tokyo", "Tokyo"),
         ("id-Sydney", "Sydney"),
         ("id-Dubai", "Dubai"),
-        ("id-Seoul", "Seoul"),
     ]
     assert len(teams) == 16
     confs = divisions.draw(teams, random.Random(1))

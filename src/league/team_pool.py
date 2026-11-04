@@ -72,6 +72,7 @@ TEAM_POOL: tuple[PoolTeam, ...] = (
     PoolTeam("Berlin", "Bear", EUROPE, 13.4),
     PoolTeam("Vienna", "Maestros", EUROPE, 16.4),
     PoolTeam("Warsaw", "Hussars", EUROPE, 21.0),
+    PoolTeam("Moscow", "Cossacks", EUROPE, 37.6),
     PoolTeam("Istanbul", "Sultans", WEST_ASIA, 29.0),
     PoolTeam("Cairo", "Pharaohs", WEST_ASIA, 31.2),
     PoolTeam("Dubai", "Falcons", WEST_ASIA, 55.3),
@@ -106,7 +107,7 @@ def draw(
 ) -> list[PoolTeam]:
     """num_teams teams: the ones in ``keep``, then the rest drawn region by
     region, each region's share of the league in proportion to its share of
-    the pool. Sorted by city."""
+    the pool, and every region at least one. Sorted by city."""
     picked = list(dict.fromkeys(keep))[:num_teams]
     taken = {t.key for t in picked}
     pool_counts = Counter(t.region for t in TEAM_POOL)
@@ -121,6 +122,10 @@ def draw(
             break
 
         def owed(r):
+            # A region with no team yet goes first, so a small region like
+            # Oceania (one team) isn't squeezed out of a 16-team league.
+            if not counts[r]:
+                return float("inf")
             return num_teams * pool_counts[r] / len(TEAM_POOL) - counts[r]
 
         most = max(owed(r) for r in open_regions)

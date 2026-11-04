@@ -78,6 +78,7 @@ TEAM_COLORS: dict[tuple[str, str], TeamColors] = {
     ("Rome", "Gladiators"): TeamColors("ROM", "#6E1423", "#C28E4A", "#EFE8DA", "SPQR"),
     ("Boston", "Beacons"): TeamColors("BOS", "#F4B01F", "#1C2733", "#C8302C"),
     ("Cairo", "Pharaohs"): TeamColors("CAI", "#1F5FA8", "#F2C94C", "#B8401C"),
+    ("Moscow", "Cossacks"): TeamColors("MOS", "#0F6E78", "#F0C75E", "#B3202A"),
 }
 
 # (primary, secondary, accent) for teams outside TEAM_COLORS

@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="true">
+<title>Moscow Cossacks Uniforms</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Ruslan+Display&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#F5F3EE; --card:#FFFFFF; --text:#0B3338; --dim:#5D6670; --line:#E2DED3; --accent:#B3202A;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg:#0A1A1D; --card:#122629; --text:#EEF0F2; --dim:#A3ACB5; --line:#21393D; --accent:#F0C75E; }
+}
+:root[data-theme="dark"] { --bg:#0A1A1D; --card:#122629; --text:#EEF0F2; --dim:#A3ACB5; --line:#21393D; --accent:#F0C75E; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--text); font:15px/1.55 Inter, system-ui, sans-serif; }
+.wrap { max-width:1080px; margin:0 auto; padding:32px max(16px, env(safe-area-inset-left)) 64px max(16px, env(safe-area-inset-right)); }
+header { background:#0F6E78; color:#FFFFFF; border-radius:14px; padding:28px 28px 30px; position:relative; overflow:hidden; }
+header::after { content:""; position:absolute; left:0; right:0; bottom:0; height:10px;
+  background:linear-gradient(#B3202A 0 0) 0 0/100% 6px no-repeat, linear-gradient(#F0C75E 0 0) 0 7px/100% 3px no-repeat; }
+header .kicker { font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:#CFE6E8; }
+header h1 { font-family:"Ruslan Display", serif; font-weight:400; font-size:42px; line-height:1.1; margin:8px 0 8px; letter-spacing:.02em; color:#F0C75E; }
+header p { margin:0; max-width:640px; color:#E2EFF0; }
+.swatches { display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; }
+.sw { display:flex; align-items:center; gap:8px; font-size:12px; }
+.sw i { width:22px; height:22px; border-radius:50%; border:2px solid rgba(255,255,255,.45); display:inline-block; }
+h2 { font-family:"Ruslan Display", serif; font-weight:400; font-size:22px; margin:40px 0 4px; }
+.sub { color:var(--dim); margin:0 0 16px; }
+.grid { display:grid; gap:16px; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); }
+.card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; }
+.card svg { width:100%; height:auto; display:block; }
+.card h3 { margin:10px 0 2px; font-size:16px; }
+.card .tag { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); font-weight:600; margin-top:10px; }
+.card p { margin:4px 0 0; color:var(--dim); font-size:13.5px; }
+.stage { background:linear-gradient(#E9ECEF, #D6DBE0); border-radius:8px; padding:10px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .stage { background:linear-gradient(#24303C, #1A232D); } }
+:root[data-theme="dark"] .stage { background:linear-gradient(#24303C, #1A232D); }
+.notes { columns:2 300px; column-gap:28px; }
+.notes li { margin:0 0 8px; break-inside:avoid; }
+.feedback { margin-top:36px; border-left:4px solid var(--accent); padding:10px 16px; background:var(--card); border-radius:0 10px 10px 0; }
+@media (max-width:600px) { header h1 { font-size:30px; } header { padding:22px 18px 26px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">Uniform set · extra team</div>
+  <h1>Moscow Cossacks</h1>
+  <p>Malachite teal, Cossack gold and Kremlin red, the colors of the onion domes on Red Square. The logo is a Cossack in a black papakha fur hat with a big drooping moustache and the cartridge rows of his cherkesska coat. The lettering is Ruslan Display, drawn after old Russian sign lettering: COSSACKS on cream at home, MOSCOW on the teal road jersey, and a red Cherkesska alternate with МОСКВА in Cyrillic.</p>
+  <div class="swatches">
+    <span class="sw"><i style="background:#0F6E78"></i>Malachite teal #0F6E78</span>
+    <span class="sw"><i style="background:#F0C75E"></i>Cossack gold #F0C75E</span>
+    <span class="sw"><i style="background:#B3202A"></i>Kremlin red #B3202A</span>
+  </div>
+</header>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <path id="jersey" d="M72 22 L101 12 Q120 30 139 12 L168 22 L222 54 L203 100 L180 88 L180 250 L60 250 L60 88 L37 100 L18 54 Z"/>
+    <path id="ck-hat" d="M9 9 Q11.1 6.8 13.2 9.0 Q15.3 6.8 17.4 9.0 Q19.5 6.8 21.6 9.0 Q23.7 6.8 25.8 9.0 Q27.9 6.8 30.0 9.0 Q32.1 6.8 34.2 9.0 Q36.3 6.8 38.4 9.0 Q40.5 6.8 42.6 9.0 Q44.7 6.8 46.8 9.0 Q48.9 6.8 51.0 9.0 Q52.4 11.4 50.5 13.4 Q51.9 15.8 50.0 17.8 Q51.4 20.2 49.6 22.2 Q50.9 24.6 49.1 26.6 Q50.4 29.0 48.6 31.0 Q46.5 33.2 44.5 31.0 Q42.4 33.2 40.3 31.0 Q38.3 33.2 36.2 31.0 Q34.1 33.2 32.1 31.0 Q30.0 33.2 27.9 31.0 Q25.9 33.2 23.8 31.0 Q21.7 33.2 19.7 31.0 Q17.6 33.2 15.5 31.0 Q13.5 33.2 11.4 31.0 Q9.6 29.0 10.9 26.6 Q9.1 24.6 10.4 22.2 Q8.6 20.2 10.0 17.8 Q8.1 15.8 9.5 13.4 Q7.6 11.4 9.0 9.0 Z"/>
+    <path id="ck-fur" d="M11.2 14.5 Q14.0 11.3 16.8 14.5 Q14.0 13.0 11.2 14.5 Z M19.2 14.5 Q22.0 11.3 24.8 14.5 Q22.0 13.0 19.2 14.5 Z M27.2 14.5 Q30.0 11.3 32.8 14.5 Q30.0 13.0 27.2 14.5 Z M35.2 14.5 Q38.0 11.3 40.8 14.5 Q38.0 13.0 35.2 14.5 Z M43.2 14.5 Q46.0 11.3 48.8 14.5 Q46.0 13.0 43.2 14.5 Z M15.2 20.5 Q18.0 17.3 20.8 20.5 Q18.0 19.0 15.2 20.5 Z M23.2 20.5 Q26.0 17.3 28.8 20.5 Q26.0 19.0 23.2 20.5 Z M31.2 20.5 Q34.0 17.3 36.8 20.5 Q34.0 19.0 31.2 20.5 Z M39.2 20.5 Q42.0 17.3 44.8 20.5 Q42.0 19.0 39.2 20.5 Z M11.2 26.5 Q14.0 23.3 16.8 26.5 Q14.0 25.0 11.2 26.5 Z M19.2 26.5 Q22.0 23.3 24.8 26.5 Q22.0 25.0 19.2 26.5 Z M27.2 26.5 Q30.0 23.3 32.8 26.5 Q30.0 25.0 27.2 26.5 Z M35.2 26.5 Q38.0 23.3 40.8 26.5 Q38.0 25.0 35.2 26.5 Z M43.2 26.5 Q46.0 23.3 48.8 26.5 Q46.0 25.0 43.2 26.5 Z"/>
+    <path id="ck-face" d="M18.8 30 H41.2 L41.6 44 Q41 57.6 30 63.4 Q19 57.6 18.4 44 Z M20 37.6 Q15.4 37 15.8 41.6 Q16.2 46 20 46.4 Z M40 37.6 Q44.6 37 44.2 41.6 Q43.8 46 40 46.4 Z"/>
+    <path id="ck-coat" d="M7 79 Q7.6 68.4 20 64.6 L25 61.6 H35 L40 64.6 Q52.4 68.4 53 79 Z"/>
+    <path id="ck-shirt" d="M25 61.6 H35 L40 64.6 L30 74 L20 64.6 Z"/>
+    <path id="ck-gazyri" d="M11.4 70.6 H13.4 V77.6 H11.4 Z M14.8 69.4 H16.8 V77.6 H14.8 Z M18.2 68.4 H20.2 V77.6 H18.2 Z M21.6 68.6 H23.6 V77.6 H21.6 Z M48.6 70.6 H46.6 V77.6 H48.6 Z M45.2 69.4 H43.2 V77.6 H45.2 Z M41.8 68.4 H39.8 V77.6 H41.8 Z M38.4 68.6 H36.4 V77.6 H38.4 Z"/>
+    <path id="ck-brows" d="M20.6 35.4 Q24.4 32.4 28.6 34.6 L28.2 36.6 Q24.6 35 21.2 37.2 Z M39.4 35.4 Q35.6 32.4 31.4 34.6 L31.8 36.6 Q35.4 35 38.8 37.2 Z"/>
+    <path id="ck-eyes" d="M22.6 40 Q25.4 37.4 28.2 40 Q25.4 42 22.6 40 Z M31.8 40 Q34.6 37.4 37.4 40 Q34.6 42 31.8 40 Z M30 39 L28.6 46.4 Q30 47.4 31.4 46.4 L30.6 45.6 Z"/>
+    <path id="ck-stache" d="M30 47.4 C35.6 45.2 41.6 46 44.6 49.6 C46.8 52.6 47.6 57 47 61.6 Q45 57.4 42 55.6 C38.4 53.6 34 53.2 30 53.8 C26 53.2 21.6 53.6 18 55.6 Q15 57.4 13 61.6 C12.4 57 13.2 52.6 15.4 49.6 C18.4 46 24.4 45.2 30 47.4 Z M27.6 57.6 Q30 58.8 32.4 57.6 Q30 60 27.6 57.6 Z"/>
+  </defs>
+</svg>
+
+<h2>Jerseys</h2>
+<p class="sub">Front views. Cream at home, malachite teal on the road, and a Kremlin red alternate.</p>
+<div class="grid">
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="jersey-home" viewBox="0 0 240 270" role="img" aria-label="Home jersey: cream with teal COSSACKS edged in gold and teal sleeves">
+      <use href="#jersey" fill="#F7F3EA" stroke="#0A4A51" stroke-width="2"/>
+      <path d="M72 22 L18 54 L37 100 L60 88 Z" fill="#0F6E78"/><path d="M168 22 L222 54 L203 100 L180 88 Z" fill="#0F6E78"/>
+      <use href="#jersey" fill="none" stroke="#0A4A51" stroke-width="2"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#0F6E78" stroke-width="6"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#F0C75E" stroke-width="1.6"/>
+      <path d="M120 27 V250" stroke="#0A4A51" stroke-width="2.5"/>
+      <g fill="#0F6E78"><circle cx="126" cy="60" r="2"/><circle cx="126" cy="180" r="2"/><circle cx="126" cy="220" r="2"/></g>
+      <path d="M37 100 L18 54" stroke="#B3202A" stroke-width="5"/><path d="M203 100 L222 54" stroke="#B3202A" stroke-width="5"/>
+      <path d="M41 98 L22 52" stroke="#F0C75E" stroke-width="2"/><path d="M199 98 L218 52" stroke="#F0C75E" stroke-width="2"/>
+      <path d="M60 138 L70.4 138 V116 C64.6 112.9 66.6 107.3 74.0 102 C81.4 107.3 83.4 112.9 77.6 116 V138 L89.5 138 V106 C82.3 101.8 84.7 94.2 94.0 87 C103.3 94.2 105.7 101.8 98.5 106 V138 L113 138 V100 L120 74 L127 100 V138 L141.5 138 V106 C134.3 101.8 136.7 94.2 146.0 87 C155.3 94.2 157.7 101.8 150.5 106 V138 L162.4 138 V116 C156.6 112.9 158.6 107.3 166.0 102 C173.4 107.3 175.4 112.9 169.6 116 V138 L180 138M74 102 V96 M71.8 98 H76.2 M94 87 V81 M91.8 83 H96.2 M120 74 V68 M117.8 70 H122.2 M146 87 V81 M143.8 83 H148.2 M166 102 V96 M163.8 98 H168.2 " fill="none" stroke="#BFD6D5" stroke-width="1.6" stroke-linejoin="round"/>
+      <path id="arcH" d="M62 142 Q120 116 178 142" fill="none"/>
+      <text font-family="Ruslan Display" font-size="19" fill="#0F6E78" stroke="#F0C75E" stroke-width="2" stroke-linejoin="round" paint-order="stroke"><textPath href="#arcH" startOffset="50%" text-anchor="middle">COSSACKS</textPath></text>
+      <text x="88" y="202" text-anchor="middle" font-family="Ruslan Display" font-size="34" fill="#B3202A" stroke="#0F6E78" stroke-width="2" stroke-linejoin="round" paint-order="stroke">12</text>
+      <g transform="translate(196 74)"><circle r="13" fill="#0F6E78" stroke="#F0C75E" stroke-width="2"/><g transform="translate(-8.1 -11.1) scale(0.27)"><use href="#ck-coat" fill="#B3202A"/><use href="#ck-shirt" fill="#0A4A51"/><use href="#ck-gazyri" fill="#F0C75E"/><use href="#ck-face" fill="#F0C75E"/><use href="#ck-brows" fill="#0A4A51"/><use href="#ck-eyes" fill="#0A4A51"/><use href="#ck-stache" fill="#0A4A51"/><use href="#ck-hat" fill="#1E1A18"/><use href="#ck-fur" fill="#5A4A3E"/></g></g>
+    </svg>
+    </div>
+    <div class="tag">Home</div>
+    <h3>Cream, teal COSSACKS</h3>
+    <p>COSSACKS arched in teal with a gold edge on a cream body, over a light outline of Moscow's spires and onion domes. Teal sleeves with a red and gold cuff, red numbers edged in teal, and the Cossack badge on the sleeve.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="jersey-away" viewBox="0 0 240 270" role="img" aria-label="Away jersey: teal with gold MOSCOW edged in red and red sleeves">
+      <use href="#jersey" fill="#0F6E78" stroke="#0A4A51" stroke-width="2"/>
+      <path d="M72 22 L18 54 L37 100 L60 88 Z" fill="#B3202A"/><path d="M168 22 L222 54 L203 100 L180 88 Z" fill="#B3202A"/>
+      <use href="#jersey" fill="none" stroke="#0A4A51" stroke-width="2"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#B3202A" stroke-width="6"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#F0C75E" stroke-width="1.6"/>
+      <path d="M120 27 V250" stroke="#0A4A51" stroke-width="2.5"/>
+      <g fill="#F0C75E"><circle cx="126" cy="60" r="2"/><circle cx="126" cy="180" r="2"/><circle cx="126" cy="220" r="2"/></g>
+      <path d="M37 100 L18 54" stroke="#F0C75E" stroke-width="5"/><path d="M203 100 L222 54" stroke="#F0C75E" stroke-width="5"/>
+      <path d="M41 98 L22 52" stroke="#0A4A51" stroke-width="2"/><path d="M199 98 L218 52" stroke="#0A4A51" stroke-width="2"/>
+      <path d="M60 138 L70.4 138 V116 C64.6 112.9 66.6 107.3 74.0 102 C81.4 107.3 83.4 112.9 77.6 116 V138 L89.5 138 V106 C82.3 101.8 84.7 94.2 94.0 87 C103.3 94.2 105.7 101.8 98.5 106 V138 L113 138 V100 L120 74 L127 100 V138 L141.5 138 V106 C134.3 101.8 136.7 94.2 146.0 87 C155.3 94.2 157.7 101.8 150.5 106 V138 L162.4 138 V116 C156.6 112.9 158.6 107.3 166.0 102 C173.4 107.3 175.4 112.9 169.6 116 V138 L180 138M74 102 V96 M71.8 98 H76.2 M94 87 V81 M91.8 83 H96.2 M120 74 V68 M117.8 70 H122.2 M146 87 V81 M143.8 83 H148.2 M166 102 V96 M163.8 98 H168.2 " fill="none" stroke="#3C9199" stroke-width="1.6" stroke-linejoin="round"/>
+      <path id="arcA" d="M64 142 Q120 120 176 142" fill="none"/>
+      <text font-family="Ruslan Display" font-size="24" letter-spacing="1" fill="#F0C75E" stroke="#B3202A" stroke-width="2.4" stroke-linejoin="round" paint-order="stroke"><textPath href="#arcA" startOffset="50%" text-anchor="middle">MOSCOW</textPath></text>
+      <text x="88" y="202" text-anchor="middle" font-family="Ruslan Display" font-size="34" fill="#F0C75E" stroke="#B3202A" stroke-width="2.4" stroke-linejoin="round" paint-order="stroke">12</text>
+      <g transform="translate(196 74)"><circle r="13" fill="#B3202A" stroke="#F0C75E" stroke-width="2"/><g transform="translate(-8.1 -11.1) scale(0.27)"><use href="#ck-coat" fill="#0F6E78"/><use href="#ck-shirt" fill="#0A4A51"/><use href="#ck-gazyri" fill="#F0C75E"/><use href="#ck-face" fill="#F0C75E"/><use href="#ck-brows" fill="#0A4A51"/><use href="#ck-eyes" fill="#0A4A51"/><use href="#ck-stache" fill="#0A4A51"/><use href="#ck-hat" fill="#1E1A18"/><use href="#ck-fur" fill="#5A4A3E"/></g></g>
+    </svg>
+    </div>
+    <div class="tag">Away</div>
+    <h3>Malachite teal, gold MOSCOW</h3>
+    <p>MOSCOW arched in gold with a red edge on a teal body, over the same outline of spires and onion domes, with red sleeves, gold cuffs and gold numbers. The sleeve badge puts the Cossack in a teal coat on red.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="jersey-alternate" viewBox="0 0 240 270" role="img" aria-label="Alternate jersey: Kremlin red cherkesska with gold cartridge rows on the chest and МОСКВА in gold">
+      <use href="#jersey" fill="#B3202A" stroke="#7E1620" stroke-width="2"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#0A4A51" stroke-width="6"/>
+      <path d="M101 12 Q120 30 139 12" fill="none" stroke="#F0C75E" stroke-width="1.6"/>
+      <path d="M120 27 V250" stroke="#7E1620" stroke-width="2.5"/>
+      <path d="M70 44 H100 V80 H70 Z" fill="#7E1620"/><rect x="73.0" y="40" width="3.6" height="34" rx="1" fill="#F0C75E"/><rect x="72.6" y="38" width="4.4" height="5" rx="1.2" fill="#0A4A51"/><rect x="78.6" y="40" width="3.6" height="34" rx="1" fill="#F0C75E"/><rect x="78.2" y="38" width="4.4" height="5" rx="1.2" fill="#0A4A51"/><rect x="84.2" y="40" width="3.6" height="34" rx="1" fill="#F0C75E"/><rect x="83.8" y="38" width="4.4" height="5" rx="1.2" fill="#0A4A51"/><rect x="89.8" y="40" width="3.6" height="34" rx="1" fill="#F0C75E"/><rect x="89.4" y="38" width="4.4" height="5" rx="1.2" fill="#0A4A51"/><rect x="95.4" y="40" width="3.6" height="34" rx="1" fill="#F0C75E"/><rect x="95.0" y="38" width="4.4" height="5" rx="1.2" fill="#0A4A51"/><path d="M70 80 H100" stroke="#F0C75E" stroke-width="1.4"/>
+      <path d="M140 44 H170 V80 H140 Z" fill="#7E1620"/><rect x="143.0" y="40" width="3.6" height="34" rx="1" fill="#F0C75E"/><rect x="142.6" y="38" width="4.4" height="5" rx="1.2" fill="#0A4A51"/><rect x="148.6" y="40" width="3.6" height="34" rx="1" fill="#F0C75E"/><rect x="148.2" y="38" width="4.4" height="5" rx="1.2" fill="#0A4A51"/><rect x="154.2" y="40" width="3.6" height="34" rx="1" fill="#F0C75E"/><rect x="153.8" y="38" width="4.4" height="5" rx="1.2" fill="#0A4A51"/><rect x="159.8" y="40" width="3.6" height="34" rx="1" fill="#F0C75E"/><rect x="159.4" y="38" width="4.4" height="5" rx="1.2" fill="#0A4A51"/><rect x="165.4" y="40" width="3.6" height="34" rx="1" fill="#F0C75E"/><rect x="165.0" y="38" width="4.4" height="5" rx="1.2" fill="#0A4A51"/><path d="M140 80 H170" stroke="#F0C75E" stroke-width="1.4"/>
+      <g fill="#F0C75E"><circle cx="126" cy="180" r="2"/><circle cx="126" cy="220" r="2"/></g>
+      <path d="M37 100 L18 54" stroke="#0A4A51" stroke-width="5"/><path d="M203 100 L222 54" stroke="#0A4A51" stroke-width="5"/>
+      <path d="M41 98 L22 52" stroke="#F0C75E" stroke-width="2"/><path d="M199 98 L218 52" stroke="#F0C75E" stroke-width="2"/>
+      <path id="arcX" d="M64 146 Q120 124 176 146" fill="none"/>
+      <text font-family="Ruslan Display" font-size="24" letter-spacing="1" fill="#F0C75E" stroke="#7E1620" stroke-width="2.4" stroke-linejoin="round" paint-order="stroke"><textPath href="#arcX" startOffset="50%" text-anchor="middle">МОСКВА</textPath></text>
+      <text x="88" y="206" text-anchor="middle" font-family="Ruslan Display" font-size="34" fill="#F4EEE0" stroke="#0A4A51" stroke-width="2.4" stroke-linejoin="round" paint-order="stroke">12</text>
+      <rect x="61" y="228" width="118" height="7" fill="#1E1A18"/>
+      <g fill="#F0C75E"><rect x="72" y="229.5" width="4" height="4"/><rect x="90" y="229.5" width="4" height="4"/><rect x="146" y="229.5" width="4" height="4"/><rect x="164" y="229.5" width="4" height="4"/><rect x="114" y="228" width="12" height="7" rx="1.5"/></g>
+      <g transform="translate(196 74)"><circle r="13" fill="#0A4A51" stroke="#F0C75E" stroke-width="2"/><g transform="translate(-8.1 -11.1) scale(0.27)"><use href="#ck-coat" fill="#B3202A"/><use href="#ck-shirt" fill="#0A4A51"/><use href="#ck-gazyri" fill="#F0C75E"/><use href="#ck-face" fill="#F0C75E"/><use href="#ck-brows" fill="#0A4A51"/><use href="#ck-eyes" fill="#0A4A51"/><use href="#ck-stache" fill="#0A4A51"/><use href="#ck-hat" fill="#1E1A18"/><use href="#ck-fur" fill="#5A4A3E"/></g></g>
+    </svg>
+    </div>
+    <div class="tag">Alternate · Cherkesska</div>
+    <h3>Kremlin red, gold МОСКВА</h3>
+    <p>The Cherkesska alternate, after the Cossack's long coat. Two rows of gold gazyri cartridge tubes cross the chest, МОСКВА (Moskva) is arched in gold across the middle, and a black belt with gold studs runs round the hem.</p>
+  </div>
+
+</div>
+
+<h2>Caps and helmet</h2>
+<p class="sub">The Cossack in his papakha, kept modest on every piece.</p>
+<div class="grid">
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="cap" viewBox="0 0 240 170" role="img" aria-label="Teal cap with a red brim and a Cossack in a black papakha, edged in cream">
+      <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#0F6E78"/>
+      <path d="M122 30 Q118 70 120 120" fill="none" stroke="#0A4A51" stroke-width="1.5"/>
+      <path d="M80 42 Q72 80 76 120" fill="none" stroke="#0A4A51" stroke-width="1.5"/>
+      <circle cx="122" cy="31" r="5" fill="#B3202A"/>
+      <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#B3202A" stroke="#7E1620" stroke-width="1.5"/>
+      <g transform="translate(103.2 54.6) scale(0.57)"><use href="#ck-coat" fill="#F4EEE0" stroke="#F4EEE0" stroke-width="4.5" stroke-linejoin="round"/><use href="#ck-face" fill="#F4EEE0" stroke="#F4EEE0" stroke-width="4.5" stroke-linejoin="round"/><use href="#ck-stache" fill="#F4EEE0" stroke="#F4EEE0" stroke-width="4.5" stroke-linejoin="round"/><use href="#ck-hat" fill="#F4EEE0" stroke="#F4EEE0" stroke-width="4.5" stroke-linejoin="round"/><use href="#ck-coat" fill="#B3202A"/><use href="#ck-shirt" fill="#0A4A51"/><use href="#ck-gazyri" fill="#F0C75E"/><use href="#ck-face" fill="#F0C75E"/><use href="#ck-brows" fill="#0A4A51"/><use href="#ck-eyes" fill="#0A4A51"/><use href="#ck-stache" fill="#0A4A51"/><use href="#ck-hat" fill="#1E1A18"/><use href="#ck-fur" fill="#5A4A3E"/></g>
+    </svg>
+    </div>
+    <div class="tag">Cap · home and away</div>
+    <h3>Teal crown, red brim</h3>
+    <p>The Cossack with a cream edge on a teal crown, with a red brim and button. His papakha is black astrakhan fur, his face gold, and his coat Kremlin red with gold cartridge tubes.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="cap-alternate" viewBox="0 0 240 170" role="img" aria-label="Red cap with a teal brim and a Cossack in a teal coat, edged in cream">
+      <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#B3202A"/>
+      <path d="M122 30 Q118 70 120 120" fill="none" stroke="#7E1620" stroke-width="1.5"/>
+      <path d="M80 42 Q72 80 76 120" fill="none" stroke="#7E1620" stroke-width="1.5"/>
+      <circle cx="122" cy="31" r="5" fill="#0A4A51"/>
+      <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#0A4A51" stroke="#073338" stroke-width="1.5"/>
+      <g transform="translate(103.2 54.6) scale(0.57)"><use href="#ck-coat" fill="#F4EEE0" stroke="#F4EEE0" stroke-width="4.5" stroke-linejoin="round"/><use href="#ck-face" fill="#F4EEE0" stroke="#F4EEE0" stroke-width="4.5" stroke-linejoin="round"/><use href="#ck-stache" fill="#F4EEE0" stroke="#F4EEE0" stroke-width="4.5" stroke-linejoin="round"/><use href="#ck-hat" fill="#F4EEE0" stroke="#F4EEE0" stroke-width="4.5" stroke-linejoin="round"/><use href="#ck-coat" fill="#0F6E78"/><use href="#ck-shirt" fill="#0A4A51"/><use href="#ck-gazyri" fill="#F0C75E"/><use href="#ck-face" fill="#F0C75E"/><use href="#ck-brows" fill="#0A4A51"/><use href="#ck-eyes" fill="#0A4A51"/><use href="#ck-stache" fill="#0A4A51"/><use href="#ck-hat" fill="#1E1A18"/><use href="#ck-fur" fill="#5A4A3E"/></g>
+    </svg>
+    </div>
+    <div class="tag">Cap · Cherkesska</div>
+    <h3>Red crown, teal brim</h3>
+    <p>The same Cossack in a teal coat on a red crown. Worn with the Cherkesska alternate.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="helmet" viewBox="0 0 240 170" role="img" aria-label="Gloss teal batting helmet with a red ear flap and a Cossack decal">
+      <defs><linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3C9AA3"/><stop offset=".45" stop-color="#0F6E78"/><stop offset="1" stop-color="#0A4A51"/></linearGradient></defs>
+      <path d="M44 118 Q40 30 126 26 Q200 30 204 108 L204 126 Q178 128 166 140 L150 152 Q120 156 100 140 L96 124 L44 124 Z" fill="url(#gloss)"/>
+      <path d="M150 112 Q172 104 196 112 L196 124 Q176 126 164 136 Z" fill="#B3202A"/>
+      <ellipse cx="174" cy="120" rx="6" ry="5" fill="#0A4A51"/>
+      <path d="M40 124 L110 124 L132 134 L40 134 Z" fill="#0A4A51"/>
+      <path d="M62 50 Q100 34 140 40" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".3"/>
+      <g transform="translate(91.2 56.4) scale(0.47)"><use href="#ck-coat" fill="#F4EEE0" stroke="#F4EEE0" stroke-width="5.5" stroke-linejoin="round"/><use href="#ck-face" fill="#F4EEE0" stroke="#F4EEE0" stroke-width="5.5" stroke-linejoin="round"/><use href="#ck-stache" fill="#F4EEE0" stroke="#F4EEE0" stroke-width="5.5" stroke-linejoin="round"/><use href="#ck-hat" fill="#F4EEE0" stroke="#F4EEE0" stroke-width="5.5" stroke-linejoin="round"/><use href="#ck-coat" fill="#B3202A"/><use href="#ck-shirt" fill="#0A4A51"/><use href="#ck-gazyri" fill="#F0C75E"/><use href="#ck-face" fill="#F0C75E"/><use href="#ck-brows" fill="#0A4A51"/><use href="#ck-eyes" fill="#0A4A51"/><use href="#ck-stache" fill="#0A4A51"/><use href="#ck-hat" fill="#1E1A18"/><use href="#ck-fur" fill="#5A4A3E"/></g>
+      <path d="M44 118 Q96 112 150 112" fill="none" stroke="#F0C75E" stroke-width="2.5"/>
+    </svg>
+    </div>
+    <div class="tag">Batting helmet</div>
+    <h3>Gloss teal</h3>
+    <p>A teal shell with a red ear flap and a gold stripe, and the Cossack decal.</p>
+  </div>
+
+</div>
+
+<h2>Pants, belt and socks</h2>
+<p class="sub">A wide red Cossack stripe down every pair of pants.</p>
+<div class="grid">
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="pants-home:24 14 92 202,pants-away:124 14 92 202" viewBox="0 0 240 230" role="img" aria-label="Cream home pants and gray away pants with a wide red Cossack stripe edged in gold">
+      <g>
+        <path d="M30 20 H110 L106 210 H78 L70 80 L62 210 H34 Z" fill="#F7F3EA" stroke="#DCD3BC" stroke-width="1.5"/>
+        <rect x="30" y="20" width="80" height="12" fill="#0F6E78"/>
+        <rect x="64" y="21" width="12" height="10" rx="2" fill="none" stroke="#F0C75E" stroke-width="2"/>
+        <path d="M34.5 34 L37.5 208" stroke="#B3202A" stroke-width="7"/><path d="M39.6 34 L42 208" stroke="#F0C75E" stroke-width="1.4"/>
+        <text x="70" y="226" text-anchor="middle" class="label" font-family="Inter" font-size="11" fill="#5D6670">Home</text>
+      </g>
+      <g>
+        <path d="M130 20 H210 L206 210 H178 L170 80 L162 210 H134 Z" fill="#A8ADB3" stroke="#868B91" stroke-width="1.5"/>
+        <rect x="130" y="20" width="80" height="12" fill="#0F6E78"/>
+        <rect x="164" y="21" width="12" height="10" rx="2" fill="none" stroke="#F0C75E" stroke-width="2"/>
+        <path d="M134.5 34 L137.5 208" stroke="#B3202A" stroke-width="7"/><path d="M139.6 34 L142 208" stroke="#F0C75E" stroke-width="1.4"/>
+        <text x="170" y="226" text-anchor="middle" class="label" font-family="Inter" font-size="11" fill="#5D6670">Away</text>
+      </g>
+    </svg>
+    </div>
+    <div class="tag">Pants and belt</div>
+    <h3>Cream at home, gray away</h3>
+    <p>Both pairs carry a wide red lampas, the stripe down the leg of Cossack trousers, edged in gold. A teal belt with a gold buckle. The Cherkesska alternate wears the cream pair.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="stirrups:44 8 74 214,stirrups-alternate:138 8 74 214" viewBox="0 0 240 230" role="img" aria-label="Teal stirrups with a red and gold band, and red stirrups with a teal and gold band">
+      <g>
+        <rect x="56" y="14" width="44" height="190" fill="#FFFFFF" stroke="#D4D8DD"/>
+        <path d="M50 14 H106 V120 Q104 150 92 168 L64 168 Q52 150 50 120 Z" fill="#0F6E78"/>
+        <path d="M64 168 Q78 140 92 168 Z" fill="#FFFFFF"/>
+        <rect x="50" y="30" width="56" height="6" fill="#B3202A"/><rect x="50" y="36" width="56" height="6" fill="#F0C75E"/><rect x="50" y="42" width="56" height="6" fill="#B3202A"/>
+        <path d="M50 204 H112 Q114 214 104 216 H50 Z" fill="#1E1A18"/>
+      </g>
+      <g>
+        <rect x="150" y="14" width="44" height="190" fill="#FFFFFF" stroke="#D4D8DD"/>
+        <path d="M144 14 H200 V120 Q198 150 186 168 L158 168 Q146 150 144 120 Z" fill="#B3202A"/>
+        <path d="M158 168 Q172 140 186 168 Z" fill="#FFFFFF"/>
+        <rect x="144" y="30" width="56" height="6" fill="#0A4A51"/><rect x="144" y="36" width="56" height="6" fill="#F0C75E"/><rect x="144" y="42" width="56" height="6" fill="#0A4A51"/>
+        <path d="M144 204 H206 Q208 214 198 216 H144 Z" fill="#1E1A18"/>
+      </g>
+    </svg>
+    </div>
+    <div class="tag">Stirrups</div>
+    <h3>Teal and red</h3>
+    <p>Teal stirrups with a red, gold and red band. The Cherkesska set is red with a teal, gold and teal band.</p>
+  </div>
+
+  <div class="card">
+    <div class="stage">
+    <svg data-export="patch:20 12 200 200" viewBox="0 0 240 230" role="img" aria-label="Round teal patch with the onion domes of Saint Basil's Cathedral in red, gold and teal against an evening sky">
+      <defs>
+        <clipPath id="ring"><circle cx="120" cy="112" r="64"/></clipPath>
+        <linearGradient id="dusk" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#16525A"/><stop offset=".6" stop-color="#3F8F8A"/><stop offset="1" stop-color="#F2D98A"/></linearGradient>
+      </defs>
+      <circle cx="120" cy="112" r="94" fill="#0F6E78" stroke="#F0C75E" stroke-width="5"/>
+      <circle cx="120" cy="112" r="64" fill="url(#dusk)"/>
+      <g clip-path="url(#ring)">
+        <g fill="#F4EEE0" opacity=".9"><circle cx="86" cy="76" r="1.2"/><circle cx="160" cy="70" r="1.4"/><circle cx="148" cy="88" r="1"/><circle cx="74" cy="96" r="1"/></g>
+        <path d="M112 112 L120 58 L128 112 Z" fill="#F0C75E"/><path d="M120 58 L128 112 H122 Z" fill="#B8922E"/>
+        <rect x="112" y="112" width="16" height="42" fill="#B3202A"/>
+        <rect x="88" y="124" width="12" height="30" fill="#B3202A"/><rect x="140" y="124" width="12" height="30" fill="#B3202A"/>
+        <rect x="72" y="134" width="11" height="22" fill="#B3202A"/><rect x="157" y="134" width="11" height="22" fill="#B3202A"/>
+        <clipPath id="dome1"><path d="M88.9 124 C80.7 118.3 83.5 107.9 94.0 98 C104.5 107.9 107.3 118.3 99.1 124 Z"/></clipPath><path d="M88.9 124 C80.7 118.3 83.5 107.9 94.0 98 C104.5 107.9 107.3 118.3 99.1 124 Z" fill="#F0C75E"/><g clip-path="url(#dome1)"><path d="M75.0 126 Q80.9 111.0 88.6 96.0" fill="none" stroke="#B3202A" stroke-width="1.9"/><path d="M79.7 126 Q85.7 111.0 89.9 96.0" fill="none" stroke="#B3202A" stroke-width="1.9"/><path d="M84.5 126 Q90.4 111.0 91.3 96.0" fill="none" stroke="#B3202A" stroke-width="1.9"/><path d="M89.2 126 Q95.2 111.0 92.6 96.0" fill="none" stroke="#B3202A" stroke-width="1.9"/><path d="M94.0 126 Q100.0 111.0 94.0 96.0" fill="none" stroke="#B3202A" stroke-width="1.9"/><path d="M98.8 126 Q104.7 111.0 95.4 96.0" fill="none" stroke="#B3202A" stroke-width="1.9"/><path d="M103.5 126 Q109.5 111.0 96.7 96.0" fill="none" stroke="#B3202A" stroke-width="1.9"/><path d="M108.3 126 Q114.2 111.0 98.1 96.0" fill="none" stroke="#B3202A" stroke-width="1.9"/><path d="M113.0 126 Q119.0 111.0 99.4 96.0" fill="none" stroke="#B3202A" stroke-width="1.9"/></g><path d="M94 98 V91 M91.6 93.4 H96.4" stroke="#F0C75E" stroke-width="1.3"/>
+        <clipPath id="dome2"><path d="M140.9 124 C132.7 118.3 135.5 107.9 146.0 98 C156.5 107.9 159.3 118.3 151.1 124 Z"/></clipPath><path d="M140.9 124 C132.7 118.3 135.5 107.9 146.0 98 C156.5 107.9 159.3 118.3 151.1 124 Z" fill="#0F6E78"/><g clip-path="url(#dome2)"><polyline points="129.0,120.88 133.2,118.88 137.5,120.88 141.8,118.88 146.0,120.88 150.2,118.88 154.5,120.88 158.8,118.88 163.0,120.88" fill="none" stroke="#F4EEE0" stroke-width="1.6"/><polyline points="129.0,116.46 133.2,114.46 137.5,116.46 141.8,114.46 146.0,116.46 150.2,114.46 154.5,116.46 158.8,114.46 163.0,116.46" fill="none" stroke="#F4EEE0" stroke-width="1.6"/><polyline points="129.0,112.03999999999999 133.2,110.03999999999999 137.5,112.03999999999999 141.8,110.03999999999999 146.0,112.03999999999999 150.2,110.03999999999999 154.5,112.03999999999999 158.8,110.03999999999999 163.0,112.03999999999999" fill="none" stroke="#F4EEE0" stroke-width="1.6"/><polyline points="129.0,107.61999999999999 133.2,105.61999999999999 137.5,107.61999999999999 141.8,105.61999999999999 146.0,107.61999999999999 150.2,105.61999999999999 154.5,107.61999999999999 158.8,105.61999999999999 163.0,107.61999999999999" fill="none" stroke="#F4EEE0" stroke-width="1.6"/><polyline points="129.0,103.19999999999999 133.2,101.19999999999999 137.5,103.19999999999999 141.8,101.19999999999999 146.0,103.19999999999999 150.2,101.19999999999999 154.5,103.19999999999999 158.8,101.19999999999999 163.0,103.19999999999999" fill="none" stroke="#F4EEE0" stroke-width="1.6"/></g><path d="M146 98 V91 M143.6 93.4 H148.4" stroke="#F0C75E" stroke-width="1.3"/>
+        <clipPath id="dome3"><path d="M73.3 134 C66.6 129.6 68.8 121.6 77.5 114 C86.2 121.6 88.4 129.6 81.7 134 Z"/></clipPath><path d="M73.3 134 C66.6 129.6 68.8 121.6 77.5 114 C86.2 121.6 88.4 129.6 81.7 134 Z" fill="#B3202A"/><g clip-path="url(#dome3)"><polyline points="63.5,131.6 67.0,129.6 70.5,131.6 74.0,129.6 77.5,131.6 81.0,129.6 84.5,131.6 88.0,129.6 91.5,131.6" fill="none" stroke="#F0C75E" stroke-width="1.2"/><polyline points="63.5,128.2 67.0,126.19999999999999 70.5,128.2 74.0,126.19999999999999 77.5,128.2 81.0,126.19999999999999 84.5,128.2 88.0,126.19999999999999 91.5,128.2" fill="none" stroke="#F0C75E" stroke-width="1.2"/><polyline points="63.5,124.8 67.0,122.8 70.5,124.8 74.0,122.8 77.5,124.8 81.0,122.8 84.5,124.8 88.0,122.8 91.5,124.8" fill="none" stroke="#F0C75E" stroke-width="1.2"/><polyline points="63.5,121.39999999999999 67.0,119.39999999999999 70.5,121.39999999999999 74.0,119.39999999999999 77.5,121.39999999999999 81.0,119.39999999999999 84.5,121.39999999999999 88.0,119.39999999999999 91.5,121.39999999999999" fill="none" stroke="#F0C75E" stroke-width="1.2"/><polyline points="63.5,118.0 67.0,116.0 70.5,118.0 74.0,116.0 77.5,118.0 81.0,116.0 84.5,118.0 88.0,116.0 91.5,118.0" fill="none" stroke="#F0C75E" stroke-width="1.2"/></g><path d="M77.5 114 V107 M75.1 109.4 H79.9" stroke="#F0C75E" stroke-width="1.3"/>
+        <clipPath id="dome4"><path d="M158.3 134 C151.6 129.6 153.8 121.6 162.5 114 C171.2 121.6 173.4 129.6 166.7 134 Z"/></clipPath><path d="M158.3 134 C151.6 129.6 153.8 121.6 162.5 114 C171.2 121.6 173.4 129.6 166.7 134 Z" fill="#2E8A5A"/><g clip-path="url(#dome4)"><path d="M146.8 136 Q151.7 124.0 158.0 112.0" fill="none" stroke="#F0C75E" stroke-width="1.5"/><path d="M150.7 136 Q155.6 124.0 159.1 112.0" fill="none" stroke="#F0C75E" stroke-width="1.5"/><path d="M154.7 136 Q159.6 124.0 160.3 112.0" fill="none" stroke="#F0C75E" stroke-width="1.5"/><path d="M158.6 136 Q163.5 124.0 161.4 112.0" fill="none" stroke="#F0C75E" stroke-width="1.5"/><path d="M162.5 136 Q167.4 124.0 162.5 112.0" fill="none" stroke="#F0C75E" stroke-width="1.5"/><path d="M166.4 136 Q171.3 124.0 163.6 112.0" fill="none" stroke="#F0C75E" stroke-width="1.5"/><path d="M170.3 136 Q175.2 124.0 164.7 112.0" fill="none" stroke="#F0C75E" stroke-width="1.5"/><path d="M174.3 136 Q179.2 124.0 165.9 112.0" fill="none" stroke="#F0C75E" stroke-width="1.5"/><path d="M178.2 136 Q183.1 124.0 167.0 112.0" fill="none" stroke="#F0C75E" stroke-width="1.5"/></g><path d="M162.5 114 V107 M160.1 109.4 H164.9" stroke="#F0C75E" stroke-width="1.3"/>
+        <clipPath id="dome5"><path d="M117.3 74 C113.0 71.1 114.4 65.9 120.0 61 C125.6 65.9 127.0 71.1 122.7 74 Z"/></clipPath><path d="M117.3 74 C113.0 71.1 114.4 65.9 120.0 61 C125.6 65.9 127.0 71.1 122.7 74 Z" fill="#F0C75E"/><g clip-path="url(#dome5)"><polyline points="111.0,72.44 113.2,70.44 115.5,72.44 117.8,70.44 120.0,72.44 122.2,70.44 124.5,72.44 126.8,70.44 129.0,72.44" fill="none" stroke="#B3202A" stroke-width="0.8"/><polyline points="111.0,70.23 113.2,68.23 115.5,70.23 117.8,68.23 120.0,70.23 122.2,68.23 124.5,70.23 126.8,68.23 129.0,70.23" fill="none" stroke="#B3202A" stroke-width="0.8"/><polyline points="111.0,68.02 113.2,66.02 115.5,68.02 117.8,66.02 120.0,68.02 122.2,66.02 124.5,68.02 126.8,66.02 129.0,68.02" fill="none" stroke="#B3202A" stroke-width="0.8"/><polyline points="111.0,65.81 113.2,63.81 115.5,65.81 117.8,63.81 120.0,65.81 122.2,63.81 124.5,65.81 126.8,63.81 129.0,65.81" fill="none" stroke="#B3202A" stroke-width="0.8"/><polyline points="111.0,63.599999999999994 113.2,61.599999999999994 115.5,63.599999999999994 117.8,61.599999999999994 120.0,63.599999999999994 122.2,61.599999999999994 124.5,63.599999999999994 126.8,61.599999999999994 129.0,63.599999999999994" fill="none" stroke="#B3202A" stroke-width="0.8"/></g><path d="M120 61 V54 M117.6 56.4 H122.4" stroke="#F0C75E" stroke-width="1.3"/>
+        <path d="M40 150 H200 V190 H40 Z" fill="#7E1620"/>
+        <path d="M40 150 H200" stroke="#F0C75E" stroke-width="2"/>
+        <g fill="#0A4A51"><path d="M114 176 V162 Q120 154 126 162 V176 Z"/><path d="M90 176 V166 Q94 160 98 166 V176 Z"/><path d="M142 176 V166 Q146 160 150 166 V176 Z"/></g>
+        <path d="M40 176 H200" stroke="#F0C75E" stroke-width="1.5"/>
+      </g>
+      <circle cx="120" cy="112" r="64" fill="none" stroke="#F4EEE0" stroke-width="2.5"/>
+      <path id="ringTop" d="M46 112 A74 74 0 0 1 194 112" fill="none"/>
+      <text font-family="Ruslan Display" font-size="16" letter-spacing="2" fill="#F0C75E"><textPath href="#ringTop" startOffset="50%" text-anchor="middle">COSSACKS</textPath></text>
+      <path id="ringBot" d="M36 112 A84 84 0 0 0 204 112" fill="none"/>
+      <text font-family="Ruslan Display" font-size="15" letter-spacing="5" fill="#F4EEE0"><textPath href="#ringBot" startOffset="50%" text-anchor="middle">MOSCOW</textPath></text>
+      <g fill="#B3202A"><circle cx="31" cy="112" r="3.5"/><circle cx="209" cy="112" r="3.5"/></g>
+    </svg>
+    </div>
+    <div class="tag">Sleeve patch</div>
+    <h3>Saint Basil's at dusk</h3>
+    <p>A teal roundel with a gold rim. The onion domes of Saint Basil's Cathedral, striped and swirled in gold, red, teal and green, stand on a dark red wall against an evening sky, with COSSACKS across the top and MOSCOW along the bottom. Worn on the player's left sleeve.</p>
+  </div>
+
+</div>
+
+<h2>Design notes</h2>
+<ul class="notes">
+  <li><b>Built from the team's three colors.</b> Malachite teal, Cossack gold and Kremlin red are the values the game uses for the Moscow badge: a teal badge with MOS in gold and a red ring.</li>
+  <li><b>Not another red team.</b> Red and gold is already London, Beijing and Warsaw, so Moscow leads with teal, the green-blue of the malachite in the Kremlin's halls and of Saint Basil's domes. The nearest badges in the pool are Madrid and Cairo, and no other European team wears teal.</li>
+  <li><b>Display type.</b> Ruslan Display is drawn after old Russian lettering and has a full Cyrillic set, so МОСКВА on the alternate is in the same face as COSSACKS.</li>
+  <li><b>The Cossack is the logo.</b> The caps, helmet and sleeve badge carry a Cossack's head in a tall astrakhan papakha, with heavy brows, a drooping moustache and the gazyri cartridge tubes on his coat. The black of the hat is the only color outside the three, and it repeats on the stirrups and the alternate's belt.</li>
+  <li><b>In the game.</b> Moscow is one of the extra teams, placed in Europe east of Warsaw by longitude.</li>
+</ul>
+
+<div class="feedback">
+  <b>What to tell me:</b> keep, change, or drop each piece.
+</div>
+
+</div>
+</body>
+</html>
