@@ -1,0 +1,18 @@
+{# src/web/templates/verify_email.html — the result of opening an emailed verify link #}
+{% extends "auth_base.html" %}
+{% block title %}Verify Email · Baseball GM{% endblock %}
+{% block form %}
+  <div style="display:flex;flex-direction:column;gap:12px;">
+    {% if verified %}
+    <p class="auth-heading">Email verified ✅</p>
+    <p class="auth-note">Thanks. The Verified Email badge is on your GM profile now.</p>
+    {% else %}
+    <p class="auth-heading">Link didn't work</p>
+    <p class="auth-note">
+      This link has expired, was already used, or was sent to an email
+      that's no longer on the account. Send a new one from your account page.
+    </p>
+    {% endif %}
+  </div>
+  <p class="auth-switch"><a href="/account">Your account</a> · <a href="/leagues/">Leagues</a></p>
+{% endblock %}

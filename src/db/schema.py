@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS users (
     username      TEXT,                   -- unique ignoring case (index in migration 003)
     password_hash TEXT,                   -- argon2id
     email         TEXT UNIQUE,
-    is_verified   BOOLEAN NOT NULL DEFAULT FALSE,
+    is_verified   BOOLEAN NOT NULL DEFAULT FALSE, -- clicked an emailed link; cleared when the email changes (migration 070)
     totp_secret   TEXT,
     is_admin      BOOLEAN NOT NULL DEFAULT FALSE, -- can open /admin/
     is_contributor BOOLEAN NOT NULL DEFAULT FALSE, -- paid for the game (Paid contributor badge)
@@ -105,6 +105,19 @@ CREATE TABLE IF NOT EXISTS password_resets (
     expires_at   TIMESTAMPTZ NOT NULL,
     used_at      TIMESTAMPTZ,
     requested_ip TEXT
+);
+
+-- email_verifications: one row per emailed verify link. Only a SHA-256 hash
+--   of the token is kept, with the address it went to, so an old link can't
+--   verify a changed email. A link works for a day, once (migration 070).
+CREATE TABLE IF NOT EXISTS email_verifications (
+    id           TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    email        TEXT NOT NULL,
+    token_hash   TEXT UNIQUE NOT NULL,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at   TIMESTAMPTZ NOT NULL,
+    used_at      TIMESTAMPTZ
 );
 
 -- login_failures: one row per wrong password at sign-in, so repeated guesses
@@ -1261,6 +1274,7 @@ CREATE TABLE IF NOT EXISTS all_star_games (
     score2       INTEGER,
     innings      INTEGER,
     line_score   JSONB,
+    swingoff     JSONB,  -- the home run swing-off after a 9-inning tie (migration 070)
     mvp_player_id TEXT REFERENCES players(id) ON DELETE SET NULL
 );
 
@@ -1335,6 +1349,7 @@ CREATE TABLE IF NOT EXISTS rookie_games (
     score2       INTEGER,
     innings      INTEGER,
     line_score   JSONB,
+    swingoff     JSONB,  -- the home run swing-off after a 9-inning tie (migration 070)
     mvp_player_id TEXT REFERENCES players(id) ON DELETE SET NULL
 );
 
@@ -1557,6 +1572,7 @@ CREATE INDEX IF NOT EXISTS idx_trade_votes_gm         ON trade_votes(gm_id);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 
 CREATE INDEX IF NOT EXISTS idx_password_resets_user ON password_resets(user_id);
+CREATE INDEX IF NOT EXISTS idx_email_verifications_user ON email_verifications(user_id, created_at);
 
 CREATE INDEX IF NOT EXISTS idx_login_failures_username ON login_failures(username, created_at);
 CREATE INDEX IF NOT EXISTS idx_login_failures_ip ON login_failures(ip, created_at);

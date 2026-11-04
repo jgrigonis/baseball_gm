@@ -27,7 +27,8 @@
 #
 # A forgotten password is reset through an emailed link (/auth/forgot, then
 # /auth/reset; see services/password_reset.py). /account is where a user adds
-# or changes the email those links go to.
+# or changes the email those links go to, and verifies it with an emailed
+# link (/account/verify-email; see services/email_verify.py).
 
 from __future__ import annotations
 
@@ -38,7 +39,13 @@ from fastapi import APIRouter, BackgroundTasks, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from src.api.dependencies import DB, OptionalUser, User
-from src.api.services import badges, login_limits, mailer, password_reset
+from src.api.services import (
+    badges,
+    email_verify,
+    login_limits,
+    mailer,
+    password_reset,
+)
 from src.api.services.admin import uses_default_admin_name
 from src.api.services.passwords import (
     clean_email,
@@ -398,6 +405,8 @@ def reset(
 
 _ACCOUNT_SAVED = {
     "email": "Email saved.",
+    "email_sent": "Email saved. We sent a link to verify it.",
+    "verify_sent": "Sent. Open the link in the email to verify it.",
     "turn_emails": "Saved.",
     "username": "Login name changed. Sign in with it from now on.",
 }
@@ -430,6 +439,7 @@ def set_account_email(
     request: Request,
     db: DB,
     user: User,
+    background_tasks: BackgroundTasks,
     current: str = Form(...),
     email: str = Form(""),
 ):
@@ -450,7 +460,9 @@ def set_account_email(
         return _account_page(request, user, 400, email=email, email_error=error)
 
     try:
-        user_repo.set_email(user["id"], clean)
+        changed = user_repo.set_email(user["id"], clean)
+        if changed:
+            email_verify.email_changed(db, user["id"])
         badges.award(db, user["id"])  # Email on File
         db.commit()
     except psycopg.errors.UniqueViolation:
@@ -462,7 +474,40 @@ def set_account_email(
             email=email,
             email_error="Another account has that email.",
         )
+    # A new address gets a verify link right away, while they're here.
+    if changed and clean:
+        mail, _ = email_verify.request_link(db, user["id"], str(request.base_url))
+        if mail:
+            db.commit()
+            background_tasks.add_task(mailer.send, mail.to, mail.subject, mail.text)
+            return RedirectResponse("/account?saved=email_sent", status_code=303)
     return RedirectResponse("/account?saved=email", status_code=303)
+
+
+@router.post("/account/verify-email")
+def send_verify_email(
+    request: Request, db: DB, user: User, background_tasks: BackgroundTasks
+):
+    """Email a link that verifies the account's email."""
+    mail, error = email_verify.request_link(db, user["id"], str(request.base_url))
+    if error:
+        return _account_page(request, user, 400, verify_error=error)
+    db.commit()
+    background_tasks.add_task(mailer.send, mail.to, mail.subject, mail.text)
+    return RedirectResponse("/account?saved=verify_sent", status_code=303)
+
+
+@router.get("/account/verify-email", response_class=HTMLResponse)
+def verify_email(request: Request, db: DB, token: str = ""):
+    """The emailed link. Works signed out too, e.g. opened on a phone."""
+    user_id = email_verify.verify(db, token)
+    db.commit()
+    return templates.TemplateResponse(
+        request,
+        "verify_email.html",
+        {"verified": user_id is not None},
+        status_code=200 if user_id else 400,
+    )
 
 
 @router.post("/account/turn-emails")

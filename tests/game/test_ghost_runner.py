@@ -135,3 +135,32 @@ def test_unearned_flag_on_run_scored_event():
     ).apply(fake_game())
     assert pitcher.game_stats.pitching.runs == 1
     assert pitcher.game_stats.pitching.earned_runs == 0
+
+
+def _play_capped(seed):
+    rng = Random(seed)
+    players = lambda: [make_player_record(position=p, rng=rng) for p in TEAM]  # noqa: E731
+    home = TeamInGameFactory.from_record(make_team_record(players=players()))
+    away = TeamInGameFactory.from_record(make_team_record(players=players()))
+    game = Game(home, away, rng=Random(seed), injuries_enabled=False, max_innings=9)
+    home.set_lineup()
+    away.set_lineup()
+    return game, game.play()
+
+
+def test_max_innings_stops_a_tie_after_nine():
+    """The All-Star Game: tied after nine, it stops for the swing-off, with
+    no winning or losing pitcher."""
+    ties = 0
+    for seed in range(200):
+        game, result = _play_capped(seed)
+        assert result.innings_played == 9
+        if result.home_score == result.away_score:
+            ties += 1
+            assert game.inning.bottom and game.inning.outs == 3
+            assert game.decisions.win is None and game.decisions.loss is None
+            assert not any(
+                p.game_stats.pitching.win or p.game_stats.pitching.loss
+                for p in game.home.players + game.away.players
+            )
+    assert ties

@@ -55,7 +55,7 @@ from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsReposi
 from src.db.repositories.standings_repo import StandingsRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.game.game import Game
-from src.league import all_star, hr_derby, rookie_game
+from src.league import all_star, hr_derby, rookie_game, swing_off
 from src.team.manager_profile import ManagerProfile
 from src.team.team_in_game import TeamInGame
 from src.team.team_record import TeamRecord
@@ -489,6 +489,8 @@ def play_game(
         injured_ids=injured,
         injuries_enabled=False,
         max_pitcher_outs=all_star.PITCHER_OUTS_CAP,
+        # Still tied after nine, a home run swing-off settles it.
+        max_innings=9,
     )
     for side, team in sides.items():
         team.set_lineup(
@@ -513,17 +515,41 @@ def play_game(
             if p.id in starting[side] or p.id in order or played:
                 lines.append(_game_line(p, side, starting[side].get(p.id), order))
     score1, score2 = result.home_score, result.away_score
-    winner = 1 if score1 > score2 else 2
+    swingoff = None
+    if score1 == score2:
+        swingoff = swing_off.play(
+            {side: swing_off.hitters(_hitters(team)) for side, team in sides.items()},
+            rng,
+        )
+    winner = swing_off.winner(
+        {"score1": score1, "score2": score2, "swingoff": swingoff}
+    )
     mvp = all_star.mvp(lines, winner)
     line_score = {"1": list(result.home_innings), "2": list(result.away_innings)}
     repo.save_lines(season_id, lines)
-    repo.save_result(season_id, score1, score2, result.innings_played, line_score, mvp)
+    repo.save_result(
+        season_id, score1, score2, result.innings_played, line_score, mvp, swingoff
+    )
     return {
         "score1": score1,
         "score2": score2,
         "innings": result.innings_played,
         "mvp_player_id": mvp,
+        "swingoff": swingoff,
     }
+
+
+def _hitters(team: TeamInGame) -> list[dict]:
+    """A side's position players, as swing_off.hitters wants them."""
+    return [
+        {
+            "player_id": p.id,
+            "name": p.name,
+            "power": p.skills["power"],
+            "contact": p.skills["contact"],
+        }
+        for p in team.position_players
+    ]
 
 
 def _starter(stars: list[dict], side: int, injured: set) -> str | None:
@@ -735,6 +761,16 @@ def game_context(
             )
             for s in (1, 2)
         }
+        ctx["winner"] = swing_off.winner(g)
+        if g.get("swingoff"):
+            ctx["swingoff"] = {
+                s: {
+                    "hitters": g["swingoff"][str(s)],
+                    "total": swing_off.total(g["swingoff"], s),
+                }
+                for s in (1, 2)
+            }
+            ctx["sudden_death"] = g["swingoff"]["sudden_death"]
         ctx["hits"] = {
             s: sum(r["bat_hits"] for r in lines if r["side"] == s) for s in (1, 2)
         }

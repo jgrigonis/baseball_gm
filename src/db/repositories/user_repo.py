@@ -158,8 +158,8 @@ class UserRepository:
 
     def get_by_id(self, user_id: str) -> dict | None:
         row = self.db.execute(
-            """SELECT id, display_name, username, email, is_admin, is_contributor,
-                      must_change_password, created_at,
+            """SELECT id, display_name, username, email, is_verified, is_admin,
+                      is_contributor, must_change_password, created_at,
                       password_hash IS NOT NULL AS has_password
                FROM users WHERE id = %s""",
             (user_id,),
@@ -176,7 +176,7 @@ class UserRepository:
     def list_all(self) -> list[dict]:
         """Every user, with how many leagues they're a GM in."""
         rows = self.db.execute(
-            """SELECT u.id, u.display_name, u.username, u.email, u.is_admin,
+            """SELECT u.id, u.display_name, u.username, u.email, u.is_verified, u.is_admin,
                       u.must_change_password, u.created_at,
                       u.password_hash IS NOT NULL AS has_password,
                       (SELECT COUNT(*) FROM gms g WHERE g.user_id = u.id) AS leagues
@@ -192,8 +192,19 @@ class UserRepository:
         ).fetchone()
         return row is not None
 
-    def set_email(self, user_id: str, email: str | None) -> None:
-        self.db.execute("UPDATE users SET email = %s WHERE id = %s", (email, user_id))
+    def set_email(self, user_id: str, email: str | None) -> bool:
+        """Set the email. A different address (ignoring case) is no longer
+        verified. Returns whether the address changed."""
+        row = self.db.execute(
+            """UPDATE users u SET email = %s,
+                      is_verified = u.is_verified
+                                    AND lower(old.email) IS NOT DISTINCT FROM lower(%s)
+               FROM users old
+               WHERE u.id = %s AND old.id = u.id
+               RETURNING lower(old.email) IS DISTINCT FROM lower(%s) AS changed""",
+            (email, email, user_id, email),
+        ).fetchone()
+        return bool(row and row["changed"])
 
     def set_turn_emails(self, user_id: str, on: bool) -> None:
         """Whether they get an email when a league is waiting on them

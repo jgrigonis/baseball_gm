@@ -18,7 +18,7 @@ from src.api.services import all_star, sim_next
 from src.db.repositories.all_star_repo import AllStarRepository
 from src.db.repositories.persona_repo import PersonaRepository
 from src.league import all_star as rules
-from src.league import personas
+from src.league import personas, swing_off
 from src.league.all_star import FIELD_SLOTS
 
 # 20 game days, a 4-day break, then 6 more. The ballot closes after the games
@@ -514,7 +514,9 @@ def test_the_game_is_played_after_the_break(lg):
     g = repo.game(lg.season.id)
     assert g["state"] == "played" and all_star.phase(lg.db, lg.season.id) == "played"
     assert (g["score1"], g["score2"]) == (result["score1"], result["score2"])
-    assert g["score1"] != g["score2"] and g["innings"] >= 9
+    # Nine innings, then a swing-off if it's tied.
+    assert g["innings"] == 9
+    assert (g["score1"] == g["score2"]) == bool(g["swingoff"])
     assert not all_star.game_due(lg.db, lg.season.id, AFTER[0])
     # The draft was finished for me, and everyone drafted played.
     lines = repo.lines(lg.season.id)
@@ -527,7 +529,7 @@ def test_the_game_is_played_after_the_break(lg):
     for side in (1, 2):
         arms = [r for r in lines if r["side"] == side and r["pitch_order"]]
         assert sorted(r["pitch_order"] for r in arms) == list(range(1, len(arms) + 1))
-    winner = 1 if g["score1"] > g["score2"] else 2
+    winner = swing_off.winner(g)
     assert (
         next(r for r in lines if r["player_id"] == g["mvp_player_id"])["side"] == winner
     )
@@ -596,6 +598,41 @@ def test_the_game_on_the_tab_and_the_career_page(client, lg):
         f"/leagues/{lg.league.id}/players/{g['mvp_player_id']}/career"
     ).text
     assert "All-Star Games" in career and "★ MVP" in career
+
+
+def _tied_at(runs):
+    """Patch the game to end tied, for the swing-off."""
+    from dataclasses import replace
+
+    from src.game.game import Game
+
+    play = Game.play
+
+    def tied(self):
+        return replace(play(self), home_score=runs, away_score=runs)
+
+    return patch.object(Game, "play", tied)
+
+
+def test_a_tie_goes_to_a_home_run_swing_off(client, lg):
+    _count(lg, lg.mine)
+    with _tied_at(4):
+        result = all_star.play_game(lg.db, lg.league.id, lg.season.id, random.Random(1))
+    so = result["swingoff"]
+    g = AllStarRepository(lg.db).game(lg.season.id)
+    assert (g["score1"], g["score2"]) == (4, 4) and g["swingoff"] == so
+    winner = so["winner"]
+    assert swing_off.total(so, winner) > swing_off.total(so, 3 - winner)
+    assert len(so["1"]) == len(so["2"]) == swing_off.HITTERS
+    lines = AllStarRepository(lg.db).lines(lg.season.id)
+    mvp = next(r for r in lines if r["player_id"] == g["mvp_player_id"])
+    assert mvp["side"] == winner
+    html = client.get(f"/leagues/{lg.league.id}/allstar").text
+    assert "Home Run Swing-Off" in html and "home run swing-off" in html
+    career = client.get(
+        f"/leagues/{lg.league.id}/players/{g['mvp_player_id']}/career"
+    ).text
+    assert "W 4-4" in career and "(swing-off)" in career
 
 
 def test_the_ready_bar_knows_its_my_pick(lg):
