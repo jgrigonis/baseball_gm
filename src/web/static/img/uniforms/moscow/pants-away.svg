@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="124 14 92 202" width="92" height="202" role="img" aria-label="Moscow pants away">
+      <g>
+        <path d="M30 20 H110 L106 210 H78 L70 80 L62 210 H34 Z" fill="#F7F3EA" stroke="#DCD3BC" stroke-width="1.5"/>
+        <rect x="30" y="20" width="80" height="12" fill="#0F6E78"/>
+        <rect x="64" y="21" width="12" height="10" rx="2" fill="none" stroke="#F0C75E" stroke-width="2"/>
+        <path d="M34.5 34 L37.5 208" stroke="#B3202A" stroke-width="7"/><path d="M39.6 34 L42 208" stroke="#F0C75E" stroke-width="1.4"/>
+      </g>
+      <g>
+        <path d="M130 20 H210 L206 210 H178 L170 80 L162 210 H134 Z" fill="#A8ADB3" stroke="#868B91" stroke-width="1.5"/>
+        <rect x="130" y="20" width="80" height="12" fill="#0F6E78"/>
+        <rect x="164" y="21" width="12" height="10" rx="2" fill="none" stroke="#F0C75E" stroke-width="2"/>
+        <path d="M134.5 34 L137.5 208" stroke="#B3202A" stroke-width="7"/><path d="M139.6 34 L142 208" stroke="#F0C75E" stroke-width="1.4"/>
+      </g>
+</svg>
