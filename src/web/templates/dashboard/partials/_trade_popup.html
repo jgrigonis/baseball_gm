@@ -2,10 +2,13 @@
    The card that pops up when a trade needs this GM: another team's offer or
    counter, or a league vote on two other GMs' trade. It comes from the
    GM's trade news (src/api/services/trades.py, POPUP_EVENTS), shown once;
-   "Later" leaves it on the Trades tab, counted by the tab's badge. #}
+   "Later" (or the X, or Escape) leaves it on the Trades tab, counted by the
+   tab's badge. #}
 <div id="trade-popup" class="trade-popup" role="dialog" aria-modal="true"
      aria-labelledby="trade-popup-title" style="display:none;">
   <div class="trade-popup-card">
+    <button type="button" class="trade-popup-x" aria-label="Close (later)" title="Later"
+            onclick="tradePopupLater()">×</button>
     <div class="trade-popup-title" id="trade-popup-title"></div>
     <p class="trade-popup-text" id="trade-popup-text"></p>
     <div class="trade-popup-actions">
@@ -78,11 +81,17 @@
   background: rgba(0, 0, 0, .55); padding: 16px;
 }
 .trade-popup-card {
-  width: 100%; max-width: 420px; padding: 16px 18px;
+  position: relative; width: 100%; max-width: 420px; padding: 16px 18px;
   background: var(--bg-2); border: 1px solid var(--amber-dim);
   box-shadow: 0 0 0 1px var(--amber-lo), 0 8px 32px rgba(0, 0, 0, .5);
 }
-.trade-popup-title { color: var(--amber); font-family: var(--font-mono); font-size: 13px; font-weight: 600; }
+.trade-popup-x {
+  position: absolute; top: 6px; right: 6px; width: 28px; height: 28px;
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  font-size: 18px; line-height: 1; padding: 0;
+}
+.trade-popup-x:hover { color: var(--text); }
+.trade-popup-title { padding-right: 28px; color: var(--amber); font-family: var(--font-mono); font-size: 13px; font-weight: 600; }
 .trade-popup-text { margin: 10px 0 16px; color: var(--text); font-size: 13px; line-height: 1.6; }
 .trade-popup-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .trade-popup-actions .btn { font-size: 11px; padding: 5px 12px; }
