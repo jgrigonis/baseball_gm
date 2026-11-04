@@ -190,6 +190,17 @@ def candidates(conn, season_id: str, year: int, scope_of: dict[str, str]) -> lis
             all_slots AS (
                 SELECT player_id, SUM(n) AS n FROM slots GROUP BY player_id
             ),
+            pos_field AS (
+                SELECT pgf.player_id, pgf.position,
+                       SUM(pgf.putouts) AS po, SUM(pgf.assists) AS a,
+                       SUM(pgf.errors) AS e,
+                       SUM(COALESCE(pgf.double_plays, 0)) AS dp,
+                       SUM(COALESCE(pgf.catcher_cs, 0)) AS cs,
+                       SUM(COALESCE(pgf.catcher_sb, 0)) AS sb
+                FROM player_game_fielding pgf JOIN games g ON g.id = pgf.game_id
+                WHERE g.season_id = %(season)s AND g.series_id IS NULL
+                GROUP BY pgf.player_id, pgf.position
+            ),
             prior AS (
                 SELECT pss.player_id, SUM(pss.bat_ab) AS ab, SUM(pss.pitch_outs) AS outs
                 FROM player_season_stats pss
@@ -202,6 +213,8 @@ def candidates(conn, season_id: str, year: int, scope_of: dict[str, str]) -> lis
                    to_jsonb(psh) AS skills_then, to_jsonb(ps) AS skills_now,
                    top_slot.position AS slot, top_slot.n AS slot_starts,
                    all_slots.n AS all_starts,
+                   pos_field.po AS pos_po, pos_field.a AS pos_a, pos_field.e AS pos_e,
+                   pos_field.dp AS pos_dp, pos_field.cs AS pos_cs, pos_field.sb AS pos_sb,
                    COALESCE(prior.ab, 0) AS prior_ab, COALESCE(prior.outs, 0) AS prior_outs
             FROM tot
             JOIN players p ON p.id = tot.player_id
@@ -210,6 +223,8 @@ def candidates(conn, season_id: str, year: int, scope_of: dict[str, str]) -> lis
               ON psh.player_id = tot.player_id AND psh.season_id = %(season)s
             LEFT JOIN top_slot ON top_slot.player_id = tot.player_id
             LEFT JOIN all_slots ON all_slots.player_id = tot.player_id
+            LEFT JOIN pos_field ON pos_field.player_id = tot.player_id
+                               AND pos_field.position = top_slot.position
             LEFT JOIN prior ON prior.player_id = tot.player_id""",
         {"season": season_id, "year": year},
     ).fetchall()
@@ -233,6 +248,17 @@ def candidates(conn, season_id: str, year: int, scope_of: dict[str, str]) -> lis
         else:
             position = (r["affinity"] or "").lower() or None
             pos_starts = starts = c["bat_games_started"]
+        # His fielding at that position alone, so a left fielder's putouts
+        # from his games at first base don't count for his glove in left.
+        if r["pos_po"] is not None:
+            c.update(
+                field_putouts=int(r["pos_po"]),
+                field_assists=int(r["pos_a"]),
+                field_errors=int(r["pos_e"]),
+                field_double_plays=int(r["pos_dp"]),
+                field_catcher_cs=int(r["pos_cs"]),
+                field_catcher_sb=int(r["pos_sb"]),
+            )
         c.update(
             player_id=r["player_id"],
             team_id=r["team_id"],

@@ -273,8 +273,36 @@ class TestGoldGloves:
         rows = awards.gold_gloves(cands, GAMES)
         plat = [r for r in rows if r["award"] == "platinum_glove"]
         assert [(r["player_id"], r["line"]) for r in plat] == [
-            ("cf1", "Gold Glove at CF")
+            ("cf1", "Gold Glove at CF, +14 defensive runs")
         ]
+
+    def test_a_pitcher_rarely_wins_the_platinum_glove(self):
+        # The busiest, surest-handed pitcher in the league against a good
+        # (not great) shortstop: the shortstop played every inning.
+        pitchers = [
+            pitcher("ace", outs=650, field_putouts=25, field_assists=45, field_errors=0)
+        ] + [
+            pitcher(f"p{i}", outs=550, field_putouts=12, field_assists=26, field_errors=2)
+            for i in range(10)
+        ]  # fmt: skip
+        cands = pitchers + [
+            glover("ss1", "ss", 85, e=12), glover("ss2", "ss", 70, e=14),
+            glover("ss3", "ss", 68, e=15),
+        ]  # fmt: skip
+        rows = awards.gold_gloves(cands, GAMES)
+        gg = {r["position"]: r["player_id"] for r in rows if r["award"] == "gold_glove"}
+        assert gg == {"p": "ace", "ss": "ss1"}
+        assert won(rows, "platinum_glove") == "ss1"
+
+    def test_playing_time_counts(self):
+        # The same glove over a full season beats it over half of one.
+        cands = [
+            glover("full", "2b", 85), glover("2b2", "2b", 60), glover("2b3", "2b", 60),
+            glover("half", "3b", 90, pos_starts=60, po=120, a=40, e=3),
+            glover("3b2", "3b", 60, pos_starts=150), glover("3b3", "3b", 60),
+        ]  # fmt: skip
+        rows = awards.gold_gloves(cands, GAMES)
+        assert won(rows, "platinum_glove") == "full"
 
 
 class TestSilverSluggers:
