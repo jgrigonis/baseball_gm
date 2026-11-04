@@ -225,13 +225,13 @@ def batting_leaders(bat_rows: list, my_team_id: str | None, min_pa: int) -> list
         return bat_card(label, key, pool=pool or qualified, asc=asc, fmt=fmt)
 
     bat_cats = [
-        bat_card_q("AVG", "AVG", fmt=lambda v: f"{v:.3f}"[1:]),
+        bat_card_q("AVG", "AVG", fmt=lambda v: f"{v:.3f}".lstrip("0")),
         bat_card("HR", "HR", pool=all_bat),
         bat_card("RBI", "RBI", pool=all_bat),
         bat_card("R", "R", pool=all_bat),
         bat_card("H", "H", pool=all_bat),
         bat_card("SB", "SB", pool=all_bat),
-        bat_card_q("OBP", "OBP", fmt=lambda v: f"{v:.3f}"[1:]),
+        bat_card_q("OBP", "OBP", fmt=lambda v: f"{v:.3f}".lstrip("0")),
         bat_card_q("SLG", "SLG", fmt=lambda v: f"{v:.3f}"),
         bat_card_q("OPS", "OPS", fmt=lambda v: f"{v:.3f}"),
         bat_card("2B", "2B", pool=all_bat),
