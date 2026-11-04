@@ -17,7 +17,6 @@
     </a>
     {% endif %}
     <div style="margin-left:auto;display:flex;flex-wrap:wrap;align-items:center;gap:8px;">
-      <span id="po-feedback" style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);"></span>
       {% if not champion and not multiplayer and not past_season and not is_viewer %}
       <button id="po-day-btn" onclick="simPlayoffs('game')"
               class="btn btn-primary">
@@ -34,6 +33,7 @@
         ▶▶ Full Playoffs
       </button>
       {% endif %}
+      <span id="po-feedback" style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);"></span>
     </div>
   </div>
 </div>
@@ -235,7 +235,8 @@ function simPlayoffs(mode) {
     .then(function(d){
       _poSetDisabled(false);
       if (d.detail) { if (fb) fb.textContent = '✗ ' + d.detail; return; }
-      if (fb) fb.textContent = d.games_played + ' game' + (d.games_played !== 1 ? 's' : '') + ' played';
+      // No success line: the bracket reloads right away and shows the results.
+      if (fb) fb.textContent = '';
 
       if (d.current_date) {
         var dateEl = document.querySelector('.topbar-date');
