@@ -32,6 +32,7 @@ from src.config import settings
 from src.db.repositories.career_repo import CareerRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.league_repo import LeagueRepository
+from src.db.repositories.season_repo import SeasonRepository
 from src.league import divisions
 from src.league.league_constants import (
     DEFAULT_BACKSTORY_YEARS,
@@ -457,10 +458,10 @@ def dashboard(
         # board is only for a draft still to run.
         if league_repo.draft_complete(league_id):
             return RedirectResponse(f"/leagues/{league_id}/draft/results")
-        # A GM's first look at a new league meets their team first.
-        if league_repo.count_seasons(league_id) == 1 and gm_repo.needs_welcome(
-            gm["id"]
-        ):
+        # Before each draft a GM meets their team first: in a new league
+        # the welcome screen, after that the season preview.
+        season_id = SeasonRepository(db).get_current_id_for_league(league_id)
+        if season_id and gm_repo.needs_welcome(gm["id"], season_id):
             return RedirectResponse(f"/leagues/{league_id}/welcome")
         return RedirectResponse(f"/leagues/{league_id}/draft")
     if state in ("season", "playoffs"):
@@ -519,15 +520,16 @@ def welcome_page(
     user: User,
     gm: GM,
 ):
-    """The GM's new team: shown once when the league starts, before the
-    draft, and open from the Roster tab after."""
+    """The GM's team before the season: the welcome screen when the league
+    starts, a season preview before each draft after that. Shown once per
+    season before the draft, and open from the Roster tab any time."""
     league = LeagueRepository(db).get_by_id(league_id)
     if not league or league["state"] == "lobby":
         return RedirectResponse(f"/leagues/{league_id}/")
     team = welcome(db, league, gm)
     if not team:
         return RedirectResponse(f"/leagues/{league_id}/roster")
-    GMRepository(db).mark_welcomed(gm["id"])
+    GMRepository(db).mark_welcomed(gm["id"], team["season_id"])
     ctx = _shell_ctx(request, db, gm, league_id, user=user)
     ctx["welcome"] = team
     return tab_response(request, htmx, "dashboard/partials/welcome.html", ctx)

@@ -15,9 +15,9 @@
     </div>
     {% elif not is_viewer %}
     <div style="margin-left:auto;">
-      <a href="/leagues/{{ league_id }}/draft"
+      <a href="/leagues/{{ league_id }}/welcome"
          class="btn btn-primary ret-draft-btn" style="padding:6px 18px;white-space:nowrap;">
-        <span class="phone-hide">Continue to </span>Draft →
+        <span class="phone-hide">Next: </span>{{ team_page_label }} →
       </a>
     </div>
     {% endif %}
@@ -29,7 +29,7 @@
   No players retired {% if history_season %}after the {{ history_season.year }} season{% else %}this offseason{% endif %}.
   {% if not is_viewer and not history_season %}
   <div style="margin-top:24px;">
-    <a href="/leagues/{{ league_id }}/draft" class="btn btn-primary">Go to Draft →</a>
+    <a href="/leagues/{{ league_id }}/welcome" class="btn btn-primary">Next: {{ team_page_label }} →</a>
   </div>
   {% endif %}
 </div>
@@ -133,8 +133,8 @@
 
   {% if not history_season and not is_viewer %}
   <div style="margin-top:32px;text-align:center;">
-    <a href="/leagues/{{ league_id }}/draft" class="btn btn-primary" style="padding:10px 32px;font-size:14px;">
-      Continue to Draft →
+    <a href="/leagues/{{ league_id }}/welcome" class="btn btn-primary" style="padding:10px 32px;font-size:14px;">
+      Next: {{ team_page_label }} →
     </a>
   </div>
   {% endif %}

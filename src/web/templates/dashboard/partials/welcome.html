@@ -1,5 +1,6 @@
 {# templates/dashboard/partials/welcome.html
-   The GM's new team, shown once when the league starts, before the draft
+   The GM's team before the season: the welcome screen when the league
+   starts, a season preview before each draft after that
    (plans/welcome-screen.md). Takes `welcome` (src/api/view_models/welcome.py). #}
 {% set w = welcome %}
 {% set c = w.colors %}
@@ -58,12 +59,17 @@
   .wl-big { font-family:var(--font-display); font-size:40px; line-height:1; color:var(--amber); }
   .wl-link { color:var(--text); cursor:pointer; text-decoration:underline dotted; text-underline-offset:3px; }
   .wl-sub { font-family:var(--font-mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-dim); margin:10px 0 2px; }
+  .wl-go { margin-left:auto; font-size:15px; padding:10px 22px; }
+  .wl-move { display:flex; align-items:baseline; gap:8px; padding:5px 0; font-size:13px; }
+  .wl-move .wl-meta { margin-left:auto; white-space:nowrap; }
+  .wl-up { color:var(--green); }
+  .wl-down { color:var(--red); }
   .wl-rival { display:flex; align-items:center; gap:8px; padding:5px 0; font-size:13px; }
-           padding:14px 24px; background:var(--bg-2); border-top:1px solid var(--border-hi); }
   @media (max-width: 600px) {
     .wl-hero { padding:20px 16px; }
     .wl-title { font-size:32px; }
     .wl-body { padding:16px; grid-template-columns:1fr; }
+    .wl-hero .wl-go { margin-left:0; flex:1 1 100%; justify-content:center; text-align:center; font-size:13px; }
   }
 </style>
 
@@ -71,10 +77,18 @@
   <div class="wl-hero-row">
     {{ team_badge(w.city, w.mascot) }}
     <div>
+      {% if w.first %}
       <div class="wl-kicker">{{ league_name }} · GM {{ gm_display_name }}</div>
       <h1 class="wl-title">Welcome to the {{ w.city }} {{ w.mascot }}</h1>
+      {% else %}
+      <div class="wl-kicker">{{ w.year }} season preview · GM {{ gm_display_name }}</div>
+      <h1 class="wl-title">The {{ w.year }} {{ w.city }} {{ w.mascot }}</h1>
+      {% endif %}
       <div class="wl-tagline">{{ c.tagline }}</div>
     </div>
+    {% if not w.draft_done and not setup_bar %}
+    <a href="/leagues/{{ league_id }}/draft" class="btn btn-primary wl-go">Go to the draft →</a>
+    {% endif %}
   </div>
 </section>
 
@@ -120,6 +134,40 @@
         <a href="/leagues/{{ league_id }}/history" class="wl-link" style="margin-left:4px;">League history</a>
       </div>
       {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if not w.first and (w.movers or w.retirees) %}
+  {% set m = w.movers or {} %}
+  {% macro mover(p, cls) -%}
+  <div class="wl-move">
+    <span class="wl-link" onclick="openPlayerPanel('{{ p.player_id }}')">{{ p.name }}</span>
+    <span class="wl-meta" style="margin-left:0;">{{ p.position }} · {{ p.age }}</span>
+    <span class="wl-meta">{{ grade(p.was) }} → {{ grade(p.now) }} <b class="{{ cls }}">{{ '%+d' % p.change }}</b></span>
+  </div>
+  {%- endmacro %}
+  <div class="card">
+    <div class="card-header"><span class="card-title">Over the winter</span></div>
+    <div class="card-body">
+      {% if m.up %}
+      <div class="wl-sub" style="margin-top:0;">Got better</div>
+      {% for p in m.up %}{{ mover(p, 'wl-up') }}{% endfor %}
+      {% endif %}
+      {% if m.down %}
+      <div class="wl-sub">Slipped</div>
+      {% for p in m.down %}{{ mover(p, 'wl-down') }}{% endfor %}
+      {% endif %}
+      {% if w.retirees %}
+      <div class="wl-sub">Retired</div>
+      {% for p in w.retirees %}
+      <div class="wl-move">
+        <span class="wl-link" onclick="openPlayerPanel('{{ p.player_id }}')">{{ p.name }}</span>
+        <span class="wl-meta" style="margin-left:0;">{{ p.position }} · {{ p.age }}</span>
+      </div>
+      {% endfor %}
+      {% endif %}
+      <p class="wl-meta" style="margin-top:10px;">Overall rating at the end of last season and now.</p>
     </div>
   </div>
   {% endif %}
@@ -172,7 +220,7 @@
       {% else %}
       <div class="wl-meta">No glaring holes. Draft the best players you can find.</div>
       {% endfor %}
-      {% if w.weak %}
+      {% if w.weak and not w.draft_done %}
       <div class="wl-meta" style="margin-top:10px;">Your draft strategy starts with these filled in.</div>
       {% endif %}
     </div>
@@ -201,13 +249,15 @@
   {% endif %}
 
   <div class="card">
-    <div class="card-header"><span class="card-title">Your draft slot</span></div>
+    <div class="card-header"><span class="card-title">{% if w.draft_done %}Your draft pick{% else %}Your draft slot{% endif %}</span></div>
     <div class="card-body">
       {% if w.pick %}
       <div class="wl-big">{{ w.pick }}<span style="font-size:20px;color:var(--text-dim);"> of {{ w.num_teams }}</span></div>
       {% endif %}
       <p class="wl-verdict">
-        {% if w.blitz %}
+        {% if w.draft_done %}
+          The draft is done. <a href="/leagues/{{ league_id }}/draft/results" class="wl-link">See who you picked</a>
+        {% elif w.blitz %}
           Rank the prospects you want and set your needs, then the whole draft runs at once.
         {% else %}
           The draft runs pick by pick. Be ready when you're on the clock.
