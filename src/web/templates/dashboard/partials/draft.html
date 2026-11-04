@@ -46,6 +46,10 @@
       {% if pick_position %}<span class="page-subtitle" style="color:var(--amber);margin-left:8px;">Pick #{{ pick_position }}</span>{% endif %}
 
       <div class="spacer"></div>
+      {% if team_id and not is_viewer %}
+      <a href="/leagues/{{ league_id }}/welcome" class="btn btn-secondary draft-team-btn"
+         title="Your team's stars, weak spots and how it stacks up">{{ team_page_label or "Meet your team" }}</a>
+      {% endif %}
       {# On phones these move into the bottom dock (placeDraftActions). #}
       <span id="draft-actions" class="draft-actions">
       <button class="btn btn-primary" id="submit-btn" onclick="saveStrategy()"

@@ -277,7 +277,7 @@ CREATE TABLE IF NOT EXISTS gms (
     ready_period   INTEGER,               -- ready when = leagues.sim_period
     persona_id     TEXT,                  -- AI GMs: who they are (gm_personas)
     welcomed_at    TIMESTAMPTZ,           -- first saw the welcome screen
-    welcomed_season_id TEXT,              -- season whose preview they last saw (migration 064)
+    welcomed_season_id TEXT,              -- season whose preview they last saw (migration 065)
     roster_saved_at TIMESTAMPTZ,          -- first roster save; ends the getting-started bar
     lobby_city     TEXT,                  -- lobby: the team they'll run, by name (migration 042)
     lobby_mascot   TEXT,

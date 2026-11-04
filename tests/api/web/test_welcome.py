@@ -325,3 +325,16 @@ def test_area_grades_spread_across_simulated_teams():
             for t in scores
         }
         assert len(grades) >= 5, (key, grades)
+
+
+def test_the_draft_page_links_to_it(client, db_conn, league):
+    lg, gm, _ = league
+    GMRepository(db_conn).mark_welcomed(gm.id)
+
+    html = client.get(f"/leagues/{lg.id}/draft").text
+
+    assert (
+        f'href="/leagues/{lg.id}/welcome" class="btn btn-secondary draft-team-btn"'
+        in html
+    )
+    assert ">Meet your team</a>" in html

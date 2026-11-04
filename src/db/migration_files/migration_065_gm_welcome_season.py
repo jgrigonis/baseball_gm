@@ -1,4 +1,4 @@
-# src/db/migration_files/migration_064_gm_welcome_season.py
+# src/db/migration_files/migration_065_gm_welcome_season.py
 """
 The welcome screen comes back every season as a season preview: before each
 draft, a human GM lands on it once. gms.welcomed_season_id is the season
@@ -7,7 +7,7 @@ league's first season, so a league waiting on a later draft shows its
 preview on the next visit.
 """
 
-VERSION = 64
+VERSION = 65
 
 
 def upgrade(conn):
