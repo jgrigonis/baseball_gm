@@ -16,6 +16,7 @@ Uses tables:
 
 import datetime
 from src.db.repositories.player_status_repo import PlayerStatusRepository
+from src.player.home_region import home_region_for
 from src.player.jersey_numbers import prefs_for
 from src.player.player_record import PlayerRecord
 from src.player.player_skills import PlayerSkills
@@ -73,9 +74,9 @@ class PlayerRepository:
             """
             INSERT INTO players (
                 id, first_name, last_name, bats, throws, position, league_id,
-                jersey_prefs
+                jersey_prefs, home_region
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT DO NOTHING
             """,
             (
@@ -87,6 +88,7 @@ class PlayerRepository:
                 position,
                 league_id,
                 prefs_for(id),
+                home_region_for(id),
             ),
         )
 

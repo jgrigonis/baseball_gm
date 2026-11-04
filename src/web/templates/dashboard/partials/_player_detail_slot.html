@@ -23,6 +23,7 @@
      {{ player.position or '?' }} ·
      {{ player.bats }}/{{ player.throws }} ·
      Age {{ player.age }} ·
+     {% if player.home_region %}<span title="Home region">From {{ player.home_region }}</span> ·{% endif %}
      <span {% if is_admin and player.team_id %}title="team_id: {{ player.team_id }}"{% endif %}>{{ player.team_city }} {{ player.team_mascot }}</span>
    </div>
    {% if player.contract %}{% set c = player.contract %}
