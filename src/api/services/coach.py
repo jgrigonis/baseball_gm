@@ -33,7 +33,8 @@ GO_LABELS = {"welcome": "Meet your team", "allstar": "All-Stars"}
 WAIT_TEXT = (
     "Keep playing up to the break. After the last games before it the votes "
     "are counted, and the 64 All-Stars get a ★ by their names. The GMs of the "
-    "two best teams are the captains, and they take turns drafting their "
+    "teams with the 2 best records are the captains, and they take turns "
+    "drafting their "
     "sides from the 64."
 )
 # A captain's extra line on the All-Star draft step.
@@ -132,8 +133,8 @@ STEPS = (
         "allstar_draft",
         "See who made it",
         "The votes are in: the 64 All-Stars are on the All-Star tab, with a ★ "
-        "by their names everywhere. The GMs of the two best teams are the "
-        "captains, and they take turns drafting their sides from the 64.",
+        "by their names everywhere. The GMs of the teams with the 2 best records "
+        "are the captains, and they take turns drafting their sides from the 64.",
         "allstar",
     ),
     (
