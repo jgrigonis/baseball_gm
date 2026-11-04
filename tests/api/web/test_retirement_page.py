@@ -94,7 +94,7 @@ def test_history_links_each_seasons_retirements(db_conn, factory):
         league_id=league.id, is_viewer=False, **ctx
     )
     assert "after the 2025 season" in html
-    assert f"/leagues/{league.id}/draft\"" not in html
+    assert f'/leagues/{league.id}/draft"' not in html
 
     # No season, or the season that just ended, is this offseason's page.
     for sid in (None, seasons[1].id):
