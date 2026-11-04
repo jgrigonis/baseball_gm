@@ -117,3 +117,12 @@ def test_team_stats_flags_relievers_and_fielders_on_their_own_marks():
         {"ace": 290},
     )
     assert [f["qualified"] for f in fielders] == [True, False]
+
+
+def test_perfect_average_keeps_its_leading_one():
+    from src.api.view_models.leaders import batting_leaders
+
+    cats = batting_leaders([bat("Ace", 10, 10), bat("Joe", 10, 3)], None, 1)
+    assert card(cats, "AVG")["rows"][0]["val"] == "1.000"
+    assert card(cats, "AVG")["rows"][1]["val"] == ".300"
+    assert card(cats, "OBP")["rows"][0]["val"] == "1.000"
