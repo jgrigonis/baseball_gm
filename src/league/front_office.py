@@ -124,9 +124,5 @@ def defense_weight(lean: Leanings) -> float:
 def protect_arms(profile: ManagerProfile) -> ManagerProfile:
     """A shorter leash: tired starters skip a turn, and a starter who'd be
     left in to work goes by the pitch count instead."""
-    usage = (
-        "pitch-count-strict"
-        if profile.starter_usage == "let-them-work"
-        else profile.starter_usage
-    )
+    usage = "standard" if profile.starter_usage == "long" else profile.starter_usage
     return replace(profile, tired_starters="protect", starter_usage=usage)

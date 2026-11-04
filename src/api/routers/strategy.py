@@ -131,12 +131,12 @@ SETTINGS: tuple[tuple[str, tuple[Setting, ...]], ...] = (
                 "starter_usage",
                 "Starter Leash",
                 mp.STARTER_USAGE,
-                ("Let them work", "Pitch-count strict", "Matchup-based"),
+                ("Long", "Standard", "Quick hook"),
                 ("Long leash", "Short leash"),
-                "Let them work allows about 15 more pitches and pulls a starter "
-                "less often. Pitch-count strict goes to the pen around 100 "
-                "pitches. Matchup-based also pulls him sooner the third time "
-                "through the order.",
+                "How far a starter goes on a normal day. Long lets him go to "
+                "about 100 pitches, Standard about 88. Quick hook goes to the "
+                "pen around 78 and pulls him sooner the third time through "
+                "the order.",
             ),
             Setting(
                 "closer_usage",
@@ -153,10 +153,13 @@ SETTINGS: tuple[tuple[str, tuple[Setting, ...]], ...] = (
                 "bullpen_pref",
                 "Bullpen Shape",
                 mp.BULLPEN_PREF,
-                ("Deep pen", "Starter-heavy"),
-                ("Use the pen", "Ride the starter"),
-                "Starter-heavy keeps starters in a little longer; Deep pen goes "
-                "to the bullpen sooner.",
+                ("Starter-heavy", "Balanced", "Deep pen"),
+                ("Ride the starter", "Use the pen"),
+                "How you handle trouble and use relievers. Starter-heavy lets a "
+                "starter pitch through a rough inning and finish a few more "
+                "batters at his pitch count, and relievers often go two innings. "
+                "Deep pen pulls a struggling starter early and uses more "
+                "relievers for about an inning each.",
             ),
         ),
     ),

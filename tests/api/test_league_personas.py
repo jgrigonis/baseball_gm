@@ -41,7 +41,7 @@ def test_assign_names_the_gm_and_sets_its_tactics(db_conn, factory):
     assert row["display_name"] == p["name"]
     profile = GMRepository(db_conn).get_profile(gm.id)
     assert profile["sac_bunt"] == "frequent"
-    assert profile["starter_usage"] == "let-them-work"
+    assert profile["starter_usage"] == "long"
     assert profile["stats_vs_scouting"] == 50
 
 

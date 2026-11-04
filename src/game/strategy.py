@@ -42,7 +42,6 @@ from src.game.probabilities import (
     HNR_SLOW_MOD,
     HNR_FAVORABLE_COUNT_MOD,
     PITCH_COUNT_THRESHOLD,
-    RELIEVER_INNING_DONE_PROB,
     STARTER_LEAD_HOOK,
     STARTER_LEAD_OUTS,
     CLOSER_ENTRANCE_PROB,
@@ -691,7 +690,11 @@ class GameStrategy:
                 # Winning and the starter hasn't gone far yet: less likely to pull
                 prob *= STARTER_LEAD_HOOK
             if stats.pitch_count >= threshold:
-                prob = max(prob, 0.72)
+                prob = max(prob, profile.at_target_pull)
+            else:
+                # Short of his pitch count: the bullpen shape decides how
+                # quickly a starter who's getting hit comes out.
+                prob *= profile.trouble_hook
             batters_faced = stats.outs + stats.hits + stats.walks + stats.hb
             prob = min(1.0, prob * profile.starter_hook(batters_faced))
 
@@ -712,7 +715,7 @@ class GameStrategy:
             if inning_start:
                 is_long = pitcher.bullpen_role == "Long"
                 if outs >= (6 if is_long else 3):
-                    return RELIEVER_INNING_DONE_PROB
+                    return profile.reliever_done
             if outs >= 6 or stats.runs >= 2:
                 return min(1, prob + 0.3)
             elif outs >= 3 or stats.runs >= 1:

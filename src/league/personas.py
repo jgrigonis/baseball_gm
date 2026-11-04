@@ -329,11 +329,11 @@ def profile(dials: dict) -> dict:
         platoon = "vs-handedness"
 
     if hook < 34:
-        starter = "let-them-work"
+        starter = "long"
     elif hook >= 67 and modern >= 50:
-        starter = "matchup-based"
+        starter = "quick-hook"
     else:
-        starter = "pitch-count-strict"
+        starter = "standard"
 
     return {
         "lineup_style": style,
@@ -341,7 +341,7 @@ def profile(dials: dict) -> dict:
         "sac_bunt": mp.SAC_BUNT[_band(small, 30, 71)],
         "starter_usage": starter,
         "closer_usage": mp.CLOSER_USAGE[_band(modern, 60, 85)],
-        "bullpen_pref": "starter-heavy" if hook < 34 else "deep-pen",
+        "bullpen_pref": mp.BULLPEN_PREF[_band(hook)],
         "platoon_usage": platoon,
         "rotation_size": 5,
         "skip_fifth_starter": now >= 75,

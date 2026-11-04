@@ -873,9 +873,9 @@ class TestRelieverLeash:
         )
 
     def test_reliever_usually_sits_after_his_inning(self):
-        from src.game.probabilities import RELIEVER_INNING_DONE_PROB
+        from src.team.manager_profile import RELIEVER_DONE
 
-        assert self._reliever("Setup", 3)(True) == RELIEVER_INNING_DONE_PROB
+        assert self._reliever("Setup", 3)(True) == RELIEVER_DONE["balanced"]
 
     def test_reliever_stays_in_mid_inning_check(self):
         assert self._reliever("Setup", 3)(False) < 0.5
@@ -885,6 +885,6 @@ class TestRelieverLeash:
 
     def test_long_man_can_go_a_second_inning(self):
         assert self._reliever("Long", 3)(True) < 0.5
-        from src.game.probabilities import RELIEVER_INNING_DONE_PROB
+        from src.team.manager_profile import RELIEVER_DONE
 
-        assert self._reliever("Long", 6)(True) == RELIEVER_INNING_DONE_PROB
+        assert self._reliever("Long", 6)(True) == RELIEVER_DONE["balanced"]
