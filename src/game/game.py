@@ -792,8 +792,6 @@ class Game:
             )
 
         # Reset state
-        for runner in self.bases.runners():
-            runner.ghost_runner = False
         self.bases.clear()
         self.count.reset()
         self._inning_had_error = False  # reset each half-inning
