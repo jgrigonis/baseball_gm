@@ -9,6 +9,7 @@ from fastapi.responses import HTMLResponse
 
 from src.api.dependencies import DB, GM, GMOrViewer, IsHTMX, User
 from src.api.view_models.news import headlines
+from src.api.view_models.power_rankings import power_rankings
 from src.api.view_models.schedule import schedule_context
 from src.api.view_models.seasons import past_season
 from src.api.view_models.standings import standings_context
@@ -73,6 +74,23 @@ def standings(
             secure=settings.served_over_https,
         )
     return resp
+
+
+@router.get("/leagues/{league_id}/power", response_class=HTMLResponse)
+def power(
+    request: Request,
+    htmx: IsHTMX,
+    league_id: str,
+    db: DB,
+    user: User,
+    gm: GMOrViewer,
+):
+    """Power Rankings: every team ranked by roster strength and, as games
+    are played, run differential (src/league/power_rankings.py)."""
+    ctx = _shell_ctx(request, db, gm, league_id, "power", user)
+    my_team_id = gm["team_id"] if gm else None
+    ctx["power"] = power_rankings(db, league_id, ctx["season_id"], my_team_id)
+    return tab_response(request, htmx, "dashboard/partials/power_rankings.html", ctx)
 
 
 @router.get("/leagues/{league_id}/schedule", response_class=HTMLResponse)

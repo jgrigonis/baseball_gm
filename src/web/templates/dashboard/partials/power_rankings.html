@@ -1,0 +1,117 @@
+{# templates/dashboard/partials/power_rankings.html #}
+<style>
+  .pr-move { font-family:var(--font-mono); font-size:11px; white-space:nowrap; }
+  .pr-up { color:var(--green); }
+  .pr-down { color:var(--red); }
+  .pr-same { color:var(--muted); }
+  .pr-area { font-family:var(--font-mono); font-size:12px; font-weight:600; white-space:nowrap; }
+  .pr-note { font-family:var(--font-mono); font-size:11px; color:var(--text-dim); line-height:1.5; }
+  .pr-rank { font-family:var(--font-mono); font-size:13px; font-weight:700; color:var(--text); }
+  .pr-team { white-space:nowrap; }
+  .standings-gm { color: var(--text-dim); text-decoration: none; }
+  .standings-gm:hover { color: var(--sky); }
+  @media (max-width: 640px) {
+    .pr-table td, .pr-table th { padding-left:4px; padding-right:4px; }
+    .pr-table .tb { display:none; }
+    .pr-area { font-size:11px; }
+  }
+</style>
+
+{% set pw = power %}
+<div class="tab-head">
+  <div class="page-header" style="margin-bottom:0;">
+    <h1 class="page-title">Power Rankings</h1>
+    <span class="page-subtitle">
+      {% if pw.games %}After {{ pw.games }} game{{ "s" if pw.games != 1 }}{% else %}Preseason{% endif %}
+    </span>
+  </div>
+</div>
+
+<div class="tab-body" style="display:flex;flex-direction:column;gap:12px;">
+  {% if not pw.rows %}
+  <div style="padding:40px 0;text-align:center;font-family:var(--font-mono);font-size:13px;color:var(--text-dim);">
+    No teams to rank yet.
+  </div>
+  {% else %}
+  <p class="pr-note" style="margin:0;">
+    {% if pw.games %}
+    Ranked {{ 100 - pw.results_share }}% on roster strength and {{ pw.results_share }}% on run differential. Results count for more as the season goes on.
+    {% else %}
+    Ranked on roster strength until games are played. Then run differential counts for more and more.
+    {% endif %}
+  </p>
+  <div class="card">
+    <div style="overflow-x:auto;">
+    <table class="data-table pr-table" style="width:100%;">
+      <thead>
+        <tr>
+          <th style="width:28px;">#</th>
+          {% if pw.has_trend %}<th style="width:34px;" title="Change since a week ago"></th>{% endif %}
+          <th>Team</th>
+          <th class="phone-hide">GM</th>
+          <th style="text-align:center;">W-L</th>
+          <th class="phone-hide" style="text-align:center;" title="Runs scored minus runs allowed">Run diff</th>
+          {% for key, label, tip in pw.area_labels %}
+          <th style="text-align:center;" title="{{ tip }}"><span class="phone-hide">{{ label }}</span><span class="phone-only">{{ label[:3] }}</span></th>
+          {% endfor %}
+          <th class="phone-hide" style="text-align:center;">L10</th>
+          {% if pw.show_luck %}<th class="phone-hide" style="text-align:center;" title="Wins above or below what the run differential is worth">Luck</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in pw.rows %}
+        <tr class="{% if t.is_mine %}my-team{% elif t.is_human %}human-team{% endif %}">
+          <td class="pr-rank">{{ t.rank }}</td>
+          {% if pw.has_trend %}
+          <td class="pr-move">
+            {% if t.move and t.move > 0 %}<span class="pr-up" title="Up {{ t.move }} since a week ago">▲{{ t.move }}</span>
+            {% elif t.move and t.move < 0 %}<span class="pr-down" title="Down {{ -t.move }} since a week ago">▼{{ -t.move }}</span>
+            {% else %}<span class="pr-same" title="No change since a week ago">–</span>{% endif %}
+          </td>
+          {% endif %}
+          <td class="pr-team">
+            <a href="/leagues/{{ league_id }}/stats?team_id={{ t.team_id }}"
+               title="Roster and stats"
+               style="font-family:var(--font-sans);font-weight:600;text-decoration:none;
+                      color:{% if t.is_mine %}var(--green){% elif t.is_human %}var(--sky){% else %}var(--text){% endif %};">
+              <span class="tb">{{ team_badge(t.city, t.mascot) }}</span><span class="phone-hide">{{ t.city }} </span>{{ t.mascot }}
+            </a>
+            {% if t.is_mine %}<span style="font-family:var(--font-mono);font-size:10px;color:var(--green);margin-left:6px;">YOU</span>{% endif %}
+          </td>
+          <td class="dim phone-hide" style="font-size:12px;white-space:nowrap;">
+            {% if t.gm and t.gm.persona_id %}
+              <a href="/leagues/{{ league_id }}/personas/{{ t.gm.persona_id }}?back=power"
+                 hx-get="/leagues/{{ league_id }}/personas/{{ t.gm.persona_id }}?back=power" hx-target="#tab-content" hx-push-url="true"
+                 class="standings-gm" title="Persona card">{{ t.gm.name }}</a>
+            {% elif t.gm and t.gm.username %}<a href="/leagues/{{ league_id }}/gms/{{ t.gm.username|urlencode }}?back=power" hx-get="/leagues/{{ league_id }}/gms/{{ t.gm.username|urlencode }}?back=power" hx-target="#tab-content" hx-push-url="true" class="standings-gm gm-link" title="GM profile">{{ t.gm.name }}</a>
+            {% elif t.gm %}{{ t.gm.name }}{% else %}<span style="color:var(--muted);">—</span>{% endif %}
+          </td>
+          <td class="tc mono" style="white-space:nowrap;">{{ t.wins }}-{{ t.losses }}</td>
+          <td class="tc mono phone-hide" style="color:{% if t.run_diff > 0 %}var(--green){% elif t.run_diff < 0 %}var(--red){% else %}var(--text-dim){% endif %};">
+            {% if t.played %}{{ "+" if t.run_diff > 0 }}{{ t.run_diff }}{% else %}—{% endif %}
+          </td>
+          {% for a in t.areas %}
+          <td class="tc"><span class="pr-area grade-{{ grade_class(a.grade) }}" title="{{ a.label }}: {{ a.rank_text }} of {{ pw.rows|length }}"><span class="phone-hide">{{ a.rank_text }}</span><span class="phone-only">{{ a.rank }}</span></span></td>
+          {% endfor %}
+          <td class="tc mono phone-hide">
+            {% if t.l10 %}
+            <span style="color:{% if t.l10_wins > t.l10_losses %}var(--green){% elif t.l10_wins < t.l10_losses %}var(--red){% else %}var(--text-dim){% endif %};">{{ t.l10 }}</span>
+            {% else %}<span style="color:var(--muted);">—</span>{% endif %}
+          </td>
+          {% if pw.show_luck %}
+          <td class="tc mono phone-hide" style="color:{% if t.luck and t.luck >= 3 %}var(--green){% elif t.luck and t.luck <= -3 %}var(--red){% else %}var(--text-dim){% endif %};">
+            {% if t.luck is not none %}{{ "+" if t.luck > 0 }}{{ t.luck }}{% else %}—{% endif %}
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+  <p class="pr-note" style="margin:0;">
+    Hitting: the starting lineup's contact, power and eye, plus runs scored. Pitching: the rotation's and bullpen's control and stuff, plus runs allowed. Defense: gloves at the positions played and the fielders' arms.
+    {% if pw.show_luck %}Luck: wins above or below what the run differential is worth; big numbers tend to even out.{% endif %}
+  </p>
+  {% endif %}
+</div>
