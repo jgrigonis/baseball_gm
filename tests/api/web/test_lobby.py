@@ -358,3 +358,72 @@ def test_no_reroll_while_the_league_starts(client, db_conn, factory, lobby):
 
     assert r.status_code == 200
     assert personas.lobby_ai_gms(db_conn, league.id) == ai
+
+
+def _settings_page(client, league):
+    app.dependency_overrides[get_current_user] = lambda: {"id": None}
+    return client.get(f"/leagues/{league.id}/").text
+
+
+def _settings_rows(html):
+    """The lobby's League Settings rows, as {label: <tr ...> opening tag}."""
+    import re
+
+    return {
+        label: tag
+        for tag, label in re.findall(
+            r'(<tr[^>]*>)\s*<td[^>]*>\s*<span class="setting-tip"[^>]*>([^<]+)</span>',
+            html,
+        )
+    }
+
+
+TIMER_ROWS = ["Pace", "Decision window", "Draft window", "Lineup window"]
+
+
+def test_timer_settings_are_greyed_out_with_one_human(client, db_conn, lobby):
+    league, _ = lobby
+    db_conn.execute("UPDATE leagues SET pace_control = 'timer' WHERE id = %s", (league.id,))
+
+    rows = _settings_rows(_settings_page(client, league))
+
+    for label in TIMER_ROWS:
+        assert 'class="setting-off"' in rows[label], label
+        assert "data-needs-humans" in rows[label], label
+    assert "setting-off" not in rows["Teams"]
+
+
+def test_timer_settings_light_up_once_a_second_human_joins(client, db_conn, lobby):
+    league, _ = lobby
+    db_conn.execute("UPDATE leagues SET pace_control = 'timer' WHERE id = %s", (league.id,))
+    db_conn.execute(
+        "INSERT INTO gms (id, league_id, display_name, is_ai)"
+        " VALUES (gen_random_uuid(), %s, 'Newcomer', false)",
+        (league.id,),
+    )
+
+    rows = _settings_rows(_settings_page(client, league))
+
+    for label in TIMER_ROWS:
+        assert "setting-off" not in rows[label], label
+    assert 'data-humans="2"' in _gms(client, league).text
+
+
+def test_confirmed_pace_keeps_the_windows_greyed_out(client, db_conn, lobby):
+    league, _ = lobby
+    db_conn.execute(
+        "UPDATE leagues SET pace_control = 'confirmed' WHERE id = %s", (league.id,)
+    )
+    db_conn.execute(
+        "INSERT INTO gms (id, league_id, display_name, is_ai)"
+        " VALUES (gen_random_uuid(), %s, 'Newcomer', false)",
+        (league.id,),
+    )
+
+    rows = _settings_rows(_settings_page(client, league))
+
+    assert "setting-off" not in rows["Pace"]
+    for label in TIMER_ROWS[1:]:
+        assert 'class="setting-off"' in rows[label], label
+        # The lobby's live update leaves these alone.
+        assert "data-needs-humans" not in rows[label], label

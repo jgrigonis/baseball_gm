@@ -680,6 +680,9 @@ a.topbar-team:hover strong { text-decoration: underline; text-underline-offset: 
 .data-table .team-name { font-weight: 600; }
 .data-table .my-team td { background: var(--amber-lo); }
 .data-table .my-team td.team-name { color: var(--amber); }
+/* A league setting that has no effect right now, e.g. the timer windows in a
+   league with one human GM (_league_settings_rows.html). */
+.data-table .setting-off td:last-child { color: var(--text-dim); opacity: .6; }
 .data-table .human-team td.team-name { color: var(--sky); }
 .data-table .divider-row td {
   padding: 4px 12px;

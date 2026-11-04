@@ -2,9 +2,20 @@
    A league's settings as table rows, each label with a hover explanation.
    Takes `info` (src/api/view_models/league_info.py). Shared by the lobby, the
    top bar's season pill and the League page. Once the league has started it
-   also shows who runs the teams and how many seasons are done. #}
+   also shows who runs the teams and how many seasons are done.
+   Pace and the three windows only matter once a second person has joined, so
+   their values are greyed out (.setting-off) while there's one human GM. The
+   windows also stay greyed under Confirmed pace, which has no clock. Rows
+   marked data-needs-humans are the ones the lobby un-greys live when someone
+   joins (see lobby.html). #}
 {% set started = info.state != "lobby" %}
+{% set solo = info.human_gms < 2 %}
 {% set timer_note = " Only used with Timer pace." if info.pace_control != "timer" else "" %}
+{% set solo_note = " Only matters once a second person joins." if solo else "" %}
+{# Rows whose value is greyed out: always (Confirmed pace's windows), or
+   while the league has one human GM. #}
+{% set always_off = ["Decision window", "Draft window", "Lineup window"] if info.pace_control != "timer" else [] %}
+{% set needs_humans = ["Pace", "Decision window", "Draft window", "Lineup window"] %}
 {% set settings = [
   ("Mode", info.mode.label,
    info.mode.description),
@@ -22,14 +33,14 @@
 {% endif %}
 {% set settings = settings + [
   ("Pace", info.pace_control | title,
-   "Timer: the league moves on when every GM clicks Ready, or when the window runs out." if info.pace_control == "timer"
-   else "Confirmed: the league only moves on when every GM clicks Ready. There's no clock."),
+   "Timer: the league moves on when every GM clicks Ready, or when the window runs out." ~ solo_note if info.pace_control == "timer"
+   else "Confirmed: the league only moves on when every GM clicks Ready. There's no clock." ~ solo_note),
   ("Decision window", info.decision_window_sec ~ "s",
-   "How long GMs get to make moves between sim periods. The league moves on early once every GM clicks Ready." ~ timer_note),
+   "How long GMs get to make moves between sim periods. The league moves on early once every GM clicks Ready." ~ timer_note ~ solo_note),
   ("Draft window", info.draft_window_sec ~ "s",
-   "How long GMs get to set their draft before it runs. It runs early once every GM clicks Ready." ~ timer_note),
+   "How long GMs get to set their draft before it runs. It runs early once every GM clicks Ready." ~ timer_note ~ solo_note),
   ("Lineup window", info.lineup_window_sec ~ "s",
-   "How long GMs get after the draft to set their first lineup before the season starts." ~ timer_note),
+   "How long GMs get after the draft to set their first lineup before the season starts." ~ timer_note ~ solo_note),
   ("Re-entry", "Enabled" if info.reentry_enabled else "Disabled",
    "Whether a fired GM can be handed another open team instead of sitting out. GM firing isn't in the game yet, so this has no effect for now."),
   ("Days per sim period", info.sim_period_days,
@@ -66,7 +77,8 @@
    else "Private: only people with the join code can find it."),
 ] %}
 {% for label, value, tip in settings %}
-<tr>
+{% set off = label in always_off or (solo and label in needs_humans) %}
+<tr{% if label in needs_humans and label not in always_off %} data-needs-humans{% endif %}{% if off %} class="setting-off"{% endif %}>
   <td style="color:var(--text-dim);">
     <span class="setting-tip" tabindex="0" data-tip="{{ tip }}">{{ label }}</span>
   </td>
