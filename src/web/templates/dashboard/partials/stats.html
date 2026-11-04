@@ -25,6 +25,13 @@
       {% endfor %}
     </select>
 
+    {% if record %}
+    <span id="stats-record" title="{{ 'Playoff' if is_postseason else 'Regular season' }} record"
+          style="font-family:var(--font-mono);font-size:12px;white-space:nowrap;color:var(--text);">
+      {{ record.wins }}W-{{ record.losses }}L
+    </span>
+    {% endif %}
+
     <div style="display:flex;gap:0;border:1px solid var(--border);">
       <button onclick="switchPostseason(0)"
               style="padding:4px 10px;font-family:var(--font-mono);font-size:11px;

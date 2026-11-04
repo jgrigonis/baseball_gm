@@ -10,6 +10,7 @@ from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.player_games import PlayerGameRepository
 from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
 from src.db.repositories.season_repo import SeasonRepository
+from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.stats import formulas, qualifiers as q
 
@@ -54,12 +55,17 @@ def team_stats_context(
     pitchers = []
     fielders = []
     team_games = 0
+    record = None
 
     if selected_season_id and selected_team_id:
         pss_repo = PlayerSeasonStatsRepository(db)
         team_games = pss_repo.get_max_games_played_for_team(
             selected_season_id, selected_team_id, is_postseason
         )
+        wins, losses = TeamGameRepository(db).get_team_record_for_phase(
+            selected_season_id, selected_team_id, is_postseason
+        )
+        record = {"wins": wins, "losses": losses} if wins or losses else None
         # Qualifying is per team game; in the postseason everyone qualifies.
         qual_games = 0 if is_postseason else team_games
 
@@ -99,6 +105,7 @@ def team_stats_context(
         "selected_year": selected_year,
         "is_postseason": is_postseason,
         "team_games": team_games,
+        "record": record,
         "batters": batters,
         "pitchers": pitchers,
         "fielders": fielders,
