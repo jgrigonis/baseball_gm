@@ -1,6 +1,6 @@
 # src/game/game_result_resolver.py
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from src.game.pitcher_appearance import PitcherAppearance, LeadChange
 
 
@@ -9,6 +9,7 @@ class PitchingDecisions:
     win: PitcherAppearance | None = None
     loss: PitcherAppearance | None = None
     save: PitcherAppearance | None = None
+    holds: list[PitcherAppearance] = field(default_factory=list)
 
 
 class GameResultResolver:
@@ -100,9 +101,10 @@ class GameResultResolver:
 
         # --- SAVE ---
         # A pitcher other than the winner who finished the game and got at
-        # least one out, and either came in with a lead of 1-3 runs or held a
-        # lead over 3+ innings. A pitcher who came in tied or behind can't
-        # save it. (The tying-run-on-deck case isn't tracked.)
+        # least one out, and came in with a lead of 1-3 runs, or with the
+        # tying run on base, at bat or on deck, or held a lead over 3+
+        # innings. A pitcher who came in tied or behind, or who gave the lead
+        # away, can't save it.
         finishing_pitcher = next(
             (a for a in winning_appearances if a.finished_game), None
         )
@@ -116,7 +118,42 @@ class GameResultResolver:
         ):
             decisions.save = finishing_pitcher
 
+        decisions.holds = GameResultResolver._holds(pitcher_appearances, decisions)
+
         return decisions
+
+    @staticmethod
+    def _holds(
+        pitcher_appearances: list[PitcherAppearance],
+        decisions: PitchingDecisions,
+    ) -> list[PitcherAppearance]:
+        """MLB's hold: a reliever who came in with a save situation, got at
+        least one out, and left without giving up the lead, without finishing
+        the game. A pitcher with the win or the save doesn't also get a hold.
+        Either team can have holds: a setup man who hands over the lead keeps
+        his hold even if a later pitcher blows it."""
+        credited = {
+            id(d.pitcher) for d in (decisions.win, decisions.save) if d is not None
+        }
+        starters: set[str] = set()
+        holds = []
+        for appearance in pitcher_appearances:
+            if appearance.team_id not in starters:
+                starters.add(appearance.team_id)
+                continue  # a starter isn't a relief pitcher
+            lead = appearance.lead_at_entry
+            if lead is None or lead < 1:
+                continue  # came in tied or behind (or the score isn't known)
+            outs = appearance.outs_recorded
+            if (
+                not appearance.finished_game
+                and not appearance.lead_lost
+                and outs >= 1
+                and id(appearance.pitcher) not in credited
+                and (appearance.entered_in_save_situation or outs >= 9)
+            ):
+                holds.append(appearance)
+        return holds
 
     @staticmethod
     def _is_save(appearance: PitcherAppearance, margin: int) -> bool:
@@ -124,6 +161,6 @@ class GameResultResolver:
         if lead is None:
             # Older callers that don't track the score at entry
             return margin <= 3
-        if lead < 1 or appearance.outs_recorded < 1:
+        if lead < 1 or appearance.outs_recorded < 1 or appearance.lead_lost:
             return False
-        return lead <= 3 or appearance.outs_recorded >= 9
+        return appearance.entered_in_save_situation or appearance.outs_recorded >= 9

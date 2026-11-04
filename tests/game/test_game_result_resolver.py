@@ -375,3 +375,123 @@ class TestSaveRules:
 
     def test_no_save_without_recording_an_out(self):
         assert self._resolve(lead_at_entry=2, outs=0).save is None
+
+
+class TestHolds:
+    """MLB's hold: a reliever who comes in with a save situation, gets an
+    out, and leaves with the lead, without finishing the game."""
+
+    def _reliever(self, name, team, lead, outs, runners=0, lead_lost=False):
+        p = make_pitcher(name)
+        p.game_stats.pitching.outs = outs
+        return PitcherAppearance(
+            pitcher=p,
+            team_id=team,
+            entered_inning=7,
+            lead_at_entry=lead,
+            runners_at_entry=runners,
+            lead_lost=lead_lost,
+        )
+
+    def _resolve(self, *away_relievers, final=(5, 4), closer_lead=1):
+        """Away starter, then the given relievers, then an away closer who
+        finishes; the home starter goes the distance. Away wins."""
+        starter = make_appearance(make_pitcher("Away Starter"), AWAY, 1)
+        home = make_appearance(make_pitcher("Home Starter"), HOME, 1, True)
+        closer = self._reliever("Closer", AWAY, closer_lead, 3)
+        closer.finished_game = True
+        appearances = [starter, home, *away_relievers, closer]
+        lead_changes = [make_lead_change(1, "top", AWAY, home.pitcher)]
+        return GameResultResolver.resolve(appearances, lead_changes, AWAY, HOME, *final)
+
+    def test_setup_man_gets_hold(self):
+        setup = self._reliever("Setup", AWAY, lead=2, outs=3)
+        decisions = self._resolve(setup)
+        assert decisions.holds == [setup]
+        assert decisions.save is not None and decisions.save.pitcher.name == "Closer"
+
+    def test_one_out_is_enough(self):
+        setup = self._reliever("Setup", AWAY, lead=1, outs=1)
+        assert self._resolve(setup).holds == [setup]
+
+    def test_no_hold_without_an_out(self):
+        assert self._resolve(self._reliever("Setup", AWAY, 1, 0)).holds == []
+
+    def test_no_hold_entering_tied_or_behind(self):
+        assert self._resolve(self._reliever("Setup", AWAY, 0, 3)).holds == []
+        assert self._resolve(self._reliever("Setup", AWAY, -1, 3)).holds == []
+
+    def test_no_hold_with_big_lead_and_bases_empty(self):
+        assert self._resolve(self._reliever("Setup", AWAY, 4, 3)).holds == []
+
+    def test_hold_with_big_lead_and_tying_run_on_deck(self):
+        # Up 4 with two on: the tying run is on deck
+        setup = self._reliever("Setup", AWAY, lead=4, outs=1, runners=2)
+        assert self._resolve(setup).holds == [setup]
+
+    def test_hold_for_three_innings_with_any_lead(self):
+        long_man = self._reliever("Long", AWAY, lead=6, outs=9)
+        assert self._resolve(long_man, final=(9, 3)).holds == [long_man]
+
+    def test_no_hold_after_giving_up_the_lead(self):
+        setup = self._reliever("Setup", AWAY, 2, 3, lead_lost=True)
+        assert self._resolve(setup).holds == []
+
+    def test_several_setup_men_can_each_get_a_hold(self):
+        a = self._reliever("Seventh", AWAY, 2, 3)
+        b = self._reliever("Eighth", AWAY, 2, 3)
+        assert self._resolve(a, b).holds == [a, b]
+
+    def test_finisher_gets_no_hold(self):
+        # The closer's lead is too big for a save, and he finished: no hold
+        decisions = self._resolve(final=(9, 3), closer_lead=6)
+        assert decisions.save is None
+        assert decisions.holds == []
+
+    def test_starter_gets_no_hold(self):
+        starter = make_pitcher("Away Starter")
+        starter.game_stats.pitching.outs = 18
+        home = make_appearance(make_pitcher("Home Starter"), HOME, 1, True)
+        appearances = [
+            PitcherAppearance(starter, AWAY, 1, lead_at_entry=2),
+            home,
+            self._reliever("Closer", AWAY, 2, 3),
+        ]
+        appearances[-1].finished_game = True
+        decisions = GameResultResolver.resolve(
+            appearances,
+            [make_lead_change(1, "top", AWAY, home.pitcher)],
+            AWAY,
+            HOME,
+            3,
+            1,
+        )
+        assert decisions.holds == []
+
+    def test_losing_team_setup_man_keeps_hold_when_closer_blows_it(self):
+        """Away leads 3-2 in the 8th; the setup man hands it over and the
+        closer gives up two in the 9th. Setup man: hold. Closer: no save."""
+        away_starter = make_appearance(make_pitcher("Away Starter"), AWAY, 1)
+        home_starter = make_appearance(make_pitcher("Home Starter"), HOME, 1)
+        setup = self._reliever("Setup", AWAY, lead=1, outs=3)
+        closer = self._reliever("Closer", AWAY, 1, 2, lead_lost=True)
+        closer.finished_game = True
+        home_closer = self._reliever("Home Closer", HOME, -1, 3)
+        home_closer.finished_game = True
+        appearances = [away_starter, home_starter, setup, home_closer, closer]
+        lead_changes = [
+            make_lead_change(4, "top", AWAY, home_starter.pitcher),
+            make_lead_change(9, "bottom", HOME, closer.pitcher),
+        ]
+        decisions = GameResultResolver.resolve(
+            appearances, lead_changes, HOME, AWAY, 4, 3
+        )
+        assert decisions.holds == [setup]
+        assert decisions.save is None
+
+    def test_no_save_after_blowing_the_lead(self):
+        decisions = self._resolve(
+            self._reliever("Setup", AWAY, 2, 3),
+        )
+        decisions.save.lead_lost = True
+        assert GameResultResolver._is_save(decisions.save, 1) is False

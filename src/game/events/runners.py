@@ -71,16 +71,22 @@ class RunnerAdvancedEvent(GameEvent):
         )
 
         if self.to_base >= 4:
+            # A batter who comes all the way around (a home run) is the
+            # pitcher's own run. Don't read runner.responsible_pitcher for
+            # him: it's left over from his last time on base, maybe off a
+            # pitcher who has since left the game.
+            responsible = (
+                self.pitcher
+                if self.from_base is None
+                else getattr(self.runner, "responsible_pitcher", None) or self.pitcher
+            )
             return [
                 RunScoredEvent(
                     runner=self.runner,
                     rbi_batter=self.rbi_batter,
                     reason=self.reason or "run",
                     pitcher=self.pitcher,
-                    responsible_pitcher=getattr(
-                        self.runner, "responsible_pitcher", None
-                    )
-                    or self.pitcher,
+                    responsible_pitcher=responsible,
                 )
             ]
 

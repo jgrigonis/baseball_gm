@@ -325,6 +325,8 @@ class Game:
             decisions.loss.pitcher.game_stats.pitching.loss = 1
         if decisions.save:
             decisions.save.pitcher.game_stats.pitching.save = 1
+        for hold in decisions.holds:
+            hold.pitcher.game_stats.pitching.hold = 1
 
         self._credit_complete_games()
         self.decisions = decisions
@@ -789,7 +791,8 @@ class Game:
         self._swap_teams()
         self._sync_players()
         self._open_pitcher_appearance(self.current_pitcher)
-        self._consider_pitching_change()  # manager can change before inning starts
+        # manager can change before inning starts
+        self._consider_pitching_change(inning_start=True)
 
         self.logger.info(f"⚾ {self.inning}")
 
@@ -1041,15 +1044,32 @@ class Game:
                 team_id=self.pitch_team.record.id,
                 entered_inning=self.inning.number,
                 lead_at_entry=self.score_differential,
+                runners_at_entry=self.bases.number_of_baserunners,
             )
         )
+
+    def _note_run_against_pitcher(self) -> None:
+        """After a run scores: if it tied the game or put the pitching team
+        behind, the pitcher on the mound gave up the lead (whoever put the
+        runner on). That costs him a hold or a save."""
+        if self.score_differential > 0:
+            return
+        team_id = self.pitch_team.record.id
+        current = next(
+            (a for a in reversed(self.pitcher_appearances) if a.team_id == team_id),
+            None,
+        )
+        if current is not None:
+            current.lead_lost = True
 
     def _close_pitcher_appearance(self) -> None:
         """End a pitching appearance, set the most recent pitcher's finished_game to False."""
         if self.pitcher_appearances:
             self.pitcher_appearances[-1].finished_game = False
 
-    def _consider_pitching_change(self, force: bool = False) -> None:
+    def _consider_pitching_change(
+        self, force: bool = False, inning_start: bool = False
+    ) -> None:
         """Evaluate and possibly make a pitching change. Called mid-inning and between innings.
         If force=True (e.g. pitcher just got injured), skip the probability roll and change immediately.
         """
@@ -1103,6 +1123,7 @@ class Game:
                 self.inning,
                 self.score_differential,
                 profile_of(self.pitch_team),
+                inning_start=inning_start,
             )
             if not force
             else 1.0

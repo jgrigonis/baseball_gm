@@ -11,9 +11,9 @@ in-play modifiers, check it with scripts/league_stat_check.py.
 """
 
 # Pitch outcome weights
-BALL_PROB = 15700
+BALL_PROB = 15900
 FOUL_PROB = 6400
-HOME_RUN_PROB = 322
+HOME_RUN_PROB = 338
 HBP_PROB = 130
 BALK_PROB = 0
 ILLEGAL_PITCH_PROB = 0
@@ -28,8 +28,8 @@ SWINGING_STRIKE_PROB = 5950
 # In play outcome weights
 FLY_OUT_PROB = 4440
 GROUND_OUT_PROB = 1740
-SINGLE_PROB = 1490
-DOUBLE_PROB = 445
+SINGLE_PROB = 1525
+DOUBLE_PROB = 465
 TRIPLE_PROB = 55
 DOUBLE_PLAY_PROB = 0
 FIELDERS_CHOICE_PROB = 0
@@ -154,7 +154,18 @@ HNR_SLOW_MOD = 0.2
 HNR_FAVORABLE_COUNT_MOD = 1.3
 
 # Pitcher Change
-PITCH_COUNT_THRESHOLD = 100
+# Bullpen usage, tuned (Nov 2026) so 30-team seasons land near MLB
+# 2023-2025: starters ~5.4 IP and ~87 pitches, ~3.1 relievers a team game
+# at ~1.15 IP each.
+# From this pitch count on, a starter is usually pulled (a "let them work"
+# manager adds to it).
+PITCH_COUNT_THRESHOLD = 85
+# A leading starter with fewer outs than this is pulled less often.
+STARTER_LEAD_OUTS = 15
+STARTER_LEAD_HOOK = 0.6
+# Chance a reliever who has done his inning (two for a long man) sits
+# before the next one starts.
+RELIEVER_INNING_DONE_PROB = 0.9
 CLOSER_ENTRANCE_PROB = 0.92
 
 # Injury/Fatigue
