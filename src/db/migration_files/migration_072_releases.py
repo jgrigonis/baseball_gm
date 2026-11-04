@@ -1,4 +1,4 @@
-# src/db/migration_files/migration_070_releases.py
+# src/db/migration_files/migration_072_releases.py
 """
 Releasing players and signing free agents (src/api/services/free_agents.py).
 
@@ -16,7 +16,7 @@ so the one-deal-per-start-year rule now covers only deals still in force.
 Backfill: deals of players on a 40-man today are guaranteed.
 """
 
-VERSION = 70
+VERSION = 72
 
 
 def upgrade(conn):

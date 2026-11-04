@@ -10,7 +10,7 @@ Uses tables:
 A contract isn't tied to a team: a traded player keeps his deal, and a team's
 payroll is the deals of the players on its roster.
 
-Releases (migration 070): a released deal is no longer his from the season
+Releases (migration 072): a released deal is no longer his from the season
 he's released. A guaranteed one (he's been on the 40-man under it, or he
 signed it as a free agent) stays on the releasing team's payroll as dead
 money for the seasons it had left. A deal that was never guaranteed costs
