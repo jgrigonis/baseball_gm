@@ -47,6 +47,8 @@ def player_panel(
     ctx["max_compare"] = MAX_COMPARE
     # From a trade offer: which players you'd give and which you'd get.
     ctx["sides"] = {**{i: "give" for i in give}, **{i: "get" for i in get}}
+    # Your own players can be released, and free agents signed.
+    ctx["my_team_id"] = gm.get("team_id") if gm and not ctx.get("is_viewer") else None
     return templates.TemplateResponse(
         request, "dashboard/partials/player_panel.html", ctx
     )

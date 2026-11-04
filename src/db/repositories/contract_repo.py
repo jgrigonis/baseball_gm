@@ -9,6 +9,13 @@ Uses tables:
 
 A contract isn't tied to a team: a traded player keeps his deal, and a team's
 payroll is the deals of the players on its roster.
+
+Releases (migration 070): a released deal is no longer his from the season
+he's released. A guaranteed one (he's been on the 40-man under it, or he
+signed it as a free agent) stays on the releasing team's payroll as dead
+money for the seasons it had left. A deal that was never guaranteed costs
+nothing to release, and isn't on the payroll in the first place: only
+guaranteed money is.
 """
 
 from __future__ import annotations
@@ -20,6 +27,11 @@ from src.player.player_value import role_rating
 
 # Statuses that play under a contract: everyone a team holds.
 SIGNED_STATUSES = ("26man", "40man", "minors")
+# Being on the 40-man under a deal guarantees it.
+FORTY_MAN_STATUSES = ("26man", "40man")
+
+# A deal still his in a season: not released, or released after it.
+IN_FORCE = "(c.released_year IS NULL OR c.released_year > %s)"
 
 
 def _years_left(row: dict, year: int) -> int:
@@ -40,6 +52,7 @@ def view(row: dict | None, year: int) -> dict | None:
         "years_left": _years_left(row, year),
         "through": row["start_year"] + row["years"] - 1,
         "pick_number": row.get("pick_number"),
+        "guaranteed": bool(row.get("guaranteed")),
     }
 
 
@@ -66,13 +79,14 @@ class ContractRepository:
         if not ids:
             return {}
         rows = self.conn.execute(
-            """
-            SELECT * FROM player_contracts
-            WHERE player_id = ANY(%s)
-              AND start_year <= %s AND start_year + years > %s
-            ORDER BY start_year
+            f"""
+            SELECT * FROM player_contracts c
+            WHERE c.player_id = ANY(%s)
+              AND c.start_year <= %s AND c.start_year + c.years > %s
+              AND {IN_FORCE}
+            ORDER BY c.start_year
             """,
-            (ids, year, year),
+            (ids, year, year, year),
         ).fetchall()
         return {r["player_id"]: dict(r) for r in rows}
 
@@ -84,30 +98,142 @@ class ContractRepository:
         return [dict(r) for r in rows]
 
     def payroll(self, team_id: str, year: int) -> int:
-        """What the team pays this season: the deals of everyone it holds."""
+        """What the team owes this season: the guaranteed deals of the
+        players it holds, plus dead money for players it released."""
         row = self.conn.execute(
-            """
+            f"""
             SELECT COALESCE(SUM(c.salary), 0) AS total
             FROM team_players tp
             JOIN player_status ps ON ps.player_id = tp.player_id
             JOIN player_contracts c ON c.player_id = tp.player_id
-            WHERE tp.team_id = %s AND ps.status = ANY(%s)
+            WHERE tp.team_id = %s AND ps.status = ANY(%s) AND c.guaranteed
               AND c.start_year <= %s AND c.start_year + c.years > %s
+              AND {IN_FORCE}
             """,
-            (team_id, list(SIGNED_STATUSES), year, year),
+            (team_id, list(SIGNED_STATUSES), year, year, year),
         ).fetchone()
-        return int(row["total"])
+        return int(row["total"]) + self.dead_money(team_id, year)
+
+    def dead_money(self, team_id: str, year: int) -> int:
+        """This season's salary of the guaranteed deals the team released."""
+        return sum(r["salary"] for r in self.dead_money_rows(team_id, year))
+
+    def dead_money_rows(self, team_id: str, year: int) -> list[dict]:
+        """Each released deal the team still pays this season: the player,
+        his salary, and the last season it's owed."""
+        rows = self.conn.execute(
+            """
+            SELECT c.player_id, c.salary, c.start_year + c.years - 1 AS through,
+                   p.first_name, p.last_name
+            FROM player_contracts c
+            JOIN players p ON p.id = c.player_id
+            WHERE c.released_team_id = %s AND c.guaranteed
+              AND c.released_year <= %s AND c.start_year + c.years > %s
+            ORDER BY c.salary DESC
+            """,
+            (team_id, year, year),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def guarantee(self, player_ids) -> None:
+        """Make the deals of any of these players now on a 40-man
+        guaranteed: his newest deal still in force."""
+        ids = list(player_ids)
+        if not ids:
+            return
+        self.conn.execute(
+            """
+            UPDATE player_contracts c SET guaranteed = TRUE
+            FROM player_status ps
+            WHERE ps.player_id = c.player_id AND c.player_id = ANY(%s)
+              AND ps.status = ANY(%s)
+              AND NOT c.guaranteed AND c.released_year IS NULL
+              AND c.start_year = (SELECT MAX(c2.start_year) FROM player_contracts c2
+                                  WHERE c2.player_id = c.player_id
+                                    AND c2.released_year IS NULL)
+            """,
+            (ids, list(FORTY_MAN_STATUSES)),
+        )
+
+    def release(self, player_id: str, team_id: str, year: int) -> dict:
+        """End his deal from this season. Returns what the team still owes:
+        {"salary", "seasons", "total", "through"}, all zero when the deal
+        wasn't guaranteed (or he had none)."""
+        deal = self.active(player_id, year)
+        owed = {"salary": 0, "seasons": 0, "total": 0, "through": None}
+        if deal is None:
+            return owed
+        self.conn.execute(
+            """UPDATE player_contracts
+               SET released_year = %s, released_team_id = %s
+               WHERE id = %s""",
+            (year, team_id, deal["id"]),
+        )
+        if deal["guaranteed"]:
+            seasons = _years_left(deal, year)
+            owed = {
+                "salary": deal["salary"],
+                "seasons": seasons,
+                "total": deal["salary"] * seasons,
+                "through": year + seasons - 1,
+            }
+        return owed
+
+    def release_cost(self, player_id: str, year: int) -> dict:
+        """What releasing him would leave on his team's books, without
+        doing it. Same shape as release()."""
+        deal = self.active(player_id, year)
+        if deal is None or not deal["guaranteed"]:
+            return {"salary": 0, "seasons": 0, "total": 0, "through": None}
+        seasons = _years_left(deal, year)
+        return {
+            "salary": deal["salary"],
+            "seasons": seasons,
+            "total": deal["salary"] * seasons,
+            "through": year + seasons - 1,
+        }
+
+    def sign_free_agent(
+        self, player_id: str, league_id: str, team_id: str, deal: ct.Deal, year: int
+    ) -> None:
+        """A free agent signing: his deal from this season, guaranteed."""
+        self._insert(player_id, league_id, team_id, deal, year, guaranteed=True)
+
+    def last_team(self, player_ids) -> dict[str, str]:
+        """The team each player last had a deal with, if any."""
+        ids = list(player_ids)
+        if not ids:
+            return {}
+        rows = self.conn.execute(
+            """
+            SELECT DISTINCT ON (c.player_id) c.player_id,
+                   COALESCE(c.released_team_id, c.team_id) AS team_id
+            FROM player_contracts c
+            WHERE c.player_id = ANY(%s)
+            ORDER BY c.player_id, c.start_year DESC, c.id DESC
+            """,
+            (ids,),
+        ).fetchall()
+        return {r["player_id"]: r["team_id"] for r in rows if r["team_id"]}
 
     def _insert(
-        self, player_id, league_id, team_id, deal: ct.Deal, start_year, pick=None
+        self,
+        player_id,
+        league_id,
+        team_id,
+        deal: ct.Deal,
+        start_year,
+        pick=None,
+        guaranteed=False,
     ) -> None:
         self.conn.execute(
             """
             INSERT INTO player_contracts (
                 player_id, league_id, team_id, kind, salary, start_year, years,
-                pick_number
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            ON CONFLICT (player_id, start_year) DO NOTHING
+                pick_number, guaranteed
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (player_id, start_year) WHERE released_year IS NULL
+            DO NOTHING
             """,
             (
                 player_id,
@@ -118,6 +244,7 @@ class ContractRepository:
                 start_year,
                 deal.years,
                 pick,
+                guaranteed,
             ),
         )
 
@@ -162,10 +289,11 @@ class ContractRepository:
                   SELECT 1 FROM player_contracts c
                   WHERE c.player_id = tp.player_id
                     AND c.start_year <= %s AND c.start_year + c.years > %s
+                    AND (c.released_year IS NULL OR c.released_year > %s)
               )
             ORDER BY tp.team_id, tp.player_id
             """,
-            (league_id, teams, list(SIGNED_STATUSES), year, year),
+            (league_id, teams, list(SIGNED_STATUSES), year, year, year),
         ).fetchall()
         if not rows:
             return 0
@@ -219,6 +347,8 @@ class ContractRepository:
             self._insert(pid, league_id, r["team_id"], deal, start)
             signed += 1
         happy.request_trades(unhappy_out, year)
+        # Those already on a 40-man have guaranteed deals.
+        self.guarantee([r["player_id"] for r in rows])
         return signed
 
     @staticmethod

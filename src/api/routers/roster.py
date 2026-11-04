@@ -90,6 +90,8 @@ def roster(
             p["salary_text"] = format_salary(deal["salary"]) if deal else None
             p["rookie_deal"] = bool(deal and deal["kind"] == "rookie")
         ctx["payroll_text"] = format_salary(contracts.payroll(team_id, year))
+        dead = contracts.dead_money(team_id, year)
+        ctx["dead_money_text"] = format_salary(dead) if dead else None
     ctx["players"] = players
     return tab_response(request, htmx, "dashboard/partials/roster.html", ctx)
 

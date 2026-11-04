@@ -87,6 +87,45 @@ window.closePlayerPanel = function() {
   const hint = document.getElementById('compare-hint');
   if (hint) hint.remove();
 };
+// Releasing a player and signing a free agent (routers/free_agents.py).
+// Both confirm first, then reload the tab so its lists catch up.
+function reloadTab() {
+  const url = location.pathname + location.search;
+  if (window.htmx) htmx.ajax('GET', url, {target: '#tab-content', swap: 'innerHTML'});
+  else location.reload();
+}
+async function postJson(url) {
+  const r = await fetch(url, {method: 'POST'});
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(body.detail || 'Something went wrong.');
+  return body;
+}
+window.releasePlayer = async function(pid, name) {
+  const base = `/leagues/{{ league_id }}/players/${pid}/release`;
+  let cost;
+  try {
+    const r = await fetch(base);
+    cost = await r.json();
+    if (!r.ok) throw new Error(cost.detail || 'Something went wrong.');
+  } catch (e) { alert(e.message); return; }
+  const owed = cost.total
+    ? `His deal is guaranteed: you'll still owe ${cost.salary_text} a season` +
+      (cost.seasons > 1 ? ` through ${cost.through} (${cost.total_text} in all)` : ` this season`) +
+      `, even after he's gone.`
+    : `His deal isn't guaranteed (he hasn't been on the 40-man), so it costs nothing.`;
+  if (!confirm(`Release ${name}?\n\n${owed}\n\nHe becomes a free agent any team can sign.`)) return;
+  try { await postJson(base); } catch (e) { alert(e.message); return; }
+  closePlayerPanel();
+  reloadTab();
+};
+window.signFreeAgent = async function(pid, name, salary, years) {
+  const term = `${salary} a season for ${years} season${years === 1 ? '' : 's'}`;
+  if (!confirm(`Sign ${name} for ${term}?\n\nThe deal is guaranteed. He joins your organization (minors).`)) return;
+  try { await postJson(`/leagues/{{ league_id }}/free-agents/${pid}/sign`); }
+  catch (e) { alert(e.message); return; }
+  closePlayerPanel();
+  reloadTab();
+};
 window.pinForCompare = function(pid, name) { _pinned = [{id: pid}]; closeAndBrowse(name); };
 window.closeAndBrowse = function(name) {
   document.getElementById('player-panel-mount').innerHTML = '';
@@ -270,8 +309,8 @@ window.closeGamePanel = function() {
 {% if visible_tabs %}
 <nav class="tab-bar" id="tab-bar">
   {% for tab in visible_tabs %}
-  {% set icons = {'draft':'📋','standings':'🏆','power':'⚡','leaders':'📊','roster':'👥','lineup':'✏️','schedule':'📅','stats':'📈','playoffs':'🥇','strategy':'🎛','trades':'🔁','allstar':'★','headlines':'📰'} %}
-  {% set labels = {'draft':'Draft','standings':'Standings','power':'Power','leaders':'Leaders','roster':'Roster','lineup':'Lineup','schedule':'Schedule','stats':'Stats','playoffs':'Playoffs','strategy':'Strategy','trades':'Trades','allstar':'All-Stars','headlines':'News'} %}
+  {% set icons = {'draft':'📋','standings':'🏆','power':'⚡','leaders':'📊','roster':'👥','lineup':'✏️','schedule':'📅','stats':'📈','playoffs':'🥇','strategy':'🎛','trades':'🔁','allstar':'★','headlines':'📰','free-agents':'✍️'} %}
+  {% set labels = {'draft':'Draft','standings':'Standings','power':'Power','leaders':'Leaders','roster':'Roster','lineup':'Lineup','schedule':'Schedule','stats':'Stats','playoffs':'Playoffs','strategy':'Strategy','trades':'Trades','allstar':'All-Stars','headlines':'News','free-agents':'Free Agents'} %}
   {% if tab == 'draft' and draft_complete %}
   <a href="/leagues/{{ league_id }}/draft/results"
      class="tab-link {% if active_tab == 'draft' %}active{% endif %}"

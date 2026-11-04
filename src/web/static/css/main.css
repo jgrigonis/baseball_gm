@@ -989,6 +989,8 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
 .pp-header-actions { margin-left: auto; }
 .pp-action { font-size: 10px; padding: 4px 10px; }
 .pp-action:disabled { opacity: .45; cursor: default; }
+.pp-release { border-color: var(--red); color: var(--red); margin-right: 6px; }
+.pp-sign { border-color: var(--green); color: var(--green); margin-right: 6px; }
 
 .pp-body {
   display: flex;

@@ -256,6 +256,7 @@ class OffseasonPipeline:
             p.id: overall_rating(p.skills, p.throws, p.is_pitcher()) for p in players
         }
         median_ovr = {}
+        fa_floor = {}
         for is_pitcher in (True, False):
             regulars = [
                 ovr[p.id]
@@ -263,6 +264,10 @@ class OffseasonPipeline:
                 if p.is_pitcher() == is_pitcher and statuses[p.id] == "26man"
             ]
             median_ovr[is_pitcher] = statistics.median(regulars) if regulars else 0
+            # A free agent this good could still hold a roster spot.
+            fa_floor[is_pitcher] = (
+                statistics.quantiles(regulars, n=4)[0] if len(regulars) >= 2 else 0
+            )
         league_ops, league_era = league_baselines(
             [
                 s
@@ -278,7 +283,13 @@ class OffseasonPipeline:
         retired = []
         for player in players:
             current_status = statuses[player.id]
-            is_unrostered = current_status in ("prospect", "unassigned", "free_agent")
+            # Free agents good enough to be signed retire like rostered
+            # players; the rest drop out of the pool on the unrostered curve.
+            # Either way a free agent who stops retires, whatever his age.
+            is_free_agent = current_status == "free_agent"
+            is_unrostered = current_status in ("prospect", "unassigned") or (
+                is_free_agent and ovr[player.id] < fa_floor[player.is_pitcher()]
+            )
             stats = season_stats.get(player.id)
             games_played = (
                 max(stats["bat_games_played"], stats["pitch_games_played"])
@@ -318,6 +329,8 @@ class OffseasonPipeline:
                 games_played=games_played,
                 factors=factors,
             )
+            if is_free_agent and status:
+                status = "retired"
             if status in ["retired", "free_agent"]:
                 self.player_status_repo.set_status(player.id, status)
                 row = self.team_repo.get_players_team_from_team_players(player.id)

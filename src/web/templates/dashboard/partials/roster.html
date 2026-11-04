@@ -9,7 +9,7 @@
     <h1 class="page-title">Roster</h1>
     <span id="forty-count" class="page-subtitle" style="margin-left:8px;"></span>
     {% if payroll_text %}<span class="page-subtitle" style="margin-left:12px;"
-          title="This season's salaries for everyone the team holds: 26-man, 40-man and minors">Payroll {{ payroll_text }}</span>{% endif %}
+          title="This season's guaranteed salaries: every deal of a player who's been on the 40-man, plus dead money for players you released. Minors players who've never been up aren't guaranteed.">Payroll {{ payroll_text }}{% if dead_money_text %} <span style="color:var(--red);">({{ dead_money_text }} dead)</span>{% endif %}</span>{% endif %}
     <div class="spacer"></div>
     <span id="save-feedback"
           style="font-family:var(--font-mono);font-size:11px;margin-right:10px;"></span>

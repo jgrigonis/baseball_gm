@@ -28,6 +28,19 @@
    </span>
    <div class="pp-header-actions">
      {% if n == 1 %}
+       {% if my_team_id and player.team_id == my_team_id %}
+       <button class="btn btn-secondary pp-action pp-release"
+               onclick="releasePlayer('{{ player.player_id }}', '{{ player.first_name }} {{ player.last_name }}')"
+               title="Let him go to free agency">
+         Release
+       </button>
+       {% elif my_team_id and player.roster_status == 'free_agent' and player.asking %}
+       <button class="btn btn-secondary pp-action pp-sign"
+               onclick="signFreeAgent('{{ player.player_id }}', '{{ player.first_name }} {{ player.last_name }}', '{{ player.asking.salary_text }}', {{ player.asking.years }})"
+               title="Sign him at his asking price: {{ player.asking.salary_text }} a season for {{ player.asking.years }} season{{ 's' if player.asking.years != 1 }}">
+         Sign · {{ player.asking.salary_text }}
+       </button>
+       {% endif %}
        <button class="btn btn-secondary pp-action"
                onclick="pinForCompare('{{ player.player_id }}', '{{ player.first_name }} {{ player.last_name }}')">
          Compare ↔

@@ -1418,6 +1418,8 @@ CREATE INDEX IF NOT EXISTS idx_season_awards_team ON season_awards(team_id);
 --   one row per deal. It covers seasons start_year .. start_year + years - 1
 --   at salary dollars a season. team_id is the team he signed with; a
 --   traded player keeps his deal. pick_number is set on rookie deals.
+--   One deal in force per player and start year: a unique index made in
+--   migration 070, which leaves released deals out of it.
 CREATE TABLE IF NOT EXISTS player_personality (
     player_id TEXT PRIMARY KEY REFERENCES players(id) ON DELETE CASCADE,
     type      TEXT NOT NULL,       -- public player type (src/player/happiness.py TYPES)
@@ -1453,7 +1455,9 @@ CREATE TABLE IF NOT EXISTS player_contracts (
     years       INTEGER NOT NULL CHECK (years >= 1),
     pick_number INTEGER,
     created_at  TEXT NOT NULL DEFAULT (NOW()),
-    UNIQUE (player_id, start_year)
+    guaranteed  BOOLEAN NOT NULL DEFAULT FALSE,  -- owed in full: been on the 40-man, or a free agent signing (migration 070)
+    released_year    INTEGER,                    -- season a team released him; the deal ends for him then
+    released_team_id TEXT REFERENCES teams(id) ON DELETE SET NULL  -- who still owes the rest, if guaranteed
 );
 CREATE INDEX IF NOT EXISTS idx_player_contracts_league ON player_contracts(league_id);
 CREATE INDEX IF NOT EXISTS idx_player_contracts_team ON player_contracts(team_id);

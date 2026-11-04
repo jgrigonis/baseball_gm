@@ -1,0 +1,152 @@
+{# templates/dashboard/partials/free_agents.html
+  The league's free agents (routers/free_agents.py), best first, with each
+  one's asking price. A GM signs one at that price; the rows match the
+  Roster and Lineup tabs (grades.js).
+#}
+<div class="tab-head">
+  <div class="page-header" style="margin-bottom:0;">
+    <h1 class="page-title">Free Agents</h1>
+    <span class="page-subtitle" style="margin-left:8px;">
+      {{ pool_size }} in the pool{% if pool_size > max_shown %} · best {{ max_shown }} shown{% endif %}
+    </span>
+    {% if can_sign and payroll_text %}
+    <span class="page-subtitle" style="margin-left:12px;" id="fa-minors"
+          title="Signed players join your minors, which hold {{ minors_limit }}">Minors {{ minors_count }}/{{ minors_limit }}</span>
+    <span class="page-subtitle" style="margin-left:12px;"
+          title="Guaranteed salaries this season, plus dead money for players you released">Payroll {{ payroll_text }}</span>
+    {% endif %}
+  </div>
+  {% if players %}
+  <div class="fa-filters">
+    <div class="fa-seg">
+      <button class="fa-seg-btn active" data-type="" onclick="faType(this)">All</button>
+      <button class="fa-seg-btn" data-type="hitter" onclick="faType(this)">Hit</button>
+      <button class="fa-seg-btn" data-type="pitcher" onclick="faType(this)">Pit</button>
+    </div>
+    <select id="fa-pos" onchange="faRender()" style="width:auto;font-size:11px;">
+      <option value="">Any position</option>
+      {% for pos in ['SP','RP','C','1B','2B','3B','SS','LF','CF','RF','DH'] %}<option value="{{ pos }}">{{ pos }}</option>{% endfor %}
+    </select>
+    <select id="fa-sort" onchange="faRender()" style="width:auto;font-size:11px;">
+      <option value="overall">Best first</option>
+      <option value="young">Youngest first</option>
+      <option value="cheap">Cheapest first</option>
+    </select>
+    <input id="fa-q" type="search" placeholder="Name" oninput="faRender()"
+           style="width:120px;font-size:11px;">
+  </div>
+  {% endif %}
+</div>
+
+<div class="tab-body">
+  {% if not players %}
+  <div class="fa-empty">
+    No free agents yet. Players land here when a team releases them, when
+    teams cut down to {{ minors_limit }} minors players after the draft, and when
+    prospects go undrafted.
+  </div>
+  {% else %}
+  <div class="fa-list card" id="fa-list"></div>
+  <div class="fa-empty" id="fa-none" style="display:none;">No one matches.</div>
+  {% endif %}
+</div>
+
+<style>
+.fa-filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.fa-seg { display: flex; border: 1px solid var(--border); }
+.fa-seg-btn {
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: .04em;
+  text-transform: uppercase; padding: 4px 9px;
+  background: var(--bg-2); border: none; border-right: 1px solid var(--border);
+  color: var(--text-dim); cursor: pointer;
+}
+.fa-seg-btn:last-child { border-right: none; }
+.fa-seg-btn:hover { color: var(--text); background: var(--bg-3); }
+.fa-seg-btn.active { color: var(--amber); background: var(--amber-lo); }
+.fa-list { padding: 0; }
+.fa-row {
+  display: grid; grid-template-columns: 28px 36px minmax(0, 1fr) auto;
+  gap: 0 8px; align-items: center; padding: 7px 10px;
+  border-bottom: 1px solid var(--border); cursor: pointer;
+}
+.fa-row:last-child { border-bottom: none; }
+.fa-row:hover { background: var(--bg-3); }
+.fa-ask { font-family: var(--font-mono); font-size: 11px; color: var(--text); text-align: right; white-space: nowrap; }
+.fa-ask small { display: block; color: var(--text-dim); font-size: 10px; }
+.fa-right { display: flex; align-items: center; gap: 10px; }
+.fa-sign { font-size: 10px; padding: 4px 10px; border-color: var(--green); color: var(--green); }
+.fa-empty { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); padding: 12px 0; max-width: 520px; line-height: 1.5; }
+@media (max-width: 700px) {
+  .fa-row { grid-template-columns: 26px 34px minmax(0, 1fr) auto; padding: 8px; }
+  .fa-right { flex-direction: column; align-items: flex-end; gap: 4px; }
+  .fa-sign { font-size: 11px; padding: 6px 11px; }
+  #fa-q { width: 100% !important; }
+}
+</style>
+
+<script>
+(function () {
+const FA = {{ players | tojson }};
+const CAN_SIGN = {{ 'true' if can_sign else 'false' }};
+let faTypeVal = '';
+
+function shown() {
+  const pos = document.getElementById('fa-pos').value;
+  const q = document.getElementById('fa-q').value.trim().toLowerCase();
+  const sort = document.getElementById('fa-sort').value;
+  const list = FA.filter(p =>
+    (!faTypeVal || p.player_type === faTypeVal) &&
+    (!pos || (p.position || '').toUpperCase() === pos) &&
+    (!q || `${p.first_name} ${p.last_name}`.toLowerCase().includes(q)));
+  if (sort === 'young') list.sort((a, b) => a.age - b.age || gradeVal(a.overall) - gradeVal(b.overall));
+  else if (sort === 'cheap') list.sort((a, b) => (a.salary || 0) - (b.salary || 0) || gradeVal(a.overall) - gradeVal(b.overall));
+  return list;  // the server sends them best first
+}
+
+function row(p) {
+  const el = document.createElement('div');
+  el.className = 'fa-row';
+  const isPitcher = p.player_type === 'pitcher';
+  const trail = [p.position || '?', `${p.bats}/${p.throws}`, `Age ${p.age}`];
+  if (p.last_team) trail.push(`<span title="His last team">ex-${p.last_team}</span>`);
+  const years = p.ask_years ? `${p.ask_years} yr${p.ask_years === 1 ? '' : 's'}` : '';
+  const sign = CAN_SIGN && p.salary_text
+    ? `<button class="btn btn-secondary fa-sign" title="Sign him at his asking price">Sign</button>` : '';
+  el.innerHTML = `
+    <span class="${gradeClass(p.overall)} lu-grade">${p.overall}</span>
+    ${faceImgHtml(p, false)}
+    <div style="min-width:0;">
+      <div class="lu-name">${p.first_name} ${p.last_name}${nameTrailHtml(p, trail, '')}</div>
+      ${isPitcher ? `<div class="lu-skills">${pitcherGradesHtml(p)}</div>` : hitterGradesHtml(p, null)}
+    </div>
+    <div class="fa-right">
+      ${p.salary_text ? `<div class="fa-ask" title="His asking price: a season, and how many seasons">${p.salary_text}<small>${years}</small></div>` : ''}
+      ${sign}
+    </div>`;
+  el.addEventListener('click', e => {
+    if (e.target.closest('.fa-sign')) {
+      signFreeAgent(p.player_id, `${p.first_name} ${p.last_name}`, p.salary_text, p.ask_years);
+      return;
+    }
+    openPlayerPanel(p.player_id);
+  });
+  return el;
+}
+
+function faRender() {
+  const box = document.getElementById('fa-list');
+  if (!box) return;
+  const list = shown();
+  box.replaceChildren(...list.map(row));
+  box.style.display = list.length ? '' : 'none';
+  document.getElementById('fa-none').style.display = list.length ? 'none' : '';
+}
+window.faRender = faRender;
+window.faType = function (btn) {
+  faTypeVal = btn.dataset.type;
+  btn.parentElement.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+  faRender();
+};
+faRender();
+})();
+</script>
