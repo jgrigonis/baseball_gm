@@ -1113,6 +1113,19 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
   color: var(--text-dim); margin-top: 2px;
 }
 .pd-contract-rookie { color: var(--text); }
+/* Player happiness: public type, mood word, what's on his mind */
+.pd-mood {
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--text-dim); margin-top: 2px;
+}
+.pd-mood-type { color: var(--text); cursor: help; }
+.pd-mood-word.mood-thrilled, .pd-mood-word.mood-happy { color: var(--green); }
+.pd-mood-word.mood-restless { color: #f5c518; }
+.pd-mood-word.mood-unhappy, .pd-mood-word.mood-miserable { color: var(--red); }
+.pd-mood-lines { font-style: italic; margin-top: 1px; }
+.pd-mood-admin summary { cursor: pointer; }
+.pd-mood-admin table { border-collapse: collapse; margin-top: 2px; }
+.pd-mood-admin th, .pd-mood-admin td { padding: 0 6px 0 0; text-align: left; }
 .pd-overall {
   font-family: var(--font-mono); font-size: 22px;
   font-weight: 600; line-height: 1;

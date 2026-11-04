@@ -18,6 +18,8 @@ from src.api.view_models.player_cards import (
 from src.db.repositories.all_star_repo import AllStarRepository
 from src.db.repositories import contract_repo
 from src.db.repositories.contract_repo import ContractRepository
+from src.db.repositories.happiness_repo import HappinessRepository
+from src.player import happiness as hp
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.jersey_repo import JerseyRepository
 from src.db.repositories.league_repo import LeagueRepository
@@ -58,6 +60,40 @@ def _contract(db, league_id: str, pid: str) -> dict | None:
     if year is None:
         return None
     return contract_repo.view(repo.active(pid, year), year)
+
+
+def _happiness(db, league_id: str, pid: str) -> dict | None:
+    """His public type and mood word, what's on his mind, and (for admins)
+    the numbers behind it (src/player/happiness.py)."""
+    repo = HappinessRepository(db, league_id)
+    pers = repo.personalities([pid]).get(pid)
+    if pers is None:
+        return None
+    row = repo.mood(pid)
+    detail = (row or {}).get("detail") or {}
+    drives = detail.get("drives") or {}
+    return {
+        "type": pers.type,
+        "blurb": hp.TYPES.get(pers.type, {}).get("blurb", ""),
+        "mood": hp.mood_word(row["mood"]) if row else None,
+        "lines": detail.get("lines") or [],
+        "admin": {
+            "mood": round(row["mood"], 2) if row else None,
+            "target": round(row["target"], 2) if row else None,
+            "updated_on": row["updated_on"] if row else None,
+            "traits": pers.traits,
+            "climate": pers.climate,
+            "drives": [
+                {
+                    "drive": d,
+                    "weight": pers.drives.get(d, 0),
+                    "sat": drives.get(d, [None])[0],
+                    "why": drives.get(d, [None, ""])[1],
+                }
+                for d in hp.DRIVES
+            ],
+        },
+    }
 
 
 def player_panel_data(
@@ -212,6 +248,7 @@ def player_panel_data(
         ),
         "contract": _contract(db, league_id, pid),
         "home_region": p.get("home_region"),
+        "happiness": _happiness(db, league_id, pid),
         "grades": grade_map,
         "overall_grade": overall_grade,
         "overall_value": round(overall_value) if overall_value is not None else None,

@@ -15,7 +15,11 @@ Uses tables:
 """
 
 import datetime
+
+from psycopg.types.json import Jsonb
+
 from src.db.repositories.player_status_repo import PlayerStatusRepository
+from src.player.happiness import personality_for
 from src.player.home_region import home_region_for
 from src.player.jersey_numbers import prefs_for
 from src.player.player_record import PlayerRecord
@@ -90,6 +94,17 @@ class PlayerRepository:
                 prefs_for(id),
                 home_region_for(id),
             ),
+        )
+
+        # His personality (src/player/happiness.py), drawn from his id.
+        pers = personality_for(id)
+        self.conn.execute(
+            """
+            INSERT INTO player_personality (player_id, type, drives, traits, climate)
+            VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT DO NOTHING
+            """,
+            (id, pers.type, Jsonb(pers.drives), Jsonb(pers.traits), pers.climate),
         )
 
         # Insert or update skills

@@ -14,6 +14,7 @@ from src.db.repositories.bullpen_roles_repo import BullpenRepository
 from src.db.repositories.game_lineup_repo import LineupRepository
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.gm_repo import GMRepository
+from src.db.repositories.happiness_repo import HappinessRepository
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.lineup_preference_repo import LineupPreferenceRepository
@@ -456,6 +457,19 @@ def _resolve_returns(conn, league_id: str, game_info: dict) -> None:
     InjuryRepository(conn, league_id=league_id).resolve_returns(as_of=tomorrow)
 
 
+def _update_moods(conn, league_id: str, season_id: str, game_info: dict) -> None:
+    """Once a league week, move every player's mood toward what his
+    situation points to (src/db/repositories/happiness_repo.py). Uses no
+    randomness, so the game's seeded rng plays out the same."""
+    row = conn.execute(
+        "SELECT game_date FROM games WHERE id = %s", (game_info["game_id"],)
+    ).fetchone()
+    if not row or not row["game_date"]:
+        return
+    day = datetime.fromisoformat(str(row["game_date"])[:10]).date()
+    HappinessRepository(conn, league_id).update_if_due(season_id, day)
+
+
 def _play_game(
     conn,
     args,
@@ -475,6 +489,7 @@ def _play_game(
     # anyone's skills are loaded: the first game of each day does it for the
     # whole league, so it's in place when the GMs see who's back.
     _resolve_returns(conn, league_id, game_info)
+    _update_moods(conn, league_id, season_id, game_info)
 
     home_record = team_repo.get(game_info["home_team_id"])
     away_record = team_repo.get(game_info["away_team_id"])

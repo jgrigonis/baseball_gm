@@ -33,6 +33,24 @@
      · thru {{ c.through }}{% if c.kind == 'rookie' %} · <span class="pd-contract-rookie">rookie deal</span>{% endif %}
    </div>
    {% endif %}
+   {% if player.happiness %}{% set h = player.happiness %}
+   <div class="pd-mood">
+     <span class="pd-mood-type" title="{{ h.blurb }}">{{ h.type }}</span>{% if h.mood %} · <span class="pd-mood-word mood-{{ h.mood }}"
+       {% if is_admin %}title="mood {{ h.admin.mood }} → target {{ h.admin.target }} (as of {{ h.admin.updated_on }})"{% endif %}>{{ h.mood }}</span>{% endif %}
+     {% if h.lines %}<div class="pd-mood-lines">{{ h.lines | join(' ') }}</div>{% endif %}
+     {% if is_admin %}
+     <details class="pd-mood-admin"><summary>Happiness (admin)</summary>
+       <div>ego {{ h.admin.traits.ego }} · temper {{ h.admin.traits.temper }} · loyalty {{ h.admin.traits.loyalty }}{% if h.admin.climate %} · likes {{ h.admin.climate }}{% endif %}</div>
+       <table>
+         <tr><th>Drive</th><th>Weight</th><th>Sat</th><th>Why</th></tr>
+         {% for d in h.admin.drives %}
+         <tr><td>{{ d.drive }}</td><td>{{ d.weight }}</td><td>{{ '%+.2f' % d.sat if d.sat is not none else '—' }}</td><td>{{ d.why }}</td></tr>
+         {% endfor %}
+       </table>
+     </details>
+     {% endif %}
+   </div>
+   {% endif %}
    {% if is_admin %}<div class="admin-id" title="player_id">{{ player.player_id }}</div>{% endif %}
   </div>
  </div>
