@@ -654,11 +654,12 @@ def test_hurt_all_stars_and_reserves_on_the_tab(client, lg):
     assert "Pick 1 of 23" in html
 
 
-def test_the_date_shows_the_all_star_game_until_it_is_played(lg):
+def test_the_date_shows_the_all_star_weekend_until_it_is_played(lg):
     from src.web.utils import _current_league_date
 
     _count(lg, lg.mine)
-    assert _current_league_date(lg.db, lg.season.id, "season") == "2025-04-23"
+    # No Rookie Game in this league, so the weekend starts with the derby.
+    assert _current_league_date(lg.db, lg.season.id, "season") == "2025-04-22"
     assert (
         _current_league_date(lg.db, lg.season.id, "season", all_star_game=False)
         == AFTER[0]
@@ -753,6 +754,23 @@ def test_the_rookies_are_picked_with_the_all_stars(lg):
     assert g["game_date"] == "2025-04-21"
     assert len(_picks(repo, lg)) == 1
     assert all_star.my_turn(lg.db, lg.league.id, lg.season.id, lg.mine.id)
+
+
+def test_the_league_date_is_the_weekends_next_event(lg):
+    """The break stops on the Rookie Game's day, then the derby's, then the
+    All-Star Game's, so the weekend reads in order."""
+    from src.api.services import hr_derby
+
+    repo, _ = _count_rookies(lg)
+    resumes = AFTER[0]
+    assert all_star.game_day(lg.db, lg.season.id, resumes) == "2025-04-21"
+    lg.db.execute(
+        f"UPDATE {repo.games} SET state = 'played' WHERE season_id = %s",
+        (lg.season.id,),
+    )
+    assert all_star.game_day(lg.db, lg.season.id, resumes) == "2025-04-22"
+    hr_derby.play(lg.db, lg.league.id, lg.season.id, random.Random(5))
+    assert all_star.game_day(lg.db, lg.season.id, resumes) == "2025-04-23"
 
 
 def test_drafting_rookies_on_the_tab(client, lg):
