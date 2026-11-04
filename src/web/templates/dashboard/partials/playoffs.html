@@ -86,7 +86,10 @@
    scroll. The !importants beat the bracket's inline sizes. */
 @media (max-width: 700px) {
   .po-wrap { padding: 12px 16px 24px !important; overflow: visible !important; }
-  .po-bracket { display: block !important; min-width: 0 !important; }
+  /* Newest round on top: Finals, then Semifinals, then Round 1 at the
+     bottom. A round shows only once its games exist. */
+  .po-bracket { display: flex !important; flex-direction: column-reverse; min-width: 0 !important; }
+  .po-round.not-started { display: none !important; }
   .po-lines, .po-gap { display: none !important; }
   .po-round { height: auto !important; width: auto !important; gap: 10px; margin-bottom: 22px; }
   .po-round .round-label {
@@ -143,6 +146,10 @@
 </div>
 {% else %}
 
+{# A round has started once any of its series has games scheduled. Phones
+   hide rounds that haven't (Round 1 always shows). #}
+{% macro round_class(rd) %}{% if not (rd.series | selectattr('teams') | map(attribute='teams') | map('first') | rejectattr('pending') | list) %} not-started{% endif %}{% endmacro %}
+
 {# ── Bracket ───────────────────────────────────────────────────────────────── #}
 {# Fixed dims: card 220px, connector 32px, height 560px                        #}
 {# R1 centers (space-around, 4 cards): 70, 210, 350, 490                        #}
@@ -182,10 +189,10 @@
   <div class="po-gap" style="width:32px;flex-shrink:0;"></div>
 
   {# ── Semifinals ───────────────────────────────────────────────────────────── #}
-  <div class="po-round" style="display:flex;flex-direction:column;justify-content:space-around;
+  {% set r2 = bracket[1] %}
+  <div class="po-round{{ round_class(r2) }}" style="display:flex;flex-direction:column;justify-content:space-around;
               height:560px;width:220px;flex-shrink:0;">
     <div class="round-label" style="position:absolute;top:-20px;left:252px;width:220px;">Semifinals</div>
-    {% set r2 = bracket[1] %}
     {% for s in r2.series %}{{ series_card(s, my_team_id) }}{% endfor %}
   </div>
 
@@ -193,10 +200,10 @@
   <div class="po-gap" style="width:32px;flex-shrink:0;"></div>
 
   {# ── Finals ────────────────────────────────────────────────────────────────── #}
-  <div class="po-round" style="display:flex;flex-direction:column;justify-content:center;
+  {% set r3 = bracket[2] %}
+  <div class="po-round{{ round_class(r3) }}" style="display:flex;flex-direction:column;justify-content:center;
               height:560px;width:220px;flex-shrink:0;">
     <div class="round-label" style="position:absolute;top:-20px;left:504px;width:220px;">Finals</div>
-    {% set r3 = bracket[2] %}
     {% set s = r3.series[0] %}
     {{ series_card(s, my_team_id) }}
   </div>
