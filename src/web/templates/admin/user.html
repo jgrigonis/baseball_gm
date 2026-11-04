@@ -22,7 +22,7 @@
         <label>Email address</label>
         <input name="email" type="email" value="{{ email if email is defined else (account.email or '') }}" placeholder="none">
         {% if email_error %}<span style="{{ err_style }}">{{ email_error }}</span>{% endif %}
-        <span class="hint">Leave it blank to clear it.</span>
+        <span class="hint">{% if account.email %}{% if account.is_verified %}✅ Verified. {% else %}Not verified. {% endif %}{% endif %}Leave it blank to clear it. A different address is no longer verified.</span>
       </div>
       <div class="wide"><button type="submit" class="btn btn-primary">Save Email</button></div>
     </form>

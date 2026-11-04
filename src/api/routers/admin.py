@@ -19,7 +19,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from src.api.dependencies import DB, Admin
 from src.api.routers.leagues import state_label
 from src.api.services import admin as admin_service
-from src.api.services import badges
+from src.api.services import badges, email_verify
 from src.api.services.passwords import clean_email, password_error, username_error
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.persona_repo import PersonaRepository
@@ -279,7 +279,8 @@ def set_email(
         return _user_page(
             request, db, user, user_id, 400, email_error=error, email=email
         )
-    UserRepository(db).set_email(user_id, clean)
+    if UserRepository(db).set_email(user_id, clean):
+        email_verify.email_changed(db, user_id)
     badges.award(db, user_id)  # Email on File
     db.commit()
     return _done(f"/admin/users/{user_id}", "email")

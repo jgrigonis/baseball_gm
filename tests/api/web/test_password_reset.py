@@ -281,7 +281,8 @@ class TestAccount:
         email = f"{name}@example.com"
         r = client.post("/account/email", data={"current": PASSWORD, "email": email})
         assert r.status_code == 303
-        assert r.headers["location"] == "/account?saved=email"
+        # A new email also gets a verify link (test_email_verify.py).
+        assert r.headers["location"] == "/account?saved=email_sent"
         assert (
             db_conn.execute(
                 "SELECT email FROM users WHERE username = %s", (name,)
@@ -291,7 +292,8 @@ class TestAccount:
 
         client.cookies.clear()
         _forgot(client, name)
-        assert outbox[0][0] == email
+        assert outbox[-1][0] == email
+        assert "Reset" in outbox[-1][1]
 
     def test_turn_emails_toggle(self, client, db_conn):
         name = self._signed_in(client)
