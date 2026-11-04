@@ -1,13 +1,13 @@
 {# templates/dashboard/partials/retirement.html #}
 {# ── Retirement Screen ─────────────────────────────────────────────────────── #}
 
-<div style="position:sticky;top:0;z-index:10;background:var(--bg);
+<div class="ret-head" style="position:sticky;top:0;z-index:10;background:var(--bg);
             padding:12px 24px;border-bottom:1px solid var(--border);">
-  <div style="display:flex;align-items:center;gap:16px;">
+  <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;">
     <h1 class="page-title">Retirements</h1>
     <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim);">
-      {{ retired_players | length }} player{{ 's' if retired_players | length != 1 else '' }} retired
-      {% if history_season %}after the {{ history_season.year }} season{% else %}this offseason{% endif %} · career regular-season stats
+      {{ retired_players | length }}<span class="phone-hide"> player{{ 's' if retired_players | length != 1 else '' }}</span> retired<span class="phone-hide">
+      {% if history_season %}after the {{ history_season.year }} season{% else %}this offseason{% endif %} · career regular-season stats</span>
     </span>
     {% if history_season %}
     <div style="margin-left:auto;">
@@ -16,8 +16,8 @@
     {% elif not is_viewer %}
     <div style="margin-left:auto;">
       <a href="/leagues/{{ league_id }}/draft"
-         class="btn btn-primary" style="padding:6px 18px;">
-        Continue to Draft →
+         class="btn btn-primary ret-draft-btn" style="padding:6px 18px;white-space:nowrap;">
+        <span class="phone-hide">Continue to </span>Draft →
       </a>
     </div>
     {% endif %}
@@ -145,6 +145,12 @@
   font-family:var(--font-mono);font-size:12px;color:var(--text-dim);text-decoration:none;
 }
 .history-back:hover { color:var(--amber); }
+/* Phones: the usual 16px gutter and a slimmer Draft button, so the title,
+   count and button share a row. */
+@media (max-width: 700px) {
+  .ret-head { padding-left:16px !important;padding-right:16px !important; }
+  .ret-draft-btn { padding:6px 10px !important; }
+}
 </style>
 
 <script>

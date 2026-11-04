@@ -159,29 +159,6 @@
   </div>
   {% endif %}
 
-  {# Begin Offseason / continue to draft #}
-  {% if league_state == 'offseason' and not multiplayer and not is_viewer %}
-  <div style="text-align:center;margin-bottom:32px;">
-    <button id="begin-offseason-btn" onclick="beginOffseason()"
-            class="btn btn-primary" style="padding:10px 32px;font-size:14px;">
-      Begin Offseason →
-    </button>
-    <div id="offseason-status" style="font-family:var(--font-mono);font-size:11px;
-                                       color:var(--text-dim);margin-top:12px;"></div>
-  </div>
-  {% elif league_state == 'complete' %}
-  <div style="text-align:center;font-family:var(--font-mono);font-size:13px;color:var(--amber);margin-bottom:32px;">
-    That was the league's final season. The league is complete.
-  </div>
-  {% elif league_state == 'draft' %}
-  <div style="text-align:center;margin-bottom:32px;">
-    <a href="/leagues/{{ league_id }}/retirement"
-       class="btn btn-primary" style="padding:10px 32px;font-size:14px;">
-      View Retirements →
-    </a>
-  </div>
-  {% endif %}
-
   <div class="ss-two-col">
 
     {# Final standings #}
@@ -385,6 +362,29 @@
   </div>
   {% endif %}
 
+  {# Footer: Begin Offseason / continue to draft, after everything else #}
+  {% if league_state == 'offseason' and not multiplayer and not is_viewer %}
+  <div class="ss-footer">
+    <button id="begin-offseason-btn" onclick="beginOffseason()"
+            class="btn btn-primary" style="padding:10px 32px;font-size:14px;">
+      Begin Offseason →
+    </button>
+    <div id="offseason-status" style="font-family:var(--font-mono);font-size:11px;
+                                       color:var(--text-dim);margin-top:12px;"></div>
+  </div>
+  {% elif league_state == 'complete' %}
+  <div class="ss-footer" style="font-family:var(--font-mono);font-size:13px;color:var(--amber);">
+    That was the league's final season. The league is complete.
+  </div>
+  {% elif league_state == 'draft' %}
+  <div class="ss-footer">
+    <a href="/leagues/{{ league_id }}/retirement"
+       class="btn btn-primary" style="padding:10px 32px;font-size:14px;">
+      View Retirements →
+    </a>
+  </div>
+  {% endif %}
+
 </div>
 
 <style>
@@ -445,6 +445,7 @@
   padding:6px 12px;border-top:1px solid var(--border);
 }
 .ss-draft { display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));margin-bottom:24px; }
+.ss-footer { text-align:center;margin-top:8px;padding:24px 0 8px;border-top:1px solid var(--border); }
 .ss-ellipsis { white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
 .ss-inj-table { width:100%;table-layout:fixed; }
 .ss-inj-table th { cursor:pointer;user-select:none;white-space:nowrap; }
