@@ -90,6 +90,7 @@
         </select>
       </div>
       <label class="admin-check"><input type="checkbox" name="is_public" value="true" {% if league.is_public %}checked{% endif %}> Public league</label>
+      <label class="admin-check"><input type="checkbox" name="late_joins" value="true" {% if league.late_joins %}checked{% endif %}> Late joiners (take over AI teams between seasons)</label>
       <label class="admin-check"><input type="checkbox" name="reentry_enabled" value="true" {% if league.reentry_enabled %}checked{% endif %}> Re-entry enabled</label>
       <div class="wide">
         <span class="hint admin-dim" style="font-size:10px;">Changing the pace or a window starts the current period's window over.</span>

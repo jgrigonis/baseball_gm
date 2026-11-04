@@ -683,6 +683,9 @@ a.topbar-team:hover strong { text-decoration: underline; text-underline-offset: 
 /* A league setting that has no effect right now, e.g. the timer windows in a
    league with one human GM (_league_settings_rows.html). */
 .data-table .setting-off td:last-child { color: var(--text-dim); opacity: .6; }
+/* The commissioner's button beside an editable setting (_league_settings_rows.html). */
+.data-table .setting-edit { display: inline; margin-left: 8px; }
+.data-table .setting-edit .btn { font-size: 10px; padding: 2px 8px; }
 .data-table .human-team td.team-name { color: var(--sky); }
 .data-table .divider-row td {
   padding: 4px 12px;

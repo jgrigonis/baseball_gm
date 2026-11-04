@@ -88,11 +88,12 @@ class TestCompleteLeagueIsReadOnly:
         ]
         # Leaving stays open so GMs can clear a finished league off their
         # list; starting, joining, rerolling an AI GM and picking a team need
-        # the lobby anyway.
+        # the lobby anyway, and taking over a team checks for between seasons.
         exempt = {
             "/leagues/{league_id}/leave",
             "/leagues/{league_id}/start",
             "/leagues/{league_id}/join",
+            "/leagues/{league_id}/take-over",
             "/leagues/{league_id}/lobby/gms/{ai_gm_id}/reroll",
             "/leagues/{league_id}/lobby/team",
         }

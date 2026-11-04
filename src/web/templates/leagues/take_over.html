@@ -1,0 +1,65 @@
+{# templates/leagues/take_over.html
+   Joining a league that has started: pick a team an AI GM runs and take it
+   over (src/api/services/takeover.py). Open between seasons only. Reached
+   from a join code or a public league's Join button. #}
+{% extends "base.html" %}
+{% block title %}Take Over a Team — Baseball GM{% endblock %}
+{% block main %}
+<div class="page-content"><div class="content-inner" style="max-width:640px;">
+  <div class="page-header"><h1 class="page-title">Join {{ league.name }}</h1></div>
+
+  {% if closed %}
+    <div role="alert" class="takeover-note">{{ closed }}</div>
+    <a href="/leagues/" class="btn btn-secondary">Back to Leagues</a>
+  {% else %}
+    <p class="takeover-note">
+      This league has already started, so you'd take over a team an AI GM runs.
+      It keeps its players, contracts and draft picks. Your record starts with
+      the {{ joined_year }} season.
+    </p>
+    {% if error %}<div role="alert" class="takeover-note" style="color:var(--red);">{{ error }}</div>{% endif %}
+    <div class="card">
+      <div class="card-header"><span class="card-title">Teams you can take over ({{ teams | length }})</span></div>
+      <div class="card-body table-scroll">
+        <table class="data-table">
+          <thead><tr><th>Team</th><th class="wide-only">AI GM</th><th>Last season</th><th></th></tr></thead>
+          <tbody>
+            {% for t in teams %}
+            <tr>
+              <td class="team-name">
+                <span class="takeover-team">{{ team_badge(t.city, t.mascot) }}<span>{{ t.city }} {{ t.mascot }}</span></span>
+              </td>
+              <td class="wide-only" style="color:var(--text-dim);">
+                {{ t.display_name }}{% if t.archetype %}<div class="takeover-dim">{{ t.archetype }}</div>{% endif %}
+              </td>
+              <td style="font-family:var(--font-mono);color:var(--text-dim);">
+                {% if t.last_wl %}{{ t.last_wl.w }}-{{ t.last_wl.l }}{% else %}—{% endif %}
+              </td>
+              <td style="text-align:right;">
+                <form method="POST" action="/leagues/{{ league.id }}/take-over" style="display:inline;">
+                  <input type="hidden" name="team_id" value="{{ t.team_id }}">
+                  <input type="hidden" name="code" value="{{ code }}">
+                  <button type="submit" class="btn btn-primary" style="font-size:10px;padding:4px 10px;"
+                          data-confirm="Take over the {{ t.city }} {{ t.mascot }}? {{ t.display_name }} steps aside and the team is yours.">Take over</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div style="margin-top:16px;"><a href="/leagues/" class="btn btn-secondary">Cancel</a></div>
+  {% endif %}
+</div></div>
+<style>
+.takeover-note { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); line-height: 1.6; margin: 0 0 16px; }
+.takeover-dim { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); }
+.takeover-team { display: inline-flex; align-items: center; gap: 8px; }
+</style>
+<script>
+document.querySelectorAll("button[data-confirm]").forEach(b => b.addEventListener("click", e => {
+  if (!confirm(b.dataset.confirm)) e.preventDefault();
+}));
+</script>
+{% endblock %}

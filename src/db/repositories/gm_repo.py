@@ -106,6 +106,22 @@ class GMRepository:
         )
         self.conn.execute("DELETE FROM gm_notifications WHERE gm_id = %s", (gm_id,))
 
+    def take_over_team(
+        self, gm_id: str, user_id: str, display_name: str, joined_year: int
+    ) -> None:
+        """Turn an AI GM into a person who has taken over its team: the
+        reverse of hand_team_to_ai. They start out like someone new to the
+        league, so they get the welcome screen and the getting-started bar."""
+        self.conn.execute(
+            """UPDATE gms SET is_ai = FALSE, user_id = %s, display_name = %s,
+                   persona_id = NULL, is_away = FALSE, ready_period = NULL,
+                   welcomed_at = NULL, welcomed_season_id = NULL,
+                   roster_saved_at = NULL,
+                   seen_at = NULL, alerted_at = NULL, joined_year = %s
+               WHERE id = %s AND is_ai""",
+            (user_id, display_name, joined_year, gm_id),
+        )
+
     def has_people(self, league_id: str, besides_gm_id: str | None = None) -> bool:
         """Whether any person can still open the league, fired GMs included,
         not counting `besides_gm_id`."""
@@ -156,7 +172,7 @@ class GMRepository:
         leagues never show here, even if an admin made one public."""
         rows = self.conn.execute(
             """SELECT l.id, l.name, l.state, l.mode, l.created_at,
-                      l.last_played_at,
+                      l.last_played_at, l.late_joins, l.is_practice,
                       MAX(s.year) as current_year,
                       COUNT(DISTINCT ls.season_id) FILTER (WHERE NOT s.is_backstory)
                           as season_number,
@@ -168,7 +184,8 @@ class GMRepository:
             WHERE l.is_public AND NOT l.is_practice
               AND NOT EXISTS (SELECT 1 FROM gms m
                               WHERE m.league_id = l.id AND m.user_id = %s)
-            GROUP BY l.id, l.name, l.state, l.mode, l.created_at, l.last_played_at
+            GROUP BY l.id, l.name, l.state, l.mode, l.created_at, l.last_played_at,
+                     l.late_joins, l.is_practice
             ORDER BY (l.state = 'lobby') DESC, (l.state = 'complete'),
                      l.created_at DESC""",
             (user_id,),

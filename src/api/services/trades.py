@@ -796,13 +796,19 @@ def _expire(conn, league_id: str, offer: dict) -> None:
     )
 
 
-def team_leaving(conn, league_id: str, team_id: str, gm_id: str) -> None:
-    """A GM is leaving the league (their team goes to the AI): call off their
-    open offers, and take them off the league's votes. Run under the league
-    lock."""
+def team_leaving(
+    conn,
+    league_id: str,
+    team_id: str,
+    gm_id: str,
+    reason: str = "a GM left the league.",
+) -> None:
+    """A GM is leaving the league (their team goes to the AI), or a person
+    is taking over an AI GM's team: call off the team's open offers, and take
+    the GM off the league's votes. Run under the league lock."""
     trade_repo = TradeRepository(conn)
     for offer_id in trade_repo.open_offers_for_team(league_id, team_id):
-        _void(conn, league_id, trade_repo.get(offer_id), "a GM left the league.")
+        _void(conn, league_id, trade_repo.get(offer_id), reason)
     for offer_id in trade_repo.drop_voter(gm_id):
         _settle_vote(conn, league_id, trade_repo.get(offer_id), final=False)
 
