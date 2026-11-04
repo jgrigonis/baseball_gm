@@ -26,6 +26,22 @@ COMMAND_BALLS = 25
 COMMAND_STRIKES = 15
 COMMAND_HOME_RUNS = 0.015
 
+# A typical league hitter's contact, power and eye (plate-appearance
+# weighted, in league play). The bat terms below are widened around these
+# by BAT_SPREAD, so good hitters pull further from bad ones without moving
+# league scoring: before, +10 contact was only +.019 OPS and lineups
+# separated teams half as much as pitching and defense did.
+TYPICAL_CONTACT = 63
+TYPICAL_POWER = 59
+TYPICAL_EYE = 62
+BAT_SPREAD = 2.0
+
+
+def bat_term(skill: float, typical: float) -> float:
+    """A batting skill's distance from 50, widened by BAT_SPREAD around a
+    typical hitter."""
+    return (skill - 50) + (BAT_SPREAD - 1) * (skill - typical)
+
 
 def multiply_strikes(resolver, factor: float) -> None:
     """Scale both kinds of strike by the same factor."""
@@ -162,25 +178,29 @@ class PitchModifiers:
         # Strike weight split: eye mostly cuts chases (swinging strikes),
         # contact cuts whiffs, power hitters swing through more pitches.
         eye = batter.get_effective_stat(batter.skills["eye"])
-        add_strikes(resolver, -21 * (eye - 50), called_share=0.25)
-        resolver.pitch_outcome.add("foul", 8 * (eye - 50))
-        resolver.pitch_outcome.add("ball", 12 * (eye - 50))
+        eye_term = bat_term(eye, TYPICAL_EYE)
+        add_strikes(resolver, -21 * eye_term, called_share=0.25)
+        resolver.pitch_outcome.add("foul", 8 * eye_term)
+        resolver.pitch_outcome.add("ball", 12 * eye_term)
         if eye > 75:
             elite_bonus = (eye - 75) ** 1.6
             resolver.pitch_outcome.add("ball", int(6 * elite_bonus))
             add_strikes(resolver, int(-9.0 * elite_bonus), called_share=0.25)
 
         contact = batter.get_effective_stat(batter.skills["contact"])
-        add_strikes(resolver, -19 * (contact - 50), called_share=0.1)
-        resolver.pitch_outcome.add("foul", int(2 * (contact - 50)))
-        resolver.pitch_outcome.add("in_play", int(3.6 * (contact - 50)))
+        contact_term = bat_term(contact, TYPICAL_CONTACT)
+        add_strikes(resolver, -19 * contact_term, called_share=0.1)
+        resolver.pitch_outcome.add("foul", int(2 * contact_term))
+        resolver.pitch_outcome.add("in_play", int(3.6 * contact_term))
         if contact > 75:
             elite_bonus = (contact - 75) ** 1.6
             resolver.pitch_outcome.add("in_play", int(3.5 * elite_bonus))
             add_strikes(resolver, int(-11.5 * elite_bonus), called_share=0.1)
 
         power = batter.get_effective_stat(batter.skills["power"])
-        resolver.pitch_outcome.add("home_run", int(3.1 * (power - 50)))
+        resolver.pitch_outcome.add(
+            "home_run", int(3.1 * bat_term(power, TYPICAL_POWER))
+        )
         if power > 75:
             elite_bonus = (power - 75) ** 1.6
             resolver.pitch_outcome.add("home_run", int(0.6 * elite_bonus))

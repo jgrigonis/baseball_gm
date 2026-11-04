@@ -386,3 +386,5 @@ def test_power_rankings_lean_on_paper_early(client, db_conn, factory, league):
     assert "Ranked 97% on roster strength" in html
     assert html.index("Beans") < html.index("Wind")
     assert "Run diff" in html
+    # Run diff, the three areas, L10 and the rank sort on click
+    assert html.count('onclick="prSort(this)"') >= 6
