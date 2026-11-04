@@ -1,4 +1,4 @@
-# src/db/migration_files/migration_070_swing_off.py
+# src/db/migration_files/migration_071_swing_off.py
 """
 An All-Star or Rookie Game still tied after nine innings is settled by a
 home run swing-off (src/league/swing_off.py). swingoff keeps it: each
@@ -6,7 +6,7 @@ side's hitters and home runs, any sudden-death rounds and the winner. NULL
 when the game was won on the field.
 """
 
-VERSION = 70
+VERSION = 71
 
 
 def upgrade(conn):

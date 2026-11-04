@@ -22,6 +22,7 @@ from src.api.routers import (
     auth,
     draft,
     face_gen,
+    free_agents,
     games,
     history,
     leaders,
@@ -196,6 +197,7 @@ for _module in (
     face_gen,
     profiles,
     news,
+    free_agents,
 ):
     app.include_router(_module.router)
 

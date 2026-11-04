@@ -62,6 +62,19 @@ def _contract(db, league_id: str, pid: str) -> dict | None:
     return contract_repo.view(repo.active(pid, year), year)
 
 
+def _asking(db, league_id: str, pid: str) -> dict | None:
+    """A free agent's asking price (services/free_agents.py)."""
+    from src.api.services.free_agents import asking_deal
+    from src.player.contracts import format_salary
+
+    year = ContractRepository(db).current_year(league_id)
+    record = PlayerRepository(db).look_up(pid)
+    if year is None or record is None:
+        return None
+    deal = asking_deal(record, year)
+    return {"salary_text": format_salary(deal.salary), "years": deal.years}
+
+
 def _happiness(db, league_id: str, pid: str) -> dict | None:
     """His public type and mood word, what's on his mind, and (for admins)
     the numbers behind it (src/player/happiness.py)."""
@@ -251,6 +264,7 @@ def player_panel_data(
             JerseyRepository(db).number_of(team["id"], pid) if team else None
         ),
         "contract": _contract(db, league_id, pid),
+        "asking": _asking(db, league_id, pid) if status == "free_agent" else None,
         "home_region": p.get("home_region"),
         "happiness": _happiness(db, league_id, pid),
         "grades": grade_map,

@@ -19,6 +19,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from src.league.offseason.offseason_pipeline import OffseasonPipeline
+from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.league.offseason.retirement import RetirementFactors
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -349,3 +350,46 @@ class TestRunIdempotency:
 
     #     captured = capsys.readouterr().out
     #     assert "Skipping archive" in captured
+
+
+# ---------------------------------------------------------------------------
+# _retire — free agents
+# ---------------------------------------------------------------------------
+
+
+class TestFreeAgentsRetire:
+    """Free agents don't sit in the pool forever: one not good enough for a
+    roster drops out on the unrostered curve, at any age, and one who could
+    still play retires like a rostered player."""
+
+    def _run(self, db_conn, factory, roll):
+        league = factory.league(state="offseason")
+        season = factory.season(year=2026)
+        factory.league_season(league, season)
+        team = factory.team()
+        factory.league_season_team(league, season, team)
+        for _ in range(8):
+            factory.rated_player(team, league, level=60, status="26man")
+            factory.rated_player(team, league, level=60, status="26man", pitcher=True)
+        junk = factory.rated_player(team, league, level=25, status="free_agent", age=25)
+        good = factory.rated_player(team, league, level=62, status="free_agent", age=25)
+        db_conn.execute(
+            "DELETE FROM team_players WHERE player_id = ANY(%s)", ([junk.id, good.id],)
+        )
+        rng = MagicMock()
+        rng.random.return_value = roll
+        pipeline = OffseasonPipeline(db_conn, rng)
+        pipeline.league_id = league.id
+        pipeline._current_season_id = season.id
+        pipeline._retire(rng)
+        status = PlayerStatusRepository(db_conn)
+        return status.get_status(junk.id), status.get_status(good.id)
+
+    def test_a_fringe_free_agent_retires_young(self, db_conn, factory):
+        junk, good = self._run(db_conn, factory, roll=0.5)
+        assert junk == "retired"  # 60% at 25
+        assert good == "free_agent"  # too young to retire as a player
+
+    def test_a_lucky_roll_keeps_him_in_the_pool(self, db_conn, factory):
+        junk, _ = self._run(db_conn, factory, roll=0.99)
+        assert junk == "free_agent"

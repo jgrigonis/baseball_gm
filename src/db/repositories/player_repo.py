@@ -544,6 +544,33 @@ class PlayerRepository:
         ).fetchall()
         return [dict(r) for r in rows]
 
+    def get_free_agents_with_skills(self, league_id: str) -> list[dict]:
+        """The league's free agents, each a flat dict of player, status and
+        skills like get_team_roster_with_skills."""
+        rows = self.conn.execute(
+            """SELECT p.*, ps_stat.status, sk.*
+               FROM players p
+               JOIN player_status ps_stat ON ps_stat.player_id = p.id
+               JOIN player_skills sk ON sk.player_id = p.id
+               WHERE p.league_id = %s AND ps_stat.status = 'free_agent'
+               ORDER BY p.last_name, p.first_name""",
+            (league_id,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    @staticmethod
+    def record_from_row(row: dict) -> PlayerRecord:
+        """A PlayerRecord from a flat player-and-skills row."""
+        return PlayerRecord(
+            id=row["id"],
+            first_name=row["first_name"],
+            last_name=row["last_name"],
+            bats=row["bats"],
+            throws=row["throws"],
+            position=row["position"],
+            skills=PlayerSkills.from_db_row(row),
+        )
+
     def get_active_roster_with_skills(self, team_id: str) -> list[dict]:
         """Return 26-man/40-man players with skills merged, ordered by last name."""
         rows = self.conn.execute(
