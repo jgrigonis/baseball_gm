@@ -396,6 +396,22 @@ def rust_view(rust: dict | None) -> dict | None:
     }
 
 
+def attach_moods(db, league_id: str, players: list[dict]) -> None:
+    """Mark the players who are unhappy or worse, have asked for a trade,
+    or are sitting out (src/player/happiness.py): p["mood_badge"]."""
+    from src.api.view_models.player_detail import league_current_date
+    from src.db.repositories.happiness_repo import HappinessRepository
+
+    ids = [p["player_id"] for p in players if p.get("player_id")]
+    badges = HappinessRepository(db, league_id).badges(
+        ids, league_current_date(db, league_id)
+    )
+    for p in players:
+        b = badges.get(p.get("player_id"))
+        if b:
+            p["mood_badge"] = b
+
+
 def attach_injuries(
     players: list[dict],
     injured_map: dict,

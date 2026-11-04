@@ -1124,6 +1124,12 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
 .pd-mood-word.mood-unhappy, .pd-mood-word.mood-miserable { color: var(--red); }
 .pd-mood-lines { font-style: italic; margin-top: 1px; }
 .pd-mood-admin summary { cursor: pointer; }
+.pd-mood-alert { color: var(--red); font-weight: 600; }
+.lu-mood {
+  font-family: var(--font-mono); font-size: 10px; color: #f5c518; margin-left: 6px;
+  cursor: help; white-space: nowrap;
+}
+.lu-mood-bad { color: var(--red); }
 .pd-mood-admin table { border-collapse: collapse; margin-top: 2px; }
 .pd-mood-admin th, .pd-mood-admin td { padding: 0 6px 0 0; text-align: left; }
 .pd-overall {

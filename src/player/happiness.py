@@ -568,3 +568,73 @@ def on_his_mind(
         if len(lines) >= limit:
             break
     return lines
+
+
+# ── What happiness does ─────────────────────────────────────────────────────
+
+UNHAPPY = -0.4  # "unhappy" and worse
+MISERABLE = -0.65
+
+
+def asks_for_trade(
+    mood: float, unhappy_weeks: int, traits: dict[str, int], roll: float
+) -> bool:
+    """After a few weeks unhappy, he asks out: sooner and likelier with a
+    temper, less likely if he's loyal. roll is a uniform 0..1 draw."""
+    if mood >= UNHAPPY:
+        return False
+    needed = 2 if traits["temper"] >= 70 else 3
+    if unhappy_weeks < needed:
+        return False
+    chance = 0.1 + 0.25 * traits["temper"] / 100 - 0.1 * traits["loyalty"] / 100
+    return roll < chance
+
+
+# A request his team sits on for this many weeks makes him unhappier still.
+IGNORED_WEEKS = 4
+IGNORED_PENALTY = 0.1
+
+
+def refuses_to_play(mood: float, traits: dict[str, int], roll: float) -> int:
+    """Very rarely a miserable, volatile player benches himself. Returns how
+    many days he sits out (0 if he plays)."""
+    if mood >= MISERABLE or traits["temper"] < 60:
+        return 0
+    chance = 0.03 + 0.05 * (traits["temper"] - 60) / 40
+    if roll >= chance:
+        return 0
+    return 3 + int(roll / chance * 3)  # 3 to 5 days
+
+
+def resign_terms(mood: float | None, loyalty: int) -> tuple[float, int | None, bool]:
+    """How his mood changes a new deal when his old one runs out: (salary
+    multiplier, most years he'll sign for, whether he wants a trade). A happy,
+    loyal player gives a hometown discount; an unhappy one wants more for
+    fewer years; a miserable one signs for one year and wants out."""
+    if mood is None:
+        return 1.0, None, False
+    if mood >= 0.25:
+        return 1 - 0.15 * loyalty / 100, None, False
+    if mood >= -0.15:
+        return 1.0, None, False
+    if mood >= UNHAPPY:
+        return 1.05, 3, False
+    if mood >= MISERABLE:
+        return 1.15, 2, False
+    return 1.2, 1, True
+
+
+# How mood shows up on the field, in rating points for one game. Clutch moves
+# the most (Josh, 2026-11-04); the rest only at the extremes.
+CLUTCH_POINTS = 10
+CORE_SKILLS = ("contact", "power", "eye", "arm", "accuracy", "strikes")
+
+
+def game_effects(mood: float) -> dict[str, float]:
+    """{skill: points} added for a game (negative takes away)."""
+    out = {"clutch": round(mood * CLUTCH_POINTS, 1)}
+    word = mood_word(mood)
+    nudge = {"thrilled": 1.5, "unhappy": -1.0, "miserable": -2.0}.get(word, 0.0)
+    if nudge:
+        out.update({k: nudge for k in CORE_SKILLS})
+    return out

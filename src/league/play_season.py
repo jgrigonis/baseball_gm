@@ -15,6 +15,7 @@ from src.db.repositories.game_lineup_repo import LineupRepository
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.happiness_repo import HappinessRepository
+from src.player import happiness
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.lineup_preference_repo import LineupPreferenceRepository
@@ -550,6 +551,15 @@ def _play_game(
     for player in home_team.players + away_team.players:
         if player.id in rust:
             player.apply_rust(rust[player.id]["skills"])
+    # Mood shows on the field, clutch most of all, and a miserable player
+    # may be sitting out (src/player/happiness.py).
+    happy_repo = HappinessRepository(conn, league_id)
+    injured_ids = injured_ids | happy_repo.refusing(all_player_ids, game_date)
+    moods = happy_repo.moods(all_player_ids, season_id)
+    for player in home_team.players + away_team.players:
+        row = moods.get(player.id)
+        if row:
+            player.apply_mood(happiness.game_effects(row["mood"]))
 
     pitcher_states = {pid: stored_pitcher_states.get(pid) for pid in all_player_ids}
     playoffs = _is_playoff_game(conn, game_info["game_id"])

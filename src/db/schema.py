@@ -1434,6 +1434,9 @@ CREATE TABLE IF NOT EXISTS player_moods (
     target     REAL NOT NULL,      -- what his situation points to
     detail     JSONB NOT NULL,     -- drive -> [satisfaction, reason], and lines
     updated_on TEXT NOT NULL,      -- league date of the last update
+    unhappy_weeks   INTEGER NOT NULL DEFAULT 0, -- weekly updates in a row unhappy or worse (migration 067)
+    trade_request_on TEXT,         -- league date he asked to be traded, while still on team_id
+    refusing_until  TEXT,          -- league date he plays again after benching himself
     PRIMARY KEY (player_id, season_id)
 );
 

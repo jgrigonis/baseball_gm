@@ -102,6 +102,16 @@ function jerseyTag(p) {
   return p.jersey_number != null ? `<span class="lu-jersey">#${p.jersey_number}</span>` : '';
 }
 
+// Happiness (src/player/happiness.py): "UNHAPPY", "WANTS TRADE" or "SITTING
+// OUT" after the name. The hover says more; the player panel says why.
+function moodTag(p) {
+  const b = p.mood_badge;
+  if (!b) return '';
+  if (b.refusing) return '<span class="lu-mood lu-mood-bad" title="Unhappy enough to bench himself for a few days">SITTING OUT</span>';
+  if (b.wants_trade) return '<span class="lu-mood lu-mood-bad" title="He has asked to be traded">WANTS TRADE</span>';
+  return `<span class="lu-mood" title="He's ${b.mood}. Open his card to see why.">${b.mood.toUpperCase()}</span>`;
+}
+
 // "IL (12d)" after an injured player's name; the hover names the injury.
 function ilTag(p) {
   if (!p.injured) return '';

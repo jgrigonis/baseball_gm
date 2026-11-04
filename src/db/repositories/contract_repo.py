@@ -179,6 +179,14 @@ class ContractRepository:
             for p in player_repo.get_players_by_team(team_id):
                 records[p.id] = p
 
+        # A player re-signing brings his mood to the table
+        # (src/player/happiness.py resign_terms).
+        from src.db.repositories.happiness_repo import HappinessRepository
+
+        happy = HappinessRepository(self.conn, league_id)
+        happy.prepare_resign([r["player_id"] for r in rows if r["signed_before"]])
+        unhappy_out: list[tuple[str, str]] = []
+
         signed = 0
         for r in rows:
             pid = r["player_id"]
@@ -204,6 +212,20 @@ class ContractRepository:
             start = year
             if not r["signed_before"]:
                 start -= ct.years_already_served(deal.years, rng)
+            else:
+                deal, wants_out = self._mood_terms(happy, pid, r["team_id"], deal)
+                if wants_out:
+                    unhappy_out.append((pid, r["team_id"]))
             self._insert(pid, league_id, r["team_id"], deal, start)
             signed += 1
+        happy.request_trades(unhappy_out, year)
         return signed
+
+    @staticmethod
+    def _mood_terms(happy, pid: str, team_id: str, deal: ct.Deal):
+        """His new deal with his mood worked in: a discount when he's happy
+        and loyal, more money for fewer years when he isn't."""
+        mult, max_years, wants_out = happy.resign_terms(pid)
+        years = deal.years if max_years is None else min(deal.years, max_years)
+        salary = ct.round_salary(deal.salary * mult)
+        return ct.Deal(salary, years, deal.kind), wants_out

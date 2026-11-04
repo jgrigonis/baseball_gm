@@ -15,6 +15,7 @@ climate) and moves his mood a step toward where that points.
 
 from __future__ import annotations
 
+import random
 from collections import defaultdict
 from datetime import date, timedelta
 
@@ -144,6 +145,7 @@ class HappinessRepository:
         previous = self._previous_moods(season_id, ids)
         current = self.moods(ids, season_id)
         league_regions = {t["region"] for t in teams.values() if t["region"]}
+        events: list[tuple] = []
 
         # Rank each player among his team's hitters or pitchers.
         ranks: dict[str, tuple[int, int]] = {}
@@ -197,14 +199,39 @@ class HappinessRepository:
             }
             goal = hp.target(person, p["age"], sats)
             now = current.get(pid)
+            before = previous.get(pid)
+            request = None
+            weeks = 0
+            refusing = None
             if now is None:
-                before = previous.get(pid)
-                start = goal if before is None else 0.5 * before + 0.5 * goal
-                mood = start
+                mood = goal if before is None else 0.5 * before["mood"] + 0.5 * goal
+                if before and before["team_id"] == p["team_id"]:
+                    request = before["trade_request_on"]
             elif now["team_id"] != p["team_id"]:
                 mood = 0.5 * now["mood"] + 0.5 * goal  # a fresh start somewhere new
             else:
+                request = now["trade_request_on"]
+                weeks = now["unhappy_weeks"]
+                refusing = now["refusing_until"]
+                if request and (as_of - _day(request)).days >= 7 * hp.IGNORED_WEEKS:
+                    goal = max(-1.0, goal - hp.IGNORED_PENALTY)  # still waiting
                 mood = hp.step(now["mood"], goal, person.traits["temper"])
+            weeks = weeks + 1 if mood < hp.UNHAPPY else 0
+            if refusing and _day(refusing) <= as_of:
+                refusing = None
+
+            rng = random.Random(f"mood:{pid}:{as_of.isoformat()}")
+            if not request and hp.asks_for_trade(
+                mood, weeks, person.traits, rng.random()
+            ):
+                request = as_of.isoformat()
+                events.append(("request", pid, p["team_id"], person))
+            if not refusing and p["status"] != "minors":
+                days = hp.refuses_to_play(mood, person.traits, rng.random())
+                if days:
+                    refusing = (as_of + timedelta(days=days)).isoformat()
+                    events.append(("refuse", pid, p["team_id"], days))
+
             lines = hp.on_his_mind(
                 person, p["age"], sats, p["affinity"], p["home_region"]
             )
@@ -222,6 +249,9 @@ class HappinessRepository:
                     round(goal, 4),
                     Jsonb(detail),
                     as_of.isoformat(),
+                    weeks,
+                    request,
+                    refusing,
                 )
             )
         with self.conn.cursor() as cur:
@@ -229,15 +259,20 @@ class HappinessRepository:
                 """
                 INSERT INTO player_moods (
                     player_id, season_id, league_id, team_id, mood, target,
-                    detail, updated_on
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    detail, updated_on, unhappy_weeks, trade_request_on,
+                    refusing_until
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (player_id, season_id) DO UPDATE SET
                     league_id = EXCLUDED.league_id, team_id = EXCLUDED.team_id,
                     mood = EXCLUDED.mood, target = EXCLUDED.target,
-                    detail = EXCLUDED.detail, updated_on = EXCLUDED.updated_on
+                    detail = EXCLUDED.detail, updated_on = EXCLUDED.updated_on,
+                    unhappy_weeks = EXCLUDED.unhappy_weeks,
+                    trade_request_on = EXCLUDED.trade_request_on,
+                    refusing_until = EXCLUDED.refusing_until
                 """,
                 rows,
             )
+        self._news(season_id, as_of, events)
         return len(rows)
 
     # ── What the league already knows ──────────────────────────────────────
@@ -459,15 +494,169 @@ class HappinessRepository:
         ).fetchall()
         return {r["player_id"] for r in rows}
 
-    def _previous_moods(self, season_id: str, ids: list[str]) -> dict[str, float]:
-        """Each player's mood at the end of his last season before this
-        one, which carries over at half strength."""
+    def _previous_moods(self, season_id: str, ids: list[str]) -> dict[str, dict]:
+        """Each player's row from his last season before this one: his mood
+        carries over at half strength, and an open trade request carries
+        over if he's still on that team."""
         rows = self.conn.execute(
-            """SELECT DISTINCT ON (m.player_id) m.player_id, m.mood
+            """SELECT DISTINCT ON (m.player_id) m.player_id, m.mood, m.team_id,
+                      m.trade_request_on
                FROM player_moods m JOIN seasons s ON s.id = m.season_id
                WHERE m.player_id = ANY(%s)
                  AND s.year < (SELECT year FROM seasons WHERE id = %s)
                ORDER BY m.player_id, s.year DESC""",
             (ids, season_id),
         ).fetchall()
+        return {r["player_id"]: dict(r) for r in rows}
+
+    # ── What it does ────────────────────────────────────────────────────────
+
+    def _news(self, season_id: str, as_of: date, events: list[tuple]) -> None:
+        """Stories for trade requests and players who bench themselves."""
+        if not events:
+            return
+        from src.api.services.news.names import Names
+        from src.db.repositories.news_repo import NewsRepository
+
+        names = Names(self.conn, self.league_id)
+        news = NewsRepository(self.conn)
+        on = as_of.isoformat()
+        for kind, pid, team_id, extra in events:
+            who = names.player(pid)
+            if kind == "request":
+                news.add(
+                    self.league_id, season_id, on, "clubhouse",
+                    f"trade-request:{pid}:{on}",
+                    f"{who} asks the {names.team(team_id)} for a trade",
+                    hp.TYPES.get(extra.type, {}).get("blurb", ""),
+                    weight=2, team_ids=[team_id], player_ids=[pid],
+                    gm_ids=names.gm_ids(team_id),
+                )  # fmt: skip
+            elif kind == "resign":
+                news.add(
+                    self.league_id, season_id, on, "clubhouse",
+                    f"resign-unhappy:{pid}:{on}",
+                    f"{who} signs for one more year with the {names.team(team_id)}"
+                    " and asks to be traded",
+                    "He took the money, but he doesn't want to stay.",
+                    weight=2, team_ids=[team_id], player_ids=[pid],
+                    gm_ids=names.gm_ids(team_id),
+                )  # fmt: skip
+            else:
+                news.add(
+                    self.league_id, season_id, on, "clubhouse",
+                    f"refuses:{pid}:{on}",
+                    f"{who} refuses to play for the {names.team(team_id)}",
+                    f"Unhappy with his situation, he's sitting out {extra} days.",
+                    weight=2, team_ids=[team_id], player_ids=[pid],
+                    gm_ids=names.gm_ids(team_id),
+                )  # fmt: skip
+
+    def prepare_resign(self, player_ids) -> None:
+        """Load the moods and loyalty of players about to re-sign."""
+        ids = list(player_ids)
+        self._resign_moods = self.latest_moods(ids)
+        self._resign_pers = self.personalities(ids) if ids else {}
+
+    def resign_terms(self, player_id: str) -> tuple[float, int | None, bool]:
+        pers = getattr(self, "_resign_pers", {}).get(player_id)
+        mood = getattr(self, "_resign_moods", {}).get(player_id)
+        return hp.resign_terms(mood, pers.traits["loyalty"] if pers else 50)
+
+    def request_trades(self, players: list[tuple[str, str]], year: int) -> None:
+        """Miserable players who re-signed for a year and want out: the
+        request goes on their newest mood row (it carries into the season
+        while they're on the same team), with a story."""
+        if not players:
+            return
+        on = f"{year}-03-01"
+        season = self.conn.execute(
+            """SELECT s.id FROM seasons s JOIN league_seasons ls ON ls.season_id = s.id
+               WHERE ls.league_id = %s AND s.year = %s LIMIT 1""",
+            (self.league_id, year),
+        ).fetchone()
+        for pid, team_id in players:
+            self.conn.execute(
+                """UPDATE player_moods SET trade_request_on = %s
+                   WHERE (player_id, season_id) IN (
+                       SELECT m.player_id, m.season_id FROM player_moods m
+                       JOIN seasons s ON s.id = m.season_id
+                       WHERE m.player_id = %s AND m.league_id = %s
+                       ORDER BY s.year DESC LIMIT 1)
+                     AND team_id = %s AND trade_request_on IS NULL""",
+                (on, pid, self.league_id, team_id),
+            )
+        if season:
+            self._news(
+                season["id"],
+                date.fromisoformat(on),
+                [("resign", pid, team_id, None) for pid, team_id in players],
+            )
+
+    def trade_requests(self, player_ids) -> set[str]:
+        """Who among these has asked his current team for a trade. (A
+        player belongs to one league, so this doesn't need the league.)"""
+        ids = list(player_ids)
+        if not ids:
+            return set()
+        rows = self.conn.execute(
+            """SELECT DISTINCT ON (m.player_id) m.player_id, m.team_id,
+                      m.trade_request_on, tp.team_id AS now_team
+               FROM player_moods m JOIN seasons s ON s.id = m.season_id
+               LEFT JOIN team_players tp ON tp.player_id = m.player_id
+               WHERE m.player_id = ANY(%s)
+               ORDER BY m.player_id, s.year DESC""",
+            (ids,),
+        ).fetchall()
+        return {
+            r["player_id"]
+            for r in rows
+            if r["trade_request_on"] and r["team_id"] == r["now_team"]
+        }
+
+    def refusing(self, player_ids, as_of: date) -> set[str]:
+        """Who among these is sitting out on this date."""
+        ids = list(player_ids)
+        if not ids:
+            return set()
+        rows = self.conn.execute(
+            """SELECT player_id FROM player_moods
+               WHERE player_id = ANY(%s) AND league_id = %s
+                 AND refusing_until IS NOT NULL AND refusing_until > %s""",
+            (ids, self.league_id, as_of.isoformat()),
+        ).fetchall()
+        return {r["player_id"] for r in rows}
+
+    def latest_moods(self, player_ids) -> dict[str, float]:
+        """Each player's newest mood in this league, from any season."""
+        ids = list(player_ids)
+        if not ids:
+            return {}
+        rows = self.conn.execute(
+            """SELECT DISTINCT ON (m.player_id) m.player_id, m.mood
+               FROM player_moods m JOIN seasons s ON s.id = m.season_id
+               WHERE m.player_id = ANY(%s) AND m.league_id = %s
+               ORDER BY m.player_id, s.year DESC""",
+            (ids, self.league_id),
+        ).fetchall()
         return {r["player_id"]: r["mood"] for r in rows}
+
+    def badges(self, player_ids, as_of: date | None = None) -> dict[str, dict]:
+        """What the Roster and Lineup rows show: the mood word for anyone
+        unhappy or worse, a trade request, and sitting out."""
+        moods = self.latest_moods(player_ids)
+        asks = self.trade_requests(player_ids)
+        out_now = self.refusing(player_ids, as_of) if as_of else set()
+        out = {}
+        for pid, m in moods.items():
+            word = hp.mood_word(m)
+            b = {}
+            if m < hp.UNHAPPY:
+                b["mood"] = word
+            if pid in asks:
+                b["wants_trade"] = True
+            if pid in out_now:
+                b["refusing"] = True
+            if b:
+                out[pid] = b
+        return out

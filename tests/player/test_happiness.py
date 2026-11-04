@@ -138,3 +138,46 @@ def test_out_of_position_line_names_the_position():
     sats = {d: (0.0, "none") for d in hp.DRIVES}
     sats["position"] = (-0.9, "off")
     assert hp.on_his_mind(pers, 28, sats, "ss", None) == ["Wants to play shortstop."]
+
+
+TRAITS = {"ego": 50, "temper": 50, "loyalty": 50}
+
+
+def test_only_a_player_unhappy_for_weeks_asks_out():
+    assert not hp.asks_for_trade(-0.8, 1, TRAITS, 0.0)
+    assert not hp.asks_for_trade(0.0, 9, TRAITS, 0.0)
+    assert hp.asks_for_trade(-0.8, 3, TRAITS, 0.0)
+    assert not hp.asks_for_trade(-0.8, 3, TRAITS, 0.99)
+
+
+def test_a_hothead_asks_out_sooner():
+    hot = {**TRAITS, "temper": 90}
+    assert hp.asks_for_trade(-0.8, 2, hot, 0.0)
+    assert not hp.asks_for_trade(-0.8, 2, TRAITS, 0.0)
+
+
+def test_only_a_miserable_hothead_ever_refuses_to_play_and_rarely():
+    hot = {**TRAITS, "temper": 90}
+    assert hp.refuses_to_play(-0.5, hot, 0.0) == 0
+    assert hp.refuses_to_play(-0.9, TRAITS, 0.0) == 0
+    assert 3 <= hp.refuses_to_play(-0.9, hot, 0.0) <= 5
+    assert hp.refuses_to_play(-0.9, hot, 0.2) == 0
+
+
+def test_resign_terms_run_from_discount_to_one_year_and_out():
+    happy = hp.resign_terms(0.6, loyalty=100)
+    assert happy == (0.85, None, False)
+    assert hp.resign_terms(0.0, 50) == (1.0, None, False)
+    assert hp.resign_terms(-0.5, 50) == (1.15, 2, False)
+    assert hp.resign_terms(-0.9, 50) == (1.2, 1, True)
+    assert hp.resign_terms(None, 50) == (1.0, None, False)
+
+
+def test_mood_moves_clutch_most_and_the_rest_only_at_the_extremes():
+    assert hp.game_effects(0.0) == {"clutch": 0.0}
+    content = hp.game_effects(0.1)
+    assert set(content) == {"clutch"}
+    miserable = hp.game_effects(-0.9)
+    assert miserable["clutch"] == -9.0 and miserable["contact"] == -2.0
+    thrilled = hp.game_effects(0.8)
+    assert thrilled["clutch"] == 8.0 and thrilled["power"] == 1.5

@@ -71,7 +71,7 @@ class Deal:
     kind: str  # 'rookie' or 'standard'
 
 
-def _round_salary(amount: float) -> int:
+def round_salary(amount: float) -> int:
     """Round to $10K under $1M, $50K above, inside the min and max."""
     amount = max(MIN_SALARY, min(MAX_SALARY, amount))
     step = 10_000 if amount < 1_000_000 else 50_000
@@ -139,15 +139,13 @@ def standard_years(age: int, value: float, kind: str, rng: random.Random) -> int
 def standard_deal(age: int, value: float, kind: str, rng: random.Random) -> Deal:
     salary = prime_salary(value, kind) * age_factor(age)
     salary *= 1 + rng.uniform(-SALARY_NOISE, SALARY_NOISE)
-    return Deal(
-        _round_salary(salary), standard_years(age, value, kind, rng), "standard"
-    )
+    return Deal(round_salary(salary), standard_years(age, value, kind, rng), "standard")
 
 
 def rookie_salary(pick_number: int) -> int:
     """A rookie deal's salary for the nth pick of the draft (1 = first)."""
     bonus = TOP_PICK_BONUS * math.exp(-(max(1, pick_number) - 1) / BONUS_DECAY_PICKS)
-    return _round_salary(MIN_SALARY + bonus / ROOKIE_YEARS)
+    return round_salary(MIN_SALARY + bonus / ROOKIE_YEARS)
 
 
 def rookie_deal(pick_number: int) -> Deal:

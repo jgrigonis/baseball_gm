@@ -49,6 +49,7 @@ from src.api.services import front_office, personas, team_states
 from src.db.locks import LeagueBusy, league_lock
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.gm_repo import GMRepository
+from src.db.repositories.happiness_repo import HappinessRepository
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.player_repo import PlayerRepository
@@ -1027,8 +1028,16 @@ def _assets(
             season_id, [p.id for p in records]
         )
         form = performance.form_by_player(records, totals)
+    # Players who asked out: his team will take less to move him
+    # (src/player/happiness.py).
+    wants_out = HappinessRepository(conn, "").trade_requests(p.id for p in records)
     return [
-        Asset.from_record(p, injuries.get(p.id, 0), form.get(p.id, (0.0, 0.0)))
+        Asset.from_record(
+            p,
+            injuries.get(p.id, 0),
+            form.get(p.id, (0.0, 0.0)),
+            wants_out=p.id in wants_out,
+        )
         for p in records
     ]
 

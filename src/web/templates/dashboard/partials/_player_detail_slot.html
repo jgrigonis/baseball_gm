@@ -37,6 +37,8 @@
    <div class="pd-mood">
      <span class="pd-mood-type" title="{{ h.blurb }}">{{ h.type }}</span>{% if h.mood %} · <span class="pd-mood-word mood-{{ h.mood }}"
        {% if is_admin %}title="mood {{ h.admin.mood }} → target {{ h.admin.target }} (as of {{ h.admin.updated_on }})"{% endif %}>{{ h.mood }}</span>{% endif %}
+     {% if h.refusing %}<div class="pd-mood-alert">Refusing to play for a few days.</div>
+     {% elif h.wants_trade %}<div class="pd-mood-alert">Has asked to be traded.</div>{% endif %}
      {% if h.lines %}<div class="pd-mood-lines">{{ h.lines | join(' ') }}</div>{% endif %}
      {% if is_admin %}
      <details class="pd-mood-admin"><summary>Happiness (admin)</summary>

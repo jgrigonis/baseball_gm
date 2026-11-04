@@ -72,7 +72,10 @@ def _happiness(db, league_id: str, pid: str) -> dict | None:
     row = repo.mood(pid)
     detail = (row or {}).get("detail") or {}
     drives = detail.get("drives") or {}
+    today = league_current_date(db, league_id)
     return {
+        "wants_trade": pid in repo.trade_requests([pid]),
+        "refusing": bool(today and pid in repo.refusing([pid], today)),
         "type": pers.type,
         "blurb": hp.TYPES.get(pers.type, {}).get("blurb", ""),
         "mood": hp.mood_word(row["mood"]) if row else None,
