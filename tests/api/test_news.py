@@ -414,6 +414,26 @@ class TestNewsTab:
         assert "Captains do a thing" in r.text
         assert "Shamrocks do a thing" not in r.text
 
+    def test_my_team_sticks_through_the_live_refresh(self, client, db_conn, lg):
+        # The refresh after each sim day reloads the plain tab URL; the
+        # My team choice is remembered so it doesn't flip back to All.
+        other = lg["factory"].team(city="Dublin", mascot="Shamrocks")
+        NewsRepository(db_conn).add(
+            lg["league"].id, lg["season"].id, "2025-04-01", "trade", "t1",
+            "Shamrocks do a thing", weight=2, team_ids=[other.id],
+        )  # fmt: skip
+        NewsRepository(db_conn).add(
+            lg["league"].id, lg["season"].id, "2025-04-02", "trade", "t2",
+            "Captains do a thing", weight=2, team_ids=[lg["mine"].id],
+        )  # fmt: skip
+        url = f"/leagues/{lg['league'].id}/headlines"
+        client.get(f"{url}?mine=1")
+        r = client.get(url)
+        assert "Captains do a thing" in r.text
+        assert "Shamrocks do a thing" not in r.text
+        client.get(f"{url}?mine=0")
+        assert "Shamrocks do a thing" in client.get(url).text
+
     def test_a_gms_profile_opens_inside_the_league(self, client, db_conn, lg):
         name = f"josh-{_id()[:8]}"
         db_conn.execute(
