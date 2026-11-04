@@ -868,12 +868,12 @@ CREATE TABLE IF NOT EXISTS gm_profiles (
                          CHECK (sac_bunt         IN ('never', 'situational', 'frequent')),
 
     -- Pitching tendencies
-    starter_usage TEXT NOT NULL DEFAULT 'pitch-count-strict'
-                      CHECK (starter_usage IN ('let-them-work', 'pitch-count-strict', 'matchup-based')),
+    starter_usage TEXT NOT NULL DEFAULT 'standard'
+                      CHECK (starter_usage IN ('long', 'standard', 'quick-hook')),
     closer_usage  TEXT NOT NULL DEFAULT 'saves-only'
                       CHECK (closer_usage  IN ('saves-only', 'high-leverage', 'best-available')),
-    bullpen_pref  TEXT NOT NULL DEFAULT 'deep-pen'
-                      CHECK (bullpen_pref  IN ('deep-pen', 'starter-heavy')),
+    bullpen_pref  TEXT NOT NULL DEFAULT 'balanced'
+                      CHECK (bullpen_pref  IN ('starter-heavy', 'balanced', 'deep-pen')),
 
     -- Rotation
     rotation_size      INTEGER NOT NULL DEFAULT 5 CHECK (rotation_size IN (4, 5, 6)),

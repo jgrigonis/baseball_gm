@@ -78,8 +78,8 @@ def test_defense_weight():
 
 
 def test_protect_arms():
-    p = fo.protect_arms(ManagerProfile(starter_usage="let-them-work"))
+    p = fo.protect_arms(ManagerProfile(starter_usage="long"))
     assert p.tired_starters == "protect"
-    assert p.starter_usage == "pitch-count-strict"
-    p = fo.protect_arms(ManagerProfile(starter_usage="matchup-based"))
-    assert p.starter_usage == "matchup-based"
+    assert p.starter_usage == "standard"
+    p = fo.protect_arms(ManagerProfile(starter_usage="quick-hook"))
+    assert p.starter_usage == "quick-hook"

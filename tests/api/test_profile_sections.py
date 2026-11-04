@@ -205,7 +205,7 @@ class TestStyle:
         s = self._style(db_conn, world)
         assert s["Lineups"]["word"] == "Analytics"
         assert s["Lineups"]["why"] == "Aggressive on the bases"
-        assert s["Pitching"]["word"] == "Strict pitch counts"
+        assert s["Pitching"]["word"] == "Standard leash"
 
 
 class TestTimeline:

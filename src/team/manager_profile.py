@@ -24,9 +24,9 @@ BASERUNNING = (
     "very-aggressive",
 )
 SAC_BUNT = ("never", "situational", "frequent")
-STARTER_USAGE = ("let-them-work", "pitch-count-strict", "matchup-based")
+STARTER_USAGE = ("long", "standard", "quick-hook")
 CLOSER_USAGE = ("saves-only", "high-leverage", "best-available")
-BULLPEN_PREF = ("deep-pen", "starter-heavy")
+BULLPEN_PREF = ("starter-heavy", "balanced", "deep-pen")
 PLATOON_USAGE = ("none", "vs-handedness", "aggressive")
 LINEUP_STYLE = ("traditional", "analytics", "speed-first", "power-first")
 ROTATION_SIZE = (4, 5, 6)
@@ -43,14 +43,24 @@ EXTRA_BASE_FACTOR = dict(zip(BASERUNNING, (0.8, 0.9, 1.0, 1.1, 1.2)))
 
 BUNT_FACTOR = {"never": 0.0, "situational": 1.0, "frequent": 2.0}
 
-# Starter leash: extra pitches allowed past the pitch-count threshold, and a
-# multiplier on the chance of pulling him.
-PITCH_COUNT_OFFSET = {"let-them-work": 15, "pitch-count-strict": 0, "matchup-based": 0}
-STARTER_HOOK = {"let-them-work": 0.7, "pitch-count-strict": 1.0, "matchup-based": 1.0}
-# Matchup-based managers pull a starter sooner the third time through the order.
+# Starter leash: how far a starter goes on a normal day. Each leash moves
+# the pitch count a starter is usually pulled at (PITCH_COUNT_THRESHOLD,
+# src/game/probabilities.py) by this much.
+PITCH_COUNT_OFFSET = {"long": 15, "standard": 0, "quick-hook": -8}
+# A quick hook also pulls a starter sooner the third time through the order.
 THIRD_TIME_BATTERS = 18
 THIRD_TIME_HOOK = 1.5
-STARTER_HEAVY_HOOK = 0.8
+
+# Bullpen shape: how a manager reacts to trouble and uses his relievers.
+# TROUBLE_HOOK multiplies the chance of pulling a starter before he reaches
+# his pitch count, which is mostly a starter who's getting hit.
+TROUBLE_HOOK = {"starter-heavy": 0.3, "balanced": 1.0, "deep-pen": 1.6}
+# The least chance of pulling a starter who has reached his pitch count, at
+# each check: a starter-heavy manager lets him finish a few more batters.
+AT_TARGET_PULL = {"starter-heavy": 0.45, "balanced": 0.72, "deep-pen": 0.72}
+# The chance a reliever who has done his inning (two for a long man) sits
+# before the next one starts.
+RELIEVER_DONE = {"starter-heavy": 0.65, "balanced": 0.9, "deep-pen": 0.97}
 
 # The energy a scheduled starter needs, or the next man up takes the game.
 STARTER_MIN_ENERGY = {"push": 0.75, "standard": MIN_ENERGY_STARTER, "protect": 0.9}
@@ -65,9 +75,9 @@ class ManagerProfile:
     lineup_style: str = "analytics"
     baserunning: str = "standard"
     sac_bunt: str = "situational"
-    starter_usage: str = "pitch-count-strict"
+    starter_usage: str = "standard"
     closer_usage: str = "saves-only"
-    bullpen_pref: str = "deep-pen"
+    bullpen_pref: str = "balanced"
     platoon_usage: str = "vs-handedness"
     rotation_size: int = 5
     skip_fifth_starter: bool = False
@@ -127,16 +137,27 @@ class ManagerProfile:
         return PITCH_COUNT_OFFSET[self.starter_usage]
 
     def starter_hook(self, batters_faced: int) -> float:
-        """Multiplier on the chance of pulling a starter."""
-        hook = STARTER_HOOK[self.starter_usage]
-        if (
-            self.starter_usage == "matchup-based"
-            and batters_faced >= THIRD_TIME_BATTERS
-        ):
-            hook *= THIRD_TIME_HOOK
-        if self.bullpen_pref == "starter-heavy":
-            hook *= STARTER_HEAVY_HOOK
-        return hook
+        """Multiplier on the chance of pulling a starter: a quick hook pulls
+        him sooner the third time through the order."""
+        if self.starter_usage == "quick-hook" and batters_faced >= THIRD_TIME_BATTERS:
+            return THIRD_TIME_HOOK
+        return 1.0
+
+    @property
+    def trouble_hook(self) -> float:
+        """Multiplier on the chance of pulling a starter short of his pitch
+        count."""
+        return TROUBLE_HOOK[self.bullpen_pref]
+
+    @property
+    def at_target_pull(self) -> float:
+        """Least chance of pulling a starter who has reached his pitch count."""
+        return AT_TARGET_PULL[self.bullpen_pref]
+
+    @property
+    def reliever_done(self) -> float:
+        """Chance a reliever who has done his inning sits before the next."""
+        return RELIEVER_DONE[self.bullpen_pref]
 
     @property
     def starter_min_energy(self) -> float:

@@ -40,9 +40,9 @@ BASERUNNING = {
     "very-aggressive": "Very aggressive on the bases",
 }
 STARTER_USAGE = {
-    "let-them-work": "Let them work",
-    "pitch-count-strict": "Strict pitch counts",
-    "matchup-based": "Matchups",
+    "long": "Long leash",
+    "standard": "Standard leash",
+    "quick-hook": "Quick hook",
 }
 CLOSER_USAGE = {
     "saves-only": "closer for saves",

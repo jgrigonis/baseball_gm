@@ -75,6 +75,7 @@ def test_default_changes_nothing():
     assert p.steal_factor == p.extra_base_factor == p.bunt_factor == 1.0
     assert p.pitch_count_offset == 0
     assert p.starter_hook(batters_faced=30) == 1.0
+    assert p.trouble_hook == 1.0
     assert p.playoff_rotation_size is None
 
 
@@ -92,8 +93,8 @@ def test_baserunning_steps_rise():
     assert factors == sorted(factors) and len(set(factors)) == 5
 
 
-def test_matchup_based_pulls_sooner_third_time_through():
-    p = ManagerProfile(starter_usage="matchup-based")
+def test_quick_hook_pulls_sooner_third_time_through():
+    p = ManagerProfile(starter_usage="quick-hook")
     assert p.starter_hook(batters_faced=10) == 1.0
     assert p.starter_hook(batters_faced=19) > 1.0
 
@@ -164,15 +165,51 @@ def starter(pitch_count, outs=0, hits=0, runs=0):
     return p
 
 
-def test_let_them_work_has_a_longer_leash():
+def test_leash_sets_the_pitch_target():
+    offsets = [
+        ManagerProfile(starter_usage=u).pitch_count_offset
+        for u in ("quick-hook", "standard", "long")
+    ]
+    assert offsets == sorted(offsets) and len(set(offsets)) == 3
+
+
+def test_long_leash_lets_him_work_past_the_standard_target():
     inning = SimpleNamespace(number=7)
-    tired = starter(pitch_count=105, outs=18, hits=5, runs=3)
-    strict = GameStrategy.should_consider_pitching_change(tired, inning, 0)
+    tired = starter(pitch_count=95, outs=18, hits=5, runs=3)
+    standard = GameStrategy.should_consider_pitching_change(tired, inning, 0)
     patient = GameStrategy.should_consider_pitching_change(
-        tired, inning, 0, ManagerProfile(starter_usage="let-them-work")
+        tired, inning, 0, ManagerProfile(starter_usage="long")
     )
-    assert strict >= 0.72
-    assert patient < strict
+    assert standard >= 0.72
+    assert patient < standard
+
+
+def test_bullpen_shape_sets_the_trouble_hook():
+    inning = SimpleNamespace(number=4)
+    rocked = starter(pitch_count=60, outs=9, hits=8, runs=5)
+    hooks = [
+        GameStrategy.should_consider_pitching_change(
+            rocked, inning, 0, ManagerProfile(bullpen_pref=b)
+        )
+        for b in ("starter-heavy", "balanced", "deep-pen")
+    ]
+    assert hooks[0] < hooks[1] < hooks[2]
+
+
+def test_starter_heavy_lets_him_finish_a_batter_at_his_target():
+    inning = SimpleNamespace(number=7)
+    done = starter(pitch_count=90, outs=18, hits=3, runs=0)
+    balanced = GameStrategy.should_consider_pitching_change(done, inning, 0)
+    heavy = GameStrategy.should_consider_pitching_change(
+        done, inning, 0, ManagerProfile(bullpen_pref="starter-heavy")
+    )
+    assert heavy < balanced
+
+
+def test_relievers_go_longer_for_a_starter_heavy_manager():
+    shapes = ("starter-heavy", "balanced", "deep-pen")
+    done = [ManagerProfile(bullpen_pref=b).reliever_done for b in shapes]
+    assert done == sorted(done) and len(set(done)) == 3
 
 
 def closer_team(usage, *pitchers):

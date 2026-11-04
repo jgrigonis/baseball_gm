@@ -269,9 +269,9 @@ This is under construction:
 - Sac bunt usage: `never` | `situational` | `frequent`
 
 **Pitching**
-- Starter usage: `let-them-work` | `pitch-count-strict` | `matchup-based`
+- Starter usage: `long` | `standard` | `quick-hook`
 - Closer usage: `saves-only` | `high-leverage` | `best-available`
-- Bullpen depth preference: `deep-pen` | `starter-heavy`
+- Bullpen depth preference: `starter-heavy` | `balanced` | `deep-pen`
 
 **Roster**
 - Platoon usage: `none` | `vs-handedness` | `aggressive`
