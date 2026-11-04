@@ -19,8 +19,9 @@
             style="margin-right:6px;border-color:var(--red);color:var(--red);">
       Remove Injured
     </button>
-    <button class="btn btn-secondary" onclick="fillToForty()" style="margin-right:6px;">
-      Fill to 40
+    <button class="btn btn-secondary" onclick="pickTopForty()" style="margin-right:6px;"
+            title="Fill the 40-man with your best healthy players, swapping out lower-rated ones. Injured players already on it stay.">
+      Pick Top 40
     </button>
     <button class="btn btn-primary" onclick="saveRoster()" id="save-btn">
       Save Roster
@@ -362,7 +363,7 @@
 
 /* ── Hoist globals ──────────────────────────────────────────────────────────── */
 window.saveRoster    = saveRoster;
-window.fillToForty   = fillToForty;
+window.pickTopForty  = pickTopForty;
 window.removeInjured = removeInjured;
 window.revertToSaved = revertToSaved;
 window.render        = render;
@@ -449,22 +450,50 @@ function isVisible(p, colKey) {
   return true;
 }
 
-/* ── Fill / Remove Injured ──────────────────────────────────────────────────── */
-function fillToForty() {
-  if (fortyMan.size >= 40) { showFeedback('Already at 40', 'var(--text-dim)'); return; }
-  const { s1, s2 } = colState['40'];
-  const needed = 40 - fortyMan.size;
-  const candidates = ALL_PLAYERS
-    .filter(p => !fortyMan.has(p.player_id) && !p.injured)
-    .sort((a, b) => {
-      const d1 = getSkillVal(a, s1) - getSkillVal(b, s1);
-      if (d1 !== 0) return d1;
-      if (s2) return getSkillVal(a, s2) - getSkillVal(b, s2);
-      return 0;
-    }).slice(0, needed);
-  candidates.forEach(p => fortyMan.add(p.player_id));
+/* ── Pick Top 40 / Remove Injured ───────────────────────────────────────────── */
+// Floors so the best-40 pick still leaves a team that can play: a full
+// pitching staff, enough hitters for a lineup and bench, and a backup catcher.
+const TOP40_MIN = { pitchers: 13, hitters: 13, catchers: 2 };
+
+function isCatcher(p) {
+  return p.player_type !== 'pitcher' && (p.position || '').toUpperCase() === 'C';
+}
+
+function pickTopForty() {
+  // Injured players already on the 40-man stay (Remove Injured drops them);
+  // injured players in the organization aren't brought up.
+  const keep = ALL_PLAYERS.filter(p => p.injured && fortyMan.has(p.player_id));
+  const slots = Math.max(0, 40 - keep.length);
+  // Best overall grade first; on a tie, whoever is already on the 40-man
+  // keeps the spot so the button doesn't churn equal players.
+  const pool = ALL_PLAYERS.filter(p => !p.injured).sort((a, b) =>
+    (gradeVal(a.overall) - gradeVal(b.overall)) ||
+    ((fortyMan.has(b.player_id) ? 1 : 0) - (fortyMan.has(a.player_id) ? 1 : 0)));
+
+  const picked = new Set();
+  const take = (test, n) => {
+    for (const p of pool) {
+      if (n <= 0 || picked.size >= slots) break;
+      if (!test(p)) continue;
+      if (!picked.has(p.player_id)) picked.add(p.player_id);
+      n--;
+    }
+  };
+  take(isCatcher, TOP40_MIN.catchers);
+  take(p => p.player_type === 'pitcher', TOP40_MIN.pitchers);
+  take(p => p.player_type !== 'pitcher', TOP40_MIN.hitters);
+  take(() => true, slots);
+
+  const next = new Set([...keep.map(p => p.player_id), ...picked]);
+  const added   = [...next].filter(id => !fortyMan.has(id)).length;
+  const removed = [...fortyMan].filter(id => !next.has(id)).length;
+  if (!added && !removed) { showFeedback('Already your top 40', 'var(--text-dim)'); return; }
+  fortyMan = next;
   commit();
-  showFeedback(`Added ${candidates.length} player${candidates.length!==1?'s':''}`, 'var(--green)');
+  const parts = [];
+  if (added)   parts.push(`${added} in`);
+  if (removed) parts.push(`${removed} out`);
+  showFeedback(`Top 40: ${parts.join(', ')}`, 'var(--green)');
 }
 
 function removeInjured() {
