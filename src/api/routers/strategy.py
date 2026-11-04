@@ -39,9 +39,10 @@ SETTINGS: tuple[tuple[str, tuple[Setting, ...]], ...] = (
                 mp.LINEUP_STYLE,
                 ("Traditional", "Analytics", "Speed-first", "Power-first"),
                 ("Traditional", "Power-first"),
-                "How Auto-fill, Rebuild and the AI order your lineup. Traditional "
-                "leads off with speed and bats the best hitter 3rd; Analytics leads "
-                "off with on-base and bats the best hitter 2nd.",
+                "How Auto-fill, Rebuild and the AI order your lineup. Every style "
+                "leads off with your best on-base hitter. Traditional bats the best "
+                "hitter 3rd; Analytics bats him 2nd; Speed-first puts speed 2nd "
+                "and 9th; Power-first stacks power 3rd through 5th.",
             ),
             Setting(
                 "baserunning",
