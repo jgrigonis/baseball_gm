@@ -68,6 +68,8 @@ class PlayerInGame:
         self.fielding_by_position: dict[str, FieldingStats] = {}
         self._current_position: str | None = None
         self.responsible_pitcher: PlayerInGame | None = None
+        # Put on second by the extra-innings rule: his run is unearned.
+        self.ghost_runner = False
         self.in_lineup = False
         self.is_injured = False
         self.rust: dict[str, float] = {}  # ratings down after an injury

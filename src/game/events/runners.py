@@ -36,6 +36,7 @@ class ReachedBaseEvent(GameEvent):
 
     def apply(self, game):
         self.runner.responsible_pitcher = self.responsible_pitcher
+        self.runner.ghost_runner = False  # he reached on his own this time
 
     def log_level(self) -> int:
         return logging.DEBUG
@@ -80,6 +81,12 @@ class RunnerAdvancedEvent(GameEvent):
                 if self.from_base is None
                 else getattr(self.runner, "responsible_pitcher", None) or self.pitcher
             )
+            # The extra-innings runner placed on second scores unearned.
+            ghost = self.from_base is not None and getattr(
+                self.runner, "ghost_runner", False
+            )
+            if ghost:
+                self.runner.ghost_runner = False
             return [
                 RunScoredEvent(
                     runner=self.runner,
@@ -87,6 +94,7 @@ class RunnerAdvancedEvent(GameEvent):
                     reason=self.reason or "run",
                     pitcher=self.pitcher,
                     responsible_pitcher=responsible,
+                    earned=not ghost,
                 )
             ]
 
