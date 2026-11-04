@@ -5,7 +5,13 @@ from src.game.score import Score
 from src.game.intents.pitch import PrePitchSituation
 from src.player.player_in_game import PlayerInGame
 from src.game.modifiers.count_modifiers import IN_PLAY_COUNT_MODIFIERS
-from src.game.modifiers.pitch_modifiers import TYPICAL_ACCURACY, TYPICAL_STRIKES
+from src.game.modifiers.pitch_modifiers import (
+    TYPICAL_ACCURACY,
+    TYPICAL_CONTACT,
+    TYPICAL_POWER,
+    TYPICAL_STRIKES,
+    bat_term,
+)
 
 # Share of hits on balls in play a pitcher takes away per point of strikes
 # plus accuracy above typical: good stuff and command mean weaker contact.
@@ -107,15 +113,17 @@ class InPlayModifiers:
     def modify_for_batter(resolver, batter: PlayerInGame, score: Score):
         """Modify the probabilities based on the batter skills."""
         power = batter.get_effective_stat(batter.skills["power"])
-        resolver.in_play_outcome.add("fly_out", -4 * (power - 50))
-        resolver.in_play_outcome.add("single", -1 * (power - 50))
-        resolver.in_play_outcome.add("double", (power - 50))
-        resolver.in_play_outcome.add("triple", int(0.2 * (power - 50)))
+        power_term = bat_term(power, TYPICAL_POWER)
+        resolver.in_play_outcome.add("fly_out", -4 * power_term)
+        resolver.in_play_outcome.add("single", -1 * power_term)
+        resolver.in_play_outcome.add("double", power_term)
+        resolver.in_play_outcome.add("triple", int(0.2 * power_term))
 
         contact = batter.get_effective_stat(batter.skills["contact"])
-        resolver.in_play_outcome.add("single", 8 * (contact - 50))
-        resolver.in_play_outcome.add("double", 2 * (contact - 50))
-        resolver.in_play_outcome.add("ground_out", (contact - 50))
+        contact_term = bat_term(contact, TYPICAL_CONTACT)
+        resolver.in_play_outcome.add("single", 8 * contact_term)
+        resolver.in_play_outcome.add("double", 2 * contact_term)
+        resolver.in_play_outcome.add("ground_out", contact_term)
         if contact > 75:
             elite_bonus = (contact - 75) ** 1.6
             resolver.in_play_outcome.add("single", elite_bonus)
