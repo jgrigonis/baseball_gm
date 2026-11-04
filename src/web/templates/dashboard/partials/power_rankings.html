@@ -8,6 +8,9 @@
   .pr-note { font-family:var(--font-mono); font-size:11px; color:var(--text-dim); line-height:1.5; }
   .pr-rank { font-family:var(--font-mono); font-size:13px; font-weight:700; color:var(--text); }
   .pr-team { white-space:nowrap; }
+  .pr-sort { cursor:pointer; user-select:none; white-space:nowrap; }
+  .pr-sort:hover { color:var(--text); }
+  .pr-arrow { font-size:8px; margin-left:3px; color:var(--amber); }
   .standings-gm { color: var(--text-dim); text-decoration: none; }
   .standings-gm:hover { color: var(--sky); }
   @media (max-width: 640px) {
@@ -45,23 +48,23 @@
     <table class="data-table pr-table" style="width:100%;">
       <thead>
         <tr>
-          <th style="width:28px;">#</th>
+          <th style="width:28px;" class="pr-sort" onclick="prSort(this)" data-pr-dir="desc" title="Sort by power rank">#<span class="pr-arrow">▼</span></th>
           {% if pw.has_trend %}<th style="width:34px;" title="Change since a week ago"></th>{% endif %}
           <th>Team</th>
           <th class="phone-hide">GM</th>
-          <th style="text-align:center;">W-L</th>
-          <th class="phone-hide" style="text-align:center;" title="Runs scored minus runs allowed">Run diff</th>
+          <th style="text-align:center;" class="pr-sort" onclick="prSort(this)" title="Sort by winning percentage">W-L<span class="pr-arrow"></span></th>
+          <th class="phone-hide pr-sort" onclick="prSort(this)" style="text-align:center;" title="Runs scored minus runs allowed">Run diff<span class="pr-arrow"></span></th>
           {% for key, label, tip in pw.area_labels %}
-          <th style="text-align:center;" title="{{ tip }}"><span class="phone-hide">{{ label }}</span><span class="phone-only">{{ label[:3] }}</span></th>
+          <th style="text-align:center;" class="pr-sort" onclick="prSort(this)" title="{{ tip }}"><span class="phone-hide">{{ label }}</span><span class="phone-only">{{ label[:3] }}</span><span class="pr-arrow"></span></th>
           {% endfor %}
-          <th class="phone-hide" style="text-align:center;">L10</th>
-          {% if pw.show_luck %}<th class="phone-hide" style="text-align:center;" title="Wins above or below what the run differential is worth">Luck</th>{% endif %}
+          <th class="phone-hide pr-sort" onclick="prSort(this)" style="text-align:center;" title="Last 10 games">L10<span class="pr-arrow"></span></th>
+          {% if pw.show_luck %}<th class="phone-hide pr-sort" onclick="prSort(this)" style="text-align:center;" title="Wins above or below what the run differential is worth">Luck<span class="pr-arrow"></span></th>{% endif %}
         </tr>
       </thead>
       <tbody>
         {% for t in pw.rows %}
         <tr class="{% if t.is_mine %}my-team{% elif t.is_human %}human-team{% endif %}">
-          <td class="pr-rank">{{ t.rank }}</td>
+          <td class="pr-rank" data-sort="{{ -t.rank }}">{{ t.rank }}</td>
           {% if pw.has_trend %}
           <td class="pr-move">
             {% if t.move and t.move > 0 %}<span class="pr-up" title="Up {{ t.move }} since a week ago">▲{{ t.move }}</span>
@@ -86,20 +89,20 @@
             {% elif t.gm and t.gm.username %}<a href="/leagues/{{ league_id }}/gms/{{ t.gm.username|urlencode }}?back=power" hx-get="/leagues/{{ league_id }}/gms/{{ t.gm.username|urlencode }}?back=power" hx-target="#tab-content" hx-push-url="true" class="standings-gm gm-link" title="GM profile">{{ t.gm.name }}</a>
             {% elif t.gm %}{{ t.gm.name }}{% else %}<span style="color:var(--muted);">—</span>{% endif %}
           </td>
-          <td class="tc mono" style="white-space:nowrap;">{{ t.wins }}-{{ t.losses }}</td>
-          <td class="tc mono phone-hide" style="color:{% if t.run_diff > 0 %}var(--green){% elif t.run_diff < 0 %}var(--red){% else %}var(--text-dim){% endif %};">
+          <td class="tc mono" data-sort="{{ (t.wins / t.played) if t.played else 0 }}" style="white-space:nowrap;">{{ t.wins }}-{{ t.losses }}</td>
+          <td class="tc mono phone-hide" data-sort="{{ t.run_diff }}" style="color:{% if t.run_diff > 0 %}var(--green){% elif t.run_diff < 0 %}var(--red){% else %}var(--text-dim){% endif %};">
             {% if t.played %}{{ "+" if t.run_diff > 0 }}{{ t.run_diff }}{% else %}—{% endif %}
           </td>
           {% for a in t.areas %}
-          <td class="tc"><span class="pr-area grade-{{ grade_class(a.grade) }}" title="{{ a.label }}: {{ a.rank_text }} of {{ pw.rows|length }}"><span class="phone-hide">{{ a.rank_text }}</span><span class="phone-only">{{ a.rank }}</span></span></td>
+          <td class="tc" data-sort="{{ -a.rank }}"><span class="pr-area grade-{{ grade_class(a.grade) }}" title="{{ a.label }}: {{ a.rank_text }} of {{ pw.rows|length }}"><span class="phone-hide">{{ a.rank_text }}</span><span class="phone-only">{{ a.rank }}</span></span></td>
           {% endfor %}
-          <td class="tc mono phone-hide">
+          <td class="tc mono phone-hide" data-sort="{{ t.l10_wins - t.l10_losses }}">
             {% if t.l10 %}
             <span style="color:{% if t.l10_wins > t.l10_losses %}var(--green){% elif t.l10_wins < t.l10_losses %}var(--red){% else %}var(--text-dim){% endif %};">{{ t.l10 }}</span>
             {% else %}<span style="color:var(--muted);">—</span>{% endif %}
           </td>
           {% if pw.show_luck %}
-          <td class="tc mono phone-hide" style="color:{% if t.luck and t.luck >= 3 %}var(--green){% elif t.luck and t.luck <= -3 %}var(--red){% else %}var(--text-dim){% endif %};">
+          <td class="tc mono phone-hide" data-sort="{{ t.luck or 0 }}" style="color:{% if t.luck and t.luck >= 3 %}var(--green){% elif t.luck and t.luck <= -3 %}var(--red){% else %}var(--text-dim){% endif %};">
             {% if t.luck is not none %}{{ "+" if t.luck > 0 }}{{ t.luck }}{% else %}—{% endif %}
           </td>
           {% endif %}
@@ -115,3 +118,29 @@
   </p>
   {% endif %}
 </div>
+
+<script>
+// Click a header to sort best first; click it again to flip. Every
+// sortable cell's data-sort is a number where higher is better, and ties
+// keep power rank order.
+window.prSort = function(th) {
+  var table = th.closest('table');
+  var col = th.cellIndex;
+  var desc = th.dataset.prDir !== 'desc';
+  table.querySelectorAll('th.pr-sort').forEach(function(h) {
+    delete h.dataset.prDir;
+    var a = h.querySelector('.pr-arrow'); if (a) a.textContent = '';
+  });
+  th.dataset.prDir = desc ? 'desc' : 'asc';
+  th.querySelector('.pr-arrow').textContent = desc ? '▼' : '▲';
+  var body = table.tBodies[0];
+  var val = function(row, i) { return parseFloat(row.cells[i].dataset.sort) || 0; };
+  Array.from(body.rows)
+    .sort(function(a, b) {
+      var c = val(b, col) - val(a, col);
+      if (!desc) c = -c;
+      return c || val(b, 0) - val(a, 0);
+    })
+    .forEach(function(r) { body.appendChild(r); });
+};
+</script>
