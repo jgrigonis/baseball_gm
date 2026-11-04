@@ -539,6 +539,14 @@ function showInjuryNews(d) {
   // completed trade leads to the Roster tab, where the players who arrived
   // wait in the organization; other trade news to the Trades tab.
   if (d.trades && d.trades.length > 0) {
+    // A sim set to ignore trades doesn't stop for offers or votes, so
+    // they go in the news bar like answers rather than popping up.
+    var quiet = !!window._simIgnoringTrades;
+    if (quiet) {
+      d.trades.filter(t => t.popup).forEach(function (t) {
+        items.push({ text: `📨 ${t.text}`, dest: 'trades' });
+      });
+    }
     var answers = d.trades.filter(t => !t.popup);
     answers.forEach(function (t) {
       items.push({
@@ -551,7 +559,7 @@ function showInjuryNews(d) {
     // On the Trades tab, show the offers and votes as they stand now.
     if (answers.length && document.getElementById('trades-page') && window.htmx && window.refreshActiveTab)
       window.refreshActiveTab();
-    d.trades.filter(t => t.popup).forEach(t => window.showTradePopup && window.showTradePopup(t));
+    if (!quiet) d.trades.filter(t => t.popup).forEach(t => window.showTradePopup && window.showTradePopup(t));
     if (window.refreshTradeBadge) window.refreshTradeBadge();
   }
   setInjuryNews(items);  // clears if empty, shows if not
