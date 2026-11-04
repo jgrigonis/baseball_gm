@@ -78,8 +78,7 @@ class RunnerAdvancedEvent(GameEvent):
             responsible = (
                 self.pitcher
                 if self.from_base is None
-                else getattr(self.runner, "responsible_pitcher", None)
-                or self.pitcher
+                else getattr(self.runner, "responsible_pitcher", None) or self.pitcher
             )
             return [
                 RunScoredEvent(
