@@ -187,10 +187,15 @@
 
 {# ── Pitching tab ──────────────────────────────────────────────────────────── #}
 <div id="pane-pitching" class="lu-pane" style="display:none;">
+  {# Phones show one list at a time: this toggle picks which (like the Roster tab). #}
+  <div class="lu-seg" role="tablist" aria-label="Which list">
+    <button type="button" class="on" data-pcol="rot" onclick="showPitchCol('rot')">Rotation <b id="seg-rot-count"></b><i class="lu-seg-dot" title="Not saved"></i></button>
+    <button type="button" data-pcol="bp" onclick="showPitchCol('bp')">Bullpen <b id="seg-bp-count"></b><i class="lu-seg-dot" title="Not saved"></i></button>
+  </div>
   <div class="lu-cols">
 
     {# Left: rotation #}
-    <div class="lu-col">
+    <div class="lu-col" data-pcol="rot">
       <div class="lu-col-hdr">
         <span class="lu-col-label">Starting Rotation</span>
         <span id="rot-count"
@@ -229,7 +234,7 @@
     </div>
 
     {# Right: bullpen #}
-    <div class="lu-col">
+    <div class="lu-col" data-pcol="bp">
       <div class="lu-col-hdr">
         <span class="lu-col-label" style="color:var(--text-dim);">Bullpen</span>
         <div class="spacer"></div>
@@ -455,7 +460,9 @@
   font-family: var(--font-mono); font-size: 10px; padding: 2px 4px;
 }
 
-/* ── Phones: the order above the roster, the rotation above the bullpen ─────── */
+.lu-seg { display: none; }
+
+/* ── Phones: the order above the roster; rotation or bullpen, one at a time ─── */
 /* The page scrolls as one, instead of each column scrolling on its own, and
    the buttons get big enough for a thumb. Adding, removing and reordering
    all work by tap (+, ×, ▲▼); a reliever joins the rotation from his role
@@ -468,6 +475,20 @@
   .lu-col-hdr .spacer { flex: 1 0 100%; height: 0; }
   .lu-col-hdr .btn { margin-right: 0 !important; font-size: 11px !important; padding: 6px 10px !important; }
   .lu-tab { padding: 8px 12px; }
+  /* Rotation | Bullpen switcher, same look as the Roster tab's 40-Man | Organization */
+  .lu-seg { display: flex; margin: 10px 12px 0; border: 1px solid var(--border-hi); }
+  .lu-seg button {
+    flex: 1; padding: 9px 6px; border: none; border-right: 1px solid var(--border-hi);
+    background: var(--bg-2); color: var(--text-dim); cursor: pointer;
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase;
+  }
+  .lu-seg button:last-child { border-right: none; }
+  .lu-seg button.on { background: var(--amber-lo); color: var(--amber); }
+  .lu-seg b { color: var(--text-hi); margin-left: 6px; font-weight: 600; }
+  .lu-seg-dot { display: none; width: 7px; height: 7px; border-radius: 50%; background: var(--amber);
+                margin-left: 6px; vertical-align: middle; }
+  .lu-seg button.unsaved .lu-seg-dot { display: inline-block; }
+  #pane-pitching .lu-col.phone-off { display: none; }
   /* Sort menus share one full-width row */
   .lu-col-hdr > div:has(> select) { flex: 1 1 100%; min-width: 0; }
   .lu-col-hdr select { flex: 1 1 0; min-width: 0; }
@@ -500,6 +521,7 @@
 
 /* ── Hoist globals ──────────────────────────────────────────────────────────── */
 window.switchTab       = switchTab;
+window.showPitchCol    = showPitchCol;
 window.saveBatting     = saveBatting;
 window.saveRotation    = saveRotation;
 window.saveAll         = saveAll;
@@ -594,6 +616,25 @@ function switchTab(tab) {
   document.getElementById('tab-batting').classList.toggle('active',  tab === 'batting');
   document.getElementById('tab-pitching').classList.toggle('active', tab === 'pitching');
   measureHeader();
+}
+
+/* ── Phones: rotation or bullpen (the other list is hidden) ─────────────────── */
+let pitchCol = 'rot';
+function showPitchCol(col) {
+  pitchCol = col === 'bp' ? 'bp' : 'rot';
+  document.querySelectorAll('.lu-seg button').forEach(b => b.classList.toggle('on', b.dataset.pcol === pitchCol));
+  document.querySelectorAll('#pane-pitching .lu-col').forEach(c => c.classList.toggle('phone-off', c.dataset.pcol !== pitchCol));
+  saveToStorage();
+}
+
+function updatePitchSeg() {
+  const inRot = new Set(rotation.filter(Boolean));
+  const rc = document.getElementById('seg-rot-count');
+  const bc = document.getElementById('seg-bp-count');
+  if (rc) rc.textContent = inRot.size;
+  if (bc) bc.textContent = ALL_PITCHERS.filter(p => !inRot.has(p.player_id)).length;
+  document.querySelector('.lu-seg [data-pcol="rot"]')?.classList.toggle('unsaved', !pitchingSaved);
+  document.querySelector('.lu-seg [data-pcol="bp"]')?.classList.toggle('unsaved', !bullpenSaved);
 }
 
 /* ── Grade helpers ──────────────────────────────────────────────────────────── */
@@ -1299,6 +1340,7 @@ function renderRotation() {
   };
 
   document.getElementById('rot-count').textContent = `${compact.length} pitchers`;
+  updatePitchSeg();
 }
 
 function setPointer(pid) {
@@ -1354,10 +1396,15 @@ function setBullpenRole(pid, role) {
 
 function renderBullpen() {
   const inRot = new Set(rotation.filter(Boolean));
+  updatePitchSeg();
   const s1 = document.getElementById('bp-s1')?.value || 'sp_grade';
   const s2 = document.getElementById('bp-s2')?.value || '';
 
+  // Relievers first; the starters (dimmed, role "Starter") go last so the
+  // bullpen itself is at the top of the list.
   const allPitchers = ALL_PITCHERS.slice().sort((a, b) => {
+    const ds = inRot.has(a.player_id) - inRot.has(b.player_id);
+    if (ds !== 0) return ds;
     const d1 = skillVal(a, s1) - skillVal(b, s1);
     if (d1 !== 0) return d1;
     if (s2) return skillVal(a, s2) - skillVal(b, s2);
@@ -1675,6 +1722,7 @@ function updatePitchingBanners() {
   const bpRevert  = document.getElementById('bp-revert-btn');
   if (rotRevert) rotRevert.style.display = savedRot     ? 'inline-flex' : 'none';
   if (bpRevert)  bpRevert.style.display  = savedBullpen ? 'inline-flex' : 'none';
+  updatePitchSeg();
   updateScheduleBtn();
 }
 
@@ -1695,7 +1743,7 @@ function saveToStorage() {
     const bs2 = document.getElementById('bp-s2')?.value   || '';
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
       lineups, vsHand, rotation, pointerPid, bullpen,
-      rosterFilter, activeTab,
+      rosterFilter, activeTab, pitchCol,
       rosterSort: { s1, s2, s3 },
       bullpenSort: { s1: bs1, s2: bs2 },
       battingSaved, pitchingSaved, bullpenSaved,
@@ -1797,6 +1845,7 @@ if (stored) {
   if (stored.battingSaved)  battingSaved  = true;
   if (stored.pitchingSaved) pitchingSaved = true;
   if (stored.bullpenSaved)  bullpenSaved  = true;
+  if (stored.pitchCol === 'bp') showPitchCol('bp');
   if (stored.activeTab && stored.activeTab !== 'batting') {
     switchTab(stored.activeTab);
   }
