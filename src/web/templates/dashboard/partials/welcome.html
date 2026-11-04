@@ -174,14 +174,14 @@
 
   {% if w.report %}
   <div class="card">
-    <div class="card-header"><span class="card-title">Scouting report</span></div>
+    <div class="card-header"><span class="card-title"><span class="setting-tip" tabindex="0" data-tip="How your team stacks up against the rest of the league. Each bar runs from the league's worst (short) to its best (full). Hover or tap an area to see what it's ranked on.">Scouting report</span></span></div>
     <div class="card-body">
       {% for a in w.report.areas %}
       {% if a.style and not loop.previtem.style %}
       <div class="wl-area-sub">Starting 9</div>
       {% endif %}
-      <div class="wl-area" title="Ranked on the {{ a.basis }}">
-        <span>{{ a.label }}</span>
+      <div class="wl-area">
+        <span><span class="setting-tip" tabindex="0" data-tip="Ranked on the {{ a.basis }}, against every team in the league.">{{ a.label }}</span></span>
         <div class="wl-bar"><span style="width:{{ a.bar }}%;"></span></div>
         {{ grade(a.grade) }}
         <span class="wl-rank">{{ a.rank_text }}</span>
