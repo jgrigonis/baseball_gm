@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 170" width="240" height="170" role="img" aria-label="Auckland cap">
+  <defs>
+    <path id="kw-body" d="M8 26 C6.4 15.5 17 7.6 29.5 7.4 C37.6 7.3 43.4 10.4 45.6 15 C46.8 18 46.2 21.6 44.4 24.6 C40.8 31.4 33.4 36.6 24 36.6 C14.8 36.6 9 32.2 8 26 Z"/>
+    <path id="kw-beak" d="M45 14.2 C52.6 17 57.8 24.6 61 37.4 L59.2 37.9 C55.6 26.6 50.6 20.6 44.2 18.6 Z"/>
+    <path id="kw-legs" d="M18.4 34 H21.2 L19.8 41.2 L23.8 43 L23.2 44.2 L19.4 42.8 L19 44.6 H17.6 L17.8 42.8 L14.4 44.2 L13.8 43 L17.8 41.2 Z M30.4 34 H33.2 L31.8 41.2 L35.8 43 L35.2 44.2 L31.4 42.8 L31 44.6 H29.6 L29.8 42.8 L26.4 44.2 L25.8 43 L29.8 41.2 Z"/>
+    <path id="kw-eye" d="M41.2 13.6 m-1.5 0 a1.5 1.5 0 1 0 3 0 a1.5 1.5 0 1 0 -3 0 Z"/>
+    <path id="kw-feathers" d="M14 22 Q17 19.6 20 22 Q17 21 14 22 Z M22 17 Q25 14.6 28 17 Q25 16 22 17 Z M30 13.4 Q33 11 36 13.4 Q33 12.4 30 13.4 Z M20 28.4 Q23 26 26 28.4 Q23 27.4 20 28.4 Z M29 22.4 Q32 20 35 22.4 Q32 21.4 29 22.4 Z M36 18.6 Q39 16.2 42 18.6 Q39 17.6 36 18.6 Z M12 29.6 Q15 27.2 18 29.6 Q15 28.6 12 29.6 Z M28 30 Q31 27.6 34 30 Q31 29 28 30 Z"/>
+  </defs>
+      <path d="M40 120 Q40 34 122 30 Q196 32 200 112 Z" fill="#14171A"/>
+      <path d="M122 30 Q118 70 120 120" fill="none" stroke="#2A2F33" stroke-width="1.5"/>
+      <path d="M80 42 Q72 80 76 120" fill="none" stroke="#2A2F33" stroke-width="1.5"/>
+      <circle cx="122" cy="31" r="5" fill="#4FA34A"/>
+      <path d="M36 120 Q120 104 204 112 L228 128 Q150 138 36 132 Z" fill="#4FA34A" stroke="#2F6E2C" stroke-width="1.5"/>
+      <g transform="translate(92.8 59.5) scale(0.8)"><use href="#kw-body" fill="#4FA34A" stroke="#4FA34A" stroke-width="3.6" stroke-linejoin="round"/><use href="#kw-beak" fill="#4FA34A" stroke="#4FA34A" stroke-width="3.6" stroke-linejoin="round"/><use href="#kw-legs" fill="#4FA34A" stroke="#4FA34A" stroke-width="3.6" stroke-linejoin="round"/><use href="#kw-legs" fill="#C5CCD0"/><use href="#kw-beak" fill="#C5CCD0"/><use href="#kw-body" fill="#C5CCD0"/><use href="#kw-feathers" fill="#9AA3A8"/><use href="#kw-eye" fill="#14171A"/></g>
+</svg>
