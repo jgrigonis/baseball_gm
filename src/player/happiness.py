@@ -83,6 +83,30 @@ TYPES: dict[str, dict] = {
     },
 }
 
+# How each drive reads in a sentence ("Cares most about winning.").
+DRIVE_WORDS = {
+    "money": "money",
+    "winning": "winning",
+    "impact": "playing time and a big role",
+    "position": "playing his own position",
+    "stability": "a stable, well-run club",
+    "location": "playing close to home",
+    "fame": "fame and a big market",
+}
+
+
+def type_cares(kind: str) -> str:
+    """What a player type cares most about, for the type's help text:
+    "fame and a big market and playing time and a big role"."""
+    drives = TYPES.get(kind, {}).get("drives", ())
+    words = [DRIVE_WORDS[d] for d in drives]
+    if not words:
+        return ""
+    if len(words) == 1:
+        return words[0]
+    return ", ".join(words[:-1]) + " and " + words[-1]
+
+
 # A favorite climate, for the location drive: most players don't have one.
 CLIMATE_CHANCE = 0.4
 CLIMATE_WEIGHTS = {
