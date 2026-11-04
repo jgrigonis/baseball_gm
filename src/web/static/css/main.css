@@ -1329,6 +1329,12 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
 .as-unsaved.on { display: flex; }
 .as-unsaved .btn { font-size: 10px; padding: 3px 8px; }
 .as-unsaved .as-unsaved-save { border-color: var(--amber); color: var(--amber); }
+/* The shared "not saved" bar: Save now and Revert back to the saved state. */
+.unsaved-bar { display: none; align-items: center; gap: 10px; padding: 6px 12px; background: var(--amber-lo); border: 1px solid var(--amber); font-family: var(--font-mono); font-size: 11px; color: var(--amber); }
+.unsaved-bar.on { display: flex; }
+.unsaved-bar > span { flex: 1; }
+.unsaved-bar .btn { font-size: 10px; padding: 3px 8px; }
+.unsaved-bar .unsaved-save { border-color: var(--amber); color: var(--amber); }
 .as-error { color: var(--red); }
 .as-player { cursor: pointer; }
 .as-player:hover { color: var(--amber); }

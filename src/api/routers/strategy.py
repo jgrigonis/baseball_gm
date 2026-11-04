@@ -241,6 +241,9 @@ def strategy(
         )
         for title, settings in SETTINGS
     ]
+    # Unsaved slider moves are kept in the browser under this key, so they
+    # survive a look at another tab.
+    ctx["draft_key"] = f"strategy_draft_{league_id}_{gm['id'] if gm else 'none'}"
     return tab_response(request, htmx, "dashboard/partials/strategy.html", ctx)
 
 
