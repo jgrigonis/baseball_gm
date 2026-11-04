@@ -17,6 +17,7 @@ from src.api.services.leave_league import leave_league
 from src.api.services.passwords import hash_password
 from src.api.services.ready_check import READY_CHECK_STATES
 from src.db.locks import league_lock
+from src.db.migration_files import migration_010_admin
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.ready_check_repo import ReadyCheckRepository
@@ -206,3 +207,15 @@ def user_leagues(conn, user_id: str) -> list[dict]:
         (user_id,),
     ).fetchall()
     return [dict(r) for r in rows]
+
+
+def uses_default_admin_name(user) -> bool:
+    """An admin still signing in with the login the first deploy created
+    (migration_010_admin). Everyone knows that name, so they're nudged to
+    pick their own: on the account page and atop the admin pages."""
+    return bool(
+        user
+        and user.get("is_admin")
+        and (user.get("username") or "").lower()
+        == migration_010_admin.DEFAULT_ADMIN_USERNAME.lower()
+    )
