@@ -86,6 +86,7 @@ TEAM_POOL: tuple[PoolTeam, ...] = (
     PoolTeam("Seoul", "White Tigers", EAST_ASIA, 127.0),
     PoolTeam("Tokyo", "Samurai", EAST_ASIA, 139.7),
     PoolTeam("Sydney", "Sharks", OCEANIA, 151.2),
+    PoolTeam("Auckland", "Kiwis", OCEANIA, 174.8),
 )
 
 _BY_KEY = {t.key: t for t in TEAM_POOL}
@@ -123,7 +124,7 @@ def draw(
 
         def owed(r):
             # A region with no team yet goes first, so a small region like
-            # Oceania (one team) isn't squeezed out of a 16-team league.
+            # Oceania (two teams) isn't squeezed out of a 16-team league.
             if not counts[r]:
                 return float("inf")
             return num_teams * pool_counts[r] / len(TEAM_POOL) - counts[r]
