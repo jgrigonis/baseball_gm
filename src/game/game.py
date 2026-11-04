@@ -169,6 +169,7 @@ class Game:
         injuries_enabled: bool = True,
         max_pitcher_outs: int | None = None,
         ghost_runner: bool = False,
+        max_innings: int | None = None,
     ) -> None:
         """
         Initialize a new game.
@@ -193,6 +194,9 @@ class Game:
                 if there's anyone left to bring in (default: None, no cap)
             ghost_runner: Use the extra-innings rule: from the 10th on, each
                 half-inning starts with a runner on second (default: False)
+            max_innings: Stop after this many innings even if it's tied, and
+                leave the tie to the caller (the All-Star Game's swing-off)
+                (default: None, play until someone wins)
 
         Raises:
             ValueError: If teams are invalid/missing
@@ -257,6 +261,7 @@ class Game:
         self.injuries_enabled = injuries_enabled
         self.max_pitcher_outs = max_pitcher_outs
         self.ghost_runner = ghost_runner
+        self.max_innings = max_innings
         # (player_id, severity, activity, injury_type)
         self.new_injuries: list[tuple[str, str, str, str | None]] = []
 
@@ -312,6 +317,12 @@ class Game:
         self.logger.info(f"\n🏆 Final: {result}")
         if self.logger.isEnabledFor(logging.DEBUG):
             self.validate_stats()
+
+        if self.score.is_tied:
+            # Stopped at max_innings: nobody wins, so no W, L, save or holds.
+            self._credit_complete_games()
+            self.decisions = PitchingDecisions()
+            return result
 
         home_wins = self.score.home > self.score.away
         winning_team_id = self.home.record.id if home_wins else self.away.record.id
@@ -459,6 +470,15 @@ class Game:
         ):
             return True
 
+        # Tied after the last inning there is: the caller breaks the tie.
+        if (
+            self.max_innings
+            and self.inning.number >= self.max_innings
+            and self.inning.bottom
+            and half_inning_complete
+        ):
+            return True
+
         return False
 
     def get_result(self) -> GameResult:
@@ -474,11 +494,12 @@ class Game:
         if not self.is_over():
             raise RuntimeError("Cannot get result - game not over")
 
-        winner = (
-            self.home.record.mascot
-            if self.score.home > self.score.away
-            else self.away.record.mascot
-        )
+        if self.score.is_tied:
+            winner = "Nobody"
+        elif self.score.home > self.score.away:
+            winner = self.home.record.mascot
+        else:
+            winner = self.away.record.mascot
         margin = abs(self.score.home - self.score.away)
 
         return GameResult(

@@ -1377,6 +1377,10 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
 .as-mvp { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-top: 14px; font-size: 13px; }
 .as-mvp-tag { font-family: var(--font-mono); font-size: 11px; color: var(--tile-dark, #111); background: var(--amber); padding: 2px 8px; border-radius: 3px; }
 .as-mvp-row td:first-child { box-shadow: inset 3px 0 0 var(--amber); }
+.as-swingoff { margin-top: 14px; max-width: 360px; }
+.as-swingoff-title { font-size: 13px; margin-bottom: 6px; }
+.as-swingoff-side td { font-family: var(--font-mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-dim); }
+.as-swingoff-table tbody.won .as-swingoff-side td { color: var(--green); }
 .as-box { margin-bottom: 8px; grid-template-columns: repeat(auto-fit, minmax(480px, 1fr)); }
 .as-pitching { margin-top: 10px; }
 .hr-bracket { display: flex; gap: 16px; padding: 4px 16px 16px; overflow-x: auto; }

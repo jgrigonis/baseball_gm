@@ -314,13 +314,22 @@ class AllStarRepository:
         innings: int,
         line_score: dict,
         mvp_player_id: str | None,
+        swingoff: dict | None = None,
     ) -> None:
         self.conn.execute(
             f"""UPDATE {self.games}
                SET state = 'played', score1 = %s, score2 = %s, innings = %s,
-                   line_score = %s, mvp_player_id = %s
+                   line_score = %s, mvp_player_id = %s, swingoff = %s
                WHERE season_id = %s""",
-            (score1, score2, innings, Jsonb(line_score), mvp_player_id, season_id),
+            (
+                score1,
+                score2,
+                innings,
+                Jsonb(line_score),
+                mvp_player_id,
+                Jsonb(swingoff) if swingoff else None,
+                season_id,
+            ),
         )
 
     def save_lines(self, season_id: str, lines: list[dict]) -> None:
@@ -352,7 +361,8 @@ class AllStarRepository:
                       t.city AS captain_city,
                       CASE WHEN s.side = 1 THEN g.score1 ELSE g.score2 END AS runs,
                       CASE WHEN s.side = 1 THEN g.score2 ELSE g.score1 END
-                          AS runs_against
+                          AS runs_against,
+                      (g.swingoff->>'winner')::int AS swingoff_winner
                FROM {self.stats} s
                JOIN seasons y ON y.id = s.season_id
                JOIN {self.games} g ON g.season_id = s.season_id

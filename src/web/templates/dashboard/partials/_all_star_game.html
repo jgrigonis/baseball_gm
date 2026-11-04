@@ -13,7 +13,7 @@
 <div class="card as-game">
   <div class="card-header">
     <span class="card-title">{{ title }} · {{ x.game.game_date }}</span>
-    <span class="as-dim">Final{% if x.game.innings != 9 %} · {{ x.game.innings }} innings{% endif %}</span>
+    <span class="as-dim">Final{% if x.swingoff %} · home run swing-off{% elif x.game.innings != 9 %} · {{ x.game.innings }} innings{% endif %}</span>
   </div>
   <div class="card-body">
     <div class="scoreboard-scroll">
@@ -26,7 +26,7 @@
         <tbody>
           {% for s in (2, 1) %}
           {% set runs = x.game.score1 if s == 1 else x.game.score2 %}
-          {% set won = (x.game.score1 > x.game.score2) == (s == 1) %}
+          {% set won = x.winner == s %}
           <tr class="{% if won %}won{% endif %}{% if s == x.my_side %} mine{% endif %}">
             <td class="line-score-team">{{ team_badge(x.game['city' ~ s], x.game['mascot' ~ s]) }}<span>{{ names[s] }}</span></td>
             {% for c in x.line_score[s] %}<td class="tile">{{ c }}</td>{% endfor %}
@@ -37,6 +37,30 @@
         </tbody>
       </table>
     </div>
+    {% if x.swingoff %}
+    <div class="as-swingoff">
+      <div class="as-swingoff-title">Home Run Swing-Off <span class="as-dim">· {{ names[x.winner] }} wins
+        {{ x.swingoff[x.winner].total }}-{{ x.swingoff[3 - x.winner].total }}</span></div>
+      <table class="data-table as-swingoff-table">
+        <thead><tr><th>Hitter</th><th class="num">HR</th></tr></thead>
+        {% for s in (2, 1) %}
+        <tbody class="{% if x.winner == s %}won{% endif %}">
+          <tr class="as-swingoff-side"><td colspan="2">{{ side_name(s) }}</td></tr>
+          {% for h in x.swingoff[s].hitters %}
+          <tr>
+            <td><span class="as-player" onclick="openPlayerPanel('{{ h.player_id }}')">{{ h.name }}</span></td>
+            <td class="num">{{ h.homers }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        {% endfor %}
+      </table>
+      {% if x.sudden_death %}
+      <div class="as-note">Tied after three swings each, then sudden death:
+        {{ x.sudden_death | length }} round{{ 's' if x.sudden_death | length != 1 }} of one swing each.</div>
+      {% endif %}
+    </div>
+    {% endif %}
     {% if x.mvp %}
     <div class="as-mvp">
       <span class="as-mvp-tag">★ MVP</span>

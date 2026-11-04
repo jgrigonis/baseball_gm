@@ -245,7 +245,8 @@
           <tr>
             <td>{{ g.year }}</td>
             <td>Team {{ g.captain_city }}</td>
-            <td class="cs-asg-score">{{ 'W' if g.runs > g.runs_against else 'L' }} {{ g.runs }}-{{ g.runs_against }}</td>
+            {% set won = (g.swingoff_winner == g.side) if g.swingoff_winner else g.runs > g.runs_against %}
+            <td class="cs-asg-score">{{ 'W' if won else 'L' }} {{ g.runs }}-{{ g.runs_against }}{% if g.swingoff_winner %} <span class="as-dim">(swing-off)</span>{% endif %}</td>
             <td>{{ g.summary or 'Did not bat' }}</td>
             <td>{% if g.mvp %}<span class="all-star-tag">★ MVP</span>{% endif %}</td>
           </tr>

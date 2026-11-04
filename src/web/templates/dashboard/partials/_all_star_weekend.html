@@ -6,12 +6,13 @@
 #}
 {% macro final(x) -%}
   {%- set g = x.game -%}
-  {%- if g.score1 >= g.score2 -%}
+  {%- set first = (g.swingoff.winner == 1) if g.swingoff else (g.score1 >= g.score2) -%}
+  {%- if first -%}
   Team {{ g.city1 }} {{ g.score1 }}, Team {{ g.city2 }} {{ g.score2 }}
   {%- else -%}
   Team {{ g.city2 }} {{ g.score2 }}, Team {{ g.city1 }} {{ g.score1 }}
   {%- endif -%}
-  {%- if g.innings and g.innings != 9 %} ({{ g.innings }}){% endif -%}
+  {%- if g.swingoff %} (swing-off){% elif g.innings and g.innings != 9 %} ({{ g.innings }}){% endif -%}
 {%- endmacro %}
 
 {% if weekend_due %}
