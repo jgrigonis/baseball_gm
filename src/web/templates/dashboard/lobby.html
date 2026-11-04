@@ -81,6 +81,18 @@ function onStartLeague(form) {
   return false;
 }
 
+// Pace and the timer windows only matter with two or more people, so their
+// values are greyed out while one human is in the league. Un-grey them (or
+// grey them again) as the GM list's poll sees people join or leave.
+document.body.addEventListener('htmx:afterSwap', function() {
+  var card = document.getElementById('lobby-gms');
+  if (!card || !card.dataset.humans) return;
+  var solo = Number(card.dataset.humans) < 2;
+  document.querySelectorAll('tr[data-needs-humans]').forEach(function(row) {
+    row.classList.toggle('setting-off', solo);
+  });
+});
+
 // Stop the GM list's poll for good once this page can't reach the league:
 // signed out (the server redirects to the landing page), or the league or
 // this GM is gone, e.g. a window left open on a deleted league or a wiped

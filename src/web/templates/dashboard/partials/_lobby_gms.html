@@ -14,7 +14,7 @@
 {% macro lobby_team(city, mascot) -%}
   {% if city %}<span style="white-space:nowrap;">{{ team_badge(city, mascot) }} {{ city }} {{ mascot }}</span>{% else %}<span style="color:var(--text-dim);">—</span>{% endif %}
 {%- endmacro %}
-<div class="card" id="lobby-gms"
+<div class="card" id="lobby-gms" data-humans="{{ gms|length }}"
      {% if league_state == "lobby" %}
      hx-get="/leagues/{{ league_id }}/lobby/gms" hx-trigger="every 3s [!document.activeElement || !document.activeElement.closest('.lobby-team-pick')]" hx-swap="outerHTML"
      {% endif %}>
