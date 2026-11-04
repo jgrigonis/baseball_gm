@@ -383,7 +383,9 @@ TIMER_ROWS = ["Pace", "Decision window", "Draft window", "Lineup window"]
 
 def test_timer_settings_are_greyed_out_with_one_human(client, db_conn, lobby):
     league, _ = lobby
-    db_conn.execute("UPDATE leagues SET pace_control = 'timer' WHERE id = %s", (league.id,))
+    db_conn.execute(
+        "UPDATE leagues SET pace_control = 'timer' WHERE id = %s", (league.id,)
+    )
 
     rows = _settings_rows(_settings_page(client, league))
 
@@ -395,7 +397,9 @@ def test_timer_settings_are_greyed_out_with_one_human(client, db_conn, lobby):
 
 def test_timer_settings_light_up_once_a_second_human_joins(client, db_conn, lobby):
     league, _ = lobby
-    db_conn.execute("UPDATE leagues SET pace_control = 'timer' WHERE id = %s", (league.id,))
+    db_conn.execute(
+        "UPDATE leagues SET pace_control = 'timer' WHERE id = %s", (league.id,)
+    )
     db_conn.execute(
         "INSERT INTO gms (id, league_id, display_name, is_ai)"
         " VALUES (gen_random_uuid(), %s, 'Newcomer', false)",
