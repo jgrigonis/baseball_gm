@@ -181,3 +181,11 @@ def test_mood_moves_clutch_most_and_the_rest_only_at_the_extremes():
     assert miserable["clutch"] == -9.0 and miserable["contact"] == -2.0
     thrilled = hp.game_effects(0.8)
     assert thrilled["clutch"] == 8.0 and thrilled["power"] == 1.5
+
+
+def test_a_type_says_what_it_cares_most_about():
+    assert hp.type_cares("Ring Chaser") == "winning"
+    assert hp.type_cares("Franchise Star") == (
+        "playing time and a big role, money and fame and a big market"
+    )
+    assert hp.type_cares("Easygoing") == ""

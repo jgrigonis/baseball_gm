@@ -78,6 +78,7 @@ def _happiness(db, league_id: str, pid: str) -> dict | None:
         "refusing": bool(today and pid in repo.refusing([pid], today)),
         "type": pers.type,
         "blurb": hp.TYPES.get(pers.type, {}).get("blurb", ""),
+        "cares": hp.type_cares(pers.type),
         "mood": hp.mood_word(row["mood"]) if row else None,
         "lines": detail.get("lines") or [],
         "admin": {

@@ -1118,7 +1118,7 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
   font-family: var(--font-mono); font-size: 11px;
   color: var(--text-dim); margin-top: 2px;
 }
-.pd-mood-type { color: var(--text); cursor: help; }
+.pd-mood-type { color: var(--text); }
 .pd-mood-word.mood-thrilled, .pd-mood-word.mood-happy { color: var(--green); }
 .pd-mood-word.mood-restless { color: #f5c518; }
 .pd-mood-word.mood-unhappy, .pd-mood-word.mood-miserable { color: var(--red); }
