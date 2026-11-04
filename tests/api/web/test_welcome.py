@@ -76,6 +76,7 @@ def test_welcome_page_shows_the_team(client, league):
     assert "at the <b>Chicago Wind</b>" in html
     assert "2025-04-01" in html
     assert "2<span" in html and "of 2" in html  # picks second
+    assert "Tied for youngest of 2 teams" in html  # same ages on both teams
     assert "Chicago Wind" in html.split("Teams to beat")[1]
 
 
@@ -184,6 +185,25 @@ def test_scouting_report_ranks_and_verdict():
     assert report["verdict"] == (
         "Built around its lineup (1st of 3), but the rotation (3rd of 3) needs help."
     )
+
+
+def test_age_rank_counts_from_the_nearer_end():
+    class P:
+        def __init__(self, age):
+            self.age = age
+
+    rosters = {t: [P(a)] for t, a in zip("abcdef", (24, 26, 27, 28, 30, 33))}
+
+    assert wv.age_rank("a", rosters)["label"] == "Youngest of 6 teams"
+    assert wv.age_rank("b", rosters)["label"] == "2nd youngest of 6 teams"
+    assert wv.age_rank("c", rosters)["label"] == "3rd youngest of 6 teams"
+    assert wv.age_rank("d", rosters)["label"] == "3rd oldest of 6 teams"
+    assert wv.age_rank("f", rosters)["label"] == "Oldest of 6 teams"
+    assert wv.age_rank("a", rosters)["league_average"] == 28.0
+
+    rosters["g"] = [P(26)]
+    assert wv.age_rank("b", rosters)["label"] == "Tied for 2nd youngest of 7 teams"
+    assert wv.age_rank("a", {"a": rosters["a"]}) is None
 
 
 def test_ordinals():

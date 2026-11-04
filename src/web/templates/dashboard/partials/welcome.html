@@ -232,6 +232,9 @@
     <div class="card-body">
       <div style="display:flex;gap:24px;align-items:flex-end;flex-wrap:wrap;">
         <div><div class="wl-big">{{ w.ages.average }}</div><div class="wl-meta">Average age</div></div>
+        {% if w.age_rank %}
+        <div><div class="wl-big" style="font-size:20px;">{{ w.age_rank.label }}</div><div class="wl-meta">League average {{ w.age_rank.league_average }}</div></div>
+        {% endif %}
         <div class="wl-meta" style="line-height:1.7;">
           Youngest: <span class="wl-link" onclick="openPlayerPanel('{{ w.ages.youngest.player_id }}')">{{ w.ages.youngest.name }}</span> ({{ w.ages.youngest.age }})<br>
           Oldest: <span class="wl-link" onclick="openPlayerPanel('{{ w.ages.oldest.player_id }}')">{{ w.ages.oldest.name }}</span> ({{ w.ages.oldest.age }})
