@@ -174,6 +174,44 @@ def test_viewer_stats_start_on_a_team(client, db_conn, factory):
     assert "selected" in html.split('id="team-select"')[1].split("</select>")[0]
 
 
+def _team_game(db, game_id, winner, loser):
+    for team, won in ((winner, 1), (loser, 0)):
+        db.execute(
+            "INSERT INTO team_game_stats (game_id, team_id, runs, win, loss)"
+            " VALUES (%s, %s, 0, %s, %s)",
+            (game_id, team, won, 1 - won),
+        )
+
+
+def test_stats_header_shows_the_teams_record(client, db_conn, factory):
+    league, home = _league(db_conn, factory)
+    game = db_conn.execute(
+        "SELECT id, season_id, away_team_id FROM games WHERE home_team_id = %s",
+        (home.id,),
+    ).fetchone()
+    _team_game(db_conn, game["id"], home.id, game["away_team_id"])
+    series_id = str(uuid.uuid4())
+    db_conn.execute(
+        "INSERT INTO series (id, season_id, name) VALUES (%s, %s, 'Final')",
+        (series_id, game["season_id"]),
+    )
+    for _ in range(2):
+        playoff_id = str(uuid.uuid4())
+        db_conn.execute(
+            """INSERT INTO games (id, game_date, season_id, series_id,
+                   home_team_id, away_team_id, home_score, away_score,
+                   winner_id, completed)
+               VALUES (%s, '2025-10-01', %s, %s, %s, %s, 1, 4, %s, 1)""",
+            (playoff_id, game["season_id"], series_id, home.id,
+             game["away_team_id"], game["away_team_id"]),
+        )
+        _team_game(db_conn, playoff_id, game["away_team_id"], home.id)
+
+    url = f"/leagues/{league.id}/stats?team_id={home.id}"
+    assert "1W-0L" in client.get(url).text
+    assert "0W-2L" in client.get(url + "&postseason=1").text
+
+
 def test_viewer_cant_sim(client, db_conn, factory):
     league, _ = _league(db_conn, factory)
 

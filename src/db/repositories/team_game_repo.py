@@ -392,6 +392,24 @@ class TeamGameRepository:
         ).fetchall()
         return {r["team_id"]: f"{r['wins']}-{r['losses']}" for r in rows}
 
+    def get_team_record_for_phase(
+        self, season_id: str, team_id: str, postseason: bool
+    ) -> tuple[int, int]:
+        """(wins, losses) for one team in a season's regular season, or its
+        postseason when `postseason` is set (playoff games have a series)."""
+        series = "IS NOT NULL" if postseason else "IS NULL"
+        row = self.conn.execute(
+            f"""SELECT COALESCE(SUM(tgs.win),  0) AS wins,
+                       COALESCE(SUM(tgs.loss), 0) AS losses
+                FROM team_game_stats tgs
+                JOIN games g ON g.id = tgs.game_id
+                  AND g.season_id = %s AND g.completed = 1
+                  AND g.series_id {series}
+                WHERE tgs.team_id = %s""",
+            (season_id, team_id),
+        ).fetchone()
+        return (int(row["wins"] or 0), int(row["losses"] or 0)) if row else (0, 0)
+
     @staticmethod
     def _calculate_win_pct(wins: int, losses: int) -> float:
         """
