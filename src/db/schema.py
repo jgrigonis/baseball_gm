@@ -148,6 +148,7 @@ CREATE TABLE IF NOT EXISTS players (
     position   TEXT,  -- Affinity position used in creation, can be NULL
     league_id  TEXT,
     jersey_prefs TEXT[], -- numbers he wants, favorite first (src/player/jersey_numbers.py)
+    home_region TEXT,    -- a team pool region he's from (src/player/home_region.py)
     created_at TEXT DEFAULT (NOW()),
     updated_at TEXT,
 

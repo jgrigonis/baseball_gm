@@ -1,6 +1,6 @@
 # tests/api/web/test_playoffs_round_order.py
-"""On phones the bracket shows a round only once its games exist (Round 1
-always), stacked newest on top. Rounds that haven't started carry the
+"""On phones the bracket shows a round once its first team advances into it
+(Round 1 always), stacked newest on top. Rounds nobody has reached carry the
 not-started class the phone CSS hides."""
 
 import re
@@ -63,10 +63,10 @@ def test_only_round_one_before_semis_start():
     assert _render([], []) == ["", " not-started", " not-started"]
 
 
-def test_semi_with_known_winner_but_no_games_is_not_started():
-    assert _render([_team(1, pending=True)], []) == ["", " not-started", " not-started"]
+def test_semi_shows_as_soon_as_one_team_advances():
+    assert _render([_team(1, pending=True)], []) == ["", "", " not-started"]
 
 
-def test_rounds_appear_once_games_exist():
+def test_finals_show_as_soon_as_one_finalist_is_known():
     assert _render([_team(1), _team(3)], []) == ["", "", " not-started"]
-    assert _render([_team(1), _team(3)], [_team(1), _team(5)]) == ["", "", ""]
+    assert _render([_team(1), _team(3)], [_team(1, pending=True)]) == ["", "", ""]

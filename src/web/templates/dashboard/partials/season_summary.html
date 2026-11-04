@@ -362,30 +362,27 @@
   </div>
   {% endif %}
 
-  {# Footer: Begin Offseason / continue to draft, after everything else #}
-  {% if league_state == 'offseason' and not multiplayer and not is_viewer %}
-  <div class="ss-footer">
-    <button id="begin-offseason-btn" onclick="beginOffseason()"
-            class="btn btn-primary" style="padding:10px 32px;font-size:14px;">
-      Begin Offseason →
-    </button>
-    <div id="offseason-status" style="font-family:var(--font-mono);font-size:11px;
-                                       color:var(--text-dim);margin-top:12px;"></div>
-  </div>
-  {% elif league_state == 'complete' %}
-  <div class="ss-footer" style="font-family:var(--font-mono);font-size:13px;color:var(--amber);">
-    That was the league's final season. The league is complete.
-  </div>
-  {% elif league_state == 'draft' %}
-  <div class="ss-footer">
-    <a href="/leagues/{{ league_id }}/retirement"
-       class="btn btn-primary" style="padding:10px 32px;font-size:14px;">
-      View Retirements →
-    </a>
-  </div>
+  {% if league_state == 'complete' %}
+  <div class="ss-final">That was the league's final season. The league is complete.</div>
   {% endif %}
 
 </div>
+
+{# What's next, in a bar pinned to the bottom of the page like the new
+   league's setup bar, so it's always in reach on this long page. #}
+{% if league_state == 'offseason' and not multiplayer and not is_viewer %}
+<div class="ss-footer">
+  <button id="begin-offseason-btn" onclick="beginOffseason()" class="btn btn-primary">
+    Begin Offseason →
+  </button>
+  <span id="offseason-status" class="ss-footer-hint">Ages players, retires veterans and sets up the draft.</span>
+</div>
+{% elif league_state == 'draft' %}
+<div class="ss-footer">
+  <a href="/leagues/{{ league_id }}/retirement" class="btn btn-primary">View Retirements →</a>
+  <span class="ss-footer-hint">Then on to the draft.</span>
+</div>
+{% endif %}
 
 <style>
 .ss-page { max-width:960px;margin:40px auto;padding:0 24px; }
@@ -445,7 +442,16 @@
   padding:6px 12px;border-top:1px solid var(--border);
 }
 .ss-draft { display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));margin-bottom:24px; }
-.ss-footer { text-align:center;margin-top:8px;padding:24px 0 8px;border-top:1px solid var(--border); }
+.ss-final { text-align:center;font-family:var(--font-mono);font-size:13px;color:var(--amber);
+            margin-top:8px;padding:24px 0 8px;border-top:1px solid var(--border); }
+/* Sticks to the bottom of the scrolling tab pane, full width, styled like
+   the setup bar (_setup_bar.html). */
+.ss-footer {
+  position:sticky;bottom:0;z-index:5;display:flex;gap:10px 16px;align-items:center;flex-wrap:wrap;
+  padding:12px 24px;background:var(--bg-2);border-top:1px solid var(--border-hi);
+}
+.ss-footer .btn-primary { font-size:15px;padding:10px 22px;white-space:nowrap; }
+.ss-footer-hint { font-family:var(--font-mono);font-size:11px;color:var(--text-dim);min-width:0; }
 .ss-ellipsis { white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
 .ss-inj-table { width:100%;table-layout:fixed; }
 .ss-inj-table th { cursor:pointer;user-select:none;white-space:nowrap; }
@@ -465,6 +471,10 @@
    names fit, each winner's team on its own line, and MM-DD injury dates. */
 @media (max-width: 700px) {
   .ss-page { margin:20px auto;padding:0 16px; }
+  .ss-footer { padding:8px 16px;gap:6px 12px; }
+  .ss-footer .btn-primary { font-size:12px;padding:7px 12px; }
+  /* Like the setup bar, no hint on phones; the offseason's progress still shows. */
+  .ss-footer-hint:not(.ss-footer-live) { display:none; }
   .ss-top, .ss-mine-card { padding:16px; }
   .ss-mine-leaders { grid-template-columns:minmax(0,1fr); }
   .ss-pos-team { display:block; }
@@ -481,6 +491,7 @@ function beginOffseason() {
   var status = document.getElementById('offseason-status');
   btn.disabled = true;
   btn.textContent = 'Running offseason…';
+  status.classList.add('ss-footer-live');
   status.textContent = 'Aging players, generating prospects, preparing draft…';
 
   var running = status.textContent;

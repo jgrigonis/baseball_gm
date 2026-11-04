@@ -60,3 +60,15 @@ def test_closest_goes_the_short_way_around_the_globe():
     sydney = team_pool.get("Sydney", "Sharks")
     far = [team_pool.get("Seattle", "Rain"), team_pool.get("London", "Lions")]
     assert team_pool.closest(sydney, far).city == "Seattle"
+
+
+def test_every_pool_team_has_a_market_size_and_climate():
+    for t in TEAM_POOL:
+        assert team_pool.MIN_MARKET <= t.market <= team_pool.MAX_MARKET, t.city
+        assert t.climate in team_pool.CLIMATES, t.city
+        assert t.region in team_pool.REGIONS, t.city
+
+
+def test_market_sizes_spread_from_small_to_huge():
+    sizes = Counter(t.market for t in TEAM_POOL)
+    assert set(sizes) == set(range(team_pool.MIN_MARKET, team_pool.MAX_MARKET + 1))

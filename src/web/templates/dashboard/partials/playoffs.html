@@ -87,7 +87,7 @@
 @media (max-width: 700px) {
   .po-wrap { padding: 12px 16px 24px !important; overflow: visible !important; }
   /* Newest round on top: Finals, then Semifinals, then Round 1 at the
-     bottom. A round shows only once its games exist. */
+     bottom. A round shows once its first team advances. */
   .po-bracket { display: flex !important; flex-direction: column-reverse; min-width: 0 !important; }
   .po-round.not-started { display: none !important; }
   .po-lines, .po-gap { display: none !important; }
@@ -146,9 +146,9 @@
 </div>
 {% else %}
 
-{# A round has started once any of its series has games scheduled. Phones
-   hide rounds that haven't (Round 1 always shows). #}
-{% macro round_class(rd) %}{% if not (rd.series | selectattr('teams') | map(attribute='teams') | map('first') | rejectattr('pending') | list) %} not-started{% endif %}{% endmacro %}
+{# Phones show a round once its first team has advanced into it (Round 1
+   always shows). #}
+{% macro round_class(rd) %}{% if not (rd.series | selectattr('teams') | list) %} not-started{% endif %}{% endmacro %}
 
 {# ── Bracket ───────────────────────────────────────────────────────────────── #}
 {# Fixed dims: card 220px, connector 32px, height 560px                        #}

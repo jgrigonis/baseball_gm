@@ -37,3 +37,37 @@ def test_bracket_flags_mine_and_other_humans(db_conn, factory):
     assert teams[rival.id]["is_human"] and not teams[rival.id]["is_mine"]
     assert not teams[ai.id]["is_human"]
     assert not teams[ai2.id]["is_human"]
+
+
+def _win(db, season, name, winner, loser, wins):
+    sid = f"{season.id}-{name}"
+    db.execute(
+        "INSERT INTO series (id, season_id, name) VALUES (%s, %s, %s)",
+        (sid, season.id, name),
+    )
+    for i in range(wins):
+        db.execute(
+            """INSERT INTO games
+            (id, game_date, season_id, series_id, home_team_id, away_team_id,
+             completed, winner_id)
+            VALUES (%s, '2025-10-01', %s, %s, %s, %s, 1, %s)""",
+            (f"{sid}-g{i}", season.id, sid, winner.id, loser.id, winner.id),
+        )
+
+
+def test_finals_show_a_semifinal_winner_before_games_exist(db_conn, factory):
+    league = factory.league(state="playoffs")
+    season = factory.season()
+    factory.league_season(league, season)
+    a, b = factory.team(), factory.team()
+    _win(db_conn, season, "[1,8]v[4,5]", a, b, 4)
+    db_conn.execute(
+        "INSERT INTO series (id, season_id, name) VALUES (%s, %s, 'Finals')",
+        (f"{season.id}-Finals", season.id),
+    )
+
+    ctx = playoffs_context(db_conn, league.id, season.id, a.id)
+
+    finals = ctx["bracket"][2]["series"][0]
+    assert [t["team_id"] for t in finals["teams"]] == [a.id]
+    assert finals["teams"][0]["pending"]
