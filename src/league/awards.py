@@ -36,8 +36,13 @@ Gold Glove    at each position (pitchers included), the best fielder among
               players with a third of their team's starts there: mostly his
               defense rating there, then his range (a catcher's
               caught-stealing rate) and how rarely he makes errors
-Platinum      the Gold Glove winner who stood out most at his position
-  Glove
+Platinum      the Gold Glove winner who saved the most runs, a simple
+  Glove       SDI-style defensive score: his defense rating against the
+              others at his position, scaled by how much that position
+              matters and how much he played, plus plays made, errors
+              avoided and (catchers) runners thrown out beyond the
+              position's average. Pitchers play few innings and get few
+              chances, so they almost never win it
 Silver        at each position and DH, voted by the league's GMs: each
   Slugger     ranks three hitters by what that GM values at the plate (the
               persona dials, src/league/personas.py), for 5, 3 and 1 points
@@ -562,9 +567,73 @@ def _glove_scores(group: list[dict], pos: str) -> list[float]:
     ]
 
 
+# The Platinum Glove's defensive runs. Runs a season for each point of
+# defense rating above the position's average, for an everyday player: the
+# sim leans hardest on the middle infield, catcher and center field.
+# Pitchers have no defense rating (the sim doesn't use one for them).
+PLAT_RATING_RUNS = {
+    "ss": 0.6, "2b": 0.5, "c": 0.5, "cf": 0.5, "3b": 0.4,
+    "rf": 0.3, "lf": 0.3, "1b": 0.15, "p": 0.0,
+}  # fmt: skip
+PLAT_PLAY_RUNS = 0.1  # an extra play made (many chances are routine)
+PLAT_FIRST_BASE_PLAY_RUNS = 0.03  # most of a first baseman's are catching throws
+PLAT_ERROR_RUNS = 0.75  # an error avoided
+PLAT_CS_RUNS = 0.6  # a runner thrown out instead of stealing
+
+
+def _mean(values: list[float]) -> float:
+    return sum(values) / len(values) if values else 0.0
+
+
+def defensive_runs(c: dict, group: list[dict], pos: str, games: int) -> float:
+    """Runs he saved against an average fielder at his position (the Gold
+    Glove group), a rough version of SABR's Defensive Index: his rating,
+    the extra plays he made, the errors he didn't, and for a catcher the
+    runners he threw out. Every part grows with how much he played, so an
+    everyday shortstop counts for far more than a starting pitcher."""
+    games = max(1, games)
+
+    def share(x):  # his part of the team's season at the position
+        if pos == "p":
+            return min(1.0, _n(x, "pitch_outs") / (27 * games))
+        return min(1.0, _n(x, "pos_starts") / games)
+
+    def rating(x):
+        return float((x.get("ratings") or {}).get(pos, 0))
+
+    def chances(x):
+        return _n(x, "field_putouts") + _n(x, "field_assists")
+
+    def plays_a_game(x):  # a game: a start, or nine innings for a pitcher
+        played = _n(x, "pitch_outs") / 27 if pos == "p" else _n(x, "pos_starts")
+        return (chances(x) + _n(x, "field_double_plays")) / max(1, played)
+
+    def error_rate(x):
+        e = _n(x, "field_errors")
+        return e / (chances(x) + e) if chances(x) + e else 0.0
+
+    pos_runs = PLAT_RATING_RUNS.get(pos, 0.3)
+    runs = (rating(c) - _mean([rating(x) for x in group])) * pos_runs * share(c)
+    if pos != "c":  # a catcher's chances are mostly strikeouts
+        played = _n(c, "pitch_outs") / 27 if pos == "p" else _n(c, "pos_starts")
+        per_play = PLAT_FIRST_BASE_PLAY_RUNS if pos == "1b" else PLAT_PLAY_RUNS
+        extra = plays_a_game(c) - _mean([plays_a_game(x) for x in group])
+        runs += extra * played * per_play
+    e = _n(c, "field_errors")
+    expected_e = _mean([error_rate(x) for x in group]) * (chances(c) + e)
+    runs += (expected_e - e) * PLAT_ERROR_RUNS
+    if pos == "c":
+        cs, sb = _n(c, "field_catcher_cs"), _n(c, "field_catcher_sb")
+        lg_cs = sum(_n(x, "field_catcher_cs") for x in group)
+        lg_tries = lg_cs + sum(_n(x, "field_catcher_sb") for x in group)
+        if lg_tries:
+            runs += (cs - (cs + sb) * lg_cs / lg_tries) * PLAT_CS_RUNS
+    return runs
+
+
 def gold_gloves(cands: list[dict], games: int) -> list[dict]:
     """A Gold Glove at each position in each league, and a Platinum Glove
-    for the winner who stood out most. Candidates as for regular_awards(),
+    for the winner who saved the most runs (defensive_runs()). Candidates as for regular_awards(),
     each also with ratings (PlayerEvaluator) and fielding totals."""
     games = max(1, games)
     out = []
@@ -592,7 +661,7 @@ def gold_gloves(cands: list[dict], games: int) -> list[dict]:
             c = _best(group, lambda c: scores[c["player_id"]])
             e = _n(c, "field_errors")
             text = f"{POSITION_NAMES[pos]}, {e} error{'' if e == 1 else 's'}"
-            winners.append((scores[c["player_id"]], pos, c))
+            winners.append((defensive_runs(c, group, pos, games), pos, c))
             out.append(_win("gold_glove", scope, c, scores[c["player_id"]], text, pos))
         if winners:
             score, pos, c = max(winners, key=lambda w: (w[0], w[2]["player_id"]))
@@ -602,7 +671,7 @@ def gold_gloves(cands: list[dict], games: int) -> list[dict]:
                     scope,
                     c,
                     score,
-                    f"Gold Glove at {POSITION_NAMES[pos]}",
+                    f"Gold Glove at {POSITION_NAMES[pos]}, {score:+.0f} defensive runs",
                     pos,
                 )
             )
