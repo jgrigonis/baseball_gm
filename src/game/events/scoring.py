@@ -21,7 +21,7 @@ class RunScoredEvent(GameEvent):
     earned: bool = True
 
     def apply(self, game):
-        earned = not game._inning_had_error
+        earned = self.earned and not game._inning_had_error
         game.score.score_run(
             top=game.inning.top,
             inning_number=game.inning.number,

@@ -673,6 +673,8 @@ def _play_game(
         home_eligible=home_eligible,
         away_eligible=away_eligible,
         injuries_enabled=LeagueRepository(conn).injuries_enabled(league_id),
+        # Extra-innings runner on second: regular season only.
+        ghost_runner=not playoffs,
     )
 
     home_team.set_lineup(

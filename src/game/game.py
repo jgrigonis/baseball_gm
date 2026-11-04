@@ -25,7 +25,7 @@ from src.db.repositories.pitcher_state import PitcherState
 from src.db.repositories.player_energy import PlayerEnergyState
 from src.game.inning import Inning
 from src.game.count import Count
-from src.game.bases import Bases
+from src.game.bases import SECOND, Bases
 from src.game.event import GameEvent
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
 from src.game.game_event_logger import GameEventLogger
@@ -64,6 +64,11 @@ from src.util.weighted_choice import WeightedChoice
 if TYPE_CHECKING:
     from src.team.team_in_game import TeamInGame
     from src.player.player_in_game import PlayerInGame
+
+
+# Regular-season extra innings: from this inning on, each half-inning starts
+# with a runner on second.
+GHOST_RUNNER_INNING = 10
 
 
 class GameStateError(Exception):
@@ -163,6 +168,7 @@ class Game:
         away_eligible: set[str] | None = None,
         injuries_enabled: bool = True,
         max_pitcher_outs: int | None = None,
+        ghost_runner: bool = False,
     ) -> None:
         """
         Initialize a new game.
@@ -185,6 +191,8 @@ class Game:
             injuries_enabled: Whether players can get hurt in this game (default: True)
             max_pitcher_outs: Every pitcher comes out once he has this many outs,
                 if there's anyone left to bring in (default: None, no cap)
+            ghost_runner: Use the extra-innings rule: from the 10th on, each
+                half-inning starts with a runner on second (default: False)
 
         Raises:
             ValueError: If teams are invalid/missing
@@ -248,6 +256,7 @@ class Game:
         self.injured_ids = set(injured_ids or {})
         self.injuries_enabled = injuries_enabled
         self.max_pitcher_outs = max_pitcher_outs
+        self.ghost_runner = ghost_runner
         # (player_id, severity, activity, injury_type)
         self.new_injuries: list[tuple[str, str, str, str | None]] = []
 
@@ -795,6 +804,23 @@ class Game:
         self._consider_pitching_change(inning_start=True)
 
         self.logger.info(f"⚾ {self.inning}")
+        if self.ghost_runner and self.inning.number >= GHOST_RUNNER_INNING:
+            self._place_ghost_runner()
+
+    def _place_ghost_runner(self) -> None:
+        """Extra-innings rule: put a runner on second to start the half-inning.
+
+        He's the batter in the lineup spot just before this inning's leadoff
+        hitter (usually the one who made the last out). His run is charged
+        to the pitcher on the mound now, but it's unearned.
+        """
+        lineup = self.bat_team.lineup
+        slot = lineup[(self.bat_team.batter_index - 1) % len(lineup)]
+        runner = slot.player
+        runner.responsible_pitcher = self.current_pitcher
+        runner.ghost_runner = True
+        self.bases.advance(runner=runner, from_base=None, to_base=SECOND)
+        self.logger.info(f"👻 {runner.name} starts the inning on second")
 
     def _live_energy(self, player) -> float | None:
         """Position player's in-game energy, or None for pitchers."""
