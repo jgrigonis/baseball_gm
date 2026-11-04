@@ -211,6 +211,7 @@ def player_panel_data(
             JerseyRepository(db).number_of(team["id"], pid) if team else None
         ),
         "contract": _contract(db, league_id, pid),
+        "home_region": p.get("home_region"),
         "grades": grade_map,
         "overall_grade": overall_grade,
         "overall_value": round(overall_value) if overall_value is not None else None,
