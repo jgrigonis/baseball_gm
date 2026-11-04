@@ -231,17 +231,26 @@ class GMRepository:
         ).fetchone()
         return dict(row)
 
-    def needs_welcome(self, gm_id: str) -> bool:
-        """True until the GM has seen their team's welcome screen."""
+    def needs_welcome(self, gm_id: str, season_id: str) -> bool:
+        """True until the GM has seen the welcome screen (the season preview
+        after the first season) for this season."""
         row = self.conn.execute(
-            "SELECT welcomed_at FROM gms WHERE id = %s AND NOT is_ai", (gm_id,)
+            "SELECT welcomed_season_id FROM gms WHERE id = %s AND NOT is_ai", (gm_id,)
         ).fetchone()
-        return bool(row) and row["welcomed_at"] is None
+        return bool(row) and row["welcomed_season_id"] != season_id
 
-    def mark_welcomed(self, gm_id: str) -> None:
+    def mark_welcomed(self, gm_id: str, season_id: str | None = None) -> None:
+        """The GM has seen this season's welcome screen: by default their
+        league's newest season."""
         self.conn.execute(
-            "UPDATE gms SET welcomed_at = NOW() WHERE id = %s AND welcomed_at IS NULL",
-            (gm_id,),
+            """UPDATE gms SET welcomed_at = COALESCE(welcomed_at, NOW()),
+                   welcomed_season_id = COALESCE(%s, (
+                       SELECT s.id FROM seasons s
+                       JOIN league_seasons ls ON ls.season_id = s.id
+                       WHERE ls.league_id = gms.league_id
+                       ORDER BY s.year DESC LIMIT 1))
+               WHERE id = %s""",
+            (season_id, gm_id),
         )
 
     def needs_setup_bar(self, gm_id: str) -> bool:

@@ -252,17 +252,21 @@ class SeasonRepository:
         ).fetchone()
         return dict(row) if row else None
 
-    def get_last_with_completed_games(self, league_id: str) -> dict | None:
-        """Return the newest season that has at least one completed game, or None."""
+    def get_last_with_completed_games(
+        self, league_id: str, before_year: int | None = None
+    ) -> dict | None:
+        """Return the newest season that has at least one completed game, or
+        None. With before_year, only seasons before that year count."""
         row = self.conn.execute(
             """SELECT s.id, s.year, s.name FROM seasons s
                JOIN league_seasons ls ON ls.season_id = s.id
                WHERE ls.league_id = %s
+                 AND (%s::int IS NULL OR s.year < %s::int)
                  AND EXISTS (
                    SELECT 1 FROM games g WHERE g.season_id = s.id AND g.completed = 1
                  )
                ORDER BY s.year DESC LIMIT 1""",
-            (league_id,),
+            (league_id, before_year, before_year),
         ).fetchone()
         return dict(row) if row else None
 

@@ -1,12 +1,16 @@
 # src/api/view_models/welcome.py
 #
-# The welcome screen a GM sees once when their league starts, before the
-# draft (plans/welcome-screen.md): their team's colors and uniforms, how the
+# The welcome screen a GM sees when their league starts, before the draft
+# (plans/welcome-screen.md): their team's colors and uniforms, how the
 # roster stacks up against the league, its stars and weak spots, its ages,
-# the GM's draft slot, opening day and the other GMs.
+# the GM's draft slot, opening day and the other GMs. In later seasons the
+# same page is the season preview, shown before each draft, and adds how
+# last season went and what changed on the roster since: who got better or
+# worse over the winter, and who retired.
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import re
 import unicodedata
@@ -19,16 +23,19 @@ from src.api.view_models.draft import last_season
 from src.api.view_models.league_info import league_gms
 from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.games_repo import GameRepository
+from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.series_repo import SeriesRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.league.offseason.draft_strategy import CHIPS, ratings, staff_groups
 from src.player.player_record import PlayerRecord
+from src.player.player_skills import PlayerSkills
 from src.player.player_value import role_rating
 from src.team.colors import colors_for
 
 MAJORS = ("26man", "40man")
 STARS = 5  # best players shown under Your stars
+MOVERS = 3  # risers and fallers shown under Over the winter
 
 # area key, label, what it's ranked on
 AREAS = (
@@ -90,6 +97,15 @@ TAGLINES = (
     "The lights are on, the grass is green, and {city} is roaring.",
     "Every pitch matters. Every game counts. {city} is ready.",
 )
+
+
+# The season preview's line under the title, by how last season ended.
+RETURN_TAGLINES = {
+    "champion": "Defending champions. Everyone in the league is coming for {city} now.",
+    "playoffs": "October had a taste of {mascot} baseball. {City} wants more.",
+    "winning": "A winning season behind them. Time to take the next step.",
+    "losing": "Last season is done. A clean slate for the {mascot}.",
+}
 
 
 def ordinal(n: int) -> str:
@@ -253,6 +269,82 @@ def team_colors(city: str, mascot: str) -> dict:
     }
 
 
+def return_tagline(city: str, mascot: str, history: dict | None) -> str:
+    """The season preview's tagline, from how the team's last season went."""
+    last = (history or {}).get("last")
+    champ = (history or {}).get("champion")
+    if champ and champ["is_mine"]:
+        key = "champion"
+    elif last and last["playoffs"]:
+        key = "playoffs"
+    elif last and last["w"] > last["l"]:
+        key = "winning"
+    else:
+        key = "losing"
+    return RETURN_TAGLINES[key].format(city=city, City=city, mascot=mascot)
+
+
+def movers(db, players: list[PlayerRecord], season_id: str | None) -> dict | None:
+    """Who got better and who slipped since the end of `season_id`, by
+    their overall rating then (the season's skill snapshot) and now. None
+    without a snapshot to compare with."""
+    if not season_id or not players:
+        return None
+    rows = db.execute(
+        "SELECT * FROM player_skills_history WHERE season_id = %s AND player_id = ANY(%s)",
+        (season_id, [p.id for p in players]),
+    ).fetchall()
+    then = {r["player_id"]: PlayerSkills.from_db_row(r) for r in rows}
+    changes = []
+    for p in players:
+        if p.id not in then:
+            continue
+        kind = "pitcher" if p.is_pitcher() else "hitter"
+        before = role_rating(dataclasses.replace(p, skills=then[p.id]))
+        now = role_rating(p)
+        if now != before:
+            changes.append(
+                {
+                    **_named(p),
+                    "position": p.position.upper(),
+                    "change": now - before,
+                    "was": overall_to_grade(before, kind),
+                    "now": overall_to_grade(now, kind),
+                }
+            )
+    if not changes:
+        return None
+    changes.sort(key=lambda c: c["change"], reverse=True)
+    return {
+        "up": [c for c in changes if c["change"] > 0][:MOVERS],
+        "down": [c for c in reversed(changes) if c["change"] < 0][:MOVERS],
+    }
+
+
+def retirees(db, team_id: str, season_id: str | None) -> list[dict]:
+    """The team's players who retired after `season_id`, best first."""
+    if not season_id:
+        return []
+    rows = db.execute(
+        """SELECT p.id, p.first_name, p.last_name, p.position, ps.age
+           FROM player_retirements r
+           JOIN players p ON p.id = r.player_id
+           JOIN player_skills ps ON ps.player_id = p.id
+           WHERE r.former_team_id = %s AND r.season_id = %s
+           ORDER BY p.last_name, p.first_name""",
+        (team_id, season_id),
+    ).fetchall()
+    return [
+        {
+            "player_id": r["id"],
+            "name": f"{r['first_name']} {r['last_name']}",
+            "position": r["position"].upper(),
+            "age": r["age"],
+        }
+        for r in rows
+    ]
+
+
 def uniform_slug(city: str) -> str:
     """The folder a city's uniform SVGs live in: "São Paulo" -> "sao-paulo"."""
     ascii_city = unicodedata.normalize("NFKD", city).encode("ascii", "ignore").decode()
@@ -362,11 +454,30 @@ def welcome(db, league: dict, gm: dict) -> dict | None:
         }
 
     others = [g for g in league_gms(db, league["id"]) if g["id"] != gm["id"]]
+    past = history(db, league["id"], team_id, draft["season_id"])
+    seasons = SeasonRepository(db)
+    season = seasons.get_year(draft["season_id"])
+    # The league's first season gets the welcome screen; every one after it
+    # is a season preview, with what changed since the one before.
+    first = LeagueRepository(db).count_seasons(league["id"]) <= 1
+    before = [
+        s["id"]
+        for s in seasons.get_seasons_for_league(league["id"])
+        if season and s["year"] < season["year"]
+    ]
+    last_id = before[0] if before and not first else None
+    colors = team_colors(team["city"], team["mascot"])
+    if not first:
+        colors["tagline"] = return_tagline(team["city"], team["mascot"], past)
 
     return {
+        "season_id": draft["season_id"],
+        "year": season["year"] if season else None,
+        "first": first,
+        "draft_done": draft["state"] == "complete",
         "city": team["city"],
         "mascot": team["mascot"],
-        "colors": team_colors(team["city"], team["mascot"]),
+        "colors": colors,
         "uniforms": uniforms(team["city"]),
         "report": scouting_report(team_id, scores) if team_id in scores else None,
         "stars": [star_card(p, r) for p, r in stars],
@@ -378,5 +489,7 @@ def welcome(db, league: dict, gm: dict) -> dict | None:
         "opener": opener,
         "humans": [g for g in others if not g["is_ai"]],
         "favorites": favorites(team_id, scores, others),
-        "history": history(db, league["id"], team_id, draft["season_id"]),
+        "history": past,
+        "movers": movers(db, [p for p, _ in mine], last_id),
+        "retirees": retirees(db, team_id, last_id),
     }

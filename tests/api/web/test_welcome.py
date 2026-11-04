@@ -58,6 +58,7 @@ def test_a_new_league_opens_on_the_welcome_screen_once(client, league):
     page = client.get(f"/leagues/{lg.id}/welcome")
     assert page.status_code == 200
     assert "Welcome to the Denver Beans" in page.text
+    assert "season preview" not in page.text
     assert f'href="/leagues/{lg.id}/draft"' in page.text
 
     again = client.get(f"/leagues/{lg.id}/")
@@ -78,13 +79,71 @@ def test_welcome_page_shows_the_team(client, league):
     assert "Chicago Wind" in html.split("Teams to beat")[1]
 
 
-def test_later_seasons_skip_the_welcome(client, db_conn, factory, league):
-    lg, _, _ = league
-    factory.league_season(lg, factory.season(year=2026))
+def test_later_seasons_open_on_the_season_preview_once(
+    client, db_conn, factory, league
+):
+    lg, gm, team = league
+    GMRepository(db_conn).mark_welcomed(gm.id)  # saw the first season's
+    season = factory.season(year=2026)
+    factory.league_season(lg, season)
+    factory.draft(league=lg, season=season)
 
-    r = client.get(f"/leagues/{lg.id}/")
+    first = client.get(f"/leagues/{lg.id}/")
+    assert first.headers["location"] == f"/leagues/{lg.id}/welcome"
 
-    assert r.headers["location"] == f"/leagues/{lg.id}/draft"
+    html = client.get(f"/leagues/{lg.id}/welcome").text
+    assert "2026 season preview" in html
+    assert "The 2026 Denver Beans" in html
+    assert "Welcome to the" not in html
+    assert f'href="/leagues/{lg.id}/draft" class="btn btn-primary wl-go"' in html
+
+    again = client.get(f"/leagues/{lg.id}/")
+    assert again.headers["location"] == f"/leagues/{lg.id}/draft"
+
+
+def test_the_season_preview_shows_who_changed_over_the_winter(
+    client, db_conn, factory, league
+):
+    lg, gm, team = league
+    old = db_conn.execute(
+        """SELECT ls.season_id FROM league_seasons ls WHERE ls.league_id = %s""",
+        (lg.id,),
+    ).fetchone()["season_id"]
+    # Last season's skills: one player much worse then, one much better.
+    db_conn.execute(
+        """INSERT INTO player_skills_history
+           SELECT ps.player_id, %s, ps.age, ps.durability, ps.clutch, ps.speed,
+                  ps.power, ps.eye, ps.contact, ps.base_running, ps.bunting,
+                  ps.catching, ps.infield, ps.outfield, ps.arm, ps.accuracy,
+                  ps.stamina, ps.recovery, ps.ground_balls, ps.strikes, NOW()
+           FROM player_skills ps JOIN team_players tp ON tp.player_id = ps.player_id
+           WHERE tp.team_id = %s""",
+        (old, team.id),
+    )
+    hitters = db_conn.execute(
+        """SELECT p.id, p.first_name, p.last_name FROM players p
+           JOIN team_players tp ON tp.player_id = p.id
+           WHERE tp.team_id = %s AND p.position <> 'p' ORDER BY p.last_name""",
+        (team.id,),
+    ).fetchall()
+    riser, faller = hitters[0], hitters[1]
+    for pid, delta in ((riser["id"], -15), (faller["id"], 15)):
+        db_conn.execute(
+            """UPDATE player_skills_history SET contact = contact + %s,
+                   power = power + %s, eye = eye + %s
+               WHERE player_id = %s""",
+            (delta, delta, delta, pid),
+        )
+    # The old season was played, so it's last season.
+    db_conn.execute("UPDATE games SET completed = 1 WHERE season_id = %s", (old,))
+    season = factory.season(year=2026)
+    factory.draft_order(factory.draft(league=lg, season=season), [team])
+
+    html = client.get(f"/leagues/{lg.id}/welcome").text
+
+    winter = html.split("Over the winter")[1].split("Scouting report")[0]
+    assert f"{riser['first_name']} {riser['last_name']}" in winter.split("Slipped")[0]
+    assert f"{faller['first_name']} {faller['last_name']}" in winter.split("Slipped")[1]
 
 
 def test_the_roster_links_back_to_it(client, db_conn, league):
@@ -266,3 +325,16 @@ def test_area_grades_spread_across_simulated_teams():
             for t in scores
         }
         assert len(grades) >= 5, (key, grades)
+
+
+def test_the_draft_page_links_to_it(client, db_conn, league):
+    lg, gm, _ = league
+    GMRepository(db_conn).mark_welcomed(gm.id)
+
+    html = client.get(f"/leagues/{lg.id}/draft").text
+
+    assert (
+        f'href="/leagues/{lg.id}/welcome" class="btn btn-secondary draft-team-btn"'
+        in html
+    )
+    assert ">Meet your team</a>" in html

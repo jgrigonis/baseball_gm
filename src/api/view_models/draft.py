@@ -59,8 +59,13 @@ def _playoff_finish(result: str | None, had_playoffs: bool) -> str | None:
 def last_season(db, league_id: str, team_id: str, draft_season_id: str) -> dict | None:
     """The GM's team's last finished season: {year, w, l, place, teams,
     playoffs}, where playoffs is how it ended ("lost in the semifinals") or
-    None before a postseason. None before the league's first season."""
-    season = SeasonRepository(db).get_last_with_completed_games(league_id)
+    None before a postseason. None before the league's first season.
+    Once the draft's season is under way, still the season before it."""
+    seasons = SeasonRepository(db)
+    this = seasons.get_year(draft_season_id)
+    season = seasons.get_last_with_completed_games(
+        league_id, before_year=this["year"] if this else None
+    )
     if not season or season["id"] == draft_season_id:
         return None
     rows = standings_rows(db, league_id, season["id"], team_id)

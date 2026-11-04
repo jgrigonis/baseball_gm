@@ -287,6 +287,13 @@ def _shell_ctx(
                 ctx["news_unseen"] = NewsRepository(db).count_unseen(
                     league_id, gm["id"]
                 )
+            # The team page (/welcome): the welcome screen in a league's
+            # first season, the season preview after.
+            ctx["team_page_label"] = (
+                "Meet your team"
+                if lr.count_seasons(league_id) <= 1
+                else "Season preview"
+            )
             # Now we have the state, so calculate visibility automatically
             ctx["visible_tabs"] = tabs
             # The top bar's season pill opens the league's settings.
