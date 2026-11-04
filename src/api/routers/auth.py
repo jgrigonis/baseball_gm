@@ -34,11 +34,12 @@ from __future__ import annotations
 import uuid
 
 import psycopg
-from fastapi import APIRouter, BackgroundTasks, Form, Request
+from fastapi import APIRouter, BackgroundTasks, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from src.api.dependencies import DB, OptionalUser, User
 from src.api.services import badges, login_limits, mailer, password_reset
+from src.api.services.admin import uses_default_admin_name
 from src.api.services.passwords import (
     clean_email,
     hash_password,
@@ -60,8 +61,8 @@ def _new_token() -> str:
     return uuid.uuid4().hex + uuid.uuid4().hex
 
 
-def _signed_in(token: str) -> RedirectResponse:
-    resp = RedirectResponse("/leagues/", status_code=302)
+def _signed_in(token: str, to: str = "/leagues/") -> RedirectResponse:
+    resp = RedirectResponse(to, status_code=302)
     resp.set_cookie(
         SESSION_COOKIE,
         token,
@@ -299,6 +300,9 @@ def change_password(
         user["id"], hash_password(password), token, must_change=False
     )
     db.commit()
+    # The default admin's first sign-in: next, pick a login name of their own.
+    if uses_default_admin_name(user):
+        return _signed_in(token, "/account#login-name")
     return _signed_in(token)
 
 
@@ -392,14 +396,24 @@ def reset(
 
 # ── Account ───────────────────────────────────────────────────────────────────
 
-_ACCOUNT_SAVED = {"email": "Email saved.", "turn_emails": "Saved."}
+_ACCOUNT_SAVED = {
+    "email": "Email saved.",
+    "turn_emails": "Saved.",
+    "username": "Login name changed. Sign in with it from now on.",
+}
 
 
 def _account_page(request: Request, user, status_code: int = 200, **ctx):
     return templates.TemplateResponse(
         request,
         "account.html",
-        {"user": user, "email": user["email"] or "", **ctx},
+        {
+            "user": user,
+            "email": user["email"] or "",
+            "new_username": user["username"] or "",
+            "default_admin_name": uses_default_admin_name(user),
+            **ctx,
+        },
         status_code=status_code,
     )
 
@@ -457,3 +471,52 @@ def set_turn_emails(db: DB, user: User, on: str = Form("")):
     UserRepository(db).set_turn_emails(user["id"], on == "1")
     db.commit()
     return RedirectResponse("/account?saved=turn_emails", status_code=303)
+
+
+@router.post("/account/username")
+def set_account_username(
+    request: Request,
+    db: DB,
+    user: User,
+    current: str = Form(...),
+    new_username: str = Form(...),
+):
+    """An admin renames their own login. Everyone else keeps the name they
+    signed up with. The current password is asked for, like the email form."""
+    if not user["is_admin"]:
+        raise HTTPException(
+            status_code=403, detail="Only admins can rename their login"
+        )
+    if not user["has_password"]:
+        return RedirectResponse("/auth/set-password", status_code=302)
+    user_repo = UserRepository(db)
+    new_username = new_username.strip()
+    old = user["username"] or ""
+    error = username_error(new_username)
+    row = user_repo.get_login(old)
+    if not error and not verify_password(
+        row["password_hash"] if row else None, current
+    ):
+        error = "Your current password is wrong."
+    if not error and new_username == old:
+        error = "That's already your login name."
+    if not error and user_repo.username_taken(new_username, user["id"]):
+        error = "That username is taken."
+    if error:
+        return _account_page(
+            request, user, 400, new_username=new_username, username_error=error
+        )
+
+    try:
+        user_repo.rename(user["id"], old, new_username)
+        db.commit()
+    except psycopg.errors.UniqueViolation:
+        db.rollback()
+        return _account_page(
+            request,
+            user,
+            400,
+            new_username=new_username,
+            username_error="That username is taken.",
+        )
+    return RedirectResponse("/account?saved=username", status_code=303)

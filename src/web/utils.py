@@ -10,6 +10,7 @@ from fastapi.templating import Jinja2Templates
 from src.config import settings
 from src.player.injury_types import injury_effect, injury_label
 from src.api.services import all_star, trades
+from src.api.services.admin import uses_default_admin_name
 from src.api.services.coach import coach_ctx, mark_visit
 from src.api.services.ready_check import is_multiplayer
 from src.api.view_models.league_info import league_info
@@ -75,6 +76,7 @@ def static_url(path: str) -> str:
 
 templates.env.globals["static_url"] = static_url
 templates.env.globals["discord_url"] = settings.discord_url
+templates.env.globals["uses_default_admin_name"] = uses_default_admin_name
 
 
 def render(name: str, context: dict) -> HTMLResponse:

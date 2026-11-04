@@ -23,6 +23,7 @@ from src.api.services import admin as admin_service
 from src.api.services import ready_check
 from src.api.services.passwords import verify_password
 from src.config import settings
+from src.db.migration_files import migration_010_admin
 from src.db.migration_files.migration_010_admin import DEFAULT_ADMIN_USERNAME
 from src.db.repositories.user_repo import UserRepository
 
@@ -179,6 +180,121 @@ class TestForcedPasswordChange:
         assert r.status_code == 400
         assert error in r.text
         assert _row(db_conn, user["id"])["must_change_password"]
+
+
+class TestRenameLogin:
+    """Admins can change their own login name, and one still using the
+    default "admin" is nudged to."""
+
+    @pytest.fixture
+    def as_default(self, monkeypatch):
+        """Treat this admin's name as the default login, since the real
+        "admin" row is shared by every test."""
+
+        def use(user):
+            monkeypatch.setattr(
+                migration_010_admin, "DEFAULT_ADMIN_USERNAME", user["username"]
+            )
+
+        return use
+
+    def _rename(self, client, new, current=PASSWORD):
+        return client.post(
+            "/account/username", data={"new_username": new, "current": current}
+        )
+
+    def test_renames_and_keeps_them_signed_in(self, client, db_conn, factory, admin):
+        league = _league(db_conn, factory)
+        gm_id = _human_gm(db_conn, league, admin)
+        token = client.cookies["gm_session"]
+        new = _name("boss")
+
+        r = self._rename(client, new)
+
+        assert r.status_code == 303
+        assert r.headers["location"] == "/account?saved=username"
+        row = _row(db_conn, admin["id"])
+        assert row["username"] == new
+        assert row["display_name"] == new
+        assert row["session_token"] == token
+        assert row["is_admin"]
+        gm = db_conn.execute(
+            "SELECT display_name FROM gms WHERE id = %s", (gm_id,)
+        ).fetchone()
+        assert gm["display_name"] == new
+        assert client.get("/admin/users").status_code == 200
+        assert "Login name changed" in client.get("/account?saved=username").text
+
+        # The new name signs in; the old one doesn't.
+        client.cookies.clear()
+        r = client.post("/auth/login", data={"username": new, "password": PASSWORD})
+        assert r.status_code == 302
+        client.cookies.clear()
+        r = client.post(
+            "/auth/login", data={"username": admin["username"], "password": PASSWORD}
+        )
+        assert r.status_code != 302
+
+    def test_case_change_of_own_name(self, client, db_conn, admin):
+        r = self._rename(client, admin["username"].upper())
+        assert r.status_code == 303
+        assert _row(db_conn, admin["id"])["username"] == admin["username"].upper()
+
+    @pytest.mark.parametrize(
+        "new, current, error",
+        [
+            ("x", PASSWORD, "3–30 letters"),
+            ("has space", PASSWORD, "3–30 letters"),
+            (None, "wrong password", "current password is wrong"),
+            ("TAKEN", PASSWORD, "That username is taken"),
+            ("SAME", PASSWORD, "already your login name"),
+        ],
+    )
+    def test_rejects(self, client, db_conn, admin, new, current, error):
+        if new == "TAKEN":
+            new = _user(db_conn)["username"].upper()
+        elif new == "SAME":
+            new = admin["username"]
+        elif new is None:
+            new = _name("boss")
+        r = self._rename(client, new, current)
+        assert r.status_code == 400
+        assert error in r.text
+        assert _row(db_conn, admin["id"])["username"] == admin["username"]
+
+    def test_not_for_non_admins(self, client, db_conn):
+        user = _user(db_conn)
+        _sign_in(client, user)
+        assert "Login Name" not in client.get("/account").text
+        assert self._rename(client, _name("boss")).status_code == 403
+        assert _row(db_conn, user["id"])["username"] == user["username"]
+
+    def test_admin_sees_form_without_nudge(self, client, admin):
+        page = client.get("/account").text
+        assert "Login Name" in page
+        assert "every new install starts with" not in page
+        assert "Pick your own login name" not in client.get("/admin/users").text
+
+    def test_default_name_is_nudged(self, client, admin, as_default):
+        as_default(admin)
+        assert "every new install starts with" in client.get("/account").text
+        for page in ("/admin/leagues", "/admin/users", "/admin/personas"):
+            assert "Pick your own login name" in client.get(page).text
+
+    def test_first_password_change_leads_to_rename(self, client, db_conn, as_default):
+        user = _user(db_conn, is_admin=True, must_change=True)
+        as_default(user)
+        _sign_in(client, user)
+        r = client.post(
+            "/auth/change-password",
+            data={
+                "current": PASSWORD,
+                "password": "a new one!",
+                "confirm": "a new one!",
+            },
+        )
+        assert r.status_code == 302
+        assert r.headers["location"] == "/account#login-name"
 
 
 class TestAdminOnly:

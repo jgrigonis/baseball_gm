@@ -1266,6 +1266,8 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
 }
 .admin-note  { color: var(--green); border-color: var(--green-dim); background: var(--green-dim); }
 .admin-error { color: var(--red);   border-color: var(--red);       background: var(--red-dim); }
+.admin-nudge { color: var(--amber); border-color: var(--amber-dim); background: var(--amber-lo); }
+.admin-nudge a { color: var(--amber); text-decoration: underline; }
 .admin-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
 .admin-form .wide { grid-column: 1 / -1; }
 .admin-form .hint { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); }

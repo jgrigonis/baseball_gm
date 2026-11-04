@@ -52,9 +52,11 @@ class UserRepository:
         ).fetchone()
         return dict(row) if row else None
 
-    def username_taken(self, username: str) -> bool:
+    def username_taken(self, username: str, other_than: str | None = None) -> bool:
         row = self.db.execute(
-            "SELECT 1 FROM users WHERE lower(username) = lower(%s)", (username,)
+            """SELECT 1 FROM users
+               WHERE lower(username) = lower(%s) AND id IS DISTINCT FROM %s""",
+            (username, other_than),
         ).fetchone()
         return row is not None
 
@@ -97,6 +99,24 @@ class UserRepository:
             WHERE id = %s
             """,
             (username, password_hash, token, user_id),
+        )
+
+    def rename(self, user_id: str, old: str, new: str) -> None:
+        """Change someone's login name. Their display name, and their name as
+        a GM in each league, follow it when they were still the old login
+        name. Sessions are keyed by token, so nobody is signed out."""
+        self.db.execute(
+            """UPDATE users
+               SET username = %s,
+                   display_name = CASE WHEN display_name = %s THEN %s
+                                       ELSE display_name END
+               WHERE id = %s""",
+            (new, old, new, user_id),
+        )
+        self.db.execute(
+            """UPDATE gms SET display_name = %s
+               WHERE user_id = %s AND display_name = %s AND NOT is_ai""",
+            (new, user_id, old),
         )
 
     def set_password_hash(self, user_id, password_hash):
