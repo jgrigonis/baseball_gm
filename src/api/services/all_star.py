@@ -46,6 +46,7 @@ import random
 
 from src.db.repositories.all_star_repo import AllStarRepository
 from src.db.repositories.games_repo import GameRepository
+from src.db.repositories.hr_derby_repo import HRDerbyRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.persona_repo import PersonaRepository
@@ -54,7 +55,7 @@ from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsReposi
 from src.db.repositories.standings_repo import StandingsRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.game.game import Game
-from src.league import all_star, rookie_game
+from src.league import all_star, hr_derby, rookie_game
 from src.team.manager_profile import ManagerProfile
 from src.team.team_in_game import TeamInGame
 from src.team.team_record import TeamRecord
@@ -408,15 +409,23 @@ def game_due(conn, season_id: str, game_date: str) -> bool:
 
 
 def game_day(conn, season_id: str, next_date: str) -> str | None:
-    """The All-Star Game's date when it's the next thing to play (the next
-    games are the first after the break and it hasn't been played), so the
-    league's date shows the game day, not the day play resumes."""
+    """The date of the All-Star weekend's first unplayed event when the
+    weekend is the next thing to play (the next games are the first after
+    the break and the All-Star Game hasn't been played), so the league's date
+    shows the weekend, not the day play resumes. The weekend runs in order:
+    the Rookie Game, then the Home Run Derby, then the All-Star Game."""
     if not game_due(conn, season_id, next_date):
         return None
+    w = window(conn, season_id)
+    rookie = AllStarRepository(conn, "rookie").game(season_id)
+    if rookie and rookie["state"] != "played":
+        return rookie["game_date"]
+    if not HRDerbyRepository(conn).played(season_id):
+        return hr_derby.derby_date(w)
     g = AllStarRepository(conn).game(season_id)
     if g:
         return g["game_date"]
-    return all_star.game_date(window(conn, season_id))
+    return all_star.game_date(w)
 
 
 def play_game(
