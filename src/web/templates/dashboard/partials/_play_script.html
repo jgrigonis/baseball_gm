@@ -30,6 +30,8 @@ function setSimMode(simming) {
   if (btnSzn) { btnSzn.disabled = simming; btnSzn.style.display = simming ? 'none' : ''; }
   if (ignTr)  { ignTr.style.display = simming ? 'none' : 'inline-flex'; }
   if (stop)   { stop.style.display = simming ? 'inline-block' : 'none'; stop.textContent = '■ Stop'; }
+  // A run that ignores trades is over: offers pop up again.
+  if (!simming) window._simIgnoringTrades = false;
 
   // Grey out tabs that don't update live during sim
   var liveTabs = ['standings', 'schedule', 'leaders', 'headlines'];
@@ -73,6 +75,9 @@ async function schedSim(count) {
   setSimMode(count !== 1);
   // Only multi-day runs ignore trades; a single day stops anyway.
   var ignoreTrades = count !== 1 && !!document.getElementById('sched-ignore-trades-box') && schedIgnoreTrades();
+  // While it runs, trade offers and votes go in the news bar instead of
+  // popping up: the sim won't stop for them, so the card would only flash.
+  window._simIgnoringTrades = ignoreTrades;
 
   var totalGames = 0;
   var remaining  = null;
