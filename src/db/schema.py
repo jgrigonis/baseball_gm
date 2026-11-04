@@ -1416,6 +1416,30 @@ CREATE INDEX IF NOT EXISTS idx_season_awards_team ON season_awards(team_id);
 --   one row per deal. It covers seasons start_year .. start_year + years - 1
 --   at salary dollars a season. team_id is the team he signed with; a
 --   traded player keeps his deal. pick_number is set on rookie deals.
+CREATE TABLE IF NOT EXISTS player_personality (
+    player_id TEXT PRIMARY KEY REFERENCES players(id) ON DELETE CASCADE,
+    type      TEXT NOT NULL,       -- public player type (src/player/happiness.py TYPES)
+    drives    JSONB NOT NULL,      -- drive -> weight 0..100
+    traits    JSONB NOT NULL,      -- ego, temper, loyalty 0..100
+    climate   TEXT                 -- favorite climate, if he has one
+);
+
+-- One row per player per season: his mood and what's behind it.
+CREATE TABLE IF NOT EXISTS player_moods (
+    player_id  TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    season_id  TEXT NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
+    league_id  TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    team_id    TEXT REFERENCES teams(id) ON DELETE SET NULL,
+    mood       REAL NOT NULL,      -- -1..1, moves toward target weekly
+    target     REAL NOT NULL,      -- what his situation points to
+    detail     JSONB NOT NULL,     -- drive -> [satisfaction, reason], and lines
+    updated_on TEXT NOT NULL,      -- league date of the last update
+    unhappy_weeks   INTEGER NOT NULL DEFAULT 0, -- weekly updates in a row unhappy or worse (migration 067)
+    trade_request_on TEXT,         -- league date he asked to be traded, while still on team_id
+    refusing_until  TEXT,          -- league date he plays again after benching himself
+    PRIMARY KEY (player_id, season_id)
+);
+
 CREATE TABLE IF NOT EXISTS player_contracts (
     id          SERIAL PRIMARY KEY,
     player_id   TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
@@ -1431,6 +1455,9 @@ CREATE TABLE IF NOT EXISTS player_contracts (
 );
 CREATE INDEX IF NOT EXISTS idx_player_contracts_league ON player_contracts(league_id);
 CREATE INDEX IF NOT EXISTS idx_player_contracts_team ON player_contracts(team_id);
+CREATE INDEX IF NOT EXISTS idx_player_moods_league ON player_moods(league_id, season_id);
+CREATE INDEX IF NOT EXISTS idx_player_moods_season ON player_moods(season_id);
+CREATE INDEX IF NOT EXISTS idx_player_moods_team ON player_moods(team_id);
 
 CREATE INDEX IF NOT EXISTS idx_all_star_votes_team   ON all_star_votes(team_id);
 CREATE INDEX IF NOT EXISTS idx_all_star_votes_player ON all_star_votes(player_id);

@@ -35,7 +35,7 @@ from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_record import PlayerRecord
 from src.player.player_skills import PlayerSkills
 from src.player.position_fatigue import PositionPlayerFatigue
-from src.player.skill_map import SKILL_CATEGORIES, SKILL_MAP, SKILL_MIN
+from src.player.skill_map import SKILL_CATEGORIES, SKILL_MAP, SKILL_MAX, SKILL_MIN
 
 PITCHING_SKILLS = {SKILL_MAP[abbr] for abbr in SKILL_CATEGORIES["pitching"]}
 
@@ -126,6 +126,20 @@ class PlayerInGame:
         self.rust = dict(rust)
         if self.pitcher_fatigue:
             self.pitcher_fatigue.stamina = self.skills["stamina"]
+        self.rate_player()
+
+    def apply_mood(self, points: dict[str, float]) -> None:
+        """Play this game with his mood showing (src/player/happiness.py):
+        {skill: points} added, or taken away when negative. The player's
+        record keeps his real skills."""
+        if not points:
+            return
+        values = {
+            k: max(SKILL_MIN, min(SKILL_MAX, self.skills.exact(k) + points.get(k, 0.0)))
+            for k in self.skills
+        }
+        self.skills = PlayerSkills(values, age=self.skills.age)
+        self.mood_points = dict(points)
         self.rate_player()
 
     def init_game_stats(self):

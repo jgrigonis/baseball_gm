@@ -100,6 +100,9 @@ class Asset:
     # How his season stats compare to his ratings, in rating points, as a
     # hitter and as a pitcher (src/league/performance.py).
     form: tuple[float, float] = (0.0, 0.0)
+    # He's asked his team for a trade (src/player/happiness.py), so it will
+    # take less to move him.
+    wants_out: bool = False
 
     @classmethod
     def from_record(
@@ -107,6 +110,7 @@ class Asset:
         p: PlayerRecord,
         injured_days: int = 0,
         form: tuple[float, float] = (0.0, 0.0),
+        wants_out: bool = False,
     ) -> Asset:
         r = PlayerEvaluator.rate_player(p.skills, p.throws)
         return cls(
@@ -119,6 +123,7 @@ class Asset:
             age=p.age,
             injured_days=injured_days,
             form=form,
+            wants_out=wants_out,
         )
 
     def seen(self, stats_weight: float) -> Asset:
@@ -222,6 +227,11 @@ def weights(state: str, horizon: float = 0.0) -> tuple[float, float]:
     return w_now, 1 - w_now
 
 
+# How much of a player who asked for a trade his AI team insists on getting
+# back.
+WANTS_OUT_SHARE = 0.5
+
+
 def evaluate(
     roster: list[Asset],
     giving: list[Asset],
@@ -248,9 +258,13 @@ def evaluate(
     score = w_now * d_now + w_future * d_future
 
     # What it gives up, player by player, is what the margin is measured on.
+    # A player who asked out counts for less: his team is ready to move him.
     out = sum(
-        w_now * team_strength([a], days_left=days_left)
-        + w_future * team_strength([a], future=True)
+        (
+            w_now * team_strength([a], days_left=days_left)
+            + w_future * team_strength([a], future=True)
+        )
+        * (WANTS_OUT_SHARE if a.wants_out else 1.0)
         for a in giving
     )
     threshold = margin_share * out

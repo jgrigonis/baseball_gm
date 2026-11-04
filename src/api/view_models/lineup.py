@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from src.api.view_models.player_cards import attach_injuries, lineup_card
+from src.api.view_models.player_cards import attach_injuries, attach_moods, lineup_card
 from src.db.repositories.bullpen_roles_repo import BullpenRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.injury_repo import InjuryRepository
@@ -45,6 +45,8 @@ def lineup_context(db, league_id: str, gm: dict, season_id: str | None) -> dict:
             pitchers.append(g)
         else:
             hitters.append(g)
+
+    attach_moods(db, league_id, hitters + pitchers)
 
     # Load saved lineup preferences, rotation, bullpen
     lp_repo = LineupPreferenceRepository(db)

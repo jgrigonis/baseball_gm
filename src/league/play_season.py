@@ -14,6 +14,8 @@ from src.db.repositories.bullpen_roles_repo import BullpenRepository
 from src.db.repositories.game_lineup_repo import LineupRepository
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.gm_repo import GMRepository
+from src.db.repositories.happiness_repo import HappinessRepository
+from src.player import happiness
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.lineup_preference_repo import LineupPreferenceRepository
@@ -456,6 +458,19 @@ def _resolve_returns(conn, league_id: str, game_info: dict) -> None:
     InjuryRepository(conn, league_id=league_id).resolve_returns(as_of=tomorrow)
 
 
+def _update_moods(conn, league_id: str, season_id: str, game_info: dict) -> None:
+    """Once a league week, move every player's mood toward what his
+    situation points to (src/db/repositories/happiness_repo.py). Uses no
+    randomness, so the game's seeded rng plays out the same."""
+    row = conn.execute(
+        "SELECT game_date FROM games WHERE id = %s", (game_info["game_id"],)
+    ).fetchone()
+    if not row or not row["game_date"]:
+        return
+    day = datetime.fromisoformat(str(row["game_date"])[:10]).date()
+    HappinessRepository(conn, league_id).update_if_due(season_id, day)
+
+
 def _play_game(
     conn,
     args,
@@ -475,6 +490,7 @@ def _play_game(
     # anyone's skills are loaded: the first game of each day does it for the
     # whole league, so it's in place when the GMs see who's back.
     _resolve_returns(conn, league_id, game_info)
+    _update_moods(conn, league_id, season_id, game_info)
 
     home_record = team_repo.get(game_info["home_team_id"])
     away_record = team_repo.get(game_info["away_team_id"])
@@ -535,6 +551,15 @@ def _play_game(
     for player in home_team.players + away_team.players:
         if player.id in rust:
             player.apply_rust(rust[player.id]["skills"])
+    # Mood shows on the field, clutch most of all, and a miserable player
+    # may be sitting out (src/player/happiness.py).
+    happy_repo = HappinessRepository(conn, league_id)
+    injured_ids = injured_ids | happy_repo.refusing(all_player_ids, game_date)
+    moods = happy_repo.moods(all_player_ids, season_id)
+    for player in home_team.players + away_team.players:
+        row = moods.get(player.id)
+        if row:
+            player.apply_mood(happiness.game_effects(row["mood"]))
 
     pitcher_states = {pid: stored_pitcher_states.get(pid) for pid in all_player_ids}
     playoffs = _is_playoff_game(conn, game_info["game_id"])

@@ -33,6 +33,7 @@ KIND_ICONS = {
     "champion": "🏆",
     "front_office": "💼",
     "retirement": "👋",
+    "clubhouse": "😤",
 }
 
 KIND_LABELS = {
@@ -53,6 +54,7 @@ KIND_LABELS = {
     "champion": "Champion",
     "front_office": "Front office",
     "retirement": "Retirement",
+    "clubhouse": "Clubhouse",
 }
 
 

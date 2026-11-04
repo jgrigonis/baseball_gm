@@ -11,6 +11,7 @@ from src.api.dependencies import DB, GM, ActiveLeague, IsHTMX, User
 from src.api.schemas import RosterSaveRequest
 from src.api.services import coach
 from src.api.view_models.player_cards import (
+    attach_moods,
     attach_injuries,
     attach_roster_stats,
     roster_card,
@@ -56,6 +57,10 @@ def roster(
                 card["player_id"], card.get("age"), team.get("city"), team.get("mascot")
             )
             players.append(card)
+
+    # Unhappy players, trade requests and players sitting out
+    # (src/player/happiness.py).
+    attach_moods(db, league_id, players)
 
     # Season stats for display on roster cards
     season_id = ctx.get("season_id")

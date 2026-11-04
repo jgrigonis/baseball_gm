@@ -177,3 +177,14 @@ def test_horizon_tilts_now_against_later():
     assert now < 0.55
     # Never all one or the other.
     assert ai_evaluator.weights("all-in", 1.0)[1] > 0
+
+
+def test_a_team_asks_less_for_a_player_who_wants_out():
+    from dataclasses import replace
+
+    roster = _roster()
+    content = roster[0]
+    unhappy = replace(content, wants_out=True)
+    a = _judge(roster, [content], [_p(58)])
+    b = _judge([unhappy, *roster[1:]], [unhappy], [_p(58)])
+    assert b.threshold < a.threshold
