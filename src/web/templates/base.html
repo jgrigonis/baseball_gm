@@ -86,7 +86,7 @@
         <div class="league-info-panel">
           <table class="data-table">
             <tbody>
-              {% with info = li %}{% include "dashboard/partials/_league_settings_rows.html" %}{% endwith %}
+              {% with info = li, can_edit_settings = False %}{% include "dashboard/partials/_league_settings_rows.html" %}{% endwith %}
             </tbody>
           </table>
           <a class="league-info-more" href="/leagues/{{ league_id }}/league">League page: GMs and teams →</a>

@@ -137,6 +137,7 @@ def league_settings(
     backstory_years: int | None = Form(None),
     reentry_enabled: bool = Form(False),
     is_public: bool = Form(False),
+    late_joins: bool = Form(False),
     commissioner_gm_id: str = Form(""),
 ):
     league = _league_or_404(db, league_id)
@@ -157,6 +158,7 @@ def league_settings(
             "backstory_years": backstory_years,
             "reentry_enabled": reentry_enabled,
             "is_public": is_public,
+            "late_joins": late_joins,
             "commissioner_gm_id": commissioner_gm_id or None,
         },
     )

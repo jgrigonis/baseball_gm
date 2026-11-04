@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS leagues (
     num_teams            INTEGER NOT NULL DEFAULT 30,
     decision_window_sec  INTEGER NOT NULL DEFAULT 120,
     reentry_enabled      BOOLEAN NOT NULL DEFAULT FALSE,
+    late_joins           BOOLEAN NOT NULL DEFAULT TRUE,  -- people can take over AI teams between seasons (migration 069)
     pace_control         TEXT NOT NULL DEFAULT 'timer'
                              CHECK (pace_control IN ('timer', 'confirmed', 'scheduled')),
     state                TEXT NOT NULL DEFAULT 'lobby'
@@ -284,6 +285,7 @@ CREATE TABLE IF NOT EXISTS gms (
     news_seen_id   BIGINT,                -- newest league_news story they've seen (the News tab's badge)
     seen_at        TIMESTAMPTZ,           -- last had the league open (ready-check poll; migration 062)
     alerted_at     TIMESTAMPTZ,           -- last turn email for this league (turn_alerts.py)
+    joined_year    INTEGER,               -- took over a running league: first season their career counts (migration 069)
     created_at     TEXT NOT NULL DEFAULT (NOW()),
 
     FOREIGN KEY (league_id) REFERENCES leagues(id) ON DELETE CASCADE,

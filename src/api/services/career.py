@@ -20,6 +20,9 @@
 # Rivals section) are kept the same way, in gm_head_to_head: one row per
 # person, opponent and season, written from both sides, and final once the
 # season is over or either of them leaves.
+#
+# A person who takes over an AI GM's team in a running league (takeover.py)
+# starts their record with the first season they run it, gms.joined_year.
 
 from __future__ import annotations
 
@@ -67,7 +70,13 @@ def record_league(conn, league_id: str, leaving_gm_id: str | None = None) -> Non
     done = {g["id"]: repo.final_season_ids(g["user_id"], league_id) for g in gms}
     everyone = gms if leaving_gm_id is None else _people(conn, league_id, None)
     for i, season in enumerate(seasons):
-        todo = [g for g in gms if season["id"] not in done[g["id"]]]
+        # Someone who took over a team in a running league starts with the
+        # first season they ran it (gms.joined_year).
+        todo = [
+            g
+            for g in gms
+            if season["id"] not in done[g["id"]] and _was_there(g, season)
+        ]
         if not todo:
             continue
         later_season = i < len(seasons) - 1
@@ -103,8 +112,18 @@ def record_league(conn, league_id: str, leaving_gm_id: str | None = None) -> Non
                 }
             )
         _record_head_to_head(
-            conn, league, season, todo, everyone, over or leaving_gm_id is not None
+            conn,
+            league,
+            season,
+            todo,
+            [g for g in everyone if _was_there(g, season)],
+            over or leaving_gm_id is not None,
         )
+
+
+def _was_there(gm: dict, season: dict) -> bool:
+    """Whether the GM ran their team in the season."""
+    return gm.get("joined_year") is None or season["year"] >= gm["joined_year"]
 
 
 def backfill(conn) -> None:
@@ -193,7 +212,7 @@ def head_to_head(conn, season_id: str, team_ids: list[str]) -> dict:
 
 def _people(conn, league_id: str, gm_id: str | None) -> list[dict]:
     """The league's human GMs with their teams (or just ``gm_id``)."""
-    sql = """SELECT g.id, g.user_id, g.team_id, t.city, t.mascot
+    sql = """SELECT g.id, g.user_id, g.team_id, g.joined_year, t.city, t.mascot
              FROM gms g JOIN teams t ON t.id = g.team_id
              WHERE g.league_id = %s AND g.user_id IS NOT NULL AND NOT g.is_ai"""
     params: tuple = (league_id,)

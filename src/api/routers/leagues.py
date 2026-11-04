@@ -23,12 +23,13 @@ from src.api.dependencies import (
     Unpaused,
     User,
 )
-from src.api.services import lobby_teams, personas, sim_jobs
+from src.api.services import lobby_teams, personas, sim_jobs, takeover
 from src.api.services.coach import coach_ctx
 from src.api.services.leave_league import leave_league
 from src.api.view_models.league_info import league_info
 from src.api.view_models.welcome import welcome
 from src.config import settings
+from src.db.locks import LeagueBusy
 from src.db.repositories.career_repo import CareerRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.league_repo import LeagueRepository
@@ -81,13 +82,18 @@ def leagues_index(
     public = gm_repo.get_public_leagues(user["id"])
     for league in mine + public:
         league["state_label"] = state_label(league["state"], league["season_number"])
+    # A running league takes new GMs between seasons, onto its AI GMs' teams.
+    for league in public:
+        league["takeover"] = league["state"] != "lobby" and not takeover.closed_reason(
+            db, league
+        )
 
     groups = {
         "tutorial": [lg for lg in mine if lg["is_practice"]],
         "running": [
             lg for lg in mine if not lg["is_practice"] and lg["state"] != "complete"
         ],
-        "join": [lg for lg in public if lg["state"] == "lobby"],
+        "join": [lg for lg in public if lg["state"] == "lobby" or lg["takeover"]],
         "watch": [lg for lg in public if lg["state"] != "lobby"],
         "completed": [
             lg for lg in mine if not lg["is_practice"] and lg["state"] == "complete"
@@ -167,6 +173,7 @@ def new_league(
     sim_period_days: int = Form(3),
     num_seasons: int = Form(10),
     is_public: bool = Form(False),
+    late_joins: bool = Form(True),
     trade_vote: bool = Form(False),
     trades_enabled: bool | None = Form(None),
     pick_trades: bool = Form(False),
@@ -214,6 +221,7 @@ def new_league(
             "sim_period_days": sim_period_days,
             "num_seasons": num_seasons,
             "is_public": is_public,
+            "late_joins": late_joins,
             "trade_vote": trade_vote,
             # Left out (an old form or a script), the mode's default.
             "trades_enabled": (
@@ -313,14 +321,20 @@ def join_league(
     if existing_gm:
         return RedirectResponse(f"/leagues/{league['id']}/", status_code=302)
 
+    # A running league takes new GMs between seasons: they pick a team an
+    # AI GM runs.
     if league["state"] != "lobby":
-        return templates.TemplateResponse(
-            request,
-            "leagues/join.html",
-            {
-                "error": f"{league['name']} has already started, so it can't take new GMs.",
-                "join_code": join_code,
-            },
+        reason = takeover.closed_reason(
+            db, LeagueRepository(db).get_by_id(league["id"])
+        )
+        if reason:
+            return templates.TemplateResponse(
+                request,
+                "leagues/join.html",
+                {"error": reason, "join_code": join_code},
+            )
+        return RedirectResponse(
+            f"/leagues/{league['id']}/take-over?code={join_code}", status_code=302
         )
 
     # 3. Join the league using our clean GM creator
@@ -350,7 +364,9 @@ def join_public_league(
     if gm_repo.get_by_user_and_league(user["id"], league_id):
         return RedirectResponse(f"/leagues/{league_id}/", status_code=302)
     if league["state"] != "lobby":
-        return RedirectResponse("/leagues/", status_code=302)
+        if takeover.closed_reason(db, league):
+            return RedirectResponse("/leagues/", status_code=302)
+        return RedirectResponse(f"/leagues/{league_id}/take-over", status_code=302)
 
     gm_repo.create_gm(
         league_id=league_id,
@@ -360,6 +376,104 @@ def join_public_league(
     personas.fill_lobby(db, league_id)  # they take an AI GM's place
     db.commit()
     return RedirectResponse(f"/leagues/{league_id}/", status_code=302)
+
+
+# ── Taking over a team in a running league (services/takeover.py) ─────────────
+
+
+def _takeover_league(db, league_id: str, code: str) -> dict | None:
+    """The league, if the person may see its open teams: it's public, or they
+    have its join code."""
+    league = LeagueRepository(db).get_by_id(league_id)
+    if not league or league["state"] == "lobby":
+        return None
+    if league["is_public"] or (code and code.strip().upper() == league["join_code"]):
+        return league
+    return None
+
+
+def _takeover_page(request, db, league, code, error=None):
+    return templates.TemplateResponse(
+        request,
+        "leagues/take_over.html",
+        {
+            "league": league,
+            "code": code,
+            "error": error,
+            "closed": takeover.closed_reason(db, league),
+            "teams": takeover.open_teams(db, league["id"]),
+            "joined_year": takeover.joined_year(db, league),
+        },
+    )
+
+
+@router.get("/leagues/{league_id}/take-over", response_class=HTMLResponse)
+def take_over_page(
+    request: Request, league_id: str, db: DB, user: User, code: str = ""
+):
+    """Pick a team an AI GM runs, to join a league that has started."""
+    league = _takeover_league(db, league_id, code)
+    if not league:
+        return RedirectResponse("/leagues/join", status_code=302)
+    if GMRepository(db).get_by_user_and_league(user["id"], league_id):
+        return RedirectResponse(f"/leagues/{league_id}/", status_code=302)
+    return _takeover_page(request, db, league, code)
+
+
+@router.post("/leagues/{league_id}/take-over")
+def take_over_team(
+    request: Request,
+    league_id: str,
+    db: DB,
+    user: User,
+    team_id: str = Form(...),
+    code: str = Form(""),
+):
+    league = _takeover_league(db, league_id, code)
+    if not league:
+        return RedirectResponse("/leagues/join", status_code=302)
+    try:
+        takeover.take_over(db, league_id, user, team_id)
+    except (takeover.TakeoverClosed, LeagueBusy) as e:
+        db.rollback()
+        msg = (
+            str(e)
+            if isinstance(e, takeover.TakeoverClosed)
+            else (f"{league['name']} is moving on right now. Try again in a minute.")
+        )
+        return _takeover_page(request, db, league, code, error=msg)
+    return RedirectResponse(f"/leagues/{league_id}/", status_code=302)
+
+
+@router.post("/leagues/{league_id}/settings/{setting}")
+def commissioner_setting(
+    league_id: str,
+    setting: str,
+    db: DB,
+    gm: GM,
+    _active: ActiveLeague,
+    on: bool = Form(...),
+    next: str = Form(""),
+):
+    """The commissioner turns Visibility (public or private) or Late joiners
+    on or off. Lobby and League page both show the buttons."""
+    league_repo = LeagueRepository(db)
+    league = league_repo.get_by_id(league_id)
+    if not league or league["commissioner_gm_id"] != gm["id"]:
+        return JSONResponse({"detail": "Forbidden"}, status_code=403)
+    if setting not in COMMISSIONER_SETTINGS or league["is_practice"]:
+        return JSONResponse({"detail": "Not a setting you can change"}, status_code=422)
+    league_repo.update_settings(league_id, {setting: on})
+    db.commit()
+    # Back to the page the button was on, in this league only.
+    back = (
+        next if next.startswith(f"/leagues/{league_id}/") else f"/leagues/{league_id}/"
+    )
+    return RedirectResponse(back, status_code=303)
+
+
+# The settings a commissioner can change once the league exists.
+COMMISSIONER_SETTINGS = ("is_public", "late_joins")
 
 
 @router.get("/leagues/join", response_class=HTMLResponse)
@@ -476,7 +590,10 @@ def dashboard(
     context.update(
         {
             "league_name": league["name"],
+            "league_id": league_id,
             "is_commissioner": bool(is_commish),
+            "can_edit_settings": bool(is_commish),
+            "settings_next": f"/leagues/{league_id}/",
             "info": league_info(db, league),
             "coach": coach_ctx(db, league),
         }
@@ -502,6 +619,13 @@ def league_page(
     if not league or league["state"] == "lobby":
         return RedirectResponse(f"/leagues/{league_id}/")
     ctx = _shell_ctx(request, db, gm, league_id, user=user)
+    ctx["can_edit_settings"] = (
+        not ctx["is_viewer"] and league["commissioner_gm_id"] == gm["id"]
+    )
+    ctx["settings_next"] = f"/leagues/{league_id}/league"
+    # A viewer of a public league can join it between seasons.
+    ctx["can_take_over"] = ctx["is_viewer"] and not takeover.closed_reason(db, league)
+    ctx["late_joins"] = bool(league["late_joins"])
     if not ctx["is_viewer"]:
         # The Leave League button warns the last person out that the league
         # goes with them.

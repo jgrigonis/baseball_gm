@@ -73,9 +73,22 @@
 {% endif %}
 {% set settings = settings + [
   ("Visibility", "Public" if info.is_public else "Private",
-   "Public: listed under Public Leagues, where anyone can join while it's in the lobby." if info.is_public
+   "Public: listed under Public Leagues, where anyone can join while it's in the lobby, and between seasons if it takes late joiners." if info.is_public
    else "Private: only people with the join code can find it."),
 ] %}
+{% if not info.is_practice %}
+  {% set settings = settings + [
+    ("Late joiners", "Allowed" if info.late_joins else "Not allowed",
+     "Allowed: once the league has started, a new person can still join between seasons, from the end of the playoffs until Opening Day, by taking over a team an AI GM runs." if info.late_joins
+     else "Not allowed: nobody new can join once the league has started."),
+  ] %}
+{% endif %}
+{# The commissioner can flip these two from the lobby and the League page
+   (can_edit_settings), with a small button beside the value. #}
+{% set editable = {
+  "Visibility": ("is_public", info.is_public, "Make private" if info.is_public else "Make public"),
+  "Late joiners": ("late_joins", info.late_joins, "Turn off" if info.late_joins else "Allow"),
+} if can_edit_settings and not info.is_practice else {} %}
 {% for label, value, tip in settings %}
 {% set off = label in always_off or (solo and label in needs_humans) %}
 <tr{% if label in needs_humans and label not in always_off %} data-needs-humans{% endif %}{% if off %} class="setting-off"{% endif %}>
@@ -83,6 +96,13 @@
     <span class="setting-tip" tabindex="0" data-tip="{{ tip }}">{{ label }}</span>
   </td>
   {# An unlimited league's ∞ is drawn bigger (.inf). #}
-  <td{% if loop.first %} class="team-name"{% endif %}>{{ value | replace("∞", '<span class="inf">∞</span>' | safe) }}</td>
+  <td{% if loop.first %} class="team-name"{% endif %}>{{ value | replace("∞", '<span class="inf">∞</span>' | safe) }}
+    {%- if label in editable %}{% set key, now_on, verb = editable[label] %}
+    <form method="POST" action="/leagues/{{ league_id }}/settings/{{ key }}" class="setting-edit">
+      <input type="hidden" name="on" value="{{ 'false' if now_on else 'true' }}">
+      <input type="hidden" name="next" value="{{ settings_next }}">
+      <button type="submit" class="btn btn-secondary">{{ verb }}</button>
+    </form>
+    {%- endif %}</td>
 </tr>
 {% endfor %}
