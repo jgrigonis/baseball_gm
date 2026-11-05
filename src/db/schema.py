@@ -986,6 +986,10 @@ CREATE TABLE IF NOT EXISTS gm_season_evaluations (
     won_championship      BOOLEAN NOT NULL DEFAULT FALSE,
     verdict               TEXT CHECK (verdict IN ('retained', 'warned', 'fired')),
     evaluated_at          TEXT NOT NULL DEFAULT (NOW()),
+    owner_id              TEXT,      -- the owner who judged it (migration 077)
+    score                 REAL,      -- their verdict, -1 to 1 (src/league/owner_scoring.py)
+    job_security          INTEGER,   -- 0 to 100, after this season
+    detail                JSONB,     -- each dimension's score and the facts
 
     PRIMARY KEY (gm_id, season_id),
 
@@ -1483,6 +1487,12 @@ CREATE TABLE IF NOT EXISTS team_budgets (     -- migration 074 (src/league/budge
     year        INTEGER NOT NULL,
     budget      BIGINT NOT NULL,              -- payroll the owner will pay for this season
     luxury_tax  BIGINT,                       -- tax on payroll over budget, set when the season ends
+    revenue     BIGINT,                       -- regular-season revenue the owner set the budget from (migration 076)
+    playoff_revenue BIGINT,                   -- home playoff gate, set when the season ends
+    payroll     BIGINT,                       -- final payroll, set when the season ends
+    profit      BIGINT,                       -- revenue + gate - payroll - tax - fixed costs
+    fans_before INTEGER,                      -- fan interest coming into the season (0-100)
+    fans_after  INTEGER,                      -- and after it
     PRIMARY KEY (league_id, team_id, year)
 );
 CREATE INDEX IF NOT EXISTS idx_team_budgets_team ON team_budgets(team_id);
@@ -1512,6 +1522,37 @@ CREATE TABLE IF NOT EXISTS team_owners (
 CREATE INDEX IF NOT EXISTS idx_team_owners_owner ON team_owners(owner_id);
 CREATE INDEX IF NOT EXISTS idx_team_owners_team ON team_owners(team_id);
 CREATE INDEX IF NOT EXISTS idx_team_owners_rival ON team_owners(rival_team_id);
+-- owner_messages: what each owner says to their GM (src/api/services/owner_office.py),
+--   stored once under a key (pre:<season>, check:<season>:<n>, review:<season>...).
+CREATE TABLE IF NOT EXISTS owner_messages (
+    id         BIGSERIAL PRIMARY KEY,
+    league_id  TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    team_id    TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    gm_id      TEXT REFERENCES gms(id) ON DELETE CASCADE,  -- the GM it was written to
+    season_id  TEXT NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
+    key        TEXT NOT NULL,
+    kind       TEXT NOT NULL,             -- preseason, checkin, trade, budget, review
+    body       TEXT NOT NULL,
+    mood       TEXT,                      -- the owner's mood word when they wrote it
+    created_on TEXT,                      -- league date
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    seen_at    TIMESTAMPTZ,
+    UNIQUE (league_id, team_id, key)
+);
+-- owner_moods: each owner's mood (-1 to 1) through a season, updated weekly.
+CREATE TABLE IF NOT EXISTS owner_moods (
+    league_id TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    team_id   TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    season_id TEXT NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
+    mood      REAL NOT NULL,
+    as_of     TEXT,                       -- league date of the last update
+    PRIMARY KEY (league_id, team_id, season_id)
+);
+CREATE INDEX IF NOT EXISTS idx_owner_messages_team ON owner_messages(team_id);
+CREATE INDEX IF NOT EXISTS idx_owner_messages_gm ON owner_messages(gm_id);
+CREATE INDEX IF NOT EXISTS idx_owner_messages_season ON owner_messages(season_id);
+CREATE INDEX IF NOT EXISTS idx_owner_moods_team ON owner_moods(team_id);
+CREATE INDEX IF NOT EXISTS idx_owner_moods_season ON owner_moods(season_id);
 CREATE INDEX IF NOT EXISTS idx_player_moods_league ON player_moods(league_id, season_id);
 CREATE INDEX IF NOT EXISTS idx_player_moods_season ON player_moods(season_id);
 CREATE INDEX IF NOT EXISTS idx_player_moods_team ON player_moods(team_id);

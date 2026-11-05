@@ -41,6 +41,8 @@ class Side:
     margin: float  # the share of what it gives up it wants to win by
     stats_weight: float = 0.0  # its GM's stats-vs-scouting, 0 to 1
     horizon: float = 0.0  # its GM's, -1 (builds for later) to 1 (wins now)
+    # More payroll its owner will stand for (an AI team's); None: no limit.
+    pay_room: int | None = None
     _seen: dict[str, Asset] = field(default_factory=dict, repr=False)
 
     def see(self, assets: list[Asset]) -> list[Asset]:
@@ -71,6 +73,7 @@ def _verdict(side: Side, giving, getting, days_left, margin, base):
         margin,
         base,
         side.horizon,
+        side.pay_room,
     )
 
 

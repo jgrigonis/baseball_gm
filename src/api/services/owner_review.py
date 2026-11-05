@@ -1,0 +1,336 @@
+# src/api/services/owner_review.py
+#
+# The owner's end-of-season review (src/league/owner_scoring.py): when the
+# playoffs end, each owner judges the season their GM just had, and the GM's
+# job security moves. One gm_season_evaluations row per GM and season holds
+# the verdict, each dimension's score, the facts it was judged on and the job
+# security after it. Admins see all of it; GMs never see a number.
+#
+# Firing isn't on yet: a GM who'd be fired is stored as warned, with
+# would_fire in the detail, so the numbers can be tuned on real leagues first.
+#
+# Job security belongs to one GM under one owner. A person taking over a team,
+# or an AI GM taking over from a person who left, starts at the owner's grace
+# level. An owner only judges seasons from their first (team_owners.since_year).
+
+from __future__ import annotations
+
+from psycopg.types.json import Jsonb
+
+from src.api.services import owners as owner_service
+from src.league import owner_scoring as sc
+from src.league import owners
+from src.league.league_modes import get_mode
+
+
+def review_season(conn, league_id: str, season_id: str, year: int) -> dict[str, dict]:
+    """Judge every team's season. Returns the stored rows by team id."""
+    league = conn.execute(
+        "SELECT mode FROM leagues WHERE id = %s", (league_id,)
+    ).fetchone()
+    if not league:
+        return {}
+    money = get_mode(league["mode"]).budgets
+    by_team = owner_service.ensure(conn, league_id)
+    facts = gather(conn, league_id, season_id, year, by_team)
+    gms = {
+        r["team_id"]: dict(r)
+        for r in conn.execute(
+            """SELECT id, team_id, user_id, persona_id FROM gms
+               WHERE league_id = %s AND team_id IS NOT NULL AND fired_at IS NULL
+               ORDER BY is_ai""",  # a person's row first
+            (league_id,),
+        ).fetchall()
+        if r["team_id"]
+    }
+    out = {}
+    for team_id, owner in by_team.items():
+        gm = gms.get(team_id)
+        season = facts.get(team_id)
+        if not gm or not season or year < owner["since_year"]:
+            continue
+        scores = sc.score_dimensions(season, owner["traits"], money)
+        score = sc.season_score(scores, owner["weights"])
+        who = gm["user_id"] or gm["persona_id"] or gm["id"]
+        before = _security_before(conn, gm["id"], who, owner, year)
+        after = sc.next_security(before, score, owner["traits"], season.champion)
+        verdict = sc.verdict(after)
+        detail = {
+            "who": who,
+            "scores": scores,
+            "facts": season.as_dict(),
+            "security_before": before,
+            "would_fire": verdict == "fired",
+            "win_target": round(
+                sc.win_target(
+                    season.rank_before, owners.clean_traits(owner["traits"])["ambition"]
+                ),
+                3,
+            ),
+        }
+        games = season.wins + season.losses
+        conn.execute(
+            """INSERT INTO gm_season_evaluations
+                   (gm_id, season_id, wins, losses, expected_wins, made_playoffs,
+                    won_championship, verdict, owner_id, score, job_security,
+                    detail)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+               ON CONFLICT (gm_id, season_id) DO UPDATE SET
+                   wins = EXCLUDED.wins, losses = EXCLUDED.losses,
+                   expected_wins = EXCLUDED.expected_wins,
+                   made_playoffs = EXCLUDED.made_playoffs,
+                   won_championship = EXCLUDED.won_championship,
+                   verdict = EXCLUDED.verdict, owner_id = EXCLUDED.owner_id,
+                   score = EXCLUDED.score, job_security = EXCLUDED.job_security,
+                   detail = EXCLUDED.detail""",
+            (
+                gm["id"],
+                season_id,
+                season.wins,
+                season.losses,
+                round(detail["win_target"] * games, 1),
+                season.made_playoffs,
+                season.champion,
+                # Not firing yet (see the top of this file).
+                "warned" if verdict == "fired" else verdict,
+                owner["owner_id"],
+                round(score, 4),
+                after,
+                Jsonb(detail),
+            ),
+        )
+        out[team_id] = {"gm_id": gm["id"], "score": score, "job_security": after}
+    return out
+
+
+def _security_before(conn, gm_id: str, who: str, owner: dict, year: int) -> int:
+    """Job security coming into the season: the last review's, if this GM
+    (the same person or AI persona) had one under this owner, else the
+    owner's grace level."""
+    row = conn.execute(
+        """SELECT e.job_security, e.detail, e.owner_id FROM gm_season_evaluations e
+           JOIN seasons s ON s.id = e.season_id
+           WHERE e.gm_id = %s AND s.year < %s AND e.job_security IS NOT NULL
+           ORDER BY s.year DESC LIMIT 1""",
+        (gm_id, year),
+    ).fetchone()
+    if (
+        row
+        and row["owner_id"] == owner["owner_id"]
+        and (row["detail"] or {}).get("who") == who
+    ):
+        return row["job_security"]
+    return sc.grace(owners.clean_traits(owner["traits"])["patience"])
+
+
+def security_now(conn, league_id: str) -> dict[str, dict]:
+    """Each team's GM's latest review, by team id, for the admin pages:
+    score, job security, verdict and detail."""
+    rows = conn.execute(
+        """SELECT DISTINCT ON (g.team_id) g.team_id, e.score, e.job_security,
+                  e.verdict, e.detail, s.year
+           FROM gm_season_evaluations e
+           JOIN gms g ON g.id = e.gm_id
+           JOIN seasons s ON s.id = e.season_id
+           WHERE g.league_id = %s AND g.fired_at IS NULL AND e.job_security IS NOT NULL
+           ORDER BY g.team_id, s.year DESC""",
+        (league_id,),
+    ).fetchall()
+    return {r["team_id"]: dict(r) for r in rows}
+
+
+# ── Gathering the season ─────────────────────────────────────────────────────
+
+
+def gather(
+    conn, league_id: str, season_id: str, year: int, by_team: dict[str, dict]
+) -> dict[str, sc.TeamSeason]:
+    """Every team's season, as owners judge it."""
+    record = {
+        r["team_id"]: (int(r["w"] or 0), int(r["l"] or 0))
+        for r in conn.execute(
+            """SELECT tgs.team_id, SUM(tgs.win) AS w, SUM(tgs.loss) AS l
+               FROM team_game_stats tgs JOIN games g ON g.id = tgs.game_id
+               WHERE g.season_id = %s AND g.completed = 1 AND g.series_id IS NULL
+               GROUP BY tgs.team_id""",
+            (season_id,),
+        ).fetchall()
+    }
+    first = _team_state(conn, league_id, season_id, "ASC")
+    last = _team_state(conn, league_id, season_id, "DESC")
+    playoffs = _playoffs(conn, season_id)
+    money = {
+        r["team_id"]: dict(r)
+        for r in conn.execute(
+            """SELECT team_id, budget, payroll, revenue, playoff_revenue, profit,
+                      fans_before, fans_after
+               FROM team_budgets WHERE league_id = %s AND year = %s""",
+            (league_id, year),
+        ).fetchall()
+    }
+    homegrown = _homegrown(conn, league_id, list(by_team))
+    all_stars = _count(
+        conn,
+        "SELECT team_id, COUNT(*) AS n FROM all_stars WHERE season_id = %s"
+        " GROUP BY team_id",
+        (season_id,),
+    )
+    awards = _count(
+        conn,
+        "SELECT team_id, COUNT(*) AS n FROM season_awards"
+        " WHERE season_id = %s AND player_id IS NOT NULL AND team_id IS NOT NULL"
+        " GROUP BY team_id",
+        (season_id,),
+    )
+    trades = _count(
+        conn,
+        """SELECT team_id, COUNT(*) AS n FROM (
+               SELECT from_team_id AS team_id FROM trade_offers
+               WHERE season_id = %s AND status = 'accepted'
+               UNION ALL
+               SELECT to_team_id FROM trade_offers
+               WHERE season_id = %s AND status = 'accepted') x
+           GROUP BY team_id""",
+        (season_id, season_id),
+    )
+    icons = _icons_lost(conn, league_id, season_id, year)
+    teams = list(by_team)
+    league_home = sum(homegrown.get(t, 0.0) for t in teams) / max(1, len(teams))
+    league_stars = sum(
+        all_stars.get(t, 0) + 1.5 * awards.get(t, 0) for t in teams
+    ) / max(1, len(teams))
+    out = {}
+    for team_id, owner in by_team.items():
+        w, l = record.get(team_id, (0, 0))
+        m = money.get(team_id, {})
+        p = playoffs.get(team_id, {})
+        rival = owner.get("rival_team_id")
+        rw, rl = _vs(conn, season_id, team_id, rival) if rival else (0, 0)
+        revenue = (
+            (m.get("revenue") or 0) + (m.get("playoff_revenue") or 0)
+            if m.get("revenue") is not None
+            else None
+        )
+        out[team_id] = sc.TeamSeason(
+            wins=w,
+            losses=l,
+            rank_before=first.get(team_id, {}).get("rank_now", 0.5),
+            rank_future=last.get(team_id, {}).get("rank_future", 0.5),
+            farm_rank=last.get(team_id, {}).get("farm_rank", 0.5),
+            made_playoffs=bool(p),
+            rounds_won=p.get("rounds_won", 0),
+            champion=p.get("champion", False),
+            payroll=m.get("payroll"),
+            budget=m.get("budget"),
+            revenue=revenue,
+            profit=m.get("profit"),
+            fans_before=m.get("fans_before"),
+            fans_after=m.get("fans_after"),
+            homegrown_share=homegrown.get(team_id, 0.0),
+            league_homegrown=league_home,
+            league_star_points=league_stars,
+            all_stars=all_stars.get(team_id, 0),
+            award_winners=awards.get(team_id, 0),
+            icons_lost=icons.get(team_id, 0),
+            trades=trades.get(team_id, 0),
+            rival_wins=rw,
+            rival_losses=rl,
+        )
+    return out
+
+
+def _count(conn, sql: str, params: tuple) -> dict[str, int]:
+    return {r["team_id"]: int(r["n"]) for r in conn.execute(sql, params).fetchall()}
+
+
+def _team_state(conn, league_id: str, season_id: str, order: str) -> dict[str, dict]:
+    """Each team's first (ASC) or last (DESC) team-state inputs this season."""
+    rows = conn.execute(
+        f"""SELECT DISTINCT ON (team_id) team_id, inputs FROM team_states
+            WHERE league_id = %s AND season_id = %s
+            ORDER BY team_id, id {order}""",
+        (league_id, season_id),
+    ).fetchall()
+    return {r["team_id"]: r["inputs"] or {} for r in rows}
+
+
+def _playoffs(conn, season_id: str) -> dict[str, dict]:
+    """Teams in the playoffs, by team id: series won, and the champion. The
+    playoffs are over when owners judge, so each series' winner is the team
+    that won more of its games."""
+    series: dict[str, dict] = {}
+    for r in conn.execute(
+        """SELECT g.series_id, s.name, g.home_team_id, g.away_team_id, g.winner_id
+           FROM games g JOIN series s ON s.id = g.series_id
+           WHERE s.season_id = %s AND g.completed = 1""",
+        (season_id,),
+    ).fetchall():
+        one = series.setdefault(r["series_id"], {"name": r["name"], "wins": {}})
+        for t in (r["home_team_id"], r["away_team_id"]):
+            one["wins"].setdefault(t, 0)
+        if r["winner_id"]:
+            one["wins"][r["winner_id"]] = one["wins"].get(r["winner_id"], 0) + 1
+    out: dict[str, dict] = {}
+    for one in series.values():
+        for t in one["wins"]:
+            out.setdefault(t, {"rounds_won": 0, "champion": False})
+        winner = max(one["wins"], key=lambda t: one["wins"][t])
+        out[winner]["rounds_won"] += 1
+        if one["name"] == "Finals":
+            out[winner]["champion"] = True
+    return out
+
+
+def _homegrown(conn, league_id: str, team_ids: list[str]) -> dict[str, float]:
+    """The share of each team's big-league roster it drafted itself."""
+    rows = conn.execute(
+        """SELECT tp.team_id,
+                  COUNT(*) AS n,
+                  COUNT(*) FILTER (WHERE EXISTS (
+                      SELECT 1 FROM draft_picks dp JOIN drafts d ON d.id = dp.draft_id
+                      WHERE d.league_id = %s AND dp.player_id = tp.player_id
+                        AND dp.team_id = tp.team_id)) AS mine
+           FROM team_players tp
+           JOIN player_status ps ON ps.player_id = tp.player_id
+           WHERE tp.team_id = ANY(%s) AND ps.status IN ('26man', '40man')
+           GROUP BY tp.team_id""",
+        (league_id, team_ids),
+    ).fetchall()
+    return {r["team_id"]: r["mine"] / r["n"] if r["n"] else 0.0 for r in rows}
+
+
+def _icons_lost(conn, league_id: str, season_id: str, year: int) -> dict[str, int]:
+    """Players each team traded away or released this season who'd been an
+    All-Star for it: the franchise's icons."""
+    rows = conn.execute(
+        """SELECT team_id, COUNT(DISTINCT player_id) AS n FROM (
+               SELECT i.from_team_id AS team_id, i.player_id
+               FROM trade_offer_items i JOIN trade_offers o ON o.id = i.offer_id
+               WHERE o.season_id = %s AND o.status = 'accepted'
+               UNION ALL
+               SELECT c.released_team_id, c.player_id FROM player_contracts c
+               JOIN players p ON p.id = c.player_id
+               WHERE p.league_id = %s AND c.released_year = %s
+                 AND c.released_team_id IS NOT NULL
+           ) gone
+           WHERE EXISTS (SELECT 1 FROM all_stars a
+                         WHERE a.player_id = gone.player_id
+                           AND a.team_id = gone.team_id)
+           GROUP BY team_id""",
+        (season_id, league_id, year),
+    ).fetchall()
+    return {r["team_id"]: int(r["n"]) for r in rows}
+
+
+def _vs(conn, season_id: str, team_id: str, rival_id: str) -> tuple[int, int]:
+    """A team's regular-season record against its owner's rival."""
+    row = conn.execute(
+        """SELECT COUNT(*) FILTER (WHERE winner_id = %s) AS w,
+                  COUNT(*) FILTER (WHERE winner_id = %s) AS l
+           FROM games
+           WHERE season_id = %s AND completed = 1 AND series_id IS NULL
+             AND ((home_team_id = %s AND away_team_id = %s)
+               OR (home_team_id = %s AND away_team_id = %s))""",
+        (team_id, rival_id, season_id, team_id, rival_id, rival_id, team_id),
+    ).fetchone()
+    return int(row["w"] or 0), int(row["l"] or 0)

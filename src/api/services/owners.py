@@ -20,6 +20,8 @@ from __future__ import annotations
 
 import random
 
+from src.db.repositories.budget_repo import BudgetRepository
+from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.owner_repo import OwnerRepository
 from src.league import divisions, owners, team_pool
 
@@ -143,3 +145,38 @@ def league_table(conn, league_id: str) -> list[dict]:
 def archetype_guide() -> list[dict]:
     """Each starting archetype and what its owners want, for the help list."""
     return [{"name": a.name, "wants": a.wants} for a in owners.ARCHETYPES]
+
+
+# How far over budget an owner lets an AI GM go, at the most generous
+# (Spending 100); a miser allows nothing over.
+MAX_OVER_SHARE = 0.10
+
+
+def pay_rooms(
+    conn, league_id: str, season_id: str, team_ids: list[str] | None = None
+) -> dict[str, int]:
+    """How much more payroll each team's owner will stand for this season,
+    by team id: the budget, plus a little over for owners who spend freely,
+    minus payroll now. Can be negative. Empty without budgets. AI GMs keep to
+    it in trades (src/league/trades/ai_evaluator.py); people only get a
+    warning."""
+    row = conn.execute(
+        "SELECT year FROM seasons WHERE id = %s", (season_id,)
+    ).fetchone()
+    if not row:
+        return {}
+    year = row["year"]
+    budgets = BudgetRepository(conn).for_league(league_id, year)
+    if not budgets:
+        return {}
+    spending = {
+        t: owners.clean_traits(o["traits"])["spending"]
+        for t, o in OwnerRepository(conn).in_league(league_id).items()
+    }
+    contracts = ContractRepository(conn)
+    return {
+        t: round(b * (1 + MAX_OVER_SHARE * spending.get(t, 50) / 100))
+        - contracts.payroll(t, year)
+        for t, b in budgets.items()
+        if team_ids is None or t in team_ids
+    }

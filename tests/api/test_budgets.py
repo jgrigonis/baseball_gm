@@ -174,3 +174,51 @@ def test_speed_blitz_roster_shows_just_payroll(lg, client_for):
     x = lg(mode="speed_blitz")
     html = client_for(x).get(f"/leagues/{x.league.id}/roster").text
     assert "Payroll $" in html and "pl-dim" not in html.split("<style>")[0]
+
+
+# ── Owners set budgets (src/league/finances.py) ───────────────────────────────
+
+
+def _seat(x, team, spending):
+    from src.db.repositories.owner_repo import OwnerRepository
+    from src.league import owners
+
+    repo = OwnerRepository(x.db)
+    oid = repo.create(
+        f"Owner {team.id[:8]} {spending}",
+        "",
+        "Test",
+        owners.clean_weights({}),
+        owners.clean_traits({"spending": spending}),
+        0,
+    )
+    repo.seat(x.league.id, team.id, oid, None, 2026)
+
+
+def test_a_spender_gets_more_than_a_miser(lg):
+    x = lg()
+    _seat(x, x.mine, 95)
+    _seat(x, x.theirs, 5)
+    budgets = x.budgets.for_league(x.league.id, 2026)
+    pays = [x.contracts.payroll(t.id, 2026) for t in (x.mine, x.theirs)]
+    assert budgets[x.mine.id] > budgets[x.theirs.id]
+    average = (budgets[x.mine.id] + budgets[x.theirs.id]) / 2
+    assert abs(average - bg.first_budget(pays)) <= 100_000
+    row = x.db.execute(
+        "SELECT revenue, fans_before FROM team_budgets WHERE team_id = %s",
+        (x.mine.id,),
+    ).fetchone()
+    assert row["revenue"] > budgets[x.mine.id] and row["fans_before"] == 50
+
+
+def test_the_season_end_records_fans_and_profit(lg):
+    x = lg()
+    x.budgets.for_league(x.league.id, 2026)
+    x.budgets.assess(x.league.id, 2026)
+    money = x.budgets.finances(x.league.id, 2026)[x.mine.id]
+    assert money["fans_after"] is not None and money["profit"] is not None
+    assert money["payroll"] == x.contracts.payroll(x.mine.id, 2026)
+    # Next season's average budget still grows 5%.
+    now = x.budgets.for_league(x.league.id, 2026)
+    nxt = x.budgets.for_league(x.league.id, 2027)
+    assert abs(sum(nxt.values()) / 2 - bg.grown(sum(now.values()) / 2)) <= 100_000

@@ -18,6 +18,7 @@ import psycopg
 
 from src.api.services.injury_news import InjuryNews
 from src.db.connection import rollback_quietly
+from src.api.services import owner_office, owner_review, owners
 from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.games_repo import GameRepository
@@ -197,6 +198,12 @@ def end_playoffs(conn, league: dict, season_id: str) -> None:
     year = ContractRepository(conn).current_year(league["id"])
     if year is not None:
         BudgetRepository(conn).assess(league["id"], year)
+    # Every team has an owner before next season's budgets are set, and each
+    # owner judges the season their GM just had.
+    owners.ensure(conn, league["id"])
+    if year is not None:
+        owner_review.review_season(conn, league["id"], season_id, year)
+        owner_office.review(conn, league["id"], season_id)
     lr = LeagueRepository(conn)
     if is_last_season(league["num_seasons"], lr.count_seasons(league["id"])):
         OffseasonPipeline(conn).run_final(season_id, league["id"])

@@ -14,6 +14,18 @@
   .ow-line { font-size:13px; color:var(--text); line-height:1.6; }
   .ow-dim { font-family:var(--font-mono); font-size:11px; color:var(--muted); margin-top:8px; }
   .ow-table tr.ow-mine td { color:var(--amber); }
+  .ow-mood { font-family:var(--font-mono); font-size:12px; color:var(--muted); margin-top:4px; }
+  .ow-mood span { font-weight:700; text-transform:uppercase; letter-spacing:.05em; }
+  .ow-mood-thrilled, .ow-mood-pleased { color:var(--green); }
+  .ow-mood-content { color:var(--text); }
+  .ow-mood-uneasy { color:var(--amber); }
+  .ow-mood-frustrated, .ow-mood-furious { color:var(--red); }
+  .ow-msg { padding:10px 0; border-bottom:1px solid var(--border); }
+  .ow-msg:last-child { border-bottom:none; }
+  .ow-msg-head { font-family:var(--font-mono); font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin-bottom:4px; }
+  .ow-msg-body { font-size:13px; line-height:1.6; color:var(--text); }
+  .ow-new .ow-msg-body { color:var(--text); font-weight:600; }
+  .ow-new-tag { color:var(--amber); }
   .ow-guide { font-size:12px; line-height:1.8; color:var(--text-dim); }
   .ow-guide strong { color:var(--text); }
   @media (max-width: 640px) {
@@ -37,12 +49,30 @@
       <div class="ow-hat" aria-hidden="true">🎩</div>
       <div>
         <div><span class="ow-name">{{ my_owner.name }}</span>{% if my_owner.archetype %}<span class="ow-arch">{{ my_owner.archetype }}</span>{% endif %}</div>
+        {% if office and office.mood %}<div class="ow-mood">Mood: <span class="ow-mood-{{ office.mood }}">{{ office.mood }}</span></div>{% endif %}
         {% if my_owner.bio %}<div class="ow-bio">“{{ my_owner.bio }}”</div>{% endif %}
         {% if my_owner.wants %}<div class="ow-line">{{ my_owner.wants }}</div>{% endif %}
+        {% if my_budget %}<div class="ow-line">Your {{ my_budget.year }} payroll budget: <strong>{{ my_budget.text }}</strong>. Your owner sets it from what the team brings in and how freely they spend. Go over and you pay luxury tax on the difference.</div>{% endif %}
         {% if my_owner.rival %}<div class="ow-line">Can't stand losing to the {{ my_owner.rival }}.</div>{% endif %}
         <div class="ow-dim">Your boss. Keep them happy and you keep your job. Judging you from {{ my_owner.since_year }}.</div>
       </div>
     </div>
+  </div>
+</div>
+{% endif %}
+
+{% if office %}
+<div class="card" style="margin-bottom:16px;">
+  <div class="card-header"><span class="card-title">From the owner's office</span></div>
+  <div class="card-body">
+    {% for m in office.messages %}
+    <div class="ow-msg {% if not m.seen_at %}ow-new{% endif %}">
+      <div class="ow-msg-head">{{ {'preseason':'Preseason memo','checkin':'Check-in','trade':'About that trade','budget':'Payroll','review':'Season review'}.get(m.kind, 'Note') }} · {{ m.year }}{% if m.created_on %} · {{ m.created_on[5:10] | replace('-', '/') }}{% endif %}{% if not m.seen_at %} <span class="ow-new-tag">new</span>{% endif %}</div>
+      <div class="ow-msg-body">{{ m.body }}</div>
+    </div>
+    {% else %}
+    <div class="admin-dim" style="font-size:12px;">Nothing yet. Your owner will write before Opening Day.</div>
+    {% endfor %}
   </div>
 </div>
 {% endif %}

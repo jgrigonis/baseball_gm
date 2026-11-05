@@ -188,3 +188,25 @@ def test_a_team_asks_less_for_a_player_who_wants_out():
     a = _judge(roster, [content], [_p(58)])
     b = _judge([unhappy, *roster[1:]], [unhappy], [_p(58)])
     assert b.threshold < a.threshold
+
+
+def test_an_ai_team_wont_take_on_more_salary_than_its_owner_allows():
+    from src.league.trades import ai_evaluator as ev
+
+    def p(pid, hit, salary):
+        return ev.Asset(pid, pid, False, hit, 0, 0, 28, salary=salary)
+
+    roster = [p(f"r{i}", 50, 1_000_000) for i in range(20)]
+    star = p("star", 80, 30_000_000)
+    scrub = roster[0]
+    yes = ev.evaluate(roster, [scrub], [star], "contending", 100, 0.1)
+    assert yes.accept
+    no = ev.evaluate(
+        roster, [scrub], [star], "contending", 100, 0.1, pay_room=5_000_000
+    )
+    assert not no.accept and no.reason == ev.OVER_BUDGET_REASON
+    # Shedding salary is always fine.
+    shed = ev.evaluate(
+        roster + [star], [star], [scrub], "rebuilding", 100, 0.0, pay_room=-1
+    )
+    assert shed.reason != ev.OVER_BUDGET_REASON
