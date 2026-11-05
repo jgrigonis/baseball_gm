@@ -111,6 +111,17 @@ def _has(conn, league_id: str, team_id: str, key: str) -> bool:
     )
 
 
+def _recent(conn, league_id: str, team_id: str, n: int = 4) -> list[str]:
+    """The team's owner's last few messages, newest first."""
+    rows = conn.execute(
+        """SELECT body FROM owner_messages
+           WHERE league_id = %s AND team_id = %s
+           ORDER BY id DESC LIMIT %s""",
+        (league_id, team_id, n),
+    ).fetchall()
+    return [r["body"] for r in rows]
+
+
 def moods(conn, league_id: str, season_id: str) -> dict[str, dict]:
     rows = conn.execute(
         """SELECT team_id, mood, as_of FROM owner_moods
@@ -227,8 +238,9 @@ def catch_up(conn, league_id: str, today: str | None = None) -> int:
                 scores = sc.score_dimensions(so_far, owner["traits"], money)
                 mood = current.get(team_id, {}).get("mood", 0.0)
                 body = om.checkin(
-                    scores, owner["weights"], fields, _rng(sid, team_id, n), money
-                )
+                    scores, owner["weights"], fields, _rng(sid, team_id, n), money,
+                    _recent(conn, league_id, team_id),
+                )  # fmt: skip
                 written += _write(
                     conn, league_id, team_id, gm["id"], sid, key, "checkin", body,
                     today, om.mood_word(mood),

@@ -261,10 +261,39 @@ NOTES = {
     },
 }
 
+# Check-in openers. Only a few use the GM's name, and a check-in never opens
+# the way one of the owner's last few did (checkin's recent).
 CHECKIN_OPEN = {
-    "good": ("Quick note, {gm}.", "Checking in.", "A word, {gm}."),
-    "ok": ("Checking in.", "A word, {gm}.", "Let's talk."),
-    "bad": ("We need to talk.", "{gm}. My office. Now.", "I'm not happy."),
+    "good": (
+        "Quick note.",
+        "Checking in.",
+        "Good stuff so far.",
+        "I like what I'm seeing.",
+        "Keep it rolling.",
+        "Nice work, {gm}.",
+        "Just a quick one.",
+        "Things are looking up.",
+    ),
+    "ok": (
+        "Checking in.",
+        "Let's talk.",
+        "Got a minute?",
+        "Here's where I'm at.",
+        "A few thoughts.",
+        "So far, so-so.",
+        "Quick update from upstairs.",
+        "A word, {gm}.",
+    ),
+    "bad": (
+        "We need to talk.",
+        "{gm}. My office. Now.",
+        "I'm not happy.",
+        "This isn't working.",
+        "I expected better.",
+        "Something has to change.",
+        "I've been watching. I don't like it.",
+        "Close the door.",
+    ),
 }
 
 # End-of-season review: the verdict, by job security band.
@@ -367,10 +396,22 @@ def _notes(
 
 
 def checkin(
-    scores: dict, weights: dict, fields: dict, rng: random.Random, money: bool = True
+    scores: dict,
+    weights: dict,
+    fields: dict,
+    rng: random.Random,
+    money: bool = True,
+    recent: list[str] | tuple[str, ...] = (),
 ) -> str:
+    """A mid-season check-in. recent: the owner's last few messages, so the
+    opener doesn't repeat one of theirs."""
     feel, lines = _notes(scores, weights, fields, rng, 2, money)
-    return " ".join([_pick(rng, CHECKIN_OPEN[feel], fields), *lines])
+    fresh = tuple(
+        o
+        for o in CHECKIN_OPEN[feel]
+        if not any(r.startswith(_fill(o, fields)) for r in recent)
+    )
+    return " ".join([_pick(rng, fresh or CHECKIN_OPEN[feel], fields), *lines])
 
 
 def review(

@@ -57,3 +57,21 @@ def test_every_template_fills():
         for lines in table.values():
             for line in lines:
                 assert "{" not in om._fill(line, FIELDS)
+
+
+def test_checkin_openers_dont_repeat_recent_ones():
+    weights = {"wins": 100}
+    recent: list[str] = []
+    openers = []
+    for seed in range(5):
+        body = om.checkin(
+            {"wins": 0.0}, weights, FIELDS, random.Random(seed), recent=recent
+        )
+        opener = next(
+            om._fill(o, FIELDS)
+            for o in om.CHECKIN_OPEN["ok"]
+            if body.startswith(om._fill(o, FIELDS))
+        )
+        openers.append(opener)
+        recent = [body, *recent][:4]
+    assert len(set(openers)) == len(openers)
