@@ -114,3 +114,54 @@ def test_no_button_for_viewers_the_lobby_or_no_team():
     assert pick(_ctx(is_viewer=True), "standings") is None
     assert pick(_ctx(league_state="lobby"), "standings") is None
     assert pick(_ctx(team_id=None), "standings") is None
+
+
+# ── Full Season's note and the All-Star break toggle ──────────────────────
+
+from src.api.services.next_move import sim_stops  # noqa: E402
+
+
+class _Win:
+    opens, closes, resumes = "2026-06-20", "2026-07-05", "2026-07-09"
+
+
+def _kinds(stops):
+    return [s["kind"] for s in stops]
+
+
+def test_stops_ahead_in_date_order():
+    stops = sim_stops("2026-04-01", "upcoming", _Win(), "2026-07-31")
+    assert _kinds(stops) == ["vote", "stars", "deadline", "playoffs"]
+    assert stops[0]["note"] == "to the All-Star vote"
+    # Ballot open: the break is next.
+    assert _kinds(sim_stops("2026-06-25", "open", _Win(), "2026-07-31")) == [
+        "stars",
+        "deadline",
+        "playoffs",
+    ]
+    # A deadline before the break sorts first.
+    assert _kinds(sim_stops("2026-04-01", "open", _Win(), "2026-06-01"))[0] == (
+        "deadline"
+    )
+    # Past the deadline, after the weekend, no trades: just the playoffs.
+    assert _kinds(sim_stops("2026-08-10", "played", _Win(), "2026-07-31")) == [
+        "playoffs"
+    ]
+    assert _kinds(sim_stops("2026-04-01", "none", None, None)) == ["playoffs"]
+
+
+def test_full_season_names_its_next_stop():
+    stops = sim_stops("2026-04-01", "upcoming", _Win(), "2026-07-31")
+    move = pick(_ctx(), "roster", stops=stops)
+    season = move["menu"][-1]
+    assert season["note"] == "to the All-Star vote" and season["stops"] == stops
+    assert move["through_break"]
+
+
+def test_no_break_toggle_once_the_break_is_behind():
+    stops = sim_stops("2026-08-10", "played", _Win(), "2026-07-31")
+    move = pick(_ctx(), "roster", stops=stops)
+    assert move["menu"][-1]["note"] == "to the playoffs"
+    assert not move["through_break"]
+    # Without stops it still defaults to the playoffs.
+    assert pick(_ctx(), "roster")["menu"][-1]["note"] == "to the playoffs"

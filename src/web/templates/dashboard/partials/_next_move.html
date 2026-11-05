@@ -25,15 +25,25 @@
     <button type="button" class="btn nm-main"{% if nm.id %} id="{{ nm.id }}"{% endif %}
             data-fn="{{ nm.fn }}" data-arg="{{ nm.arg }}" onclick="nextMoveAct(this)"><span class="nm-long">{{ nm.label }}</span><span class="nm-short">{{ nm.short }}</span></button>
     {% endif %}
-    {% if nm.menu or nm.ignore_trades %}
+    {% if nm.menu or nm.ignore_trades or nm.through_break %}
     <details class="nm-more">
       <summary class="btn nm-caret" aria-label="More ways to play" title="More ways to play">▾</summary>
       <div class="nm-menu">
         {% for it in nm.menu %}
         <button type="button" class="nm-item"{% if it.id %} id="{{ it.id }}"{% endif %}
                 {% if nm.kind == 'ready' %}onclick="this.closest('details').open = false; {{ it.fn }}()"
-                {% else %}data-fn="{{ it.fn }}" data-arg="{{ it.arg }}" onclick="nextMoveAct(this)"{% endif %}>{{ it.label }}{% if it.note %} <small>{{ it.note }}</small>{% endif %}</button>
+                {% else %}data-fn="{{ it.fn }}" data-arg="{{ it.arg }}" onclick="nextMoveAct(this)"{% endif %}
+                {% if it.stops %}data-stops="{{ it.stops|tojson|forceescape }}"{% endif %}>{{ it.label }}{% if it.note %} <small class="nm-note">{{ it.note }}</small>{% endif %}</button>
         {% endfor %}
+        {% if nm.through_break %}
+        {# Multi-day sims don't stop for the All-Star vote, the All-Stars or
+           the weekend: the scouts vote and make a captain's picks. #}
+        <label id="sched-through-break" class="nm-item nm-check"
+               title="Multi-day sims play straight through the All-Star break. Your scouts fill in your ballot and make any captain&#39;s picks, and the weekend is played on the way.">
+          <input type="checkbox" id="sched-through-break-box" onchange="schedSetThroughBreak(this.checked)">
+          Sim through the All-Star break <small>scouts vote and pick</small>
+        </label>
+        {% endif %}
         {% if nm.ignore_trades %}
         {# Multi-day sims keep going through trade offers and the deadline. #}
         <label id="sched-ignore-trades" class="nm-item nm-check"
