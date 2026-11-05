@@ -15,6 +15,7 @@ import hashlib
 import re
 import unicodedata
 from pathlib import Path
+from statistics import mean
 
 from src.api.grade_curves import overall_to_grade
 from src.api.schemas import skill_to_grade
@@ -28,6 +29,12 @@ from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.series_repo import SeriesRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.league.offseason.draft_strategy import CHIPS, ratings, staff_groups
+from src.league.power_rankings import (
+    ROTATION_SHARE,
+    roster_rating,
+    starting_nine,
+    team_strength,
+)
 from src.player.player_record import PlayerRecord
 from src.player.player_skills import PlayerSkills
 from src.player.player_value import role_rating
@@ -38,11 +45,13 @@ STARS = 5  # best players shown under Your stars
 MOVERS = 3  # risers and fallers shown under Over the winter
 
 # area key, label, what it's ranked on
+# The core areas use the Power Rankings' team strength (power_rankings.py),
+# weighted by what actually wins games in the sim.
 AREAS = (
-    ("lineup", "Lineup", "top 9 hitters' overall offense"),
-    ("rotation", "Rotation", "top 5 starters"),
-    ("bullpen", "Bullpen", "top 7 relievers"),
-    ("defense", "Defense", "top 9 hitters' best position"),
+    ("lineup", "Lineup", "starting 9's hitting, contact and power first"),
+    ("rotation", "Rotation", "top 5 starters' pitching, control first"),
+    ("bullpen", "Bullpen", "top 7 relievers' control and stuff"),
+    ("defense", "Defense", "starting 9's glove at the spot each plays, plus arms"),
 )
 # Shown with the areas, but they say how a lineup plays, not how good it is,
 # so the verdict and the favorites leave them out.
@@ -114,31 +123,25 @@ def ordinal(n: int) -> str:
     return f"{n}{ {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th') }"
 
 
-def _avg_top(values: list[int], n: int) -> float:
-    top = sorted(values, reverse=True)[:n]
-    return sum(top) / len(top) if top else 0.0
-
-
 def area_scores(
     players: list[tuple[PlayerRecord, dict]], staff: dict[str, str] | None = None
 ) -> dict[str, float]:
-    """The team's average rating in each area, from its major league roster.
-    Pitchers count toward the rotation or bullpen by `staff` ({player_id:
-    sp|rp}, their job on the team), else by draft_strategy.staff_groups."""
-    staff = staff or {}
-    hitters = [(p, r) for p, r in players if not p.is_pitcher()]
-    best_hitters = sorted(hitters, key=lambda x: x[1]["overall_player"], reverse=True)
+    """The team's score in each area, from its major league roster, on the
+    same team strength the Power Rankings use. Pitchers count toward the
+    rotation or bullpen by `staff` ({player_id: sp|rp}, their job on the
+    team), else by draft_strategy.staff_groups."""
     pitchers = [(p, r) for p, r in players if p.is_pitcher()]
-    groups = staff_groups(pitchers, staff)
-    pitchers = [(r, groups[p.id]) for p, r in pitchers]
-    starters = best_hitters[:9]
+    strength = team_strength(players, staff_groups(pitchers, staff or {}))
+    nine = [
+        p for p, _ in starting_nine([(p, r) for p, r in players if not p.is_pitcher()])
+    ]
     return {
-        "lineup": _avg_top([r["overall_offense"] for _, r in hitters], 9),
-        "rotation": _avg_top([r["sp"] for r, g in pitchers if g == "sp"], 5),
-        "bullpen": _avg_top([r["rp"] for r, g in pitchers if g == "rp"], 7),
-        "defense": _avg_top([r["defensive_value"] for _, r in starters], 9),
-        "power": _avg_top([p.skills["power"] for p, _ in starters], 9),
-        "speed": _avg_top([p.skills["speed"] for p, _ in starters], 9),
+        "lineup": strength["hitting"],
+        "rotation": strength["rotation"],
+        "bullpen": strength["bullpen"],
+        "defense": strength["defense"],
+        "power": mean(p.skills["power"] for p in nine) if nine else 0.0,
+        "speed": mean(p.skills["speed"] for p in nine) if nine else 0.0,
     }
 
 
@@ -184,14 +187,21 @@ def verdict(areas: list[dict], n: int) -> str:
 
 
 def favorites(team_id: str, scores: dict, gms: list[dict], n: int = 3) -> list[dict]:
-    """The other teams with the best rosters on paper, with their GMs."""
+    """The other teams with the best rosters on paper, with their GMs,
+    rated the way the Power Rankings rate a roster before any games."""
     by_team = {g["team_id"]: g for g in gms}
-    strength = {
-        tid: sum(s[key] for key, _, _ in AREAS) / len(AREAS)
-        for tid, s in scores.items()
-        if tid != team_id
-    }
-    best = sorted(strength, key=strength.get, reverse=True)
+    rating = roster_rating(
+        {
+            tid: {
+                "hitting": s["lineup"],
+                "pitching": ROTATION_SHARE * s["rotation"]
+                + (1 - ROTATION_SHARE) * s["bullpen"],
+                "defense": s["defense"],
+            }
+            for tid, s in scores.items()
+        }
+    )
+    best = sorted((t for t in rating if t != team_id), key=rating.get, reverse=True)
     return [by_team[tid] for tid in best if tid in by_team][:n]
 
 
