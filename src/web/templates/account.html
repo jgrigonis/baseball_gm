@@ -7,7 +7,8 @@
   <div class="page-header">
     <h1 class="page-title">{{ user.username }}</h1>
   </div>
-  {% if saved %}<div style="font-family:var(--font-mono);font-size:12px;color:var(--green);margin-bottom:16px;">{{ saved }}</div>{% endif %}
+  {# Shown as a toast (gmToast in dialogs.js) #}
+  {% if saved %}<div hidden data-toast="{{ saved }}" data-toast-kind="ok"></div>{% endif %}
 
   {% if user.is_admin %}
   <div class="card" id="login-name" style="margin-bottom:24px;{% if default_admin_name %}border-color:var(--amber);{% endif %}"><div class="card-header"><span class="card-title">Login Name</span></div><div class="card-body">
