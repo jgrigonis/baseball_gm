@@ -523,9 +523,7 @@ def _join_link(league):
     return f'href="/leagues/{league.id}/take-over"'
 
 
-def test_viewer_sees_join_button_and_banner_between_seasons(
-    client, db_conn, factory
-):
+def test_viewer_sees_join_button_and_banner_between_seasons(client, db_conn, factory):
     league = _joinable(db_conn, factory)
 
     html = client.get(f"/leagues/{league.id}/standings").text
@@ -544,9 +542,7 @@ def test_viewer_sees_join_button_and_banner_between_seasons(
         {"late_joins": False},
     ],
 )
-def test_no_join_button_when_league_isnt_taking_gms(
-    client, db_conn, factory, kwargs
-):
+def test_no_join_button_when_league_isnt_taking_gms(client, db_conn, factory, kwargs):
     league = _joinable(db_conn, factory, **kwargs)
 
     html = client.get(f"/leagues/{league.id}/standings").text
