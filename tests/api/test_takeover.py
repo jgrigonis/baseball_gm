@@ -282,3 +282,59 @@ class TestPages:
         r = c.get("/leagues/?tab=join")
         assert "Weekend League" in r.text
         assert "Pick a team" in r.text
+
+
+class TestLandingAfterTakeOver:
+    """Wherever between seasons a person takes over, coming into the league
+    takes them to the right page, never the lobby, and on to their season
+    preview."""
+
+    def _joined(self, db_conn, setup, state, draft_state=None):
+        """Move the league to `state` and have Bob take over the Samurai.
+        From the draft on, the 2026 season and its draft exist."""
+        league = setup["league"]
+        if state != "offseason":
+            self.next_season = self.factory.season(year=2026)
+            self.factory.draft(
+                league=league, season=self.next_season, state=draft_state or "pending"
+            )
+        _set(db_conn, league, state=state)
+        bob = _user(db_conn, "Bob")
+        takeover.take_over(db_conn, league.id, bob, setup["theirs"].id)
+        return _as(bob)
+
+    @pytest.fixture(autouse=True)
+    def _factory(self, factory):
+        self.factory = factory
+
+    def _home(self, c, setup):
+        r = c.get(f"/leagues/{setup['league'].id}/", follow_redirects=False)
+        assert r.status_code in (302, 307), "landed on the lobby"
+        return r.headers["location"]
+
+    def test_offseason_goes_to_the_season_summary(self, db_conn, setup, client):
+        c = self._joined(db_conn, setup, "offseason")
+        assert self._home(c, setup).endswith("/season-summary")
+        page = c.get(f"/leagues/{setup['league'].id}/season-summary")
+        assert "taken over the Tokyo Samurai" in page.text
+        assert "2026 season preview" in page.text
+
+    def test_people_already_in_it_land_on_the_summary_too(self, db_conn, setup, client):
+        c = _as(setup["alice_user"])
+        assert self._home(c, setup).endswith("/season-summary")
+        page = c.get(f"/leagues/{setup['league'].id}/season-summary")
+        assert "taken over" not in page.text
+
+    def test_before_the_draft_goes_to_the_preview(self, db_conn, setup, client):
+        c = self._joined(db_conn, setup, "draft")
+        assert self._home(c, setup).endswith("/welcome")
+
+    @pytest.mark.parametrize("state", ["draft", "preseason"])
+    def test_after_the_draft_goes_to_the_preview(self, db_conn, setup, client, state):
+        c = self._joined(db_conn, setup, state, draft_state="complete")
+        assert self._home(c, setup).endswith("/welcome")
+
+    def test_after_the_preview_the_draft_results(self, db_conn, setup, client):
+        c = self._joined(db_conn, setup, "preseason", draft_state="complete")
+        GMRepository(db_conn).mark_welcomed(setup["ai"].id, self.next_season.id)
+        assert self._home(c, setup).endswith("/draft/results")

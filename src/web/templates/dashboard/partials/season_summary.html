@@ -17,6 +17,23 @@
     <h1 style="font-size:28px;font-weight:800;margin:0;">Season Summary</h1>
   </div>
 
+  {% if new_gm_year %}
+  <div class="card ss-new-gm">
+    <div class="ss-new-gm-title">You've taken over the {{ my_team_name }}</div>
+    <div class="ss-new-gm-body">
+      Here's how {{ season_year }} went for them, and for the league. Your first
+      season is {{ new_gm_year }}.
+      {% if multiplayer %}
+        The offseason runs once every GM is ready. After it come the
+        retirements, then your {{ new_gm_year }} season preview and the draft.
+      {% else %}
+        Begin Offseason, at the bottom, ages players and retires veterans. Then
+        you'll see the retirements, your {{ new_gm_year }} season preview and the draft.
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
   {# Top row: champion and best regular-season record #}
   {% if champion or best_record %}
   <div class="card ss-top">
@@ -386,6 +403,9 @@
 
 <style>
 .ss-page { max-width:960px;margin:40px auto;padding:0 24px; }
+.ss-new-gm { margin-bottom:16px;padding:16px 20px;border-color:var(--amber); }
+.ss-new-gm-title { font-weight:700;font-size:16px;margin-bottom:6px; }
+.ss-new-gm-body { font-size:13px;color:var(--text-dim);line-height:1.5; }
 .ss-kicker {
   font-family:var(--font-mono);font-size:11px;color:var(--text-dim);
   letter-spacing:.08em;text-transform:uppercase;
