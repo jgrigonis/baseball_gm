@@ -223,6 +223,16 @@ class TestPages:
         assert "Tokyo Samurai" in page.text
         assert "Amsterdam Captains" not in page.text
 
+    def test_team_picker_sorts_by_team_or_record(self, db_conn, setup, client):
+        c = _as(_user(db_conn, "Bob"))
+        page = c.get(f"/leagues/{setup['league'].id}/take-over?code={setup['code']}").text
+        assert "data-sortable" in page
+        assert '<th data-sort="text">Team</th>' in page
+        assert 'data-sort="num" data-sort-first="desc"' in page
+        assert 'data-sort-value="Tokyo Samurai"' in page
+        # 1-1 last season: .5 win share plus a tiny wins tiebreak.
+        assert 'data-sort-value="0.500010"' in page
+
     def test_join_code_mid_season_explains(self, db_conn, setup, client):
         _set(db_conn, setup["league"], state="season")
         c = _as(_user(db_conn, "Bob"))

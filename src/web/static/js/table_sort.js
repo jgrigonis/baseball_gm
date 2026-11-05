@@ -3,7 +3,8 @@
 // Click-to-sort for any table with data-sortable. Headers with data-sort="text"
 // or data-sort="num" become clickable; clicking the same header again reverses
 // the order. A cell can carry data-sort-value to sort on something other than
-// its visible text (e.g. a full timestamp behind a short date).
+// its visible text (e.g. a full timestamp behind a short date). A header with
+// data-sort-first="desc" sorts high-to-low on its first click (e.g. records).
 //
 // A table that also has data-sort-url keeps its sort in the page URL
 // (?sort=<column>&dir=asc|desc), so a refresh or a shared link shows the same
@@ -39,7 +40,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     headers.forEach(function(th) {
       th.addEventListener('click', function() {
-        var asc = th.dataset.dir !== 'asc';
+        var asc = th.dataset.dir ? th.dataset.dir !== 'asc' : th.dataset.sortFirst !== 'desc';
         sortBy(th, asc);
         if (persist) {
           var url = new URL(window.location.href);
