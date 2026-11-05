@@ -1,0 +1,103 @@
+{# templates/admin/owners.html
+   The team owner library (src/league/owners.py). Owners are created once and
+   never edited; only chance changes, on each owner's page. Duplicate
+   (?from=<id>) pre-fills the create form. #}
+{% extends "base.html" %}
+{% block title %}Admin: Owners — Baseball GM{% endblock %}
+{% block main %}
+{% set section = 'owners' %}
+<div class="page-content"><div class="content-inner">
+  <div class="page-header"><h1 class="page-title">Team Owners</h1>
+    <span class="page-subtitle">{{ owners | length }} in the library · {{ owners | selectattr('chance') | list | length }} pickable</span></div>
+  {% include "admin/_header.html" %}
+
+  <p class="admin-dim" style="font-size:11px;line-height:1.8;margin-bottom:16px;">
+    Each team in a league draws an owner at random, weighted by chance and tilted by the team's market
+    (big markets draw more Tycoons and Showmen, small ones more Penny-Pinchers and Long-Gamers), with no repeats in a league.
+    Chance 0 is never picked; 100 is twice as likely as 50. GMs see an owner's name, bio and archetype, never these numbers.
+    Click a column to sort.
+  </p>
+
+  <div class="card" style="overflow-x:auto;">
+    <table class="data-table" data-sortable data-sort-url>
+      <thead><tr>
+        <th data-sort="text">Name</th><th data-sort="text">Archetype</th><th data-sort="text">Cares most about</th>
+        <th class="num" data-sort="num">Patience</th><th class="num" data-sort="num">Spending</th>
+        <th class="num" data-sort="num">Chance</th><th class="num" data-sort="num">Leagues</th><th></th>
+      </tr></thead>
+      <tbody>
+        {% for o in owners %}
+        <tr>
+          <td class="team-name">{{ o.name }}</td>
+          <td class="admin-dim">{{ o.archetype or '—' }}</td>
+          <td class="admin-dim">{{ o.top | join(', ') }}</td>
+          <td class="num">{{ o.traits.patience }}</td>
+          <td class="num">{{ o.traits.spending }}</td>
+          <td class="num" {% if not o.chance %}style="color:var(--muted);"{% endif %}>{{ o.chance }}</td>
+          <td class="num">{{ o.leagues }}</td>
+          <td style="text-align:right;white-space:nowrap;">
+            <a href="/admin/owners/{{ o.id }}" class="btn btn-secondary admin-small">Open →</a>
+            <a href="/admin/owners?from={{ o.id }}#create" class="btn btn-secondary admin-small">Duplicate</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="admin-section" id="create">
+    <div class="page-header"><h1 class="page-title" style="font-size:20px;">
+      {% if form.from_name %}Duplicate {{ form.from_name }}{% else %}Create an Owner{% endif %}</h1></div>
+    <div class="card"><div class="card-body">
+      <form method="POST" action="/admin/owners" class="admin-form" autocomplete="off">
+        <div class="field">
+          <label>Name</label>
+          <input name="name" value="{{ form.name or '' }}" minlength="2" maxlength="60" required>
+        </div>
+        <div class="field">
+          <label>Archetype</label>
+          <input name="archetype" value="{{ form.archetype or '' }}" maxlength="60" list="archetypes">
+          <datalist id="archetypes">{% for a in archetypes %}<option value="{{ a }}">{% endfor %}</datalist>
+        </div>
+        <div class="field">
+          <label>Chance (0–100)</label>
+          <input name="chance" type="number" min="0" max="100" value="{{ form.chance }}" required>
+        </div>
+        <div class="field wide">
+          <label>Bio (one line)</label>
+          <input name="bio" value="{{ form.bio or '' }}" maxlength="200">
+        </div>
+        <div class="wide"><span class="hint" style="color:var(--amber);">What they judge a GM by: 0 doesn't care, 100 cares most. Only the shape matters.</span></div>
+        {% for key, label, how in dimensions %}
+        <div class="field owner-dial">
+          <label>{{ label }} <span class="owner-dial-val" id="ov-w_{{ key }}">{{ form.weights[key] }}</span></label>
+          <input type="range" name="w_{{ key }}" min="0" max="100" step="1" value="{{ form.weights[key] }}" oninput="ownerDial(this)">
+          <span class="hint">{{ how }}</span>
+        </div>
+        {% endfor %}
+        <div class="wide"><span class="hint" style="color:var(--amber);">How they behave.</span></div>
+        {% for key, label, low, high in traits %}
+        <div class="field owner-dial">
+          <label>{{ label }} <span class="owner-dial-val" id="ov-t_{{ key }}">{{ form.traits[key] }}</span></label>
+          <input type="range" name="t_{{ key }}" min="0" max="100" step="1" value="{{ form.traits[key] }}" oninput="ownerDial(this)">
+          <span class="hint owner-dial-ends"><span>{{ low }}</span><span>{{ high }}</span></span>
+        </div>
+        {% endfor %}
+        <div class="wide"><span class="hint">Once created, only the chance can change.</span></div>
+        <div class="wide"><button type="submit" class="btn btn-primary">Create Owner</button></div>
+      </form>
+    </div></div>
+  </div>
+</div></div>
+
+<style>
+.owner-dial label { display: flex; justify-content: space-between; }
+.owner-dial-val { font-family: var(--font-mono); color: var(--amber); }
+.owner-dial-ends { display: flex; justify-content: space-between; gap: 8px; }
+</style>
+<script>
+function ownerDial(input) {
+  document.getElementById('ov-' + input.name).textContent = input.value;
+}
+</script>
+{% endblock %}
