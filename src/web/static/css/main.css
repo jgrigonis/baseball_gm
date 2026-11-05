@@ -356,6 +356,7 @@ a.topbar-team:hover strong { text-decoration: underline; text-underline-offset: 
 .nm-item small { margin-left: auto; font-size: 10px; color: var(--text-dim); }
 .nm-check { border-top: 1px solid var(--border); margin-top: 4px; color: var(--text-dim); align-items: center; }
 .nm-check input { width: auto; margin: 0; }
+.nm-check + .nm-check { border-top: 0; margin-top: 0; }
 /* Narrower screens: short labels ("Playoffs →"). */
 @media (max-width: 1000px) {
   .next-move .nm-long { display: none; }

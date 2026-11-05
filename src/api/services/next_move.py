@@ -8,8 +8,9 @@
 # that never block play.
 #
 # pick() reads the league shell's context (web/utils.py _shell_ctx), so it
-# needs no queries of its own; the one fact the shell doesn't have, whether
-# the All-Star weekend is ready to sim, comes in as weekend_ready.
+# needs no queries of its own; what the shell doesn't have comes in as
+# arguments: whether the All-Star weekend is ready to sim, and the season's
+# stops (sim_stops) for the Full Season note.
 
 from __future__ import annotations
 
@@ -35,13 +36,63 @@ def _item(label, fn, arg="", btn_id=None, note=""):
     return {"label": label, "fn": fn, "arg": arg, "id": btn_id, "note": note}
 
 
-def _play_menu(ctx: dict, season_note: str) -> list[dict]:
+# Where a multi-day sim stops (_play_script.html), and the Full Season note
+# for each. The All-Star stops go by with "Sim through the All-Star break"
+# checked, the deadline with "Ignore trades"; the browser picks the first
+# stop left (schedUpdateStops).
+STOP_NOTES = {
+    "vote": "to the All-Star vote",
+    "stars": "to the All-Star break",
+    "weekend": "through the All-Star Weekend",
+    "deadline": "to the trade deadline",
+    "playoffs": "to the playoffs",
+}
+ALL_STAR_STOPS = ("vote", "stars", "weekend")
+
+
+def sim_stops(
+    today: str | None,
+    as_phase: str,
+    as_window=None,
+    deadline: str | None = None,
+) -> list[dict]:
+    """The regular season's scheduled stops still ahead, in order: the day
+    the All-Star ballot opens, the break (the All-Stars are named), the
+    weekend itself, the trade deadline, and the end of the season. today is
+    the next day to play; as_window is all_star.Window (opens, closes,
+    resumes); deadline is the trade deadline's date, None when the league
+    doesn't trade. A sim also stops for a new trade offer, which can't be
+    known ahead."""
+    stops = []
+    if as_window and as_phase == "upcoming":
+        stops.append(("vote", as_window.opens))
+    if as_window and as_phase in ("upcoming", "open"):
+        stops.append(("stars", as_window.closes))
+    if as_window and as_phase == "done":
+        stops.append(("weekend", as_window.resumes))
+    if deadline and today and today <= deadline:
+        # The sim stops after the deadline day's games; the break days
+        # around it sort by date like everything else.
+        stops.append(("deadline", deadline))
+    stops.sort(key=lambda s: s[1])
+    out = [{"kind": k, "note": STOP_NOTES[k]} for k, _ in stops]
+    return out + [{"kind": "playoffs", "note": STOP_NOTES["playoffs"]}]
+
+
+def _season_item(stops: list[dict]) -> dict:
+    """▶▶ Full Season, noting where it will stop."""
+    item = _item(
+        "▶▶ Full Season", "schedSim", "season", "sched-season-btn", stops[0]["note"]
+    )
+    item["stops"] = stops
+    return item
+
+
+def _play_menu(ctx: dict, stops: list[dict]) -> list[dict]:
     menu = []
     if ctx.get("injuries_enabled"):
         menu.append(_item("▶ Until Injury", "schedSim", "injury", "sched-injury-btn"))
-    menu.append(
-        _item("▶▶ Full Season", "schedSim", "season", "sched-season-btn", season_note)
-    )
+    menu.append(_season_item(stops))
     return menu
 
 
@@ -68,11 +119,17 @@ def _pill(ctx: dict, page: str) -> dict | None:
     return None
 
 
-def pick(ctx: dict, page: str, weekend_ready: bool = False) -> dict | None:
+def pick(
+    ctx: dict,
+    page: str,
+    weekend_ready: bool = False,
+    stops: list[dict] | None = None,
+) -> dict | None:
     """The next move for this GM on this page, or None for no button.
 
     page is the last part of the page's path: draft, playoffs,
-    season-summary, retirement, welcome and so on."""
+    season-summary, retirement, welcome and so on. stops is sim_stops(),
+    for the regular season's Full Season note."""
     if not ctx.get("league_id") or ctx.get("is_viewer") or not ctx.get("team_id"):
         return None
     state = ctx.get("league_state")
@@ -124,6 +181,7 @@ def pick(ctx: dict, page: str, weekend_ready: bool = False) -> dict | None:
         return _go("go-draft", "Go to the draft →", "Draft →", f"{base}/draft")
 
     if state in ("preseason", "season"):
+        stops = stops or [{"kind": "playoffs", "note": STOP_NOTES["playoffs"]}]
         if weekend_ready:
             move = _act(
                 "all-star-weekend",
@@ -132,15 +190,7 @@ def pick(ctx: dict, page: str, weekend_ready: bool = False) -> dict | None:
                 "schedSim",
                 "1",
                 "sched-play-btn",
-                menu=[
-                    _item(
-                        "▶▶ Full Season",
-                        "schedSim",
-                        "season",
-                        "sched-season-btn",
-                        "plays the weekend, then keeps going",
-                    )
-                ],
+                menu=[_season_item(stops)],
                 kind="star",
             )
         elif state == "preseason":
@@ -151,7 +201,7 @@ def pick(ctx: dict, page: str, weekend_ready: bool = False) -> dict | None:
                 "schedSim",
                 "1",
                 "sched-play-btn",
-                _play_menu(ctx, "to the playoffs"),
+                _play_menu(ctx, stops),
             )
         else:
             move = _act(
@@ -161,10 +211,12 @@ def pick(ctx: dict, page: str, weekend_ready: bool = False) -> dict | None:
                 "schedSim",
                 "1",
                 "sched-play-btn",
-                _play_menu(ctx, "to the playoffs"),
+                _play_menu(ctx, stops),
             )
         move["stop"] = True
         move["ignore_trades"] = bool(ctx.get("trades_enabled"))
+        # Multi-day sims can play straight through the All-Star break.
+        move["through_break"] = any(s["kind"] in ALL_STAR_STOPS for s in stops)
         move["pill"] = _pill(ctx, page)
         return move
 

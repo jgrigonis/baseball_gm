@@ -23,7 +23,7 @@ from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsReposi
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.league.league_modes import injuries_allowed
-from src.league.trade_deadline import trades_enabled_for
+from src.league.trade_deadline import deadline_date, trades_enabled_for
 from src.player.face import player_face
 from src.team.colors import team_badge
 
@@ -413,7 +413,26 @@ def _shell_ctx(
         and bool(ctx["team_id"])
         and not all_star.person_drafting(db, league_id, ctx["season_id"])
     )
-    ctx["next_move"] = next_move.pick(ctx, page, weekend_ready)
+    # Where a Full Season run will stop next, for its note.
+    stops = None
+    if (
+        ctx["league_state"] in ("preseason", "season")
+        and not ctx.get("multiplayer")
+        and not ctx["is_viewer"]
+        and ctx["team_id"]
+        and ctx["season_id"]
+    ):
+        row = GameRepository(db).get_next_unplayed_date(ctx["season_id"])
+        stops = next_move.sim_stops(
+            row["game_date"] if row else None,
+            # The tab's phase is "none" in the preseason; the vote is ahead.
+            as_phase
+            if ctx["league_state"] == "season"
+            else all_star.phase(db, ctx["season_id"]),
+            all_star.window(db, ctx["season_id"]),
+            deadline_date(db, ctx["season_id"]) if ctx.get("trades_enabled") else None,
+        )
+    ctx["next_move"] = next_move.pick(ctx, page, weekend_ready, stops)
     ctx["all_star_ids"] = (
         AllStarRepository(db).ids(ctx["season_id"]) if ctx["season_id"] else set()
     )
