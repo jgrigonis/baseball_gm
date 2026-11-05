@@ -30,6 +30,17 @@ def season_summary(
         season_summary_context(db, league_id, season_id, ctx["season_id"], my_team_id)
     )
     ctx["my_team_name"] = ctx.get("team_name", "")
+    # Someone who took over a team after the playoffs lands here: this season
+    # was their team's, not theirs, and their first is the one coming up.
+    joined = (gm or {}).get("joined_year")
+    ctx["new_gm_year"] = (
+        joined
+        if ctx.get("league_state") == "offseason"
+        and ctx.get("summary_season_id") == ctx["season_id"]
+        and joined
+        and joined > (ctx.get("season_year") or joined)
+        else None
+    )
     return tab_response(request, htmx, "dashboard/partials/season_summary.html", ctx)
 
 

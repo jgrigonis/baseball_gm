@@ -597,16 +597,23 @@ def dashboard(
     state = league["state"]
     # Redirect logic
     if state in ("preseason", "draft"):
+        # A GM meets their team once a season, before anything else: in a
+        # new league the welcome screen, after that the season preview. That
+        # comes first even once the draft is done, so someone who took over
+        # a team after the draft still gets it.
+        season_id = SeasonRepository(db).get_current_id_for_league(league_id)
+        if season_id and gm_repo.needs_welcome(gm["id"], season_id):
+            return RedirectResponse(f"/leagues/{league_id}/welcome")
         # Once the draft is done, coming back in shows its results; the
         # board is only for a draft still to run.
         if league_repo.draft_complete(league_id):
             return RedirectResponse(f"/leagues/{league_id}/draft/results")
-        # Before each draft a GM meets their team first: in a new league
-        # the welcome screen, after that the season preview.
-        season_id = SeasonRepository(db).get_current_id_for_league(league_id)
-        if season_id and gm_repo.needs_welcome(gm["id"], season_id):
-            return RedirectResponse(f"/leagues/{league_id}/welcome")
         return RedirectResponse(f"/leagues/{league_id}/draft")
+    if state == "offseason":
+        # The playoffs are over and the offseason hasn't run yet, so next
+        # season's preview doesn't exist. The season summary is where the
+        # offseason starts from; the preview follows the retirements.
+        return RedirectResponse(f"/leagues/{league_id}/season-summary")
     if state in ("season", "playoffs"):
         return RedirectResponse(f"/leagues/{league_id}/standings")
     if state == "evaluation":

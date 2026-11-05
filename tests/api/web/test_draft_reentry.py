@@ -36,13 +36,25 @@ def client(db_conn, league_gm):
 def test_reentry_after_draft_goes_to_results(
     client, db_conn, factory, league_gm, state
 ):
-    league, _, _ = league_gm
+    league, gm, _ = league_gm
     db_conn.execute("UPDATE leagues SET state = %s WHERE id = %s", (state, league.id))
     factory.draft(league=league, state="complete")
+    GMRepository(db_conn).mark_welcomed(gm.id)  # met their team already
 
     r = client.get(f"/leagues/{league.id}/")
 
     assert r.headers["location"] == f"/leagues/{league.id}/draft/results"
+
+
+def test_reentry_after_draft_shows_preview_first(client, factory, league_gm):
+    """Someone who hasn't met their team this season (they took it over after
+    the draft) gets the season preview before the results."""
+    league, _, _ = league_gm
+    factory.draft(league=league, state="complete")
+
+    r = client.get(f"/leagues/{league.id}/")
+
+    assert r.headers["location"] == f"/leagues/{league.id}/welcome"
 
 
 def test_reentry_before_draft_goes_to_board(client, db_conn, factory, league_gm):
