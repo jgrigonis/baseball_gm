@@ -194,6 +194,11 @@ def gather(
         (season_id, season_id),
     )
     icons = _icons_lost(conn, league_id, season_id, year)
+    teams = list(by_team)
+    league_home = sum(homegrown.get(t, 0.0) for t in teams) / max(1, len(teams))
+    league_stars = sum(
+        all_stars.get(t, 0) + 1.5 * awards.get(t, 0) for t in teams
+    ) / max(1, len(teams))
     out = {}
     for team_id, owner in by_team.items():
         w, l = record.get(team_id, (0, 0))
@@ -222,6 +227,8 @@ def gather(
             fans_before=m.get("fans_before"),
             fans_after=m.get("fans_after"),
             homegrown_share=homegrown.get(team_id, 0.0),
+            league_homegrown=league_home,
+            league_star_points=league_stars,
             all_stars=all_stars.get(team_id, 0),
             award_winners=awards.get(team_id, 0),
             icons_lost=icons.get(team_id, 0),

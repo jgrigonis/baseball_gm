@@ -35,6 +35,10 @@ FAN_PLAYOFFS = 10
 FAN_TITLE = 10
 FAN_PER_ALL_STAR = 2
 FAN_MAX_ALL_STARS = 4
+# The playoff, title and All-Star bonuses add about this much to an average
+# team's target; it comes back off, so fan interest doesn't creep up across a
+# league.
+FAN_DRIFT = 7
 
 # Revenue multiplier by market size.
 MARKET_MULT = {1: 0.80, 2: 0.90, 3: 1.00, 4: 1.12, 5: 1.25}
@@ -77,7 +81,7 @@ def fan_target(
     target += FAN_PLAYOFFS if made_playoffs else 0
     target += FAN_TITLE if champion else 0
     target += FAN_PER_ALL_STAR * min(all_stars, FAN_MAX_ALL_STARS)
-    return target
+    return target - FAN_DRIFT
 
 
 def fans_after(

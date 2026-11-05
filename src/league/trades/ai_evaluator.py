@@ -103,6 +103,9 @@ class Asset:
     # He's asked his team for a trade (src/player/happiness.py), so it will
     # take less to move him.
     wants_out: bool = False
+    # What he's owed this season on a guaranteed deal: what taking him on
+    # adds to payroll.
+    salary: int = 0
 
     @classmethod
     def from_record(
@@ -111,6 +114,7 @@ class Asset:
         injured_days: int = 0,
         form: tuple[float, float] = (0.0, 0.0),
         wants_out: bool = False,
+        salary: int = 0,
     ) -> Asset:
         r = PlayerEvaluator.rate_player(p.skills, p.throws)
         return cls(
@@ -124,6 +128,7 @@ class Asset:
             injured_days=injured_days,
             form=form,
             wants_out=wants_out,
+            salary=salary,
         )
 
     def seen(self, stats_weight: float) -> Asset:
@@ -232,6 +237,9 @@ def weights(state: str, horizon: float = 0.0) -> tuple[float, float]:
 WANTS_OUT_SHARE = 0.5
 
 
+OVER_BUDGET_REASON = "Our owner won't pay for that much more salary."
+
+
 def evaluate(
     roster: list[Asset],
     giving: list[Asset],
@@ -241,12 +249,18 @@ def evaluate(
     margin_share: float,
     base: tuple[float, float] | None = None,
     horizon: float = 0.0,
+    pay_room: int | None = None,
 ) -> Verdict:
     """Judge a deal from the AI team's side. roster is its whole organization
     today; giving is what it would send, getting what it would receive, all
     as this GM sees them (seen()). base is the roster's (now, future)
     strength, when the caller already has it. horizon is the GM's, from -1
-    (builds for later) to 1 (wins now)."""
+    (builds for later) to 1 (wins now). pay_room is how much more payroll
+    its owner will stand for (None: no limit); a deal that adds more salary
+    than that is off, however good."""
+    added = sum(a.salary for a in getting) - sum(a.salary for a in giving)
+    if pay_room is not None and added > 0 and added > pay_room:
+        return Verdict(False, OVER_BUDGET_REASON, 0.0, 0.0, {"added": added})
     w_now, w_future = weights(state, horizon)
     give_ids = {a.id for a in giving}
     after = [a for a in roster if a.id not in give_ids] + list(getting)

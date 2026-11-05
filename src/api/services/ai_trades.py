@@ -37,7 +37,7 @@ import random
 from dataclasses import replace
 from datetime import date, timedelta
 
-from src.api.services import personas, team_states, trades
+from src.api.services import owners, personas, team_states, trades
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
@@ -229,6 +229,8 @@ def _sides(
 ) -> dict[str, Side]:
     injuries = InjuryRepository(conn, league_id)
     statuses = _statuses(conn, team_ids)
+    humans = set(GMRepository(conn).get_human_team_ids(league_id))
+    rooms = owners.pay_rooms(conn, league_id, season_id)
     out = {}
     for t in team_ids:
         hurt = injuries.get_team_injuries(t, game_date)
@@ -242,6 +244,8 @@ def _sides(
             margin=ai_evaluator.margin(t, "offer", game_date, lean.margin_factor),
             stats_weight=lean.stats_weight,
             horizon=lean.horizon,
+            # People get a warning, not a veto: only AI teams answer to it.
+            pay_room=None if t in humans else rooms.get(t),
         )
     return out
 

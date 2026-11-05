@@ -51,10 +51,18 @@ class TeamSeason:
     homegrown_share: float = 0.0
     all_stars: int = 0
     award_winners: int = 0
+    # The league's averages, so homegrown talent and stars are judged
+    # against the other teams (None: against fixed marks).
+    league_homegrown: float | None = None
+    league_star_points: float | None = None
     icons_lost: int = 0
     trades: int = 0
     rival_wins: int = 0
     rival_losses: int = 0
+
+    @property
+    def star_points(self) -> float:
+        return self.all_stars + 1.5 * self.award_winners
 
     @property
     def win_pct(self) -> float:
@@ -79,7 +87,7 @@ WIN_SCALE = 0.08
 # moved by ambition: an ambitious owner expects it of a middling team.
 PLAYOFF_RANK = 0.34
 # Profit margin (profit / revenue) that's "met", and how far off scores 1.
-PROFIT_TARGET = 0.10
+PROFIT_TARGET = 0.15
 PROFIT_SCALE = 0.15
 
 
@@ -134,10 +142,12 @@ def score_dimensions(
 
     # Two years out, and the farm, against the middle of the league.
     out["future"] = _clamp((0.5 - s.rank_future) * 1.5 + (0.5 - s.farm_rank) * 0.8)
-    out["homegrown"] = _clamp((s.homegrown_share - 0.3) / 0.3)
-    out["stars"] = _clamp((s.all_stars + 1.5 * s.award_winners - 1.5) / 2.5)
-    out["icons"] = _clamp(0.2 - 0.6 * s.icons_lost)
-    out["stability"] = _clamp(0.5 - 0.25 * s.trades)
+    home_mark = 0.3 if s.league_homegrown is None else s.league_homegrown
+    out["homegrown"] = _clamp((s.homegrown_share - home_mark) / 0.25)
+    star_mark = 1.5 if s.league_star_points is None else s.league_star_points
+    out["stars"] = _clamp((s.star_points - star_mark) / 2.5)
+    out["icons"] = _clamp(0.1 - 0.6 * s.icons_lost)
+    out["stability"] = _clamp(0.25 - 0.2 * s.trades)
     games = s.rival_wins + s.rival_losses
     out["rivalry"] = _clamp((s.rival_wins / games - 0.5) / 0.2) if games else 0.0
     return out
@@ -158,8 +168,8 @@ def season_score(scores: dict[str, float | None], weights: dict) -> float:
 HOT_SEAT = 30
 FIRE = 15
 # A full +1 season adds this much; a -1 season takes up to LOSS_SCALE.
-GAIN_SCALE = 20
-LOSS_SCALE = 32
+GAIN_SCALE = 25
+LOSS_SCALE = 40
 TITLE_BONUS = 15
 
 

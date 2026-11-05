@@ -50,7 +50,7 @@ def test_budget_over_hurts_more_than_under_helps():
 
 
 def test_losing_an_icon_and_churn():
-    s = sc.score_dimensions(season(icons_lost=2, trades=6), MID)
+    s = sc.score_dimensions(season(icons_lost=2, trades=7), MID)
     assert s["icons"] == -1.0 and s["stability"] == -1.0
 
 

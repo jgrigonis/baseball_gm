@@ -45,8 +45,9 @@ from __future__ import annotations
 
 from datetime import date
 
-from src.api.services import front_office, personas, team_states
+from src.api.services import front_office, owners, personas, team_states
 from src.db.locks import LeagueBusy, league_lock
+from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.happiness_repo import HappinessRepository
@@ -911,6 +912,9 @@ def ai_answer(
         if margin_share is None
         else margin_share,
         horizon=lean.horizon,
+        pay_room=owners.pay_rooms(conn, league_id, season_id, [ai_team_id]).get(
+            ai_team_id
+        ),
     )
 
 
@@ -1037,15 +1041,34 @@ def _assets(
     # Players who asked out: his team will take less to move him
     # (src/player/happiness.py).
     wants_out = HappinessRepository(conn, "").trade_requests(p.id for p in records)
+    # What each is owed this season, if guaranteed: what he adds to payroll.
+    pay = {}
+    year = _season_year(conn, season_id) if season_id else None
+    if year is not None:
+        pay = {
+            pid: c["salary"]
+            for pid, c in ContractRepository(conn)
+            .active_for([p.id for p in records], year)
+            .items()
+            if c.get("guaranteed")
+        }
     return [
         Asset.from_record(
             p,
             injuries.get(p.id, 0),
             form.get(p.id, (0.0, 0.0)),
             wants_out=p.id in wants_out,
+            salary=pay.get(p.id, 0),
         )
         for p in records
     ]
+
+
+def _season_year(conn, season_id: str) -> int | None:
+    row = conn.execute(
+        "SELECT year FROM seasons WHERE id = %s", (season_id,)
+    ).fetchone()
+    return row["year"] if row else None
 
 
 def _league_date(conn, season_id: str) -> str:
