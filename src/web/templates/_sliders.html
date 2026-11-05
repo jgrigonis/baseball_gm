@@ -1,0 +1,26 @@
+{# templates/_sliders.html: range sliders shared by the New League form and
+   the admin League page. Pages using them load js/sliders.js. #}
+{% macro slider(name, id, label, value, min, max, step=1, unit="", cls="", tip="") %}
+<div class="field slider-field {{ cls }}">
+  <label for="{{ id }}"{% if tip %} title="{{ tip }}"{% endif %}>{{ label }}
+    <output class="slider-value" for="{{ id }}" data-unit="{{ unit }}">{{ value }}{{ unit }}</output></label>
+  <input type="range" name="{{ name }}" id="{{ id }}" value="{{ value }}" min="{{ min }}" max="{{ max }}" step="{{ step }}">
+  <span class="slider-ends"><span>{{ min }}{{ unit }}</span><span>{{ max }}{{ unit }}</span></span>
+  {{ caller() if caller else "" }}
+</div>
+{% endmacro %}
+{# A slider that only lands on the given choices. The range moves through
+   their positions; the hidden input carries the choice itself. A choice of 0
+   shows as ∞ (unlimited seasons). #}
+{% macro step_slider(name, id, label, choices, value, unit="", tip="") %}
+{% set INF = '<span class="inf">∞</span>' | safe %}
+{% set shown = [] %}{% for c in choices %}{% set _ = shown.append("∞" if c == 0 else c ~ unit) %}{% endfor %}
+<div class="field slider-field" data-choices='{{ choices | tojson }}' data-shown='{{ shown | tojson }}'>
+  <label for="{{ id }}"{% if tip %} title="{{ tip }}"{% endif %}>{{ label }}
+    <output class="slider-value" for="{{ id }}">{{ shown[choices.index(value)] | replace("∞", INF) }}</output></label>
+  <input type="hidden" name="{{ name }}" value="{{ value }}">
+  <input type="range" id="{{ id }}" value="{{ choices.index(value) }}" min="0" max="{{ choices | length - 1 }}" step="1">
+  <span class="slider-ends"><span>{{ shown[0] | replace("∞", INF) }}</span><span>{{ shown[-1] | replace("∞", INF) }}</span></span>
+  {{ caller() if caller else "" }}
+</div>
+{% endmacro %}

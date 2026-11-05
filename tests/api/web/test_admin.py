@@ -527,6 +527,38 @@ class TestSettings:
         row = LeagueRepository(db_conn).get_by_id(league.id)
         assert (row["name"], row["num_seasons"]) == ("Still 100", 100)
 
+    def test_number_fields_are_sliders(self, client, db_conn, factory, admin):
+        league = _league(
+            db_conn, factory, state="lobby", decision_window_sec=120, num_seasons=0
+        )
+
+        html = client.get(f"/admin/leagues/{league.id}").text
+
+        assert 'type="number"' not in html
+        assert (
+            'name="decision_window_sec" id="decision-window-sec" value="120" min="30" max="600" step="10"'
+            in html
+        )
+        assert 'name="backstory_years"' in html and 'id="backstory-years"' in html
+        # Seasons: 1..60 then unlimited, sent through a hidden input.
+        assert '<input type="hidden" name="num_seasons" value="0">' in html
+        assert 'id="num-seasons" value="60" min="0" max="60"' in html
+
+    def test_off_grid_window_steps_by_one(self, client, db_conn, factory, admin):
+        league = _league(db_conn, factory, decision_window_sec=45)
+
+        html = client.get(f"/admin/leagues/{league.id}").text
+
+        assert 'id="decision-window-sec" value="45" min="30" max="600" step="1"' in html
+
+    def test_over_cap_seasons_get_a_slider_stop(self, client, db_conn, factory, admin):
+        league = _league(db_conn, factory, state="lobby", num_seasons=100)
+
+        html = client.get(f"/admin/leagues/{league.id}").text
+
+        assert '<input type="hidden" name="num_seasons" value="100">' in html
+        assert 'id="num-seasons" value="60" min="0" max="61"' in html
+
     def test_years_of_history_stay_in_range(self, client, db_conn, factory, admin):
         league = _league(db_conn, factory, state="lobby")
 

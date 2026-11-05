@@ -1679,3 +1679,8 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
   /* The box score takes the whole screen, like the player panel. */
   #game-panel { width: 100vw !important; height: 100dvh !important; }
 }
+
+/* Range sliders (templates/_sliders.html): New League form, admin League page */
+.slider-field input[type=range] { width: 100%; padding: 0; border: none; background: none; accent-color: var(--amber); }
+.slider-value { float: right; font-family: var(--font-mono); color: var(--amber); text-transform: none; letter-spacing: 0; }
+.slider-ends { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); }
