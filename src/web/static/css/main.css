@@ -163,6 +163,9 @@ body {
   margin-left: 8px;
 }
 
+/* A viewer who could join the league: the top bar's Join button. */
+.topbar-join { font-size: 11px; padding: 6px 12px; white-space: nowrap; }
+
 /* The season pill opens the league's settings (base.html). */
 .league-info { position: relative; }
 .league-info > summary { cursor: pointer; list-style: none; user-select: none; white-space: nowrap; }
@@ -292,6 +295,7 @@ a.topbar-team:hover strong { text-decoration: underline; text-underline-offset: 
   .topbar-spacer { display: none; }
   .topbar-state + .topbar-date, .league-info + .topbar-date { margin-left: 0; }
   .topbar-team { margin-left: auto; }
+  .topbar-join { margin-left: auto; }
   .topbar-team > span:not(.team-badge) { display: none; }
   .nav-menu-panel a, .topbar-signout { padding: 11px 16px; font-size: 13px; }
 }

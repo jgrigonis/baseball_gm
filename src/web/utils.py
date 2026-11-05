@@ -9,7 +9,7 @@ from fastapi.templating import Jinja2Templates
 
 from src.config import settings
 from src.player.injury_types import injury_effect, injury_label
-from src.api.services import all_star, trades
+from src.api.services import all_star, takeover, trades
 from src.api.services.admin import uses_default_admin_name
 from src.api.services.coach import coach_ctx, mark_visit
 from src.api.services.ready_check import is_multiplayer
@@ -297,6 +297,12 @@ def _shell_ctx(
                     ctx["trade_inbox"] = trades.inbox_count(db, league_id, gm)
             if ctx["is_viewer"]:
                 tabs = _viewer_tabs(tabs, draft_complete)
+                # A viewer of a public league that takes late joiners can
+                # join between seasons: the top bar's Join button and the
+                # banner over the tabs. A private league needs its join code.
+                if league["is_public"] and not takeover.closed_reason(db, league):
+                    ctx["can_take_over"] = True
+                    ctx["open_team_count"] = len(takeover.open_teams(db, league_id))
             elif "headlines" in tabs and gm.get("id"):
                 # Stories since the GM last opened the News tab: its badge.
                 ctx["news_unseen"] = NewsRepository(db).count_unseen(

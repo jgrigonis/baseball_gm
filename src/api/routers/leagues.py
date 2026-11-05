@@ -659,8 +659,6 @@ def league_page(
         not ctx["is_viewer"] and league["commissioner_gm_id"] == gm["id"]
     )
     ctx["settings_next"] = f"/leagues/{league_id}/league"
-    # A viewer of a public league can join it between seasons.
-    ctx["can_take_over"] = ctx["is_viewer"] and not takeover.closed_reason(db, league)
     ctx["late_joins"] = bool(league["late_joins"])
     if not ctx["is_viewer"]:
         # The Leave League button warns the last person out that the league
