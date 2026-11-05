@@ -7,7 +7,9 @@ Steps:
    - 55% pitchers: 27.5% sp, 27.5% rp
    - 45% position players: evenly split across 11 positions (~4.1% each)
 2. Insert new players into DB with status 'prospect' and league_id set
-3. Count them along with the league's existing unattached prospects
+3. Count them along with last year's undrafted players: they become free
+   agents after the draft (execute_blitz_draft), and those still under 24
+   who never signed come back into the pool here
 """
 
 import dataclasses
@@ -116,6 +118,9 @@ class DraftGenerator:
             Total number of draftable players: the new prospects plus the
             league's existing undrafted ones.
         """
+        if league_id:
+            back = self.player_repo.return_undrafted_to_pool(league_id)
+            log.info("%s unsigned undrafted free agents are back in the pool", back)
         existing = self._get_existing_draftable(league_id)
         log.info("Found %s existing undrafted prospects", len(existing))
 
