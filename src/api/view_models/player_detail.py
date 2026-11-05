@@ -7,6 +7,7 @@ from __future__ import annotations
 from datetime import date
 
 from src.player.injury_types import injury_label
+from src.api.grade_curves import role_to_grade
 from src.api.schemas import player_row_to_grades, skill_to_grade
 from src.api.view_models.player_cards import (
     compute_ratings,
@@ -215,7 +216,9 @@ def player_panel_data(
     grade_map = ratings_to_grade_map(grades, p, ratings)
 
     # Best defensive grade for card display
-    best_def_grade = skill_to_grade(ratings.get("best_def")) if ratings else "%s"
+    best_def_grade = (
+        role_to_grade(ratings.get("best_def"), "best_def") if ratings else "%s"
+    )
     best_def_label = ratings.get("best_def_label", "DEF") if ratings else "DEF"
 
     energy = None

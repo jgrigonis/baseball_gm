@@ -10,7 +10,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-from src.api.grade_curves import overall_to_grade
+from src.api.grade_curves import overall_to_grade, role_to_grade
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_skills import PlayerSkills
 
@@ -146,7 +146,7 @@ def player_row_to_grades(player: dict, skills: dict, status: str) -> PlayerGrade
         throws=player["throws"],
         age=skills.get("age", 0),
         player_type="pitcher" if is_pitcher else "hitter",
-        offense=skill_to_grade(offense),
+        offense=role_to_grade(offense, "overall_offense"),
         overall=overall_to_grade(raw_overall, "pitcher" if is_pitcher else "hitter"),
         # Hitter tools
         contact=_skill("contact"),
@@ -154,7 +154,9 @@ def player_row_to_grades(player: dict, skills: dict, status: str) -> PlayerGrade
         eye=_skill("eye"),
         speed=_skill("speed"),
         arm=_skill("arm"),
-        field=skill_to_grade(best_field_val) if best_field_val > 20 else None,
+        field=(
+            role_to_grade(best_field_val, "best_def") if best_field_val > 20 else None
+        ),
         field_label=best_field_label if best_field_val > 20 else None,
         # Pitcher tools
         stuff=_skill("strikes"),

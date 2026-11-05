@@ -13,6 +13,12 @@ which each grade starts so the population lands on TARGET_SHARES.
     team_*    those rosters' areas on the welcome scouting report
               (welcome.area_scores: lineup, rotation, bullpen, defense,
               power, speed)
+    roles     the role and position ratings on the same rosters, each
+              graded against the players who fill that role: SP against
+              starters, RP and CP against relievers, SS against shortstops,
+              IF/OF against the infielders/outfielders, and the hitter roles
+              and best defense against every position player. These go in
+              ROLE_CUTOFFS.
 
 Usage:
     uv run python -m scripts.calibrate_overall_grades [--classes 80] [--teams 1200]
@@ -45,6 +51,32 @@ TEAM_SHARES = [2, 4, 6, 8, 10, 11, 12, 12, 11, 9, 7, 5, 3]
 TEAM_AREAS = ("lineup", "rotation", "bullpen", "defense", "power", "speed")
 TARGET_SHARES.update({f"team_{area}": TEAM_SHARES for area in TEAM_AREAS})
 
+# Role ratings and who each is graded against (roster positions).
+INFIELD = ("2b", "3b", "ss", "if")
+OUTFIELD = ("lf", "cf", "rf", "of")
+HITTERS = ("c", "1b") + INFIELD + OUTFIELD
+ROLE_POOLS = {
+    "sp": ("sp",),
+    "rp": ("rp",),
+    "cp": ("rp",),
+    "lead_off": HITTERS,
+    "contact_hitter": HITTERS,
+    "power_hitter": HITTERS,
+    "overall_offense": HITTERS,
+    "best_def": HITTERS,
+    "c": ("c",),
+    "1b": ("1b",),
+    "2b": ("2b",),
+    "3b": ("3b",),
+    "ss": ("ss",),
+    "lf": ("lf",),
+    "cf": ("cf",),
+    "rf": ("rf",),
+    "if": INFIELD,
+    "of": OUTFIELD,
+}
+ROLE_SHARES = TARGET_SHARES["hitter"]
+
 
 def prospect_scores(n_classes: int, rng: random.Random) -> list[int]:
     gen = DraftGenerator.__new__(DraftGenerator)  # no DB needed to generate
@@ -61,6 +93,7 @@ def roster_scores(n_teams: int, rng: random.Random) -> dict[str, list[float]]:
     factory = TeamFactory(rng=rng)
     out = {"hitter": [], "pitcher": []}
     out.update({f"team_{area}": [] for area in TEAM_AREAS})
+    out.update({f"role_{role}": [] for role in ROLE_POOLS})
     for i in range(n_teams):
         team = factory.generate_team(city=f"City{i}", mascot="Sims", size=26)
         rated = [(p, ratings(p)) for p in team.players]
@@ -69,6 +102,11 @@ def roster_scores(n_teams: int, rng: random.Random) -> dict[str, list[float]]:
                 out["pitcher"].append(max(r["sp"], r["rp"]))
             else:
                 out["hitter"].append(r["overall_player"])
+            best_def = max(r["if"], r["of"], r["c"], r["1b"])
+            for role, pool in ROLE_POOLS.items():
+                if p.position in pool:
+                    value = best_def if role == "best_def" else r[role]
+                    out[f"role_{role}"].append(value)
         for area, value in area_scores(rated).items():
             out[f"team_{area}"].append(round(value, 1))
     return out
@@ -115,10 +153,11 @@ def main() -> None:
     pops.update(roster_scores(args.teams, rng))
 
     for kind, scores in pops.items():
-        cuts = cutoffs(scores, TARGET_SHARES[kind])
+        shares = ROLE_SHARES if kind.startswith("role_") else TARGET_SHARES[kind]
+        cuts = cutoffs(scores, shares)
         dist = distribution(scores, cuts)
         print(f"# {kind}: {len(scores)} samples")
-        print(f'    "{kind}": {cuts},')
+        print(f'    "{kind.removeprefix("role_")}": {cuts},')
         print("    # " + "  ".join(f"{g} {d:.1f}%" for g, d in zip(GRADES, dist)))
 
 

@@ -9,7 +9,7 @@ import logging
 
 from src.player.skill_map import SKILL_ABBREVIATIONS
 from src.player.injury_types import injury_label
-from src.api.grade_curves import overall_to_grade
+from src.api.grade_curves import overall_to_grade, role_to_grade
 from src.api.schemas import player_row_to_grades, skill_to_grade
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_skills import PlayerSkills
@@ -117,12 +117,12 @@ def ratings_to_grade_map(grades, skills: dict, ratings: dict) -> list:
     and Hitting for pitchers; Pitching for hitters).
     Pitching and Hitting also carry "roles": the composite ratings (SP/RP/CP,
     leadoff/contact/power hitter), shown under their own subheading.
-    Ratings-based entries use skill_to_grade(rating_value).
+    Ratings-based entries use role_to_grade (curved per role).
     """
     g = skill_to_grade  # shorthand
 
     def rg(key: str) -> str:
-        return g(ratings.get(key))
+        return role_to_grade(ratings.get(key), key)
 
     pitching_section = {
         "section": "Pitching",
@@ -268,16 +268,22 @@ def _role_grades(g: dict, ratings: dict) -> None:
     SP, RP and CP (closer) for pitchers, hitter roles and positions for
     everyone else."""
     if g.get("player_type") == "pitcher":
-        g["sp_grade"] = skill_to_grade(ratings.get("sp", 0))
-        g["rp_grade"] = skill_to_grade(ratings.get("rp", 0))
-        g["cp_grade"] = skill_to_grade(ratings.get("cp", 0))
+        g["sp_grade"] = role_to_grade(ratings.get("sp", 0), "sp")
+        g["rp_grade"] = role_to_grade(ratings.get("rp", 0), "rp")
+        g["cp_grade"] = role_to_grade(ratings.get("cp", 0), "cp")
     else:
-        g["leadoff_grade"] = skill_to_grade(ratings.get("lead_off", 0))
-        g["power_h_grade"] = skill_to_grade(ratings.get("power_hitter", 0))
-        g["contact_h_grade"] = skill_to_grade(ratings.get("contact_hitter", 0))
-        g["offense_h_grade"] = skill_to_grade(ratings.get("overall_offense", 0))
+        g["leadoff_grade"] = role_to_grade(ratings.get("lead_off", 0), "lead_off")
+        g["power_h_grade"] = role_to_grade(
+            ratings.get("power_hitter", 0), "power_hitter"
+        )
+        g["contact_h_grade"] = role_to_grade(
+            ratings.get("contact_hitter", 0), "contact_hitter"
+        )
+        g["offense_h_grade"] = role_to_grade(
+            ratings.get("overall_offense", 0), "overall_offense"
+        )
     for pos in ("c", "1b", "2b", "3b", "ss", "lf", "cf", "rf", "of", "if", "dh"):
-        g[f"pos_{pos}"] = skill_to_grade(ratings.get(pos, 0))
+        g[f"pos_{pos}"] = role_to_grade(ratings.get(pos, 0), pos)
 
 
 def prospect_card(row: dict, skills: dict) -> dict:
@@ -287,7 +293,7 @@ def prospect_card(row: dict, skills: dict) -> dict:
     g = grades.model_dump()
     if ratings:
         g["overall"] = overall_to_grade(ratings.get("prospect"), "prospect")
-        g["best_def_grade"] = skill_to_grade(ratings.get("best_def"))
+        g["best_def_grade"] = role_to_grade(ratings.get("best_def"), "best_def")
         g["best_def_label"] = ratings.get("best_def_label", "DEF")
         _role_grades(g, ratings)
     if g.get("player_type") == "pitcher":
@@ -306,19 +312,19 @@ def roster_card(d: dict) -> dict:
             g["overall"] = (
                 overall_to_grade(best_p, "pitcher") if best_p else g["overall"]
             )
-            g["sp_grade"] = skill_to_grade(ratings.get("sp", 0))
-            g["rp_grade"] = skill_to_grade(ratings.get("rp", 0))
+            g["sp_grade"] = role_to_grade(ratings.get("sp", 0), "sp")
+            g["rp_grade"] = role_to_grade(ratings.get("rp", 0), "rp")
         else:
             g["overall"] = overall_to_grade(ratings.get("overall_player"), "hitter")
-        g["best_def_grade"] = skill_to_grade(ratings.get("best_def"))
+        g["best_def_grade"] = role_to_grade(ratings.get("best_def"), "best_def")
         g["best_def_label"] = ratings.get("best_def_label", "DEF")
-        g["if_grade"] = skill_to_grade(ratings.get("if", 0))
-        g["of_grade"] = skill_to_grade(ratings.get("of", 0))
-        g["c_grade"] = skill_to_grade(ratings.get("c", 0))
-        g["b1_grade"] = skill_to_grade(ratings.get("1b", 0))
+        g["if_grade"] = role_to_grade(ratings.get("if", 0), "if")
+        g["of_grade"] = role_to_grade(ratings.get("of", 0), "of")
+        g["c_grade"] = role_to_grade(ratings.get("c", 0), "c")
+        g["b1_grade"] = role_to_grade(ratings.get("1b", 0), "1b")
         # Per-position grades for the fielding line, as on the Lineup tab
         for pos in ("c", "1b", "2b", "3b", "ss", "lf", "cf", "rf"):
-            g[f"pos_{pos}"] = skill_to_grade(ratings.get(pos, 0))
+            g[f"pos_{pos}"] = role_to_grade(ratings.get(pos, 0), pos)
     g["base_running"] = skill_to_grade(d.get("base_running"))
     g["bunting"] = skill_to_grade(d.get("bunting"))
     g["ground_balls"] = skill_to_grade(d.get("ground_balls"))
@@ -341,7 +347,7 @@ def lineup_card(d: dict) -> dict:
         else:
             g["overall"] = overall_to_grade(ratings.get("overall_player"), "hitter")
             g["bat_overall"] = g["overall"]
-        g["best_def_grade"] = skill_to_grade(ratings.get("best_def"))
+        g["best_def_grade"] = role_to_grade(ratings.get("best_def"), "best_def")
         g["best_def_label"] = ratings.get("best_def_label", "DEF")
         # Per-position ratings also drive the assigned-position display
         _role_grades(g, ratings)
