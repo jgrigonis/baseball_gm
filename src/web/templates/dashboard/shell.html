@@ -320,6 +320,18 @@ window.refreshActiveTab = function() {
   htmx.ajax('GET', url, {target: '#tab-content', swap: 'innerHTML'});
 };
 
+// Reload the open tab in place after a sim day, for tabs drawn by their own
+// script (Stats). Swap through htmx so the script runs again, quietly: no
+// fade, and the page and the table keep their scroll. The open view (team,
+// season, category, sort) lives in the URL, so reload that URL.
+// Resolves once the new tab is in.
+window.liveRefreshTab = function(url) {
+  if (!window.htmx || !document.getElementById('tab-content')) return Promise.resolve();
+  window._quietSwapNext = true;
+  return htmx.ajax('GET', url || location.pathname + location.search,
+                   {target: '#tab-content', swap: 'innerHTML'});
+};
+
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   // An open dialog (the bigger player face) closes first, on its own.
@@ -561,18 +573,28 @@ document.body.addEventListener('htmx:historyRestore', function(e) {
 // or Rookie Game draft) reloads the tab in place: no fade, and the tab keeps
 // its scroll position instead of jumping back to the top. If the action
 // failed, the error is brought into view.
+// A live refresh after a sim day (liveRefreshTab) is quiet too, and also
+// keeps the scroll of the tab's own scrolling table (#stats-scroll).
 var _quietScroll = null;
+var _quietInner = null;
 document.body.addEventListener('htmx:beforeSwap', function(e) {
   if (e.detail.target.id !== 'tab-content') return;
   var elt = e.detail.requestConfig && e.detail.requestConfig.elt;
-  var quiet = !!(elt && elt.closest && elt.closest('[data-quiet-swap]'));
+  var live = !!window._quietSwapNext;
+  window._quietSwapNext = false;
+  var quiet = live || !!(elt && elt.closest && elt.closest('[data-quiet-swap]'));
   e.detail.target.classList.toggle('tab-quiet', quiet);
   _quietScroll = quiet ? e.detail.target.scrollTop : null;
+  var inner = live && document.getElementById('stats-scroll');
+  _quietInner = inner ? {top: inner.scrollTop, left: inner.scrollLeft} : null;
 });
 document.body.addEventListener('htmx:afterSwap', function(e) {
   if (e.detail.target.id === 'tab-content' && _quietScroll !== null) {
     e.detail.target.scrollTop = _quietScroll;
     _quietScroll = null;
+    var inner = _quietInner && document.getElementById('stats-scroll');
+    if (inner) { inner.scrollTop = _quietInner.top; inner.scrollLeft = _quietInner.left; }
+    _quietInner = null;
     var err = e.detail.target.querySelector('[data-swap-error]');
     if (err) err.scrollIntoView({block: 'nearest'});
     return;

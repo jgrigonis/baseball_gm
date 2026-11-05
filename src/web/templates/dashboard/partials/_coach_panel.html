@@ -2,7 +2,8 @@
    The tutorial league's coach, pinned to the corner of the lobby and the
    dashboard. It reloads itself after a tab change, and after any save or sim
    (any POST or PUT to the league), since those are what tick steps off.
-   Collapsing it is remembered per league in this browser. Takes `coach` and
+   Collapsing it, and opening its "All steps" list, are remembered per
+   league in this browser, so a refresh (each sim day) keeps its shape. Takes `coach` and
    `league_id`. #}
 <aside id="coach-panel" class="coach-panel" aria-label="Tutorial league coach"
        hx-get="/leagues/{{ league_id }}/coach" hx-trigger="coach-refresh from:body" hx-swap="innerHTML">
@@ -55,10 +56,15 @@
 <script>
 (function() {
   var KEY = 'coach-collapsed:{{ league_id }}';
+  var LIST_KEY = 'coach-list-open:{{ league_id }}';
   function stored() { try { return localStorage.getItem(KEY) === '1'; } catch (e) { return false; } }
+  var listOpen = false;
+  try { listOpen = localStorage.getItem(LIST_KEY) === '1'; } catch (e) {}
   function apply() {
     var p = document.getElementById('coach-panel');
     if (!p) return;
+    var list = p.querySelector('.coach-list');
+    if (list && list.open !== listOpen) list.open = listOpen;
     var shut = stored();
     p.classList.toggle('collapsed', shut);
     var b = p.querySelector('.coach-toggle');
@@ -78,6 +84,21 @@
     if (link) { link.click(); return; }
     location.href = '/leagues/{{ league_id }}/' + tab;
   };
+  // The "All steps" list opening or closing. toggle doesn't bubble, so
+  // listen in the capture phase; apply() setting it fires toggle too.
+  document.addEventListener('toggle', function(e) {
+    if (!e.target.matches || !e.target.matches('#coach-panel .coach-list')) return;
+    listOpen = e.target.open;
+    try { localStorage.setItem(LIST_KEY, listOpen ? '1' : '0'); } catch (e2) {}
+  }, true);
+  // Keep the panel's own scroll across its refresh.
+  var panelScroll = 0;
+  document.body.addEventListener('htmx:beforeSwap', function(e) {
+    if (e.detail.target.id === 'coach-panel') panelScroll = e.detail.target.scrollTop;
+  });
+  document.body.addEventListener('htmx:afterSwap', function(e) {
+    if (e.detail.target.id === 'coach-panel') { apply(); e.detail.target.scrollTop = panelScroll; }
+  });
   function refresh() { htmx.trigger(document.body, 'coach-refresh'); }
   document.body.addEventListener('htmx:afterSettle', function(e) {
     if (e.detail.target.id === 'coach-panel') apply();
