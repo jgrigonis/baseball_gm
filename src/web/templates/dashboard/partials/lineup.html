@@ -835,7 +835,15 @@ function renderFieldingTable() {
     if (fs) {
       const fpct = fs.fpct != null ? fs.fpct.toFixed(3) : '—';
       const pbPart = pos === 'c' ? ` PB:${fs.pb}` : '';
-      statsHtml = `<span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);white-space:nowrap;text-align:right;">`
+      // Hover (or tap, which focuses it) spells the terse line out.
+      const n = (v, one, many) => `${v} ${v === 1 ? one : many}`;
+      const tip = `At ${POS_LABEL[pos]} this season: ${n(fs.po, 'putout', 'putouts')}, ${n(fs.a, 'assist', 'assists')}, `
+        + `${n(fs.e, 'error', 'errors')}`
+        + (fs.fpct != null ? `, ${fpct} fielding percentage` : '')
+        + (pos === 'c' ? `, ${n(fs.pb, 'passed ball', 'passed balls')}` : '')
+        + '. Shown as putouts/assists/errors, then fielding percentage.';
+      statsHtml = `<span class="setting-tip tip-end" tabindex="0" data-tip="${tip}" onclick="event.stopPropagation()" `
+        + `style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);white-space:nowrap;text-align:right;">`
         + `${fs.po}/${fs.a}/${fs.e} ${fpct}${pbPart}`
         + `</span>`;
     }

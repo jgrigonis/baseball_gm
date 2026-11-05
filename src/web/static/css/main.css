@@ -1360,9 +1360,11 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
 }
 .setting-tip:hover::after,
 .setting-tip:focus::after { content: attr(data-tip); opacity: 1; visibility: visible; }
+/* A tip on something at the right edge opens leftward, so it stays on screen. */
+.setting-tip.tip-end::after { left: auto; right: 0; text-align: left; }
 /* Phones: the tip shows along the bottom of the screen, where it always fits. */
 @media (max-width: 700px) {
-  .setting-tip::after { position: fixed; left: 16px; right: 16px; top: auto; bottom: 16px; width: auto; }
+  .setting-tip::after, .setting-tip.tip-end::after { position: fixed; left: 16px; right: 16px; top: auto; bottom: 16px; width: auto; }
 }
 
 /* ── Admin pages ─────────────────────────────────────────────────────────── */
