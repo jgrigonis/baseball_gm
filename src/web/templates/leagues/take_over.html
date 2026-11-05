@@ -42,7 +42,9 @@
                   <input type="hidden" name="team_id" value="{{ t.team_id }}">
                   <input type="hidden" name="code" value="{{ code }}">
                   <button type="submit" class="btn btn-primary" style="font-size:10px;padding:4px 10px;"
-                          data-confirm="Take over the {{ t.city }} {{ t.mascot }}? {{ t.display_name }} steps aside and the team is yours.">Take over</button>
+                          data-confirm="Take over the {{ t.city }} {{ t.mascot }}?"
+                          data-confirm-text="{{ t.display_name }} steps aside and the team is yours."
+                          data-confirm-ok="Take over" data-confirm-tone="go">Take over</button>
                 </form>
               </td>
             </tr>
@@ -59,9 +61,4 @@
 .takeover-dim { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); }
 .takeover-team { display: inline-flex; align-items: center; gap: 8px; }
 </style>
-<script>
-document.querySelectorAll("button[data-confirm]").forEach(b => b.addEventListener("click", e => {
-  if (!confirm(b.dataset.confirm)) e.preventDefault();
-}));
-</script>
 {% endblock %}

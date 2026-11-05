@@ -152,14 +152,17 @@ document.querySelectorAll('time.local-time').forEach(t => {
   t.textContent = d.toLocaleDateString(undefined, {month: 'short', day: 'numeric', year: 'numeric'});
   t.title = d.toLocaleString();
 });
-function leaveLeague(btn) {
+async function leaveLeague(btn) {
   const id = btn.dataset.leagueId, name = btn.dataset.leagueName;
-  const msg = btn.dataset.last
-    ? 'Leave ' + name + '? You\'re the last GM in it, so the league will be deleted for good.'
-    : btn.dataset.started
-    ? 'Leave ' + name + '? An AI manager will take over your team, and you can\'t come back.'
-    : 'Leave ' + name + '?';
-  if (!confirm(msg)) return;
+  const ok = await gmConfirm({
+    title: 'Leave ' + name + '?',
+    lines: btn.dataset.started && !btn.dataset.last
+      ? ['An AI manager will take over your team, and you can\'t come back.'] : [],
+    warn: btn.dataset.last ? 'You\'re the last GM in it, so the league will be deleted for good.' : '',
+    ok: btn.dataset.last ? 'Leave and delete' : 'Leave',
+    tone: 'danger',
+  });
+  if (!ok) return;
   // Deleting a league can take a moment; a second click would find the
   // first still holding the league and fail.
   btn.disabled = true;
@@ -174,7 +177,7 @@ function leaveLeague(btn) {
   const failed = detail => {
     btn.disabled = false;
     btn.textContent = 'Leave';
-    alert(detail || 'Could not leave the league.');
+    gmAlert('Could not leave the league.', detail);
     settle();
   };
   fetch('/leagues/' + id + '/leave', {method: 'POST'}).then(r => {
@@ -259,7 +262,7 @@ function submitRename(el, save) {
   }).then(r => r.json().then(d => {
     save.disabled = false;
     save.textContent = 'Save';
-    if (!r.ok || !d.name) { alert(d.detail || 'Could not rename the league.'); el.focus(); return; }
+    if (!r.ok || !d.name) { gmAlert('Could not rename the league.', d.detail).then(() => el.focus()); return; }
     el.dataset.original = d.name;
     el.textContent = d.name;
     save.hidden = true;
@@ -270,7 +273,7 @@ function submitRename(el, save) {
   })).catch(() => {
     save.disabled = false;
     save.textContent = 'Save';
-    alert('Could not rename the league.');
+    gmAlert('Could not rename the league.');
   });
 }
 </script>

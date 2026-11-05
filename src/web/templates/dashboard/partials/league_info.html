@@ -26,7 +26,8 @@
     {% if is_commissioner %}{% set leave_note = leave_note ~ " Another GM becomes commissioner." %}{% endif %}
   {% endif %}
   <button class="btn btn-danger" style="font-size:11px;padding:6px 12px;"
-          data-confirm="Leave {{ league_name }}? {{ leave_note }}"
+          data-confirm="Leave {{ league_name }}?" data-confirm-note="{{ leave_note }}"
+          {% if leaving_deletes_league %}data-confirm-last="yes"{% endif %}
           onclick="leaveThisLeague(this)">Leave League</button>
   {% elif can_take_over %}
   <a href="/leagues/{{ league_id }}/take-over" class="btn btn-primary" style="font-size:11px;padding:6px 12px;">Take over a team →</a>
@@ -91,8 +92,16 @@
 
 {% if not is_viewer %}
 <script>
-function leaveThisLeague(btn) {
-  if (!confirm(btn.dataset.confirm)) return;
+async function leaveThisLeague(btn) {
+  const last = !!btn.dataset.confirmLast;
+  const ok = await gmConfirm({
+    title: btn.dataset.confirm,
+    lines: last ? [] : [btn.dataset.confirmNote],
+    warn: last ? btn.dataset.confirmNote : '',
+    ok: last ? 'Leave and delete' : 'Leave',
+    tone: 'danger',
+  });
+  if (!ok) return;
   // Deleting a league can take a moment; a second click would find the
   // first still holding the league and fail.
   btn.disabled = true;
@@ -100,7 +109,7 @@ function leaveThisLeague(btn) {
   const failed = detail => {
     btn.disabled = false;
     btn.textContent = 'Leave League';
-    alert(detail || 'Could not leave the league.');
+    gmAlert('Could not leave the league.', detail);
   };
   fetch('/leagues/{{ league_id }}/leave', {method: 'POST'}).then(r => {
     if (r.ok) { location.href = '/leagues/'; return; }
