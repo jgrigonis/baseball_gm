@@ -325,6 +325,9 @@
   transition: all .1s; flex-shrink: 0;
 }
 .r-action-btn.add-btn  { color: var(--green); }
+.r-action-btn.rel-btn  { color: var(--red); }
+.r-action-btn.rel-btn:hover  { background: var(--red-dim); border-color: var(--red); }
+.r-org-btns { display: flex; gap: 6px; }
 .r-action-btn.add-btn:hover  { background: var(--green-dim); border-color: var(--green); }
 .r-action-btn.rem-btn  { color: var(--red); }
 .r-action-btn.rem-btn:hover  { background: rgba(255,80,80,.08); border-color: var(--red); }
@@ -559,8 +562,9 @@ function makeCard(p, isIn40) {
   const btnHtml = isIn40
     ? `<button class="r-action-btn rem-btn" title="Remove from 40-man"
                onclick="event.stopPropagation();removeFromRoster('${p.player_id}')">−</button>`
-    : `<button class="r-action-btn add-btn" title="Add to 40-man"
-               onclick="event.stopPropagation();addToRoster('${p.player_id}')">+</button>`;
+    : `<span class="r-org-btns"><button class="r-action-btn rel-btn" title="Release him"
+               onclick="event.stopPropagation();releasePlayer('${p.player_id}', '${(p.first_name + ' ' + p.last_name).replace(/'/g, "\\'")}')">−</button><button class="r-action-btn add-btn" title="Add to 40-man"
+               onclick="event.stopPropagation();addToRoster('${p.player_id}')">+</button></span>`;
 
   // Same row as the Lineup tab: name with a dim trail, then the ratings
   const isPitcher = p.player_type === 'pitcher';
