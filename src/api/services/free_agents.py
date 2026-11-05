@@ -12,6 +12,7 @@ Releasing players and signing free agents.
   from his grade and age (src/player/contracts.py). It starts this season,
   is guaranteed, and he joins the organization (minors) like a traded player.
   The minors can hold MINORS_LIMIT players, so a full team releases first.
+  Going over budget is allowed; the confirm warns about the luxury tax.
 
 Both wait for any sim in the league to finish (the league lock), and neither
 works in a lobby or a finished league. Waivers, bidding and AI GMs signing
@@ -23,12 +24,14 @@ from __future__ import annotations
 import random
 from src.api.services import trades
 from src.db.locks import league_lock
+from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
+from src.league import budget as bg
 from src.league.offseason.roster_trimmer import MINORS_LIMIT
 from src.player import contracts as ct
 from src.player.player_value import role_rating
@@ -95,6 +98,35 @@ def release(conn, league_id: str, team_id: str, player_id: str) -> dict:
             )
         conn.commit()
     return {"name": player.name if player else "", **_owed_view(owed)}
+
+
+def sign_preview(conn, league_id: str, team_id: str, player_id: str) -> dict:
+    """What signing him would cost, for the confirm: his asking deal, and a
+    warning when it takes the team over budget (src/league/budget.py)."""
+    _, year = _context(conn, league_id)
+    player = PlayerRepository(conn).look_up(player_id)
+    if (
+        player is None
+        or not _in_league(conn, league_id, player_id)
+        or PlayerStatusRepository(conn).get_status(player_id) != "free_agent"
+    ):
+        raise FreeAgentError("He isn't a free agent.")
+    deal = asking_deal(player, year)
+    return {
+        "salary_text": ct.format_salary(deal.salary),
+        "years": deal.years,
+        "warning": budget_warning(conn, league_id, team_id, year, deal.salary),
+    }
+
+
+def budget_warning(
+    conn, league_id: str, team_id: str, year: int, added: int
+) -> str | None:
+    """The over-budget warning for adding this much payroll, if any."""
+    standing = BudgetRepository(conn).standing(league_id, team_id, year)
+    if standing is None:
+        return None
+    return bg.warning(standing["payroll"], standing["budget"], added)
 
 
 def sign(conn, league_id: str, team_id: str, player_id: str) -> dict:

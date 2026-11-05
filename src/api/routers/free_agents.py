@@ -11,6 +11,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from src.api.dependencies import DB, GM, ActiveLeague, GMOrViewer, IsHTMX, User
 from src.api.services import free_agents
 from src.api.view_models.player_cards import roster_card
+from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
@@ -76,7 +77,18 @@ def free_agents_tab(
             PlayerStatusRepository(db).get_by_team_and_status(team_id, "minors")
         )
         ctx["payroll_text"] = format_salary(contracts.payroll(team_id, year))
+        ctx["budget"] = BudgetRepository(db).standing(league_id, team_id, year)
     return tab_response(request, htmx, "dashboard/partials/free_agents.html", ctx)
+
+
+@router.get("/leagues/{league_id}/free-agents/{player_id}/sign")
+def sign_preview(league_id: str, player_id: str, db: DB, gm: GM):
+    """His asking deal and any over-budget warning, for the confirm."""
+    try:
+        result = free_agents.sign_preview(db, league_id, gm["team_id"], player_id)
+    except free_agents.FreeAgentError as e:
+        return JSONResponse({"detail": str(e)}, status_code=422)
+    return JSONResponse(result)
 
 
 @router.post("/leagues/{league_id}/free-agents/{player_id}/sign")

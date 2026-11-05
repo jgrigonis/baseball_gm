@@ -18,6 +18,8 @@ import psycopg
 
 from src.api.services.injury_news import InjuryNews
 from src.db.connection import rollback_quietly
+from src.db.repositories.budget_repo import BudgetRepository
+from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.playoff_repo import PlayoffRepository
@@ -191,6 +193,10 @@ def _play_one_game(
 def end_playoffs(conn, league: dict, season_id: str) -> None:
     """The Finals are decided. On to the offseason, unless that was the
     league's last season: then the league is complete, and read-only."""
+    # The season's payrolls are final: charge luxury tax on what's over budget.
+    year = ContractRepository(conn).current_year(league["id"])
+    if year is not None:
+        BudgetRepository(conn).assess(league["id"], year)
     lr = LeagueRepository(conn)
     if is_last_season(league["num_seasons"], lr.count_seasons(league["id"])):
         OffseasonPipeline(conn).run_final(season_id, league["id"])

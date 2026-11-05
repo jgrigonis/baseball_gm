@@ -16,6 +16,7 @@ from src.api.view_models.player_cards import (
     attach_roster_stats,
     roster_card,
 )
+from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.gm_repo import GMRepository
@@ -92,6 +93,7 @@ def roster(
         ctx["payroll_text"] = format_salary(contracts.payroll(team_id, year))
         dead = contracts.dead_money(team_id, year)
         ctx["dead_money_text"] = format_salary(dead) if dead else None
+        ctx["budget"] = BudgetRepository(db).standing(league_id, team_id, year)
     ctx["players"] = players
     return tab_response(request, htmx, "dashboard/partials/roster.html", ctx)
 

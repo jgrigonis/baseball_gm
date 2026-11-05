@@ -65,6 +65,7 @@
             The <strong>{{ o.from_name }}</strong>{{ ai_gm(o.from_team_id) }} give {{ plist(o.sent) }}</div>
           <div>You give {{ plist(o.received) }}</div>
           {% if o.expires_on %}<div class="tr-reason">Expires after the games on {{ o.expires_on }}</div>{% endif %}
+          {% if o.budget_warning %}<div class="tr-reason tr-budget">{{ o.budget_warning }}</div>{% endif %}
         </div>
         <div class="tr-offer-btns">
           {{ compare_btn(o.sent, o.received) }}
@@ -220,6 +221,8 @@ var SIDES = {
 var FILTERS = [['all', 'All'], ['40', '40-man'], ['org', 'Org'], ['hit', 'Hit'], ['pit', 'Pit']];
 {% if pick_trades %}FILTERS.push(['pick', 'Picks']);{% endif %}
 var UNIT = {{ ('players or picks' if pick_trades else 'players') | tojson }};
+// Payroll against budget (src/league/budget.py), null without budgets.
+var BUDGET = {{ budget | tojson }};
 var COUNTER = null;  // the offer to you this one counters
 
 function esc(s) {
@@ -284,7 +287,7 @@ function render(key) {
       '<span class="' + gradeClass(p.overall) + ' tr-grade">' + esc(p.overall) + '</span>' +
       '<span class="tr-name"><a href="#" onclick="openPlayerPanel(\'' + p.player_id + '\');return false;">' +
         esc(p.first_name + ' ' + p.last_name) + '</a>' + rookieTag(p.player_id) +
-        '<span class="tr-meta">' + esc(p.position || '') + ' · ' + p.age + (statLine(p) ? ' · ' + esc(statLine(p)) : '') + '</span></span>' +
+        '<span class="tr-meta">' + esc(p.position || '') + ' · ' + p.age + (p.salary_text ? ' · ' + esc(p.salary_text) : '') + (statLine(p) ? ' · ' + esc(statLine(p)) : '') + '</span></span>' +
       (p.injured ? '<span class="badge badge-injured"' + (p.injury_name ? ' title="' + p.injury_name + '"' : '') + '>🚑 ' + p.injury_days + 'd</span>' : '') +
       '<span class="badge ' + (onForty(p) ? 'badge-40man">40' : 'badge-minors">ORG') + '</span>' +
     '</label>';
@@ -297,6 +300,30 @@ function names(key) {
     .map(function(p) { return (p.first_name + ' ' + p.last_name).trim(); });
 }
 
+// Same as format_salary (src/player/contracts.py): $780K, $4.5M, $32M.
+function money(n) {
+  if (n >= 1e6) return '$' + (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
+  return '$' + Math.round(n / 1000) + 'K';
+}
+function pickedPay(key) {
+  var side = SIDES[key];
+  return side.players.reduce(function(t, p) {
+    return t + (side.picked.has(p.player_id) ? (p.pay || 0) : 0);
+  }, 0);
+}
+// A warning when the trade takes you over budget. Going over is allowed;
+// you pay luxury tax on what's over when the season ends.
+function budgetNote() {
+  if (!BUDGET) return '';
+  var added = pickedPay('theirs') - pickedPay('mine');
+  var after = BUDGET.payroll + added;
+  if (added <= 0 || after <= BUDGET.budget) return '';
+  var tax = function(p) { return Math.max(0, p - BUDGET.budget) * BUDGET.tax_rate; };
+  var extra = tax(after) - tax(BUDGET.payroll);
+  return '<div class="tr-budget">Payroll after: ' + money(after) + ' of ' + money(BUDGET.budget) +
+         ', ' + money(extra) + ' more luxury tax.</div>';
+}
+
 function summarize() {
   var give = names('mine'), get = names('theirs');
   var el = document.getElementById('tr-summary');
@@ -305,7 +332,8 @@ function summarize() {
     el.textContent = 'Pick up to ' + MAX + ' ' + UNIT + ' a side.';
   } else {
     el.innerHTML = '<span class="tr-k">You give</span> ' + (esc(give.join(', ')) || '—') +
-                   '  <span class="tr-k">You get</span> ' + (esc(get.join(', ')) || '—');
+                   '  <span class="tr-k">You get</span> ' + (esc(get.join(', ')) || '—') +
+                   budgetNote();
   }
   btn.disabled = !give.length || !get.length || !SIDES.theirs.team;
   btn.textContent = COUNTER ? 'Send counter' : 'Propose trade';
@@ -497,6 +525,7 @@ if (done) { showResult(done.msg, done.kind, done.dest); window._tradeResult = nu
 #trades-page .trade-bar { display: flex; align-items: center; gap: 12px; margin-top: 14px; padding: 10px 12px;
   border: 1px solid var(--border-hi); background: var(--bg-2); }
 #trades-page .tr-summary { flex: 1; font-size: 12px; }
+#trades-page .tr-budget { color: var(--red); }
 #trades-page .tr-k { font-family: var(--font-mono); font-size: 10px; color: var(--amber); text-transform: uppercase;
   margin-left: 8px; }
 #trades-page .tr-k:first-child { margin-left: 0; }
