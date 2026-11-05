@@ -50,7 +50,7 @@
         </span>
         <div class="spacer"></div>
         <button class="btn btn-secondary" onclick="autoFill()"
-                title="Keep the players in the lineup and fill the empty and injured spots"
+                title="Fill the empty and injured spots in both lineups, vs RHP and vs LHP, keeping the players already in them"
                 style="font-size:11px;padding:4px 10px;margin-right:6px;">Auto-fill</button>
         <button class="btn btn-secondary" onclick="rebuildLineup()"
                 title="Start over, vs RHP and vs LHP: the best lineups from your whole roster, by your Strategy tab's lineup style"
@@ -1038,9 +1038,10 @@ function _afterLineupFetch() {
   saveToStorage();
 }
 
-// Auto-fill works on the lineup on screen.
+// Auto-fill fills both lineups, vs RHP and vs LHP, keeping who's already in each.
 async function autoFill() {
-  if (await _fetchLineup(vsHand, false)) _afterLineupFetch();
+  const ok = await Promise.all(['R', 'L'].map(h => _fetchLineup(h, false)));
+  if (ok.some(Boolean)) _afterLineupFetch();
 }
 
 // Rebuild starts both lineups over: vs RHP and vs LHP.
