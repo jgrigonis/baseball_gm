@@ -10,7 +10,8 @@
 //
 // gmAlert(title, line) shows a message with a single OK button.
 //
-// gmToast(msg, kind) pops a short notice at the bottom of the screen that
+// gmToast(msg, kind) pops a short notice at the top of the screen (just
+// under the top bar and tabs) that
 // fades on its own: kind 'ok' (green, saves), 'err' (red, stays longer) or
 // 'info' (plain). Use it instead of a status line beside a button. A server
 // response can raise one with the HX-Trigger header
@@ -84,7 +85,7 @@ document.addEventListener('submit', e => {
   });
 }, true);
 
-// Short notices at the bottom of the screen (see gmToast above).
+// Short notices at the top of the screen (see gmToast above).
 window.gmToast = function(msg, kind) {
   if (!msg) return;
   kind = kind || 'info';
@@ -95,6 +96,15 @@ window.gmToast = function(msg, kind) {
     box.setAttribute('aria-live', 'polite');
     document.body.appendChild(box);
   }
+  // Just under whatever is pinned at the top: the top bar, and the league
+  // tabs when they're on screen. Both are sticky and the top bar wraps to
+  // two rows on phones, so measure each time.
+  let top = 0;
+  document.querySelectorAll('.topbar, #tab-bar').forEach(el => {
+    const r = el.getBoundingClientRect();
+    if (r.height && r.bottom > top) top = r.bottom;
+  });
+  box.style.top = Math.max(0, top) + 10 + 'px';
   // The same notice twice in a row just restarts its timer.
   const last = box.lastElementChild;
   if (last && last.textContent === msg && !last.classList.contains('out')) last.remove();
