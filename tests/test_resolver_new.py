@@ -16,6 +16,7 @@ import pytest
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 from src.game.bases import FIRST, SECOND, THIRD, HOME
+from src.player.player_skills import PlayerSkills
 from src.game.events.ball import BallEvent, IllegalPitch
 from src.game.events.strike import (
     StrikeEvent,
@@ -1159,8 +1160,15 @@ class TestIntegration:
 
     def test_complex_baserunning_scenario(self, resolver, game, pitch_intent):
         """Test complex scenario with multiple runners"""
-        # Bases loaded
-        runner1 = PlayerInGame(make_player_record())
+        # Bases loaded, with an average runner on first and average outfield
+        # arms. Random ratings let a fast runner score off a weak arm even on
+        # a 0.99 roll.
+        average = PlayerSkills(speed=50, base_running=50, arm=50)
+        for of in ("lf", "cf", "rf"):
+            game.pitch_team._positions[of] = PlayerInGame(
+                make_player_record(position=of, skills=average)
+            )
+        runner1 = PlayerInGame(make_player_record(skills=average))
         runner2 = PlayerInGame(make_player_record())
         runner3 = PlayerInGame(make_player_record())
         game.bases.set_runner(FIRST, runner1)
