@@ -128,3 +128,84 @@ def test_the_owner_tab(lg, client_for):
     for o in service.league_table(x.db, x.league.id):
         assert o["name"] in text
     assert "Patience" not in text and "Spending" not in text
+
+
+# ── The owner's season review (src/api/services/owner_review.py) ─────────────
+
+
+def test_owners_review_the_season(lg, factory):
+    from src.api.services import owner_review
+
+    x = lg(n=2)
+    a, b = x.teams
+    factory.gm(team=b, league=x.league, is_ai=True)
+    service.ensure(x.db, x.league.id)  # seated before the season starts
+    for i in range(3):
+        factory.game(
+            {"id": x.season.id}, {"id": a.id}, {"id": b.id}, f"2026-04-0{i + 1}"
+        )
+    # The game factory doesn't write team stats: record a 3-0 start for a.
+    for g in x.db.execute(
+        "SELECT id FROM games WHERE season_id = %s", (x.season.id,)
+    ).fetchall():
+        for team, win in ((a.id, 1), (b.id, 0)):
+            x.db.execute(
+                """INSERT INTO team_game_stats (game_id, team_id, win, loss, runs)
+                   VALUES (%s, %s, %s, %s, 5)""",
+                (g["id"], team, win, 1 - win),
+            )
+    out = owner_review.review_season(x.db, x.league.id, x.season.id, 2026)
+    assert set(out) == {a.id, b.id}
+    row = x.db.execute(
+        "SELECT * FROM gm_season_evaluations WHERE gm_id = %s", (x.gm.id,)
+    ).fetchone()
+    assert row["wins"] == 3 and row["losses"] == 0
+    assert row["verdict"] in ("retained", "warned")  # never fired, yet
+    assert row["detail"]["scores"]["wins"] == 1.0
+    assert 0 <= row["job_security"] <= 100
+    assert out[a.id]["score"] > out[b.id]["score"]
+    # Shown on the admin scorecard.
+    assert (
+        owner_review.security_now(x.db, x.league.id)[a.id]["job_security"]
+        == (row["job_security"])
+    )
+
+
+def test_a_new_gm_starts_fresh(lg):
+    from src.api.services import owner_review
+    from src.league import owner_scoring as sc
+
+    x = lg(n=2)
+    owner = service.ensure(x.db, x.league.id)[x.teams[0].id]
+    grace = sc.grace(owners.clean_traits(owner["traits"])["patience"])
+    assert owner_review._security_before(x.db, x.gm.id, "someone", owner, 2027) == grace
+
+
+# ── The owner's office (src/api/services/owner_office.py) ─────────────────────
+
+
+def test_the_owner_writes_a_preseason_memo_once(lg, client_for):
+    from src.api.services import owner_office
+
+    x = lg(n=2)
+    x.db.execute("UPDATE leagues SET state = 'preseason' WHERE id = %s", (x.league.id,))
+    assert (
+        owner_office.catch_up(x.db, x.league.id) == 1
+    )  # our team; the other has no GM
+    assert owner_office.catch_up(x.db, x.league.id) == 0
+    assert owner_office.unseen(x.db, x.gm.id) == 1
+    r = client_for(x).get(f"/leagues/{x.league.id}/owner")
+    assert "Preseason memo" in r.text and "From the owner" in r.text
+    assert owner_office.unseen(x.db, x.gm.id) == 0
+
+
+def test_the_season_review_message(lg, factory):
+    from src.api.services import owner_office, owner_review
+
+    x = lg(n=2)
+    service.ensure(x.db, x.league.id)
+    owner_review.review_season(x.db, x.league.id, x.season.id, 2026)
+    assert owner_office.review(x.db, x.league.id, x.season.id) == 1
+    office = owner_office.office(x.db, x.league.id, x.teams[0].id, x.gm.id)
+    assert office["messages"][0]["kind"] == "review"
+    assert office["mood"] in [w for _, w in owner_office.om.MOODS]

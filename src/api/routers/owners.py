@@ -10,7 +10,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
 from src.api.dependencies import DB, GMOrViewer, IsHTMX, User
-from src.api.services import owners
+from src.api.services import owner_office, owners
 from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.contract_repo import ContractRepository
 from src.player.contracts import format_salary
@@ -30,7 +30,12 @@ def owner_tab(
 ):
     ctx = _shell_ctx(request, db, gm, league_id, "owner", user)
     team_id = gm.get("team_id") if gm and not ctx.get("is_viewer") else None
+    if team_id:
+        owner_office.catch_up(db, league_id)  # anything due, e.g. the preseason memo
     ctx["my_owner"] = owners.card(db, league_id, team_id) if team_id else None
+    if ctx["my_owner"]:
+        ctx["office"] = owner_office.office(db, league_id, team_id, gm["id"])
+        ctx["owner_unseen"] = 0  # just read
     year = ContractRepository(db).current_year(league_id)
     if ctx["my_owner"] and year is not None:
         budget = BudgetRepository(db).budget(league_id, team_id, year)

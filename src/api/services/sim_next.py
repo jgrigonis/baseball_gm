@@ -19,6 +19,7 @@ from src.api.services import (
     all_star,
     front_office,
     hr_derby,
+    owner_office,
     rookie_game,
     team_states,
     trades,
@@ -328,6 +329,8 @@ def sim_days(league_id: str, conn, count: int | str) -> dict:
                 conn, league_id, day_result["game_date"]
             )
             front_office.call_ups(conn, league_id, changed, day_result["game_date"])
+            # Owners take stock weekly: mood, check-ins, reactions.
+            owner_office.weekly(conn, league_id, day_result["game_date"])
             conn.commit()
         # AI teams make offers and trades between game days.
         if deadline and gp > 0:

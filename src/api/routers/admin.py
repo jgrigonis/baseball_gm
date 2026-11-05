@@ -24,6 +24,7 @@ from src.api.services.passwords import clean_email, password_error, username_err
 from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.league_repo import LeagueRepository
+from src.api.services import owner_review
 from src.api.services import owners as owner_service
 from src.db.repositories.owner_repo import OwnerRepository
 from src.db.repositories.persona_repo import PersonaRepository
@@ -142,10 +143,12 @@ def _league_owners(db, league: dict) -> list[dict]:
     year = ContractRepository(db).current_year(league["id"])
     now = budgets.finances(league["id"], year) if year else {}
     last = budgets.finances(league["id"], year - 1) if year else {}
+    reviews = owner_review.security_now(db, league["id"])
     rows = []
     for team_id, o in by_team.items():
         traits = owners.clean_traits(o["traits"])
         money = now.get(team_id, {})
+        review = reviews.get(team_id)
         done = money if money.get("profit") is not None else last.get(team_id, {})
         rows.append(
             {
@@ -167,9 +170,30 @@ def _league_owners(db, league: dict) -> list[dict]:
                 "fans": money.get("fans_before"),
                 "profit": _money(done.get("profit")),
                 "profit_year": year if done is money else (year or 1) - 1,
+                "review": _review_row(review),
             }
         )
     return sorted(rows, key=lambda r: r["team"])
+
+
+def _review_row(review: dict | None) -> dict | None:
+    """An owner's latest season review for the admin scorecard."""
+    if not review:
+        return None
+    detail = review["detail"] or {}
+    scores = detail.get("scores", {})
+    return {
+        "year": review["year"],
+        "score": review["score"],
+        "security": review["job_security"],
+        "before": detail.get("security_before"),
+        "verdict": "would fire" if detail.get("would_fire") else review["verdict"],
+        "dimensions": [
+            {"label": label, "score": scores.get(k)}
+            for k, label, _ in owners.DIMENSIONS
+        ],
+        "win_target": detail.get("win_target"),
+    }
 
 
 def _money(amount) -> str | None:

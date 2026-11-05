@@ -9,7 +9,7 @@ from fastapi.templating import Jinja2Templates
 
 from src.config import settings
 from src.player.injury_types import injury_effect, injury_label
-from src.api.services import all_star, takeover, trades
+from src.api.services import all_star, owner_office, takeover, trades
 from src.api.services.admin import uses_default_admin_name
 from src.api.services.coach import coach_ctx, mark_visit
 from src.api.services.ready_check import is_multiplayer
@@ -311,6 +311,9 @@ def _shell_ctx(
                 ctx["news_unseen"] = NewsRepository(db).count_unseen(
                     league_id, gm["id"]
                 )
+            if not ctx["is_viewer"] and "owner" in tabs and gm.get("id"):
+                # Owner messages the GM hasn't read: the Owner tab's badge.
+                ctx["owner_unseen"] = owner_office.unseen(db, gm["id"])
             # The team page (/welcome): the welcome screen in a league's
             # first season, the season preview after.
             ctx["team_page_label"] = (
