@@ -52,7 +52,7 @@
   <div class="admin-section" style="display:flex;gap:12px;align-items:center;">
     <a href="/admin/personas?from={{ persona.id }}#create" class="btn btn-secondary">Duplicate as a new persona</a>
     {% if not leagues %}
-    <form method="POST" action="/admin/personas/{{ persona.id }}/delete" onsubmit="return confirm('Delete this persona for good?');">
+    <form method="POST" action="/admin/personas/{{ persona.id }}/delete" data-confirm="Delete this persona for good?" data-confirm-ok="Delete" data-confirm-tone="danger">
       <button type="submit" class="btn btn-secondary" style="color:var(--red);">Delete</button>
     </form>
     {% else %}

@@ -18,7 +18,8 @@
     </form>
     {% else %}
     <form method="POST" action="/admin/leagues/{{ league.id }}/pause"
-          onsubmit="return confirm({{ ('Pause ' ~ league.name ~ '? Nothing sims, drafts or starts until you resume it.') | tojson | forceescape }})">
+          data-confirm="Pause {{ league.name }}?" data-confirm-text="Nothing sims, drafts or starts until you resume it."
+          data-confirm-ok="Pause">
       <button type="submit" class="btn btn-secondary">Pause League</button>
     </form>
     {% endif %}
@@ -120,7 +121,10 @@
             <td style="text-align:right;">
               {% if g.user_id and not g.is_ai %}
               <form method="POST" action="/admin/leagues/{{ league.id }}/gms/{{ g.id }}/remove" style="display:inline;"
-                    onsubmit="return confirm({{ ('Remove ' ~ g.display_name ~ ' from ' ~ league.name ~ '? ' ~ ('AI takes over their team.' if started else 'They drop off the lobby.') ~ ' If nobody is left, the league is deleted.') | tojson | forceescape }})">
+                    data-confirm="Remove {{ g.display_name }} from {{ league.name }}?"
+                    data-confirm-text="{{ 'AI takes over their team.' if started else 'They drop off the lobby.' }}"
+                    data-confirm-warn="If nobody is left, the league is deleted."
+                    data-confirm-ok="Remove" data-confirm-tone="danger">
                 <button type="submit" class="btn btn-danger admin-small">Remove</button>
               </form>
               {% endif %}

@@ -107,7 +107,10 @@
     <div class="admin-dim" style="font-size:12px;">You can't delete your own account.</div>
     {% else %}
     <form method="POST" action="/admin/users/{{ account.id }}/delete" style="display:flex;align-items:center;gap:12px;"
-          onsubmit="return confirm({{ ('Delete ' ~ (account.username or account.display_name) ~ '? They leave every league first: AI takes over their teams, and a league with nobody left is deleted. This cannot be undone.') | tojson | forceescape }})">
+          data-confirm="Delete {{ account.username or account.display_name }}?"
+          data-confirm-text="They leave every league first: AI takes over their teams, and a league with nobody left is deleted."
+          data-confirm-warn="This cannot be undone."
+          data-confirm-ok="Delete" data-confirm-tone="danger">
       <span class="admin-dim" style="font-size:12px;">They leave each of their leagues first, the same as leaving by hand. A league with nobody left in it is deleted.</span>
       <div class="spacer"></div>
       <button type="submit" class="btn btn-danger">Delete User</button>

@@ -62,7 +62,7 @@
   <div class="admin-section" style="display:flex;gap:12px;align-items:center;">
     <a href="/admin/owners?from={{ owner.id }}#create" class="btn btn-secondary">Duplicate as a new owner</a>
     {% if not leagues %}
-    <form method="POST" action="/admin/owners/{{ owner.id }}/delete" onsubmit="return confirm('Delete this owner for good?');">
+    <form method="POST" action="/admin/owners/{{ owner.id }}/delete" data-confirm="Delete this owner for good?" data-confirm-ok="Delete" data-confirm-tone="danger">
       <button type="submit" class="btn btn-secondary" style="color:var(--red);">Delete</button>
     </form>
     {% else %}
