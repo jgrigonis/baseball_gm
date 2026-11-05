@@ -64,7 +64,10 @@ def test_all_star_to_dos_are_a_pill_beside_play_day():
 
 def test_playoffs_go_there_then_sim_there():
     move = pick(_ctx(league_state="playoffs"), "standings")
-    assert move["label"] == "🥇 Go to Playoffs →" and move["href"] == "/leagues/L1/playoffs"
+    assert (
+        move["label"] == "🥇 Go to Playoffs →"
+        and move["href"] == "/leagues/L1/playoffs"
+    )
     move = pick(_ctx(league_state="playoffs"), "playoffs")
     assert move["label"] == "▶ Sim Playoff Day" and move["fn"] == "simPlayoffs"
     assert move["arg"] == "game" and _menu(move) == ["▶ Sim Round", "▶▶ Full Playoffs"]
@@ -79,7 +82,9 @@ def test_after_the_champion_the_summary_then_begin_offseason():
 
 
 def test_draft_go_there_then_run_it():
-    ctx = _ctx(league_state="draft", draft_complete=False, team_page_label="Meet your team")
+    ctx = _ctx(
+        league_state="draft", draft_complete=False, team_page_label="Meet your team"
+    )
     move = pick(ctx, "welcome")
     assert move["label"] == "Go to the draft →" and move["href"] == "/leagues/L1/draft"
     move = pick(ctx, "draft")

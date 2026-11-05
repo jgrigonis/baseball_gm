@@ -962,7 +962,9 @@ def test_the_sim_weekend_button_once_my_picks_are_in(client, lg):
     html = client.get(url).text
     # The top bar's next move is the weekend, on every page.
     assert "The teams are set." in html and "★ Sim All-Star Weekend" in html
-    assert "★ Sim All-Star Weekend" in client.get(f"/leagues/{lg.league.id}/roster").text
+    assert (
+        "★ Sim All-Star Weekend" in client.get(f"/leagues/{lg.league.id}/roster").text
+    )
     assert f"The season picks up again on {AFTER[0]}" in html
 
 

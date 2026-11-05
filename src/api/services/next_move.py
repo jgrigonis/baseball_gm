@@ -112,8 +112,13 @@ def pick(ctx: dict, page: str, weekend_ready: bool = False) -> dict | None:
         if ctx.get("draft_complete"):
             return None
         if page == "draft":
-            return _act("run-draft", "Run Draft ▶", "Run Draft ▶", "runDraft",
-                        btn_id="execute-btn")
+            return _act(
+                "run-draft",
+                "Run Draft ▶",
+                "Run Draft ▶",
+                "runDraft",
+                btn_id="execute-btn",
+            )
         if page == "retirement" and ctx.get("team_page_label") == "Season preview":
             return _go("preview", "Season preview →", "Preview →", f"{base}/welcome")
         return _go("go-draft", "Go to the draft →", "Draft →", f"{base}/draft")
@@ -128,17 +133,36 @@ def pick(ctx: dict, page: str, weekend_ready: bool = False) -> dict | None:
                 "1",
                 "sched-play-btn",
                 menu=[
-                    _item("▶▶ Full Season", "schedSim", "season", "sched-season-btn",
-                          "plays the weekend, then keeps going")
+                    _item(
+                        "▶▶ Full Season",
+                        "schedSim",
+                        "season",
+                        "sched-season-btn",
+                        "plays the weekend, then keeps going",
+                    )
                 ],
                 kind="star",
             )
         elif state == "preseason":
-            move = _act("play", "▶ Play Opening Day", "▶ Play Day", "schedSim", "1",
-                        "sched-play-btn", _play_menu(ctx, "to the playoffs"))
+            move = _act(
+                "play",
+                "▶ Play Opening Day",
+                "▶ Play Day",
+                "schedSim",
+                "1",
+                "sched-play-btn",
+                _play_menu(ctx, "to the playoffs"),
+            )
         else:
-            move = _act("play", "▶ Play Day", "▶ Play Day", "schedSim", "1",
-                        "sched-play-btn", _play_menu(ctx, "to the playoffs"))
+            move = _act(
+                "play",
+                "▶ Play Day",
+                "▶ Play Day",
+                "schedSim",
+                "1",
+                "sched-play-btn",
+                _play_menu(ctx, "to the playoffs"),
+            )
         move["stop"] = True
         move["ignore_trades"] = bool(ctx.get("trades_enabled"))
         move["pill"] = _pill(ctx, page)
@@ -158,12 +182,19 @@ def pick(ctx: dict, page: str, weekend_ready: bool = False) -> dict | None:
                     _item("▶▶ Full Playoffs", "simPlayoffs", "all", "po-all-btn"),
                 ],
             )
-        return _go("go-playoffs", "🥇 Go to Playoffs →", "Playoffs →",
-                   f"{base}/playoffs")
+        return _go(
+            "go-playoffs", "🥇 Go to Playoffs →", "Playoffs →", f"{base}/playoffs"
+        )
 
     # offseason: the champion is crowned and the offseason hasn't run.
     if page == "season-summary":
-        return _act("begin-offseason", "Begin Offseason →", "Offseason →",
-                    "beginOffseason", btn_id="begin-offseason-btn")
-    return _go("go-summary", "📜 Season Summary →", "Summary →",
-               f"{base}/season-summary")
+        return _act(
+            "begin-offseason",
+            "Begin Offseason →",
+            "Offseason →",
+            "beginOffseason",
+            btn_id="begin-offseason-btn",
+        )
+    return _go(
+        "go-summary", "📜 Season Summary →", "Summary →", f"{base}/season-summary"
+    )
