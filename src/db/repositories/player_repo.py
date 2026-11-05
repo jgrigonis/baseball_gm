@@ -264,7 +264,9 @@ class PlayerRepository:
 
     def release_undrafted(self, league_id: str) -> int:
         """Once the draft is over, the league's prospects nobody picked
-        become free agents, as undrafted players do. Returns how many."""
+        become free agents, signable until the next draft, which they go
+        back into while under 24 (return_undrafted_to_pool). Returns how
+        many."""
         rows = self.conn.execute(
             """
             UPDATE player_status ps SET status = 'free_agent'
@@ -273,6 +275,28 @@ class PlayerRepository:
               AND ps.status = 'prospect'
               AND NOT EXISTS (SELECT 1 FROM team_players tp
                               WHERE tp.player_id = p.id)
+            RETURNING ps.player_id
+            """,
+            (league_id,),
+        ).fetchall()
+        return len(rows)
+
+    def return_undrafted_to_pool(self, league_id: str) -> int:
+        """Before a draft: undrafted free agents still young enough to be
+        prospects (under 24) who never signed a deal go back into the pool.
+        Whoever is left over after it becomes a free agent again
+        (release_undrafted). Returns how many."""
+        rows = self.conn.execute(
+            """
+            UPDATE player_status ps SET status = 'prospect'
+            FROM players p
+            JOIN player_skills sk ON sk.player_id = p.id
+            WHERE p.id = ps.player_id AND p.league_id = %s
+              AND ps.status = 'free_agent' AND sk.age < 24
+              AND NOT EXISTS (SELECT 1 FROM team_players tp
+                              WHERE tp.player_id = p.id)
+              AND NOT EXISTS (SELECT 1 FROM player_contracts c
+                              WHERE c.player_id = p.id)
             RETURNING ps.player_id
             """,
             (league_id,),

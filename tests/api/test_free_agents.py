@@ -265,3 +265,31 @@ def test_the_panel_offers_release_for_my_player_and_sign_for_a_free_agent(lg, cl
     free_agents.release(lg.db, lg.league.id, lg.mine.id, mine)
     html = client.get(f"/leagues/{lg.league.id}/players/{mine}/panel").text
     assert "signFreeAgent(" in html and "releasePlayer(" not in html
+
+
+# ── Undrafted players and the next draft ──────────────────────────────────────
+
+
+def test_unsigned_undrafted_free_agents_go_back_into_the_draft_pool(lg):
+    repo = PlayerRepository(lg.db)
+
+    def free_agent(age):
+        pid = lg.factory.rated_player(
+            lg.theirs, lg.league, status="free_agent", age=age
+        ).id
+        lg.db.execute("DELETE FROM team_players WHERE player_id = %s", (pid,))
+        return pid
+
+    young = free_agent(21)
+    old = free_agent(24)
+    released = _signed(lg, status="minors", age=21)
+    free_agents.release(lg.db, lg.league.id, lg.mine.id, released)
+
+    assert repo.return_undrafted_to_pool(lg.league.id) == 1
+    assert lg.status.get_status(young) == "prospect"
+    assert lg.status.get_status(old) == "free_agent"  # too old for the draft
+    assert lg.status.get_status(released) == "free_agent"  # he signed once
+
+    # Undrafted again: back to free agency.
+    assert repo.release_undrafted(lg.league.id) == 1
+    assert lg.status.get_status(young) == "free_agent"
