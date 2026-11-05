@@ -47,7 +47,9 @@ def test_same_market_and_fans_different_owner_same_revenue():
 def test_fans_follow_winning():
     # An average team without October drifts down a little; the bonuses
     # make it up for teams that earn them.
-    assert fn.fans_after(50, 0.5, False, False, 0) == 50 - round(fn.FAN_STEP * fn.FAN_DRIFT)
+    assert fn.fans_after(50, 0.5, False, False, 0) == 50 - round(
+        fn.FAN_STEP * fn.FAN_DRIFT
+    )
     assert fn.fans_after(50, 0.62, True, False, 2) > 58
     assert fn.fans_after(50, 0.38, False, False, 0) < 42
     title = fn.fans_after(50, 0.6, True, True, 3)
