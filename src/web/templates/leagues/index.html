@@ -37,6 +37,7 @@
     </div>
   </div>
   {% elif active_tab == 'join' %}
+  {% if join_error %}<div class="card join-error" role="alert"><div class="card-body">{{ join_error }}</div></div>{% endif %}
   <div class="card join-code-card">
     <div class="card-body">
       <form method="POST" action="/leagues/join" class="join-code-form">
@@ -127,7 +128,9 @@
 .league-name-save[hidden] { display: none; }
 .tab-count { color: var(--muted); margin-left: 4px; }
 .tab-link.active .tab-count { color: var(--amber-dim); }
-.tutorial-intro, .join-code-card { margin-bottom: 16px; }
+.tutorial-intro, .join-code-card, .join-error { margin-bottom: 16px; }
+.join-error { border-color: var(--red); }
+.join-error .card-body { font-family: var(--font-mono); font-size: 12px; color: var(--red); }
 .discord-note { margin: 24px 0 0; font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); }
 .discord-note a { color: var(--amber); }
 .tutorial-intro p { font-size: 13px; line-height: 1.7; color: var(--text-dim); margin: 0 0 14px; max-width: 640px; }

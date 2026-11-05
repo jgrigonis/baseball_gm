@@ -232,7 +232,7 @@ class TestPages:
     def test_private_league_needs_the_code(self, db_conn, setup, client):
         c = _as(_user(db_conn, "Bob"))
         r = c.get(f"/leagues/{setup['league'].id}/take-over", follow_redirects=False)
-        assert r.headers["location"] == "/leagues/join"
+        assert r.headers["location"].endswith(f"cant_join={setup['league'].id}")
         r = c.post(
             f"/leagues/{setup['league'].id}/take-over",
             data={"team_id": setup["theirs"].id},
