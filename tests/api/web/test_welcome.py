@@ -203,8 +203,15 @@ def test_age_rank_counts_from_the_nearer_end():
     assert wv.age_rank("f", rosters)["label"] == "Oldest of 6 teams"
     assert wv.age_rank("a", rosters)["league_average"] == 28.0
 
+    third = {t: wv.age_rank(t, rosters)["outlook"] for t in rosters}
+    assert [third[t] for t in "abcdef"] == [
+        wv.AGE_OUTLOOKS[k] for k in ("young", "young", "middle", "middle", "old", "old")
+    ]
+
     rosters["g"] = [P(26)]
     assert wv.age_rank("b", rosters)["label"] == "Tied for 2nd youngest of 7 teams"
+    # Tied teams share a third.
+    assert wv.age_rank("g", rosters)["outlook"] == wv.age_rank("b", rosters)["outlook"]
     assert wv.age_rank("a", {"a": rosters["a"]}) is None
 
 

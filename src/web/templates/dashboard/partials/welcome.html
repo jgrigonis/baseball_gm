@@ -246,7 +246,7 @@
       <div class="wl-age-key">
         {% for g in w.ages.groups %}<div><i></i>{{ g.label }} ({{ g.range }}): <b>{{ g.count }}</b></div>{% endfor %}
       </div>
-      <p class="wl-verdict">{{ w.ages.outlook }}</p>
+      {% if w.age_rank %}<p class="wl-verdict">{{ w.age_rank.outlook }}</p>{% endif %}
     </div>
   </div>
   {% endif %}

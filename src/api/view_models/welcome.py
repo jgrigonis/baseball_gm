@@ -219,12 +219,6 @@ def age_profile(players: list[PlayerRecord]) -> dict | None:
         ("Prime", "26 to 30", sum(1 for p in players if 26 <= p.age <= 30)),
         ("Veterans", "31 and over", sum(1 for p in players if p.age >= 31)),
     ]
-    biggest = max(groups, key=lambda g: g[2])[0]
-    outlook = {
-        "Rising": "A young roster: it should get better as it grows up.",
-        "Prime": "Most of the roster is in its prime: built to win now.",
-        "Veterans": "A veteran roster: win now, before age catches up.",
-    }[biggest]
     youngest, oldest = ages[0], ages[-1]
     return {
         "average": round(sum(p.age for p in players) / len(players), 1),
@@ -239,8 +233,17 @@ def age_profile(players: list[PlayerRecord]) -> dict | None:
             }
             for label, span, count in groups
         ],
-        "outlook": outlook,
     }
+
+
+# The line under the age chart, by which third of the league the team's
+# average age falls in. Most players in a league are 25 and under, so counting
+# the team's own age groups called nearly every roster young.
+AGE_OUTLOOKS = {
+    "young": "One of the league's younger rosters: it should get better as it grows up.",
+    "middle": "Right around the league's average age: a mix of youth and experience.",
+    "old": "One of the league's older rosters: win now, before age catches up.",
+}
 
 
 def age_rank(team_id: str, rosters: dict[str, list[PlayerRecord]]) -> dict | None:
@@ -261,6 +264,9 @@ def age_rank(team_id: str, rosters: dict[str, list[PlayerRecord]]) -> dict | Non
     younger = sum(1 for a in rounded if a < mine)
     older = sum(1 for a in rounded if a > mine)
     tied = n - younger - older > 1
+    # Thirds by how many teams are younger or older, so tied teams land in
+    # the same third.
+    third = "young" if younger < n / 3 else "old" if older < n / 3 else "middle"
     if younger <= older:
         rank, end = younger + 1, "youngest"
     else:
@@ -275,6 +281,7 @@ def age_rank(team_id: str, rosters: dict[str, list[PlayerRecord]]) -> dict | Non
         "of": n,
         "label": f"{place} of {n} teams",
         "league_average": round(sum(averages.values()) / n, 1),
+        "outlook": AGE_OUTLOOKS[third],
     }
 
 
