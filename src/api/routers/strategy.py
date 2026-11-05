@@ -277,4 +277,6 @@ async def save_strategy(
         GMRepository(db).save_profile(gm["id"], updates)
         db.commit()
     # Shown as a toast (gmToast in dialogs.js).
-    return HTMLResponse('<span hidden data-toast="✓ Strategy saved" data-toast-kind="ok"></span>')
+    return HTMLResponse(
+        '<span hidden data-toast="✓ Strategy saved" data-toast-kind="ok"></span>'
+    )

@@ -95,11 +95,15 @@ async def save_ballot(
         all_star.submit(db, league_id, season_id, gm["team_id"], raw)
     except ValueError as e:
         msg = html.escape(f"✗ {e}")
-        return HTMLResponse(f'<span class="as-error" hidden data-toast="{msg}" data-toast-kind="err"></span>')
+        return HTMLResponse(
+            f'<span class="as-error" hidden data-toast="{msg}" data-toast-kind="err"></span>'
+        )
     coach.mark(db, league_id, "allstar_vote")
     db.commit()
     # Shown as a toast (gmToast in dialogs.js); .as-saved tells the page it worked.
-    return HTMLResponse('<span class="as-saved" hidden data-toast="✓ Ballot saved" data-toast-kind="ok"></span>')
+    return HTMLResponse(
+        '<span class="as-saved" hidden data-toast="✓ Ballot saved" data-toast-kind="ok"></span>'
+    )
 
 
 async def _captain_action(request, league_id, db, gm, act) -> RedirectResponse:
