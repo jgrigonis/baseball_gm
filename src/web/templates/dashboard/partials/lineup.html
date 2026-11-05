@@ -452,6 +452,14 @@
 }
 .bp-add-btn:hover { background: var(--green-dim); }
 .bp-card.in-rotation { opacity: 0.45; cursor: default; }
+/* Red −: send him to the minors (same look as the Roster tab's release −) */
+.lu-roster-btns { display: flex; gap: 6px; }
+.minors-btn {
+  font-family: var(--font-mono); font-size: 13px; font-weight: 700; line-height: 1;
+  border: 1px solid var(--border); background: var(--bg-3); color: var(--red);
+  cursor: pointer; padding: 2px 7px;
+}
+.minors-btn:hover { background: var(--red-dim); border-color: var(--red); }
 .bp-card.in-rotation:hover { background: var(--bg-2); }
 .bp-role-select {
   background: var(--bg-3); border: 1px solid var(--border); color: var(--text);
@@ -502,6 +510,7 @@
   .rot-slot { grid-template-columns: 16px 16px 22px 30px minmax(0, 1fr) auto 0 26px; gap: 0 5px; padding: 8px 6px; }
   .bp-card { padding: 8px; }
   .bp-role-select { font-size: 12px; padding: 6px 4px; }
+  .minors-btn { font-size: 16px; padding: 6px 11px; }
   /* Unsaved changes: the batting bar pins to the bottom of the screen; the
      rotation and bullpen bars stick to the bottom of their own section. */
   #bat-unsaved-banner {
@@ -983,9 +992,14 @@ function renderRoster() {
         </div>
         ${hitterGradesHtml(p, null)}
       </div>
-      <button class="lu-add-btn" title="Add to lineup"
+      <span class="lu-roster-btns"><button type="button" class="minors-btn" title="Send him to the minors"
+              aria-label="Send ${p.first_name} ${p.last_name} to the minors">−</button><button class="lu-add-btn" title="Add to lineup"
               onclick="event.stopPropagation();addToLineup('${p.player_id}')"
-              ${isIn?'disabled':''}>+</button>`;
+              ${isIn?'disabled':''}>+</button></span>`;
+    card.querySelector('.minors-btn').addEventListener('click', e => {
+      e.stopPropagation();
+      sendToMinors(p);
+    });
 
     card.addEventListener('dragstart', e => {
       _benchDrag = p.player_id; _luDrag = null;
@@ -1456,10 +1470,73 @@ function renderBullpen() {
         <div class="lu-skills">${pitcherGradesHtml(p)}</div>
         ${p.stat_era!=null?`<div class="lu-skills">${pitcherStatsHtml(p)}</div>`:''}
       </div>
-      <select class="bp-role-select" onchange="handleBullpenRoleChange('${p.player_id}',this.value)">${roleOpts}</select>`;
+      <select class="bp-role-select" onchange="handleBullpenRoleChange('${p.player_id}',this.value)">${roleOpts}</select>
+      <button type="button" class="minors-btn" title="Send him to the minors"
+              aria-label="Send ${p.first_name} ${p.last_name} to the minors">−</button>`;
+    card.querySelector('.minors-btn').addEventListener('click', e => {
+      e.stopPropagation();
+      sendToMinors(p);
+    });
 
     el.appendChild(card);
   });
+}
+
+// The red − (bullpen rows and the batting roster list): off the 40-man to
+// the minors, right away (after a confirm). The server also drops him from
+// the rotation and his bullpen role; here he leaves this tab's lists, and the
+// Roster tab's draft forgets him.
+async function sendToMinors(p) {
+  const name = `${p.first_name} ${p.last_name}`;
+  const ok = await gmConfirm({
+    title: `Send ${name} to the minors?`,
+    lines: ['He comes off the 40-man' + (p.player_type === 'pitcher' ? ' and out of your rotation and bullpen' : ' and out of your lineup') + '. You can call him back up from the Roster tab.'],
+    ok: 'Send down', tone: 'danger',
+  });
+  if (!ok) return;
+  try {
+    const r = await fetch(`/leagues/${LEAGUE_ID}/roster/${p.player_id}/minors`, { method: 'POST' });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      throw new Error(d.detail || 'Something went wrong.');
+    }
+  } catch (e) { gmAlert(e.message); return; }
+
+  const pid = p.player_id;
+  [ALL_HITTERS, ALL_PITCHERS].forEach(list => {
+    const i = list.findIndex(x => x.player_id === pid);
+    if (i !== -1) list.splice(i, 1);
+  });
+  // Out of both batting orders. The saved ones on the server still list him,
+  // so the unsaved bar shows and Save puts the new order in.
+  ['R', 'L'].forEach(h => {
+    lineups[h].forEach((slot, j) => { if (slot && slot.player_id === pid) lineups[h][j] = null; });
+  });
+  // Already gone on the server, so only the local copies need it.
+  const r = rotation.indexOf(pid);
+  if (r !== -1) {
+    rotation.splice(r, 1);
+    if (savedRot) savedRot.rotation = savedRot.rotation.filter(x => x !== pid);
+    ensureValidPointer();
+  }
+  delete bullpen[pid];
+  if (savedBullpen) delete savedBullpen[pid];
+  try {
+    const key = `roster3_${LEAGUE_ID}`;
+    const d = JSON.parse(sessionStorage.getItem(key) || 'null');
+    if (d && Array.isArray(d.fortyMan)) {
+      d.fortyMan = d.fortyMan.filter(x => x !== pid);
+      sessionStorage.setItem(key, JSON.stringify(d));
+    }
+  } catch (e) {}
+  renderBattingOrder();
+  renderRoster();
+  updateSaveBattingBtn();
+  renderRotation();
+  renderBullpen();
+  updatePitchingBanners();
+  saveToStorage();
+  gmToast(`${name} sent to the minors`, 'ok');
 }
 
 function handleBullpenRoleChange(pid, role) {

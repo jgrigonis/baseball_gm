@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from datetime import date
+
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
@@ -17,17 +19,21 @@ from src.api.view_models.player_cards import (
     roster_card,
 )
 from src.db.repositories.budget_repo import BudgetRepository
+from src.db.repositories.bullpen_roles_repo import BullpenRepository
 from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.injury_repo import InjuryRepository
+from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
+from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
+from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.player.contracts import format_salary
 from src.player.face import face_url
 from src.team.roster_limits import MIN_PLAYING_ROSTER
-from src.web.utils import _shell_ctx, tab_response
+from src.web.utils import _current_league_date, _shell_ctx, tab_response
 
 router = APIRouter(tags=["web"])
 
@@ -156,3 +162,60 @@ def save_roster_put(
     coach.mark(db, league_id, "roster")
     db.commit()
     return JSONResponse({"saved": len(forty_man_ids)})
+
+
+@router.post("/leagues/{league_id}/roster/{player_id}/minors")
+def send_to_minors(
+    league_id: str,
+    player_id: str,
+    db: DB,
+    gm: GM,
+    _active: ActiveLeague,
+):
+    """Send one player off the 40-man to the minors (the Lineup tab's red −).
+
+    Same rule as saving the Roster tab: the 40-man keeps at least 25. A
+    starter leaves the rotation and a reliever loses his bullpen role, so
+    the sim never hands the ball to a player in the minors.
+    """
+    team_id = gm["team_id"]
+    player_repo = PlayerRepository(db)
+    team_player_ids = player_repo.get_player_ids_from_team_players(team_id)
+    if player_id not in team_player_ids:
+        return JSONResponse({"detail": "He isn't on your team."}, status_code=422)
+
+    status_repo = PlayerStatusRepository(db)
+    forty = set(status_repo.get_by_team_and_status(team_id, "40man")) | set(
+        status_repo.get_by_team_and_status(team_id, "26man")
+    )
+    if player_id not in forty:
+        return JSONResponse({"detail": "He's already in the minors."}, status_code=422)
+    minimum = min(MIN_PLAYING_ROSTER, len(team_player_ids))
+    if len(forty) - 1 < minimum:
+        return JSONResponse(
+            {
+                "detail": f"Your 40-man needs at least {MIN_PLAYING_ROSTER} players. "
+                "Add someone on the Roster tab first."
+            },
+            status_code=422,
+        )
+
+    status_repo.set_status(player_id, "minors")
+
+    season_id = SeasonRepository(db).get_most_recent_season_from_league(league_id)
+    if season_id:
+        league = LeagueRepository(db).get_by_id(league_id)
+        effective_date = _current_league_date(
+            db,
+            season_id,
+            league["state"] if league else "preseason",
+            all_star_game=False,
+        )
+        TeamRotationsRepository(db, league_id).end_player(
+            team_id, season_id, player_id, effective_date
+        )
+        BullpenRepository(db).close_active_role(
+            team_id, player_id, season_id, effective_date or date.today().isoformat()
+        )
+    db.commit()
+    return JSONResponse({"sent_down": player_id})
