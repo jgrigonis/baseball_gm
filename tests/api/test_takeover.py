@@ -225,7 +225,9 @@ class TestPages:
 
     def test_team_picker_sorts_by_team_or_record(self, db_conn, setup, client):
         c = _as(_user(db_conn, "Bob"))
-        page = c.get(f"/leagues/{setup['league'].id}/take-over?code={setup['code']}").text
+        page = c.get(
+            f"/leagues/{setup['league'].id}/take-over?code={setup['code']}"
+        ).text
         assert "data-sortable" in page
         assert '<th data-sort="text">Team</th>' in page
         assert 'data-sort="num" data-sort-first="desc"' in page
