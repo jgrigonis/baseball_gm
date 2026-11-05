@@ -6,7 +6,13 @@ import random
 import pytest
 
 from scripts.calibrate_overall_grades import prospect_scores
-from src.api.grade_curves import GRADES, OVERALL_CUTOFFS, overall_to_grade
+from src.api.grade_curves import (
+    GRADES,
+    OVERALL_CUTOFFS,
+    ROLE_CUTOFFS,
+    overall_to_grade,
+    role_to_grade,
+)
 
 
 @pytest.mark.parametrize("kind", OVERALL_CUTOFFS)
@@ -50,3 +56,64 @@ def test_free_agents_are_graded_on_the_pro_scale():
     assert overall_value("free_agent", hitter, ratings) == 55
     assert overall_kind("prospect", hitter) == "prospect"
     assert overall_value("prospect", hitter, ratings) == 70
+
+
+@pytest.mark.parametrize("role", ROLE_CUTOFFS)
+def test_role_cutoffs_cover_a_plus_to_d_minus_in_order(role):
+    cuts = ROLE_CUTOFFS[role]
+    assert len(cuts) == len(GRADES) - 1
+    assert cuts == sorted(cuts, reverse=True)
+    assert len(set(cuts)) == len(cuts)
+    for cut, grade, below in zip(cuts, GRADES, GRADES[1:]):
+        assert role_to_grade(cut, role) == grade
+        assert role_to_grade(cut - 0.05, role) == below
+
+
+def test_every_shown_role_has_a_curve():
+    for role in (
+        "sp",
+        "rp",
+        "cp",
+        "lead_off",
+        "contact_hitter",
+        "power_hitter",
+        "overall_offense",
+        "best_def",
+        "c",
+        "1b",
+        "2b",
+        "3b",
+        "ss",
+        "lf",
+        "cf",
+        "rf",
+        "if",
+        "of",
+    ):
+        assert role in ROLE_CUTOFFS
+
+
+def test_role_without_a_curve_uses_the_plain_scale():
+    assert role_to_grade(80, "dh") == "A+"
+    assert role_to_grade(0, "dh") == "F"
+    assert role_to_grade(None, "sp") == "?"
+
+
+def test_starters_spread_across_the_grades():
+    from src.league.offseason.draft_strategy import ratings
+    from src.team.team_factory import TeamFactory
+
+    factory = TeamFactory(rng=random.Random(11))
+    grades = []
+    for i in range(40):
+        team = factory.generate_team(city=f"C{i}", mascot="S", size=26)
+        grades += [
+            role_to_grade(ratings(p)["sp"], "sp")
+            for p in team.players
+            if p.position == "sp"
+        ]
+    share = collections.Counter(grades)
+    n = len(grades)
+    assert (share["A+"] + share["A"] + share["A-"]) / n > 0.01
+    assert (share["D+"] + share["D"] + share["D-"] + share["F"]) / n > 0.05
+    assert max(share.values()) / n < 0.25
