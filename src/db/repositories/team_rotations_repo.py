@@ -326,6 +326,24 @@ class TeamRotationsRepository:
             (team_id, season_id, player_id, new_rotation_order, effective_date),
         )
 
+    def end_player(
+        self, team_id: str, season_id: str, player_id: str, end_date: str | None
+    ) -> None:
+        """Take him out of the rotation, if he's in it: end his open entries.
+
+        With no date (no game left to play), each entry ends on its own start
+        date, so he's out of it on every date.
+        """
+        self.conn.execute(
+            """
+            UPDATE team_rotations
+            SET end_date = GREATEST(effective_date::date, COALESCE(%s::date, effective_date::date))::text
+            WHERE team_id = %s AND season_id = %s AND player_id = %s
+            AND end_date IS NULL
+            """,
+            (end_date, team_id, season_id, player_id),
+        )
+
     # only ever called in tests
     def remove_from_rotation(
         self, team_id: str, season_id: str, player_id: str, effective_date: str
