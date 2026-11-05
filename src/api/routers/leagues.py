@@ -70,6 +70,7 @@ def leagues_index(
     db: DB,
     user: User,
     tab: str | None = None,
+    cant_join: str | None = None,
 ):
     """The user's leagues and the public ones, split into tabs. The tab picked
     is kept in a cookie, so the page comes back the way the GM left it."""
@@ -118,6 +119,7 @@ def leagues_index(
             "active_tab": active,
             "leagues": groups[active],
             "brand_new": not mine,
+            "join_error": cant_join_reason(db, cant_join) if cant_join else None,
         },
     )
     if chosen:
@@ -130,6 +132,33 @@ def leagues_index(
             secure=settings.served_over_https,
         )
     return resp
+
+
+def cant_join_reason(db, league_id: str) -> str:
+    """Why a join from a stale Join tab (or take-over page) didn't go through:
+    the league went private, closed to late joiners, or is gone. The league
+    is looked up again, so the message says what's true now."""
+    league = LeagueRepository(db).get_by_id(league_id)
+    if not league:
+        return "That league doesn't exist anymore, so you didn't join it."
+    name = league["name"]
+    if not league["is_public"]:
+        return (
+            f"{name} was made private, so you didn't join it. Ask its"
+            " commissioner for the join code."
+        )
+    if league["state"] != "lobby":
+        reason = takeover.closed_reason(db, league)
+        if reason:
+            return f"You didn't join {name}. {reason}"
+    return f"You didn't join {name}. Try again."
+
+
+def _cant_join(league_id: str) -> RedirectResponse:
+    """Back to a fresh Join tab, with a note on why the join failed."""
+    return RedirectResponse(
+        f"/leagues/?tab=join&cant_join={league_id}", status_code=303
+    )
 
 
 def state_label(state: str, season_number: int) -> str:
@@ -357,15 +386,15 @@ def join_public_league(
 ):
     """Join a public league from the leagues page, no code needed."""
     league = LeagueRepository(db).get_by_id(league_id)
-    if not league or not league["is_public"]:
-        return RedirectResponse("/leagues/", status_code=302)
-
     gm_repo = GMRepository(db)
-    if gm_repo.get_by_user_and_league(user["id"], league_id):
+    if league and gm_repo.get_by_user_and_league(user["id"], league_id):
         return RedirectResponse(f"/leagues/{league_id}/", status_code=302)
+    # The Join tab may be stale: the league went private or closed since.
+    if not league or not league["is_public"]:
+        return _cant_join(league_id)
     if league["state"] != "lobby":
         if takeover.closed_reason(db, league):
-            return RedirectResponse("/leagues/", status_code=302)
+            return _cant_join(league_id)
         return RedirectResponse(f"/leagues/{league_id}/take-over", status_code=302)
 
     gm_repo.create_gm(
@@ -414,7 +443,7 @@ def take_over_page(
     """Pick a team an AI GM runs, to join a league that has started."""
     league = _takeover_league(db, league_id, code)
     if not league:
-        return RedirectResponse("/leagues/join", status_code=302)
+        return _cant_join(league_id)
     if GMRepository(db).get_by_user_and_league(user["id"], league_id):
         return RedirectResponse(f"/leagues/{league_id}/", status_code=302)
     return _takeover_page(request, db, league, code)
@@ -431,7 +460,7 @@ def take_over_team(
 ):
     league = _takeover_league(db, league_id, code)
     if not league:
-        return RedirectResponse("/leagues/join", status_code=302)
+        return _cant_join(league_id)
     try:
         takeover.take_over(db, league_id, user, team_id)
     except (takeover.TakeoverClosed, LeagueBusy) as e:

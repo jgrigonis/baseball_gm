@@ -119,11 +119,28 @@ def test_cant_join_private_or_started_leagues(
 
     r = client.post(f"/leagues/{league_id}/join")
 
-    assert r.headers["location"] == "/leagues/"
+    assert r.headers["location"] == f"/leagues/?tab=join&cant_join={league_id}"
     gm = db_conn.execute(
         "SELECT 1 FROM gms WHERE league_id = %s AND user_id = %s", (league_id, user_id)
     ).fetchone()
     assert gm is None
+
+
+def test_stale_join_tab_says_the_league_went_private(client, db_conn, user_id):
+    """The Join tab was loaded while the league was public; the commissioner
+    made it private before the click."""
+    league_id = _league(db_conn, "Gone Dark", is_public=False)
+
+    r = client.post(f"/leagues/{league_id}/join", follow_redirects=True)
+
+    assert "Gone Dark was made private, so you didn&#39;t join it." in r.text
+    # The list is fresh: the private league isn't offered anymore.
+    assert f'action="/leagues/{league_id}/join"' not in r.text
+
+
+def test_stale_join_tab_when_the_league_is_gone(client):
+    r = client.post("/leagues/no-such-league/join", follow_redirects=True)
+    assert "doesn&#39;t exist anymore" in r.text
 
 
 @pytest.mark.parametrize("form, expected", [({}, False), ({"is_public": "true"}, True)])
