@@ -86,14 +86,15 @@ function nameTrailHtml(p, parts, stats = hitterStatsHtml(p)) {
 
 function hitterStatsHtml(p) {
   return p.stat_avg != null
-    ? `<span style="color:var(--amber);">${p.stat_avg}</span> <span>${p.stat_hr}HR</span>`
+    ? `<span title="Batting average ${p.stat_avg}, ${p.stat_hr} home runs this season"><span style="color:var(--amber);">${p.stat_avg}</span> <span>${p.stat_hr}HR</span></span>`
     : '';
 }
 
 // A pitcher's stat line for the name trail: "12GS 74.1IP 3.45 ERA 8-4 3SV".
 function pitcherTrailStatsHtml(p) {
   return p.stat_era != null
-    ? `<span>${p.stat_gs}GS</span> <span>${p.stat_ip}IP</span> <span style="color:var(--amber);">${p.stat_era} ERA</span> <span>${p.stat_w}-${p.stat_l}${p.stat_sv ? ' ' + p.stat_sv + 'SV' : ''}</span>`
+    ? `<span title="${p.stat_gs} games started, ${p.stat_ip} innings pitched, ${p.stat_era} ERA, ${p.stat_w} wins and ${p.stat_l} losses${p.stat_sv ? ', ' + p.stat_sv + ' saves' : ''} this season">`
+      + `<span>${p.stat_gs}GS</span> <span>${p.stat_ip}IP</span> <span style="color:var(--amber);">${p.stat_era} ERA</span> <span>${p.stat_w}-${p.stat_l}${p.stat_sv ? ' ' + p.stat_sv + 'SV' : ''}</span></span>`
     : '';
 }
 
