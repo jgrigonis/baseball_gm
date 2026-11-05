@@ -162,8 +162,11 @@ async function schedSim(count) {
         var url = activeLink.getAttribute('hx-get') || activeLink.getAttribute('href');
         // Remember any sub-pane state before swapping HTML
         var lbPane = null;
-        var lbBatEl = document.getElementById('lb-pane-batting');
-        if (lbBatEl) lbPane = lbBatEl.style.display === 'none' ? 'pitching' : 'batting';
+        // (the Leaders tab's open pane: batting, pitching, defense or rookies)
+        ['batting', 'pitching', 'defense', 'rookies'].forEach(function(c) {
+          var el = document.getElementById('lb-pane-' + c);
+          if (el && el.style.display !== 'none') lbPane = c;
+        });
         // Stats draws its table from a script, which innerHTML wouldn't run
         // (the table went blank): reload it in place through htmx instead.
         if (document.getElementById('stats-body') && window.liveRefreshTab) {

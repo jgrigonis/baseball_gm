@@ -317,6 +317,19 @@ window.refreshActiveTab = function() {
   if (document.getElementById('pane-batting') && window.saveLineupToStorage) {
     window.saveLineupToStorage();
   }
+  // Keep the Leaders tab on the pane that was open (defense, rookies...).
+  var lbPane = null;
+  ['batting', 'pitching', 'defense', 'rookies'].forEach(function(c) {
+    var el = document.getElementById('lb-pane-' + c);
+    if (el && el.style.display !== 'none') lbPane = c;
+  });
+  if (lbPane && lbPane !== 'batting') {
+    document.body.addEventListener('htmx:afterSettle', function again(e) {
+      if (e.detail.target.id !== 'tab-content') return;
+      document.body.removeEventListener('htmx:afterSettle', again);
+      if (window.lbSwitch) window.lbSwitch(lbPane);
+    });
+  }
   htmx.ajax('GET', url, {target: '#tab-content', swap: 'innerHTML'});
 };
 
