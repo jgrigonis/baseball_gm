@@ -50,8 +50,7 @@ def upgrade(conn):
         "CREATE INDEX IF NOT EXISTS idx_team_owners_team ON team_owners(team_id)"
     )
     conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_team_owners_rival"
-        " ON team_owners(rival_team_id)"
+        "CREATE INDEX IF NOT EXISTS idx_team_owners_rival ON team_owners(rival_team_id)"
     )
 
     if not conn.execute("SELECT 1 FROM owner_personas LIMIT 1").fetchone():
