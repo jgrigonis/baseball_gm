@@ -199,44 +199,58 @@ function addBackdrop() {
 }
 function removeBackdrop() { const b = document.getElementById('panel-backdrop'); if(b) b.remove(); }
 
-// Reload the open tab after the league has moved on without this page, e.g.
-// a ready-check period or another GM's sim. Swap through htmx so the tab's
-// inline script runs again; setting innerHTML doesn't run scripts, which left
-// script-built tabs like Lineup empty. Save the Lineup tab's unsaved edits
-// first so its init restores them.
-window.refreshActiveTab = function() {
-  var activeLink = document.querySelector('.tab-link.active');
-  if (!activeLink || !document.getElementById('tab-content')) return;
-  var url = activeLink.getAttribute('hx-get') || activeLink.getAttribute('href');
+// Before a tab reloads in place: save the Lineup tab's unsaved edits so its
+// init restores them, and note the Leaders tab's open pane (defense,
+// rookies...). Returns what to run once the new tab has settled.
+function _keepTabState() {
   if (document.getElementById('pane-batting') && window.saveLineupToStorage) {
     window.saveLineupToStorage();
   }
-  // Keep the Leaders tab on the pane that was open (defense, rookies...).
   var lbPane = null;
   ['batting', 'pitching', 'defense', 'rookies'].forEach(function(c) {
     var el = document.getElementById('lb-pane-' + c);
     if (el && el.style.display !== 'none') lbPane = c;
   });
-  if (lbPane && lbPane !== 'batting') {
-    document.body.addEventListener('htmx:afterSettle', function again(e) {
-      if (e.detail.target.id !== 'tab-content') return;
-      document.body.removeEventListener('htmx:afterSettle', again);
-      if (window.lbSwitch) window.lbSwitch(lbPane);
-    });
-  }
-  htmx.ajax('GET', url, {target: '#tab-content', swap: 'innerHTML'});
+  return function() {
+    if (lbPane && lbPane !== 'batting' && window.lbSwitch) window.lbSwitch(lbPane);
+  };
+}
+// Swap url into the tab through htmx, so the tab's inline script runs again
+// (setting innerHTML doesn't run scripts, which left script-built tabs like
+// Lineup and Stats empty). Resolves once the new tab has settled.
+function _reloadTab(url, quiet) {
+  if (!window.htmx || !document.getElementById('tab-content')) return Promise.resolve();
+  var restore = _keepTabState();
+  return new Promise(function(resolve) {
+    function done(e) {
+      if (e && e.detail && e.detail.target && e.detail.target.id !== 'tab-content') return;
+      document.body.removeEventListener('htmx:afterSettle', done);
+      document.body.removeEventListener('htmx:responseError', done);
+      document.body.removeEventListener('htmx:sendError', done);
+      restore();
+      resolve();
+    }
+    document.body.addEventListener('htmx:afterSettle', done);
+    document.body.addEventListener('htmx:responseError', done);
+    document.body.addEventListener('htmx:sendError', done);
+    if (quiet) window._quietSwapNext = true;
+    htmx.ajax('GET', url, {target: '#tab-content', swap: 'innerHTML'});
+  });
+}
+
+// Reload the open tab after the league has moved on without this page, e.g.
+// a ready-check period or another GM's sim.
+window.refreshActiveTab = function() {
+  var activeLink = document.querySelector('.tab-link.active');
+  if (!activeLink) return;
+  _reloadTab(activeLink.getAttribute('hx-get') || activeLink.getAttribute('href'), false);
 };
 
-// Reload the open tab in place after a sim day, for tabs drawn by their own
-// script (Stats). Swap through htmx so the script runs again, quietly: no
-// fade, and the page and the table keep their scroll. The open view (team,
+// Reload the open tab in place after a sim day, quietly: no fade, and the
+// page and the Stats table keep their scroll. The open view (Stats team,
 // season, category, sort) lives in the URL, so reload that URL.
-// Resolves once the new tab is in.
 window.liveRefreshTab = function(url) {
-  if (!window.htmx || !document.getElementById('tab-content')) return Promise.resolve();
-  window._quietSwapNext = true;
-  return htmx.ajax('GET', url || location.pathname + location.search,
-                   {target: '#tab-content', swap: 'innerHTML'});
+  return _reloadTab(url || location.pathname + location.search, true);
 };
 
 document.addEventListener('keydown', e => {
