@@ -9,7 +9,7 @@ import logging
 
 from src.player.skill_map import SKILL_ABBREVIATIONS
 from src.player.injury_types import injury_label
-from src.api.grade_curves import overall_to_grade, role_to_grade
+from src.api.grade_curves import overall_score, overall_to_grade, role_to_grade
 from src.api.schemas import player_row_to_grades, skill_to_grade
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_skills import PlayerSkills
@@ -312,10 +312,12 @@ def roster_card(d: dict) -> dict:
             g["overall"] = (
                 overall_to_grade(best_p, "pitcher") if best_p else g["overall"]
             )
+            g["overall_score"] = overall_score(best_p or None, "pitcher")
             g["sp_grade"] = role_to_grade(ratings.get("sp", 0), "sp")
             g["rp_grade"] = role_to_grade(ratings.get("rp", 0), "rp")
         else:
             g["overall"] = overall_to_grade(ratings.get("overall_player"), "hitter")
+            g["overall_score"] = overall_score(ratings.get("overall_player"), "hitter")
         g["best_def_grade"] = role_to_grade(ratings.get("best_def"), "best_def")
         g["best_def_label"] = ratings.get("best_def_label", "DEF")
         g["if_grade"] = role_to_grade(ratings.get("if", 0), "if")

@@ -98,9 +98,10 @@ function shown() {
     (!faTypeVal || p.player_type === faTypeVal) &&
     (!pos || (p.position || '').toUpperCase() === pos) &&
     (!q || `${p.first_name} ${p.last_name}`.toLowerCase().includes(q)));
-  if (sort === 'young') list.sort((a, b) => a.age - b.age || gradeVal(a.overall) - gradeVal(b.overall));
-  else if (sort === 'cheap') list.sort((a, b) => (a.salary || 0) - (b.salary || 0) || gradeVal(a.overall) - gradeVal(b.overall));
-  return list;  // the server sends them best first
+  const better = (a, b) => (b.overall_score ?? -1) - (a.overall_score ?? -1);
+  if (sort === 'young') list.sort((a, b) => a.age - b.age || better(a, b));
+  else if (sort === 'cheap') list.sort((a, b) => (a.salary || 0) - (b.salary || 0) || better(a, b));
+  return list;  // the server sends them best first, by the grade shown
 }
 
 function row(p) {

@@ -19,12 +19,11 @@ from src.db.repositories.team_repo import TeamRepository
 from src.league.offseason.roster_trimmer import MINORS_LIMIT
 from src.player.contracts import format_salary
 from src.player.face import face_url
-from src.player.player_value import role_rating
 from src.web.utils import _shell_ctx, tab_response
 
 router = APIRouter(tags=["web"])
 
-# The tab lists this many free agents, the best first. The rest of the pool
+# The tab lists this many free agents, the best (by grade) first. The rest of the pool
 # is mostly prospects nobody kept.
 MAX_SHOWN = 300
 
@@ -44,18 +43,19 @@ def free_agents_tab(
     player_repo = PlayerRepository(db)
 
     rows = player_repo.get_free_agents_with_skills(league_id)
-    rated = []
-    for row in rows:
-        record = player_repo.record_from_row(row)
-        rated.append((role_rating(record), row, record))
-    rated.sort(key=lambda r: -r[0])
-    shown = rated[:MAX_SHOWN]
+    # Best first is by the grade shown on each row (Josh, 2026-11-05), then
+    # how far into that grade he is (grade_curves.overall_score).
+    cards = sorted(
+        ((roster_card(row), row) for row in rows),
+        key=lambda c: -c[0].get("overall_score", -1.0),
+    )
+    shown = cards[:MAX_SHOWN]
 
-    last_team = contracts.last_team([r[1]["id"] for r in shown])
+    last_team = contracts.last_team([r["id"] for _, r in shown])
     names = TeamRepository(db).get_names(list(set(last_team.values())))
     players = []
-    for _, row, record in shown:
-        card = roster_card(row)
+    for card, row in shown:
+        record = player_repo.record_from_row(row)
         card["face_url"] = face_url(row["id"], card.get("age"), None, None)
         if year is not None:
             deal = free_agents.asking_deal(record, year)
