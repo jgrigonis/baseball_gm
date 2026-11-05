@@ -559,9 +559,9 @@ function makeCard(p, isIn40) {
 
   const btnHtml = isIn40
     ? `<button class="r-action-btn rem-btn" title="Remove from 40-man"
-               onclick="event.stopPropagation();removeFromRoster('${p.player_id}')">−</button>`
+               onclick="event.stopPropagation();removeFromRoster('${p.player_id}')">×</button>`
     : `<span class="r-org-btns"><button class="r-action-btn rel-btn" title="Release him"
-               onclick="event.stopPropagation();releasePlayer('${p.player_id}', '${(p.first_name + ' ' + p.last_name).replace(/'/g, "\\'")}')">−</button><button class="r-action-btn add-btn" title="Add to 40-man"
+               onclick="event.stopPropagation();releasePlayer('${p.player_id}', '${(p.first_name + ' ' + p.last_name).replace(/'/g, "\\'")}')">×</button><button class="r-action-btn add-btn" title="Add to 40-man"
                onclick="event.stopPropagation();addToRoster('${p.player_id}')">+</button></span>`;
 
   // Same row as the Lineup tab: name with a dim trail, then the ratings
