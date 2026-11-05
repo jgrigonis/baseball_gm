@@ -10,6 +10,13 @@
 //
 // gmAlert(title, line) shows a message with a single OK button.
 //
+// gmToast(msg, kind) pops a short notice at the bottom of the screen that
+// fades on its own: kind 'ok' (green, saves), 'err' (red, stays longer) or
+// 'info' (plain). Use it instead of a status line beside a button. A server
+// response can raise one with the HX-Trigger header
+// {"gmToast": {"msg": "...", "kind": "ok"}}, and a page can raise one on
+// load with data-toast="..." (+ data-toast-kind) on any element.
+//
 // A form (or its submit button) with data-confirm="Title?" asks first and
 // only submits on yes. Optional data-confirm-text (a plain line),
 // data-confirm-warn (a red line), data-confirm-ok (button label) and
@@ -76,3 +83,42 @@ document.addEventListener('submit', e => {
     else form.submit();
   });
 }, true);
+
+// Short notices at the bottom of the screen (see gmToast above).
+window.gmToast = function(msg, kind) {
+  if (!msg) return;
+  kind = kind || 'info';
+  let box = document.getElementById('gm-toasts');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'gm-toasts';
+    box.setAttribute('aria-live', 'polite');
+    document.body.appendChild(box);
+  }
+  // The same notice twice in a row just restarts its timer.
+  const last = box.lastElementChild;
+  if (last && last.textContent === msg && !last.classList.contains('out')) last.remove();
+  const el = document.createElement('div');
+  el.className = 'gm-toast ' + kind;
+  el.setAttribute('role', kind === 'err' ? 'alert' : 'status');
+  el.textContent = msg;
+  box.appendChild(el);
+  while (box.children.length > 3) box.firstElementChild.remove();
+  setTimeout(() => {
+    el.classList.add('out');
+    setTimeout(() => el.remove(), 260);
+  }, kind === 'err' ? 5000 : 2500);
+};
+document.addEventListener('gmToast', e => {
+  const d = e.detail || {};
+  gmToast(d.msg || d.value, d.kind);
+});
+function _pageToasts(root) {
+  (root || document).querySelectorAll('[data-toast]').forEach(el => {
+    gmToast(el.dataset.toast, el.dataset.toastKind);
+    el.removeAttribute('data-toast');
+  });
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => _pageToasts());
+else _pageToasts();
+document.addEventListener('htmx:afterSwap', e => _pageToasts(e.target));

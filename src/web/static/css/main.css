@@ -1098,6 +1098,31 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
 .gm-modal-ok.danger { border-color: var(--red); color: var(--red); background: var(--red-dim); }
 .gm-modal-ok.go { border-color: var(--green); color: var(--green); background: var(--green-dim); }
 
+/* Short notices at the bottom of the screen (gmToast in dialogs.js) */
+#gm-toasts {
+  position: fixed; left: 50%; transform: translateX(-50%); z-index: 1100;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  width: max-content; max-width: calc(100vw - 32px); pointer-events: none;
+}
+.gm-toast {
+  font-family: var(--font-mono); font-size: 12px; line-height: 1.45;
+  padding: 8px 14px; border: 1px solid var(--border-hi);
+  background: var(--bg-3); color: var(--text);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .45);
+  animation: gmToastIn .18s ease-out;
+}
+.gm-toast.ok  { border-color: var(--green); color: var(--green); background: var(--green-dim); }
+.gm-toast.err { border-color: var(--red);   color: var(--red);   background: var(--red-dim); }
+.gm-toast.out { animation: gmToastOut .25s ease-in forwards; }
+@keyframes gmToastIn  { from { opacity: 0; transform: translateY(8px); } }
+@keyframes gmToastOut { to   { opacity: 0; transform: translateY(6px); } }
+/* Phones: clear the fixed bottom bars (unsaved changes, draft dock) */
+@media (max-width: 600px) {
+  #gm-toasts { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+}
+@media (prefers-reduced-motion: reduce) { .gm-toast, .gm-toast.out { animation: none; } }
+
 .pp-body {
   display: flex;
   flex: 1;

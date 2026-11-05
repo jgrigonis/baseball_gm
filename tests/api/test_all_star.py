@@ -321,7 +321,7 @@ def test_saving_a_ballot(client, lg):
         data={"ss_1": my_ss, "c_1": "not-a-player"},
         headers={"Origin": "http://testserver"},
     )
-    assert "Ballot saved" in r.text
+    assert "Ballot saved" in r.text and 'class="as-saved"' in r.text
     assert AllStarRepository(lg.db).ballot(lg.season.id, lg.mine.id) == {"ss": [my_ss]}
     html = client.get(f"/leagues/{lg.league.id}/allstar").text
     assert "Your ballot is saved" in html and ">Vote<" not in html
@@ -335,7 +335,8 @@ def test_saving_after_the_close_is_refused(client, lg):
         data={"ss_1": lg.players[("mine", "ss")]},
         headers={"Origin": "http://testserver"},
     )
-    assert "isn&#39;t open" in r.text or "isn't open" in r.text
+    # The reason comes back as a toast, HTML-escaped inside data-toast.
+    assert "isn&#x27;t open" in r.text and 'data-toast-kind="err"' in r.text
 
 
 def test_the_all_stars_get_a_star(client, lg):

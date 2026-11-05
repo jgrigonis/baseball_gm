@@ -8,8 +8,6 @@
   <div class="page-header" style="margin-bottom:10px;">
     <h1 class="page-title">Lineup</h1>
     <div class="spacer"></div>
-    <span id="lu-feedback"
-          style="font-family:var(--font-mono);font-size:11px;margin-right:10px;"></span>
     {# per-tab buttons rendered by JS into these slots #}
     <span id="tab-buttons"></span>
     <button class="btn btn-secondary" id="save-all-btn" onclick="saveAll()"
@@ -1735,10 +1733,10 @@ function updatePitchingBanners() {
 }
 
 /* ── Feedback ────────────────────────────────────────────────────────────────── */
+// A toast at the bottom of the screen (gmToast in dialogs.js); the colour
+// picks its look: green for saves, red for errors, anything else plain.
 function showFeedback(msg, color) {
-  const fb = document.getElementById('lu-feedback');
-  fb.textContent = msg; fb.style.color = color;
-  setTimeout(() => { if (fb.textContent === msg) fb.textContent = ''; }, 4000);
+  gmToast(msg, color === 'var(--green)' ? 'ok' : color === 'var(--red)' ? 'err' : 'info');
 }
 
 /* ── Storage ─────────────────────────────────────────────────────────────────── */

@@ -216,9 +216,9 @@ function simPlayoffs(mode) {
                function(job){ if (fb) fb.textContent = leagueJobWaitingText(job) || ''; })
     .then(function(d){
       _poSetDisabled(false);
-      if (d.detail) { if (fb) fb.textContent = '✗ ' + d.detail; return; }
-      // No success line: the bracket reloads right away and shows the results.
       if (fb) fb.textContent = '';
+      if (d.detail) { gmToast('✗ ' + d.detail, 'err'); return; }
+      // No success line: the bracket reloads right away and shows the results.
 
       if (d.current_date) {
         var dateEl = document.querySelector('.topbar-date');
@@ -231,7 +231,8 @@ function simPlayoffs(mode) {
     })
     .catch(function(){
       _poSetDisabled(false);
-      if (fb) fb.textContent = 'Error';
+      if (fb) fb.textContent = '';
+      gmToast('✗ Network error. Try again.', 'err');
     });
 }
 

@@ -54,9 +54,6 @@
       <span id="draft-actions" class="draft-actions">
       <button class="btn btn-primary" id="submit-btn" onclick="saveStrategy()"
               style="margin-left:8px;">Save Strategy</button>
-      <span id="submit-check"
-            style="font-family:var(--font-mono);font-size:13px;color:var(--green);
-                   margin-left:8px;display:none;">✓ Saved</span>
       {% if draft_complete %}
         <a href="/leagues/{{ league_id }}/draft/results"
            class="btn btn-secondary"
@@ -718,8 +715,14 @@ async function saveStrategy() {
       saveToStorage();
       renderStrategy();
       updateCheckmark();
+      gmToast('✓ Strategy saved', 'ok');
+    } else {
+      gmToast('✗ Strategy not saved. Try again.', 'err');
     }
-  } catch (err) { console.error('Save failed', err); }
+  } catch (err) {
+    console.error('Save failed', err);
+    gmToast('✗ Network error. Strategy not saved.', 'err');
+  }
   finally { btn.disabled = false; btn.textContent = 'Save Strategy'; }
   return ok;
 }
@@ -783,12 +786,10 @@ function toggleReverse() {
   renderExplore();
 }
 
-/* ── Saved check ─────────────────────────────────────────────────────────────── */
+/* ── Unsaved bar ─────────────────────────────────────────────────────────────── */
 function updateCheckmark() {
-  const check   = document.getElementById('submit-check');
   const banner  = document.getElementById('draft-unsaved-banner');
   const isMatch = !unsavedStrategy();
-  if (check)  check.style.display  = isMatch && savedStrategy ? 'inline' : 'none';
   if (banner) banner.style.display = isMatch ? 'none' : 'flex';
 }
 
