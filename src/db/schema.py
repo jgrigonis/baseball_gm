@@ -1511,6 +1511,7 @@ CREATE TABLE IF NOT EXISTS team_owners (
 );
 CREATE INDEX IF NOT EXISTS idx_team_owners_owner ON team_owners(owner_id);
 CREATE INDEX IF NOT EXISTS idx_team_owners_team ON team_owners(team_id);
+CREATE INDEX IF NOT EXISTS idx_team_owners_rival ON team_owners(rival_team_id);
 CREATE INDEX IF NOT EXISTS idx_player_moods_league ON player_moods(league_id, season_id);
 CREATE INDEX IF NOT EXISTS idx_player_moods_season ON player_moods(season_id);
 CREATE INDEX IF NOT EXISTS idx_player_moods_team ON player_moods(team_id);
