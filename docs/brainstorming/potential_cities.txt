@@ -1,0 +1,79 @@
+Potential Cities
+
+Nairobi
+Kinshasa
+Lagos
+Taipei
+Manila
+Ho Chi Minh City
+Osaka
+Delhi
+Johannesburg
+
+Rio de Janeiro
+Melbourne
+
+Houston
+Dallas
+Miami
+Barcelona
+Philadelphia
+Atlanta
+
+
+Shenzhen
+Dhaka
+Guangzhou
+Kolkata
+Karachi
+Lahore
+Bengaluru
+Chennai
+Bogota
+Lima
+Hyderabad
+Tehran
+Luanda
+Bandung
+Kuala Lumpur
+Dar es Salaam
+Riyadh
+Khartoum
+Santiago
+Baghdad
+Saint Petersburg
+Guadalajara
+
+Washington DC
+San Antonio
+Las Vegas
+Jacksonville
+Austin
+Charlotte
+Columbus
+Indianapolis
+Oklahoma City
+Nashville
+San Jose
+El Paso
+Lousiville
+
+Memphis
+Albuquerque
+Tucson
+Fresno
+Sacramento
+Mesa
+Raleigh
+Colorado Springs
+Omaha
+Virginia Beach
+Long Beach
+Oakland
+Bakersfield
+Tulsa
+Wichita
+New Orleans
+Honolulu
+Huntsville
+Des Moines
