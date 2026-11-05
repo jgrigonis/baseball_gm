@@ -25,6 +25,7 @@ from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.persona_repo import PersonaRepository
 from src.league import personas
 from src.db.repositories.user_repo import UserRepository
+from src.league.league_constants import MAX_SEASONS, UNLIMITED_SEASONS
 from src.league.league_modes import LEAGUE_MODES
 from src.web.utils import templates
 
@@ -109,10 +110,20 @@ def _league_page(request, db, user, league_id: str, status_code=200, **ctx):
             "gms": [dict(g) for g in gms],
             "modes": [LEAGUE_MODES[k] for k in admin_service.MODES],
             "ranges": admin_service.NUMBER_RANGES,
+            "season_choices": _season_choices(league["num_seasons"]),
             **ctx,
         },
         status_code,
     )
+
+
+def _season_choices(current: int) -> list[int]:
+    """The seasons slider's stops, as on the New League form: 1..MAX_SEASONS,
+    then unlimited (0). A league already past MAX_SEASONS keeps its count."""
+    choices = [*range(1, MAX_SEASONS + 1), UNLIMITED_SEASONS]
+    if current not in choices:
+        choices.insert(-1, current)
+    return choices
 
 
 @router.get("/leagues/{league_id}", response_class=HTMLResponse)

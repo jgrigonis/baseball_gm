@@ -1,6 +1,7 @@
 {# templates/admin/league.html #}
 {% extends "base.html" %}
 {% block title %}Admin: {{ league.name }} — Baseball GM{% endblock %}
+{% from "_sliders.html" import slider, step_slider %}
 {% block main %}
 {% set section = 'leagues' %}
 {% set started = league.state != 'lobby' %}
@@ -57,29 +58,33 @@
           <option value="confirmed" {% if league.pace_control == 'confirmed' %}selected{% endif %}>Confirmed</option>
         </select>
       </div>
-      {% for key, label in [
-           ('sim_period_days', 'Days per Sim Period'),
-           ('num_seasons', 'Number of Seasons'),
-           ('decision_window_sec', 'Decision Window (sec)'),
-           ('draft_window_sec', 'Draft Window (sec)'),
-           ('lineup_window_sec', 'Lineup Window (sec)')] %}
-      <div class="field">
-        <label>{{ label }}</label>
-        <input name="{{ key }}" type="number" value="{{ league[key] }}" min="{{ ranges[key][0] }}" max="{{ [ranges[key][1], league[key]] | max }}" required>
-        {% if key == 'num_seasons' %}<span class="mode-note">0 for unlimited</span>{% endif %}
-      </div>
+      {# Same sliders and steps as the New League form. A window whose value
+         sits off the step grid (set before sliders) steps by 1, so saving
+         doesn't quietly round it. #}
+      {{ slider("sim_period_days", "sim-period-days", "Days per Sim Period", league.sim_period_days, ranges.sim_period_days[0], [ranges.sim_period_days[1], league.sim_period_days] | max) }}
+      {% call step_slider("num_seasons", "num-seasons", "Number of Seasons", season_choices, league.num_seasons) %}
+        <span class="hint">All the way right for unlimited.</span>
+      {% endcall %}
+      {% for key, label, step in [
+           ('decision_window_sec', 'Decision Window', 10),
+           ('draft_window_sec', 'Draft Window', 30),
+           ('lineup_window_sec', 'Lineup Window', 60)] %}
+      {% set low = ranges[key][0] %}
+      {{ slider(key, key | replace('_', '-'), label, league[key], low, [ranges[key][1], league[key]] | max,
+                step=step if (league[key] - low) % step == 0 else 1, unit=" sec") }}
       {% endfor %}
+      {% if started %}
       <div class="field">
         <label>Years of History</label>
-        {% if started %}
         <input type="hidden" name="backstory_years" value="{{ league.backstory_years }}">
         <input value="{{ league.backstory_years }}" disabled>
         <span class="hint">Made when the league starts.</span>
-        {% else %}
-        <input name="backstory_years" type="number" value="{{ league.backstory_years }}" min="{{ ranges.backstory_years[0] }}" max="{{ ranges.backstory_years[1] }}" required>
-        <span class="hint">Past seasons the league starts with. 0 for none.</span>
-        {% endif %}
       </div>
+      {% else %}
+      {% call slider("backstory_years", "backstory-years", "Years of History", league.backstory_years, ranges.backstory_years[0], ranges.backstory_years[1]) %}
+        <span class="hint">Past seasons the league starts with. 0 for none.</span>
+      {% endcall %}
+      {% endif %}
       <div class="field">
         <label>Commissioner</label>
         <select name="commissioner_gm_id">
@@ -130,4 +135,5 @@
   </div>
 
 </div></div>
+<script src="{{ static_url('js/sliders.js') }}"></script>
 {% endblock %}

@@ -1,30 +1,7 @@
 {# templates/leagues/new.html #}
 {% extends "base.html" %}
 {% block title %}New League — Baseball GM{% endblock %}
-{% macro slider(name, id, label, value, min, max, step=1, unit="", cls="", tip="") %}
-<div class="field slider-field {{ cls }}">
-  <label for="{{ id }}"{% if tip %} title="{{ tip }}"{% endif %}>{{ label }}
-    <output class="slider-value" for="{{ id }}" data-unit="{{ unit }}">{{ value }}{{ unit }}</output></label>
-  <input type="range" name="{{ name }}" id="{{ id }}" value="{{ value }}" min="{{ min }}" max="{{ max }}" step="{{ step }}">
-  <span class="slider-ends"><span>{{ min }}{{ unit }}</span><span>{{ max }}{{ unit }}</span></span>
-  {{ caller() if caller else "" }}
-</div>
-{% endmacro %}
-{# A slider that only lands on the given choices. The range moves through
-   their positions; the hidden input carries the choice itself. A choice of 0
-   shows as ∞ (unlimited seasons). #}
-{% macro step_slider(name, id, label, choices, value, unit="", tip="") %}
-{% set INF = '<span class="inf">∞</span>' | safe %}
-{% set shown = [] %}{% for c in choices %}{% set _ = shown.append("∞" if c == 0 else c ~ unit) %}{% endfor %}
-<div class="field slider-field" data-choices='{{ choices | tojson }}' data-shown='{{ shown | tojson }}'>
-  <label for="{{ id }}"{% if tip %} title="{{ tip }}"{% endif %}>{{ label }}
-    <output class="slider-value" for="{{ id }}">{{ shown[choices.index(value)] | replace("∞", INF) }}</output></label>
-  <input type="hidden" name="{{ name }}" value="{{ value }}">
-  <input type="range" id="{{ id }}" value="{{ choices.index(value) }}" min="0" max="{{ choices | length - 1 }}" step="1">
-  <span class="slider-ends"><span>{{ shown[0] | replace("∞", INF) }}</span><span>{{ shown[-1] | replace("∞", INF) }}</span></span>
-  {{ caller() if caller else "" }}
-</div>
-{% endmacro %}
+{% from "_sliders.html" import slider, step_slider %}
 {% block main %}
 <div class="page-content"><div class="content-inner" style="max-width:520px;">
   <div class="page-header"><h1 class="page-title">New League</h1></div>
@@ -152,14 +129,12 @@
 .advanced-settings > summary:hover { color: var(--text); }
 .advanced-body { display: flex; flex-direction: column; gap: 16px; margin-top: 16px;
   padding-left: 12px; border-left: 2px solid var(--border); }
-.slider-field input[type=range] { width: 100%; padding: 0; border: none; background: none; accent-color: var(--amber); }
-.slider-value { float: right; font-family: var(--font-mono); color: var(--amber); text-transform: none; letter-spacing: 0; }
-.slider-ends { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); }
 .timer-only-note { display: none; font-size: 11px; color: var(--text-dim); font-style: italic; }
 .field-disabled .timer-only-note { display: block; }
 .field-disabled label { opacity: 0.45; }
 .field-disabled input { opacity: 0.45; background: transparent; border-style: dashed; cursor: not-allowed; }
 </style>
+<script src="{{ static_url('js/sliders.js') }}"></script>
 <script>
 // Picking a mode fills in its preset settings. Settings the mode doesn't
 // preset keep whatever the form has.
@@ -196,41 +171,6 @@
   mode.addEventListener('change', applyModePresets);
   applyModePresets();
 })();
-// Each slider shows its value as it moves. A slider with set choices keeps
-// its hidden input (the value sent) and its position in step, either way:
-// moving it sets the input, and a mode preset setting the input moves it.
-function sliderParts(field) {
-  return {
-    range: field.querySelector('input[type=range]'),
-    hidden: field.querySelector('input[type=hidden]'),
-    out: field.querySelector('.slider-value'),
-    choices: field.dataset.choices && JSON.parse(field.dataset.choices),
-    shown: field.dataset.shown && JSON.parse(field.dataset.shown),
-  };
-}
-function showSlider(field, fromRange) {
-  const p = sliderParts(field);
-  if (!p.choices) {
-    p.out.textContent = p.range.value + (p.out.dataset.unit || '');
-    return;
-  }
-  if (fromRange) {
-    p.hidden.value = p.choices[p.range.value];
-  } else {
-    const i = p.choices.indexOf(Number(p.hidden.value));
-    if (i >= 0) p.range.value = i;
-  }
-  const shown = p.shown[p.range.value];
-  // ∞ is drawn bigger (.inf), like everywhere else it shows.
-  if (shown === '∞') p.out.innerHTML = '<span class="inf">∞</span>';
-  else p.out.textContent = shown;
-}
-function syncSliders() {
-  document.querySelectorAll('.slider-field').forEach(function (f) { showSlider(f, false); });
-}
-document.querySelectorAll('.slider-field').forEach(function (f) {
-  f.querySelector('input[type=range]').addEventListener('input', function () { showSlider(f, true); });
-});
 // The timing windows only apply to Timer pace; grey them out otherwise.
 (function () {
   const pace = document.getElementById('pace-control');
