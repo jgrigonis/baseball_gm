@@ -996,6 +996,23 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
 .pp-release { border-color: var(--red); color: var(--red); margin-right: 6px; }
 .pp-sign { border-color: var(--green); color: var(--green); margin-right: 6px; }
 
+/* In-page confirm (gmConfirm in shell.html), in place of the browser's. */
+.gm-modal-wrap {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(0, 0, 0, .55);
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.gm-modal {
+  background: var(--bg-2); border: 1px solid var(--border);
+  width: 100%; max-width: 420px; padding: 18px 20px 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .5);
+}
+.gm-modal-title { font-family: var(--font-sans); font-weight: 700; font-size: 16px; color: var(--text-hi); margin-bottom: 10px; }
+.gm-modal-line { font-family: var(--font-mono); font-size: 12px; line-height: 1.55; color: var(--text); margin: 0 0 8px; }
+.gm-modal-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.gm-modal-ok.danger { border-color: var(--red); color: var(--red); background: var(--red-dim); }
+.gm-modal-ok.go { border-color: var(--green); color: var(--green); background: var(--green-dim); }
+
 .pp-body {
   display: flex;
   flex: 1;

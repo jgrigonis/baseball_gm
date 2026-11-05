@@ -100,6 +100,47 @@ async function postJson(url) {
   if (!r.ok) throw new Error(body.detail || 'Something went wrong.');
   return body;
 }
+// An in-page confirm, in place of the browser's own dialog. Resolves true
+// when the GM presses the action button. opts: {title, lines: [text],
+// ok: button label, tone: 'danger' | 'go', cancel: label or null for an
+// alert with one button}. Text is escaped.
+function _esc(t) {
+  return String(t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+window.gmConfirm = function(opts) {
+  return new Promise(resolve => {
+    const wrap = document.createElement('div');
+    wrap.className = 'gm-modal-wrap';
+    wrap.innerHTML = `
+      <div class="gm-modal" role="dialog" aria-modal="true" aria-labelledby="gm-modal-title">
+        <div class="gm-modal-title" id="gm-modal-title">${_esc(opts.title)}</div>
+        ${(opts.lines || []).map(l => `<p class="gm-modal-line">${_esc(l)}</p>`).join('')}
+        <div class="gm-modal-btns">
+          ${opts.cancel === null ? '' : `<button type="button" class="btn btn-secondary" data-ans="0">${_esc(opts.cancel || 'Cancel')}</button>`}
+          <button type="button" class="btn btn-secondary gm-modal-ok ${opts.tone || ''}" data-ans="1">${_esc(opts.ok || 'OK')}</button>
+        </div>
+      </div>`;
+    function done(ans) {
+      document.removeEventListener('keydown', onKey, true);
+      wrap.remove();
+      resolve(ans);
+    }
+    function onKey(e) {
+      if (e.key === 'Escape') { e.stopPropagation(); done(false); }
+    }
+    wrap.addEventListener('click', e => {
+      const b = e.target.closest('[data-ans]');
+      if (b) done(b.dataset.ans === '1');
+      else if (e.target === wrap) done(false);
+    });
+    document.addEventListener('keydown', onKey, true);
+    document.body.appendChild(wrap);
+    wrap.querySelector('.gm-modal-ok').focus();
+  });
+};
+function gmAlert(message) {
+  return gmConfirm({title: message, ok: 'OK', cancel: null});
+}
 window.releasePlayer = async function(pid, name) {
   const base = `/leagues/{{ league_id }}/players/${pid}/release`;
   let cost;
@@ -107,22 +148,33 @@ window.releasePlayer = async function(pid, name) {
     const r = await fetch(base);
     cost = await r.json();
     if (!r.ok) throw new Error(cost.detail || 'Something went wrong.');
-  } catch (e) { alert(e.message); return; }
+  } catch (e) { gmAlert(e.message); return; }
   const owed = cost.total
-    ? `His deal is guaranteed: you'll still owe ${cost.salary_text} a season` +
-      (cost.seasons > 1 ? ` through ${cost.through} (${cost.total_text} in all)` : ` this season`) +
+    ? `His deal is guaranteed: you'll still owe ` +
+      (cost.seasons > 1 ? `${cost.salary_text} a season through ${cost.through} (${cost.total_text} in all)`
+                        : `his ${cost.salary_text} for this season`) +
       `, even after he's gone.`
     : `His deal isn't guaranteed (he hasn't been on the 40-man), so it costs nothing.`;
-  if (!confirm(`Release ${name}?\n\n${owed}\n\nHe becomes a free agent any team can sign.`)) return;
-  try { await postJson(base); } catch (e) { alert(e.message); return; }
+  const ok = await gmConfirm({
+    title: `Release ${name}?`,
+    lines: [owed, 'He becomes a free agent any team can sign.'],
+    ok: 'Release', tone: 'danger',
+  });
+  if (!ok) return;
+  try { await postJson(base); } catch (e) { gmAlert(e.message); return; }
   closePlayerPanel();
   reloadTab();
 };
 window.signFreeAgent = async function(pid, name, salary, years) {
   const term = `${salary} a season for ${years} season${years === 1 ? '' : 's'}`;
-  if (!confirm(`Sign ${name} for ${term}?\n\nThe deal is guaranteed. He joins your organization (minors).`)) return;
+  const ok = await gmConfirm({
+    title: `Sign ${name}?`,
+    lines: [`${term}, guaranteed.`, 'He joins your organization (minors).'],
+    ok: 'Sign', tone: 'go',
+  });
+  if (!ok) return;
   try { await postJson(`/leagues/{{ league_id }}/free-agents/${pid}/sign`); }
-  catch (e) { alert(e.message); return; }
+  catch (e) { gmAlert(e.message); return; }
   closePlayerPanel();
   reloadTab();
 };
