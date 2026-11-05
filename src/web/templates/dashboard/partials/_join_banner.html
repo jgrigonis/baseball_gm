@@ -1,0 +1,28 @@
+{# templates/dashboard/partials/_join_banner.html
+   Viewers only, while they could join: the league is public, takes late
+   joiners, it's between seasons, and an AI GM still runs a team. The top
+   bar's Join league button goes to the same place. #}
+<div class="join-banner" role="note">
+  <span class="join-banner-text">
+    <strong>Want in?</strong>
+    {{ league_name }} is taking new GMs until Opening Day.
+    {{ open_team_count }} team{{ "s" if open_team_count != 1 }}
+    {{ "are" if open_team_count != 1 else "is" }} run by AI.
+  </span>
+  <a class="btn btn-primary join-banner-btn" href="/leagues/{{ league_id }}/take-over">Pick a team →</a>
+</div>
+<style>
+.join-banner {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 10px 24px;
+  background: var(--amber-lo); border-bottom: 1px solid var(--amber-dim);
+  font-family: var(--font-mono); font-size: 12px; color: var(--text);
+}
+.join-banner strong { color: var(--amber); margin-right: 4px; }
+.join-banner-text { flex: 1 1 260px; }
+.join-banner-btn { font-size: 11px; padding: 6px 14px; white-space: nowrap; }
+@media (max-width: 600px) {
+  .join-banner { padding: 10px 16px; gap: 10px; }
+  .join-banner-btn { width: 100%; text-align: center; }
+}
+</style>

@@ -506,3 +506,71 @@ def test_game_panel_shows_the_line_score_and_a_headline(client, db_conn, factory
     # Boston led after the top of the ninth, so it didn't bat: an X
     assert '<td class="tile">3</td><td class="tile">X</td>' in board
     assert '<td class="tile rhe rhe-start">5</td>' in board
+
+
+# ── Joining from the viewer's pages ───────────────────────────────────────────
+
+
+def _joinable(db, factory, state="offseason", is_public=True, late_joins=True):
+    league, _ = _league(db, factory, state=state, is_public=is_public)
+    db.execute(
+        "UPDATE leagues SET late_joins = %s WHERE id = %s", (late_joins, league.id)
+    )
+    return league
+
+
+def _join_link(league):
+    return f'href="/leagues/{league.id}/take-over"'
+
+
+def test_viewer_sees_join_button_and_banner_between_seasons(
+    client, db_conn, factory
+):
+    league = _joinable(db_conn, factory)
+
+    html = client.get(f"/leagues/{league.id}/standings").text
+
+    assert "Join league →" in html
+    assert 'class="join-banner"' in html
+    assert re.search(r"1 team\s+is run by AI", html)
+    assert html.count(_join_link(league)) == 2
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"state": "season"},
+        {"state": "playoffs"},
+        {"late_joins": False},
+    ],
+)
+def test_no_join_button_when_league_isnt_taking_gms(
+    client, db_conn, factory, kwargs
+):
+    league = _joinable(db_conn, factory, **kwargs)
+
+    html = client.get(f"/leagues/{league.id}/standings").text
+
+    assert "Join league →" not in html
+    assert 'class="join-banner"' not in html
+
+
+def test_no_join_button_when_every_team_has_a_person(client, db_conn, factory):
+    league = _joinable(db_conn, factory)
+    db_conn.execute("UPDATE gms SET is_ai = FALSE WHERE league_id = %s", (league.id,))
+
+    html = client.get(f"/leagues/{league.id}/standings").text
+
+    assert "Join league →" not in html
+
+
+def test_admin_viewing_private_league_gets_no_join_button(
+    admin_client, db_conn, factory
+):
+    """The take-over page needs the join code for a private league."""
+    league = _joinable(db_conn, factory, is_public=False)
+
+    html = admin_client.get(f"/leagues/{league.id}/standings").text
+
+    assert "Join league →" not in html
+    assert _join_link(league) not in html
