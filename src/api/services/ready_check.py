@@ -43,7 +43,7 @@ from __future__ import annotations
 
 import logging
 
-from src.api.services import all_star, sim_jobs, trades, turn_alerts
+from src.api.services import all_star, owner_office, sim_jobs, trades, turn_alerts
 from src.api.services.draft_execute import execute_blitz_draft
 from src.api.services.offseason_service import run_offseason
 from src.api.services.sim_next import sim_days
@@ -241,6 +241,8 @@ def status(conn, league_id: str, gm_id: str) -> dict:
         "has_news": NotificationRepository(conn).has_unseen(gm_id),
         # Stories since the GM last opened the News tab (its badge).
         "news_unseen": NewsRepository(conn).count_unseen(league_id, gm_id),
+        # Owner messages the GM hasn't read (the Owner tab's badge).
+        "owner_unseen": owner_office.unseen(conn, gm_id),
         "all_star": star_phase,
         "all_star_vote_due": bool(
             star_phase == "open"

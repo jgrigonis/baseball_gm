@@ -512,6 +512,14 @@ window.refreshNewsBadge = function() {
     .catch(function() {});
 };
 
+// ── The Owner tab's badge: messages from the owner the GM hasn't read ─────────
+window.setOwnerBadge = function(n) {
+  var b = document.getElementById('owner-badge');
+  if (!b) return;
+  b.textContent = n;
+  b.style.display = n > 0 ? '' : 'none';
+};
+
 // ── Tab switching ──────────────────────────────────────────────────────────────
 function setActiveTab(el) {
   document.querySelectorAll('.tab-link').forEach(t => t.classList.remove('active'));

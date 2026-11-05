@@ -197,6 +197,11 @@ def test_the_owner_writes_a_preseason_memo_once(lg, client_for):
     r = client_for(x).get(f"/leagues/{x.league.id}/owner")
     assert "Preseason memo" in r.text and "From the owner" in r.text
     assert owner_office.unseen(x.db, x.gm.id) == 0
+    # Opened as a tab (htmx), the page clears the badge in the tab bar.
+    tab = client_for(x).get(
+        f"/leagues/{x.league.id}/owner", headers={"HX-Request": "true"}
+    )
+    assert "setOwnerBadge(0)" in tab.text
 
 
 def test_the_season_review_message(lg, factory):

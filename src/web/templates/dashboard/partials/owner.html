@@ -106,3 +106,7 @@
     <div style="margin-top:8px;color:var(--muted);">Every owner is their own person, so two of the same kind won't want exactly the same things.</div>
   </div>
 </div>
+{% if my_owner %}
+{# Opening the tab marks the owner's messages read. #}
+<script>if (window.setOwnerBadge) window.setOwnerBadge(0);</script>
+{% endif %}
