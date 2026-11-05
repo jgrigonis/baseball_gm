@@ -743,7 +743,7 @@ async function saveRoster() {
   finally { btn.disabled = false; btn.textContent = 'Save Roster'; }
 }
 
-// A toast at the bottom of the screen (gmToast in dialogs.js); the colour
+// A toast at the top of the screen (gmToast in dialogs.js); the colour
 // picks its look: green for saves, red for errors, anything else plain.
 function showFeedback(msg, color) {
   gmToast(msg, color === 'var(--green)' ? 'ok' : color === 'var(--red)' ? 'err' : 'info');
