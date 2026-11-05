@@ -262,6 +262,23 @@ class PlayerRepository:
             (league_id,),
         )
 
+    def release_undrafted(self, league_id: str) -> int:
+        """Once the draft is over, the league's prospects nobody picked
+        become free agents, as undrafted players do. Returns how many."""
+        rows = self.conn.execute(
+            """
+            UPDATE player_status ps SET status = 'free_agent'
+            FROM players p
+            WHERE p.id = ps.player_id AND p.league_id = %s
+              AND ps.status = 'prospect'
+              AND NOT EXISTS (SELECT 1 FROM team_players tp
+                              WHERE tp.player_id = p.id)
+            RETURNING ps.player_id
+            """,
+            (league_id,),
+        ).fetchall()
+        return len(rows)
+
     def clear_stale_prospects(self, league_id: str) -> int:
         cleared = 0
         psr = PlayerStatusRepository(self.conn)

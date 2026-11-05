@@ -7,7 +7,8 @@ Steps:
    - 55% pitchers: 27.5% sp, 27.5% rp
    - 45% position players: evenly split across 11 positions (~4.1% each)
 2. Insert new players into DB with status 'prospect' and league_id set
-3. Count them along with the league's existing unattached prospects
+3. Count them along with any of the league's unattached prospects (normally
+   none: execute_blitz_draft makes the undrafted free agents)
 """
 
 import dataclasses

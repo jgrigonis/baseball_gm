@@ -118,6 +118,19 @@ class TestExecuteBlitzDraftStateTransitions:
         ).fetchone()
         assert row["state"] == "preseason"
 
+    def test_undrafted_prospects_become_free_agents(self, setup):
+        db_conn, draft, league, _ = setup
+        execute_blitz_draft(draft.id, db_conn)
+        rows = db_conn.execute(
+            """SELECT ps.status, COUNT(*) AS n FROM players p
+               JOIN player_status ps ON ps.player_id = p.id
+               WHERE p.league_id = %s GROUP BY ps.status""",
+            (league.id,),
+        ).fetchall()
+        counts = {r["status"]: r["n"] for r in rows}
+        assert counts.get("prospect", 0) == 0
+        assert counts["free_agent"] == 5  # 2 teams x ROUNDS picks, 5 left over
+
     def test_draft_class_signs_rookie_deals(self, setup, factory):
         db_conn, draft, league, season = setup
         teams = db_conn.execute(
