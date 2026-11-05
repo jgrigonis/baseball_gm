@@ -1,0 +1,50 @@
+{# templates/dashboard/partials/_next_move.html
+   The top bar's next-move button (src/api/services/next_move.py): on every
+   league page, the one thing to do next. Elsewhere it's a link to where the
+   move happens; on that page it does the move by calling the page's own
+   function (data-fn), e.g. schedSim, simPlayoffs, beginOffseason, runDraft.
+   The ▾ menu has the other ways to do it. The shell reloads this after each
+   tab swap and sim (refreshNextMove); data-sig says whether it changed. #}
+{% set nm = next_move %}
+<div id="next-move" class="next-move{% if nm %} nm-{{ nm.kind }}{% endif %}"
+     data-sig="{% if nm %}{{ nm.key }}|{{ nm.label }}|{{ nm.pill.label if nm.pill else '' }}{% endif %}">
+{% if nm %}
+  {% if nm.pill %}
+  <a class="nm-pill" href="{{ nm.pill.href }}" title="{{ nm.pill.title }}" aria-label="{{ nm.pill.label }}"><span class="nm-long">{{ nm.pill.label }}</span><span class="nm-short" aria-hidden="true">★</span></a>
+  {% endif %}
+  {% if nm.stop %}
+  <button type="button" class="btn nm-stop" id="sched-stop-btn" onclick="schedStop()">■ Stop</button>
+  {% endif %}
+  <span class="nm-split">
+    {% if nm.href %}
+    <a class="btn nm-main" href="{{ nm.href }}"><span class="nm-long">{{ nm.label }}</span><span class="nm-short">{{ nm.short }}</span></a>
+    {% elif nm.kind == 'ready' %}
+    {# _ready_bar.html sets this button's text and state. #}
+    <button type="button" class="btn nm-main" id="{{ nm.id }}" onclick="readyToggle()">{{ nm.label }}</button>
+    {% else %}
+    <button type="button" class="btn nm-main"{% if nm.id %} id="{{ nm.id }}"{% endif %}
+            data-fn="{{ nm.fn }}" data-arg="{{ nm.arg }}" onclick="nextMoveAct(this)"><span class="nm-long">{{ nm.label }}</span><span class="nm-short">{{ nm.short }}</span></button>
+    {% endif %}
+    {% if nm.menu or nm.ignore_trades %}
+    <details class="nm-more">
+      <summary class="btn nm-caret" aria-label="More ways to play" title="More ways to play">▾</summary>
+      <div class="nm-menu">
+        {% for it in nm.menu %}
+        <button type="button" class="nm-item"{% if it.id %} id="{{ it.id }}"{% endif %}
+                {% if nm.kind == 'ready' %}onclick="this.closest('details').open = false; {{ it.fn }}()"
+                {% else %}data-fn="{{ it.fn }}" data-arg="{{ it.arg }}" onclick="nextMoveAct(this)"{% endif %}>{{ it.label }}{% if it.note %} <small>{{ it.note }}</small>{% endif %}</button>
+        {% endfor %}
+        {% if nm.ignore_trades %}
+        {# Multi-day sims keep going through trade offers and the deadline. #}
+        <label id="sched-ignore-trades" class="nm-item nm-check"
+               title="Multi-day sims don&#39;t stop for trade offers or the trade deadline. Offers wait on the Trades tab until they expire.">
+          <input type="checkbox" id="sched-ignore-trades-box" onchange="schedSetIgnoreTrades(this.checked)">
+          Ignore trades <small>on multi-day sims</small>
+        </label>
+        {% endif %}
+      </div>
+    </details>
+    {% endif %}
+  </span>
+{% endif %}
+</div>

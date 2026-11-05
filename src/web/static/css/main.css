@@ -294,10 +294,94 @@ a.topbar-team:hover strong { text-decoration: underline; text-underline-offset: 
   .topbar > .nav-menu { order: 1; }
   .topbar-spacer { display: none; }
   .topbar-state + .topbar-date, .league-info + .topbar-date { margin-left: 0; }
-  .topbar-team { margin-left: auto; }
+  /* The next-move button (below) takes row two's right end, so the team
+     badge moves up next to the menu button. */
+  .topbar > .topbar-team { order: 0; }
+  /* Room for it on row two: tighter gaps, and the season pill drops "of N"
+     (the settings panel it opens has the season count). */
+  .topbar { column-gap: 8px; }
+  .league-info > summary .plate-of, .league-info > summary .plate-of + .num-tile { display: none; }
+  .topbar-date { letter-spacing: 0.04em; padding: 4px 6px; }
+  /* Logo + badge + menu fill row one exactly (badge 32px, menu 34px, 8px gaps). */
+  .topbar:has(> .topbar-team) > .topbar-logo { flex: 0 1 calc(100% - 82px); }
+  .topbar-team { margin-left: 0; }
   .topbar-join { margin-left: auto; }
   .topbar-team > span:not(.team-badge) { display: none; }
   .nav-menu-panel a, .topbar-signout { padding: 11px 16px; font-size: 13px; }
+}
+
+/* ── Next move ──────────────────────────────────────────────────────────────── */
+/* The top bar's next-move button (_next_move.html): a split button, the move
+   and a ▾ menu of other ways to do it, plus an optional to-do pill. */
+.next-move { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.next-move:empty { display: none; }
+.next-move .btn { font-size: 12px; padding: 7px 14px; white-space: nowrap; line-height: 1.2; text-decoration: none; display: inline-flex; align-items: center; }
+.nm-split { display: inline-flex; position: relative; }
+.nm-more { position: relative; display: flex; }
+.nm-more > summary { list-style: none; }
+.nm-more > summary::-webkit-details-marker { display: none; }
+.next-move .nm-caret { padding: 7px 9px; border-left-width: 0; box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.18); }
+.nm-play .btn, .nm-go .btn { background: var(--amber-dim); border-color: var(--amber); color: var(--amber); }
+.nm-go .btn { background: var(--amber-lo); }
+.nm-play .btn:hover, .nm-go .btn:hover { background: #8a5210; }
+.nm-star .btn { background: #3b2f63; border-color: #c9b6ff; color: #e6dcff; }
+.nm-star .btn:hover { background: #4a3c7a; }
+.nm-ready .btn { background: var(--green-dim); border-color: var(--green); color: var(--green); }
+.nm-quiet .btn { background: var(--bg-3); border-color: var(--border-hi); color: var(--text-dim); }
+.next-move .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.next-move .nm-stop { display: none; background: var(--red-dim); border-color: var(--red); color: var(--red); }
+/* While a sim runs, the button is Stop. */
+.nm-simming .nm-stop { display: inline-flex; }
+.nm-simming .nm-split, .nm-simming .nm-pill { display: none; }
+/* A single day playing: the button waits for it. */
+.nm-busy .nm-split { opacity: 0.5; pointer-events: none; }
+.nm-pill {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; padding: 4px 8px; border: 1px dashed var(--amber);
+  color: var(--amber); white-space: nowrap; text-decoration: none;
+}
+.nm-pill:hover { background: var(--amber-lo); }
+.nm-short { display: none; }
+.nm-menu {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 200; min-width: 240px;
+  background: var(--bg-2); border: 1px solid var(--border-hi);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); padding: 4px 0;
+}
+.nm-item {
+  display: flex; align-items: baseline; gap: 10px; width: 100%; text-align: left;
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.04em; color: var(--text);
+  white-space: nowrap; padding: 9px 16px; background: none; border: none; cursor: pointer;
+}
+.nm-item:hover { background: var(--bg-3); color: var(--amber); }
+.nm-item small { margin-left: auto; font-size: 10px; color: var(--text-dim); }
+.nm-check { border-top: 1px solid var(--border); margin-top: 4px; color: var(--text-dim); align-items: center; }
+.nm-check input { width: auto; margin: 0; }
+/* Narrower screens: short labels ("Playoffs →"). */
+@media (max-width: 1000px) {
+  .next-move .nm-long { display: none; }
+  .next-move .nm-short { display: inline; }
+}
+/* Tablets: the bar makes room for it. The team is its badge, the logo the
+   ball, and a long league name trails off. (Phones wrap the bar instead.) */
+@media (min-width: 601px) and (max-width: 1000px) {
+  .topbar { gap: 14px; }
+  .topbar-team > span:not(.team-badge) { display: none; }
+  .topbar-logo-word.in-league { display: none; }
+  .topbar-logo { flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+
+/* Phones (the top bar wraps to two rows here, see .topbar above). */
+@media (max-width: 600px) {
+  /* The next-move button takes the right end of the second row. */
+  .next-move { margin-left: auto; gap: 6px; }
+  .next-move .btn { font-size: 11px; padding: 7px 10px; letter-spacing: 0.06em; }
+  .next-move .nm-caret { padding: 7px 7px; }
+  /* The to-do pill sits on the button's corner, a ★ badge, so it takes no
+     room on the row. */
+  .next-move { position: relative; }
+  .nm-pill { position: absolute; z-index: 1; top: -8px; right: -6px; padding: 1px 4px;
+             font-size: 10px; line-height: 1.2; border-style: solid; background: var(--bg-2); }
+  .nm-menu { min-width: 0; width: min(280px, calc(100vw - 32px)); }
 }
 
 /* ── Sim Bar ────────────────────────────────────────────────────────────────── */
@@ -1378,10 +1462,6 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
 .as-weekend-body { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .as-weekend-text { flex: 1 1 320px; min-width: 0; }
 .as-weekend-title { font-family: var(--font-mono); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--amber); margin-bottom: 4px; }
-.as-weekend-action { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
-.as-weekend-btn { font-size: 13px; padding: 8px 16px; }
-.as-weekend-msg { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); }
-.as-weekend-msg:empty { display: none; }
 .as-weekend-done { border-color: var(--green); background: var(--green-dim); }
 .as-weekend-done .as-weekend-title { color: var(--green); }
 .as-weekend-results { list-style: none; margin: 8px 0 10px; padding: 0; display: flex; flex-direction: column; gap: 6px; font-family: var(--font-mono); font-size: 12px; }
@@ -1685,10 +1765,6 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
   .line-score-team > span:not(.team-badge) { display: none; }
   .line-score th { padding: 0 1px; }
   .line-score td.tile { min-width: 20px; height: 28px; padding: 0 1px; font-size: 16px; }
-
-  /* Play Day / Until Injury / Full Season: one short row each, and the
-     Ignore trades box wraps to the next line instead of off the screen. */
-  .play-bar .btn { white-space: nowrap; padding: 7px 10px !important; font-size: 11px !important; }
 
   /* Long lists (data-phone-clip, phone_clip.js) show their first 8 rows and
      a "Show all" button, so the block below is in reach. */

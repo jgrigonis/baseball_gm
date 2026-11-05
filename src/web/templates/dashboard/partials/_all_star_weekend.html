@@ -1,7 +1,8 @@
 {# templates/dashboard/partials/_all_star_weekend.html
    The All-Star weekend card at the top of the All-Star tab
    (src/api/routers/all_star.py _weekend_context). Before the weekend: the
-   Sim All-Star Weekend button once the captains' picks are in. Just after
+   note on how it's played (the top bar's Sim All-Star Weekend button, once
+   the captains' picks are in). Just after
    the sim played it (?weekend=1): the results, with links down the tab.
 #}
 {% macro final(x) -%}
@@ -22,45 +23,17 @@
       <div class="as-weekend-title">★ All-Star Weekend</div>
       <div class="as-note">
         {% if weekend_can_sim and not weekend_picks_left %}
-        The teams are set. Play the{% if rookie %} Rookie Game,{% endif %} the Home Run Derby and the All-Star Game now.
+        The teams are set. Press ★ Sim All-Star Weekend at the top to play the{% if rookie %} Rookie Game,{% endif %} the Home Run Derby and the All-Star Game.
         The season picks up again on {{ as_window.resumes }}.
         {% elif weekend_can_sim %}
-        <span class="as-warn">Your captain's picks aren't all in yet.</span> Make them below, then sim the weekend from here.
-        If you play on from the Schedule instead, the scouts finish your picks.
+        <span class="as-warn">Your captain's picks aren't all in yet.</span> Make them below, then sim the weekend with the button at the top.
+        If you play on before they're in, the scouts finish your picks.
         {% else %}
         The{% if rookie %} Rookie Game,{% endif %} the Home Run Derby and the All-Star Game are played when the league plays its next day,
         {{ as_window.resumes }}.
         {% endif %}
       </div>
     </div>
-    {% if weekend_can_sim and not weekend_picks_left %}
-    <div class="as-weekend-action">
-      <button type="button" class="btn btn-primary as-weekend-btn" id="as-weekend-btn" onclick="asSimWeekend()">▶ Sim All-Star Weekend</button>
-      <span class="as-weekend-msg" id="as-weekend-msg"></span>
-    </div>
-    <script>
-    window.asSimWeekend = async function() {
-      var btn = document.getElementById('as-weekend-btn');
-      var msg = document.getElementById('as-weekend-msg');
-      btn.disabled = true;
-      btn.textContent = '⏳ Playing the weekend…';
-      msg.textContent = '';
-      var d = await runLeagueJob('/leagues/{{ league_id }}/sim', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({count: 1}),
-      }, function(job) { msg.textContent = leagueJobWaitingText(job) || ''; });
-      if (d.failed) {
-        btn.disabled = false;
-        btn.textContent = '▶ Sim All-Star Weekend';
-        msg.textContent = '✗ ' + (d.detail || 'Sim failed');
-        return;
-      }
-      // Back to this tab, with the results up top.
-      window.location.href = '/leagues/{{ league_id }}/allstar' + (d.all_star_game ? '?weekend=1' : '');
-    };
-    </script>
-    {% endif %}
   </div>
 </div>
 

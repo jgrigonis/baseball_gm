@@ -113,6 +113,8 @@
       <span class="topbar-date">{{ current_date }}</span>
     {% endif %}
     <div class="topbar-spacer"></div>
+    {# The next move for this league: Play Day, Go to Playoffs, Run Draft... #}
+    {% if league_id and next_move is defined %}{% include "dashboard/partials/_next_move.html" %}{% endif %}
     {% if can_take_over %}
       {# A viewer who could join: where a GM's team badge sits. #}
       <a class="btn btn-primary topbar-join" href="/leagues/{{ league_id }}/take-over"

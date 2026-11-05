@@ -10,12 +10,8 @@
             font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">
   <span id="ready-text">Loading…</span>
   <span id="ready-waiting" style="color:var(--amber);"></span>
-  <span style="margin-left:auto;display:flex;gap:8px;">
-    <button class="btn btn-secondary" id="ready-away-btn" onclick="readyToggleAway()"
-            style="font-size:11px;padding:4px 10px;">Mark me away</button>
-    <button class="btn btn-primary" id="ready-btn" onclick="readyToggle()"
-            style="font-size:11px;padding:4px 12px;">I'm ready</button>
-  </span>
+  {# I'm ready (and Mark me away, in its ▾ menu) is the top bar's next move,
+     _next_move.html. This script sets its text and state. #}
 </div>
 <script>
 (function() {
@@ -52,8 +48,9 @@ function render() {
   if (stopped || !d || !d.multiplayer) return;
   var text = document.getElementById('ready-text');
   var waiting = document.getElementById('ready-waiting');
-  var btn = document.getElementById('ready-btn');
-  var away = document.getElementById('ready-away-btn');
+  // The top bar's next move; stand-ins when it isn't the ready toggle.
+  var btn = document.getElementById('ready-btn') || {style: {}};
+  var away = document.getElementById('ready-away-btn') || {style: {}};
   var present = d.gms.filter(function(g) { return !g.away; });
   var readyCount = present.filter(function(g) { return g.ready; }).length;
 
@@ -86,10 +83,16 @@ function render() {
     if (d.you_out) waiting.textContent = "you're out of the playoffs" + (waiting.textContent ? ' · ' + waiting.textContent : '');
     btn.style.display = '';
     btn.disabled = d.you_away || d.you_out;
-    btn.textContent = d.you_ready ? '✓ Ready (undo)' : "I'm ready";
+    // Phones show the short label (.nm-short).
+    btn.innerHTML = d.you_ready
+      ? '<span class="nm-long">✓ Ready (undo)</span><span class="nm-short">✓ Ready</span>'
+      : "I'm ready";
   }
   away.textContent = d.you_away ? "I'm back" : 'Mark me away';
   away.style.display = d.you_out ? 'none' : '';
+  // Nothing to get ready for: no button (or ▾ menu) at all.
+  var split = btn.closest ? btn.closest('.nm-split') : null;
+  if (split) split.style.display = btn.style.display;
 }
 
 function apply(d) {
@@ -180,8 +183,8 @@ function poll() {
     .then(function(r) {
       if (r.redirected || [401, 403, 404].indexOf(r.status) !== -1) {
         stopped = true;
-        document.getElementById('ready-btn').style.display = 'none';
-        document.getElementById('ready-away-btn').style.display = 'none';
+        var nm = document.querySelector('#next-move.nm-ready');
+        if (nm) nm.style.display = 'none';
         document.getElementById('ready-text').textContent = 'This league is no longer available (signed out or league removed). Reload the page.';
         document.getElementById('ready-waiting').textContent = '';
         return null;

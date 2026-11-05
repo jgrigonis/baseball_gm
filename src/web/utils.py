@@ -9,7 +9,7 @@ from fastapi.templating import Jinja2Templates
 
 from src.config import settings
 from src.player.injury_types import injury_effect, injury_label
-from src.api.services import all_star, owner_office, takeover, trades
+from src.api.services import all_star, next_move, owner_office, takeover, trades
 from src.api.services.admin import uses_default_admin_name
 from src.api.services.coach import coach_ctx, mark_visit
 from src.api.services.ready_check import is_multiplayer
@@ -235,6 +235,7 @@ def _shell_ctx(
     league_id: str | None = None,
     active_tab: str | None = None,
     user: dict | None = None,  # Keep as optional for the 'web' version needs
+    page: str | None = None,
 ) -> dict:
     league = None  # prevent any possible NameError
     # 1. Start with the core info we definitely have
@@ -399,6 +400,20 @@ def _shell_ctx(
             ctx["all_star_pick_due"] = all_star.my_turn(
                 db, league_id, ctx["season_id"], ctx["team_id"]
             )
+    # The top bar's next-move button. page is the page it's on (the last
+    # part of the path), which decides between going to the next move and
+    # doing it.
+    if page is None:
+        page = request.url.path.rstrip("/").rsplit("/", 1)[-1]
+    weekend_ready = (
+        as_phase == "done"
+        and ctx["league_state"] == "season"
+        and not ctx.get("multiplayer")
+        and not ctx["is_viewer"]
+        and bool(ctx["team_id"])
+        and not all_star.person_drafting(db, league_id, ctx["season_id"])
+    )
+    ctx["next_move"] = next_move.pick(ctx, page, weekend_ready)
     ctx["all_star_ids"] = (
         AllStarRepository(db).ids(ctx["season_id"]) if ctx["season_id"] else set()
     )

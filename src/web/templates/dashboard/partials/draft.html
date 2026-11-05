@@ -63,15 +63,8 @@
            style="margin-left:16px;border-color:var(--green);color:var(--green);">
           View Results →
         </a>
-      {% elif not multiplayer %}
-        <form method="POST" action="/leagues/{{ league_id }}/draft/execute"
-              style="margin-left:16px;display:inline;" onsubmit="return onExecute(this)">
-          <button type="submit" id="execute-btn" class="btn btn-secondary"
-                  style="border-color:var(--green);color:var(--green);">
-            Run Draft ▶
-          </button>
-        </form>
       {% endif %}
+      {# Run Draft is the top bar's next move (_next_move.html, runDraft). #}
       </span>
     {% else %}
       <span class="page-subtitle" style="color:var(--text-dim);">Draft not yet open</span>
@@ -221,7 +214,7 @@
 
 </div>
 
-{# Phones: Save and Run Draft (and the unsaved note) stay pinned at the bottom. #}
+{# Phones: Save Strategy (and the unsaved note) stay pinned at the bottom. #}
 <div id="draft-dock" class="draft-dock"></div>
 {% endif %}
 
@@ -415,7 +408,6 @@
 window.setFilter        = setFilter;
 window.applyExploreSort = applyExploreSort;
 window.toggleReverse    = toggleReverse;
-window.onExecute        = onExecute;
 window.saveStrategy     = saveStrategy;
 window.clearStrategy    = clearStrategy;
 window.setAgePref       = setAgePref;
@@ -801,22 +793,22 @@ function updateCheckmark() {
 }
 
 /* ── Submit / execute ────────────────────────────────────────────────────────── */
-// Run Draft saves an unsaved strategy first, so what you see is what runs.
-function onExecute(form) {
-  const btn = document.getElementById('execute-btn');
-  btn.disabled = true; btn.textContent = 'Running…';
-  const reset = () => { btn.disabled = false; btn.textContent = 'Run Draft ▶'; };
+// Run Draft, the top bar's next move on this page, saves an unsaved strategy
+// first, so what you see is what runs.
+window.runDraft = function() {
+  const busy = text => window.nextMoveBusy('execute-btn', text);
+  const reset = () => window.nextMoveIdle('execute-btn');
+  busy('Running…');
   // The draft runs on the server as a job; go to the results once it's done.
-  const run = () => runLeagueJob(form.action, {method: 'POST'}, job => {
-    btn.textContent = job.waiting_for_worker ? 'Waiting for the sim worker…' : 'Running…';
+  const run = () => runLeagueJob('/leagues/{{ league_id }}/draft/execute', {method: 'POST'}, job => {
+    busy(job.waiting_for_worker ? 'Waiting for the sim worker…' : 'Running…');
   }).then(d => {
-    if (d.failed) { reset(); alert(d.detail || 'The draft failed.'); return; }
+    if (d.failed) { reset(); window.nextMoveStatus('✗ ' + (d.detail || 'The draft failed.'), 'red'); return; }
     window.location.href = d.redirect;
   });
-  if (!unsavedStrategy()) { run(); return false; }
+  if (!unsavedStrategy()) { run(); return; }
   saveStrategy().then(ok => { if (ok) run(); else reset(); });
-  return false;
-}
+};
 
 /* ── Storage ─────────────────────────────────────────────────────────────────── */
 function saveToStorage() {
@@ -870,7 +862,7 @@ function showDraftCol(col) {
   saveToStorage();
 }
 
-// Save and Run Draft sit in the page header, or in the bottom dock on phones.
+// Save Strategy sits in the page header, or in the bottom dock on phones.
 const PHONE = window.matchMedia('(max-width: 700px)');
 function placeDraftActions() {
   const dock    = document.getElementById('draft-dock');

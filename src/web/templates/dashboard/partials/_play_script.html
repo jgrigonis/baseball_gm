@@ -1,4 +1,7 @@
-{# src/web/templates/dasboard/parials/_play_script.html #}
+{# src/web/templates/dashboard/partials/_play_script.html
+   The regular season's sims, run from the top bar's next-move button
+   (_next_move.html): Play Day, Until Injury, Full Season, Stop. Included
+   once by the shell. #}
 <script>
 (function() {
 
@@ -20,16 +23,11 @@ function setStatus(msg, color) {
 
 
 function setSimMode(simming) {
-  var btn    = getBtn();
-  var btnInj = document.getElementById('sched-injury-btn');
-  var btnSzn = document.getElementById('sched-season-btn');
-  var ignTr  = document.getElementById('sched-ignore-trades');
-  var stop   = getStop();
-  if (btn)    { btn.disabled    = simming; btn.style.display    = simming ? 'none' : ''; }
-  if (btnInj) { btnInj.disabled = simming; btnInj.style.display = simming ? 'none' : ''; }
-  if (btnSzn) { btnSzn.disabled = simming; btnSzn.style.display = simming ? 'none' : ''; }
-  if (ignTr)  { ignTr.style.display = simming ? 'none' : 'inline-flex'; }
-  if (stop)   { stop.style.display = simming ? 'inline-block' : 'none'; stop.textContent = '■ Stop'; }
+  // The top bar's next-move button turns into Stop while a sim runs.
+  var nm = document.getElementById('next-move');
+  if (nm) nm.classList.toggle('nm-simming', simming);
+  var stop = getStop();
+  if (stop) stop.textContent = '■ Stop';
   // A run that ignores trades is over: offers pop up again.
   if (!simming) window._simIgnoringTrades = false;
 
@@ -70,7 +68,7 @@ window.schedSetIgnoreTrades = schedSetIgnoreTrades;
   if (box) box.checked = schedIgnoreTrades();
 })();
 
-async function schedSim(count) {
+async function schedSimRun(count) {
   window._simStop = false;
   setSimMode(count !== 1);
   // Only multi-day runs ignore trades; a single day stops anyway.
@@ -213,6 +211,21 @@ async function schedSim(count) {
     setStatus('✓ ' + daysSimmed + ' days · ' + totalGames + ' games · ' + remaining + ' remaining');
   } else {
     setStatus('');
+  }
+}
+// The sim owns the next-move button while it runs (refreshNextMove waits),
+// then the button reloads: the league may be at the break or the playoffs.
+async function schedSim(count) {
+  if (window._nmBusy) return;
+  window._nmBusy = true;
+  var nm = document.getElementById('next-move');
+  if (nm) nm.classList.add('nm-busy');
+  try {
+    await schedSimRun(count);
+  } finally {
+    window._nmBusy = false;
+    if (nm) nm.classList.remove('nm-busy');
+    if (window.refreshNextMove) window.refreshNextMove();
   }
 }
 window.schedSim = schedSim;

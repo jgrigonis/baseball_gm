@@ -1,10 +1,10 @@
 {# templates/dashboard/partials/_setup_bar.html
    A new league's getting-started bar along the bottom of every page: the
-   draft, the roster, lineup and strategy to set up, and the welcome screen.
+   roster, lineup and strategy to set up, and the welcome screen. The draft
+   is the top bar's next move.
    It stays until the draft runs or the GM first saves their roster
    (gms.roster_saved_at); the roster page removes it on that save. #}
 <div id="setup-bar" class="setup-bar">
-  <a href="/leagues/{{ league_id }}/draft" class="btn btn-primary">Go to the draft →</a>
   {% for path, label in [("welcome", "Meet your team"), ("roster", "Roster"), ("lineup", "Lineup"), ("strategy", "Strategy")] %}
     <a href="/leagues/{{ league_id }}/{{ path }}" data-path="{{ path }}"
        class="btn btn-secondary{% if active_tab == path or request.url.path.endswith('/' ~ path) %} setup-bar-here{% endif %}">{{ label }}</a>
@@ -15,14 +15,12 @@
 <style>
   .setup-bar { flex-shrink:0; display:flex; gap:10px; align-items:center; flex-wrap:wrap;
                padding:12px 24px; background:var(--bg-2); border-top:1px solid var(--border-hi); }
-  .setup-bar .btn-primary { font-size:15px; padding:10px 22px; }
   .setup-bar-here { border-color:var(--amber); color:var(--amber); }
   .setup-bar-hint { font-family:var(--font-mono); font-size:11px; color:var(--text-dim); }
   /* Phones: one row that slides sideways, so the bar stays short. */
   @media (max-width: 700px) {
     .setup-bar { flex-wrap:nowrap; overflow-x:auto; padding:8px 16px; gap:6px; }
     .setup-bar .btn { flex:none; padding:7px 10px; font-size:11px; }
-    .setup-bar .btn-primary { font-size:12px; padding:7px 12px; }
     .setup-bar-hint { display:none; }
   }
 </style>

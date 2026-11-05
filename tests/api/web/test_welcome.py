@@ -98,7 +98,9 @@ def test_later_seasons_open_on_the_season_preview_once(
     assert "2026 season preview" in html
     assert "The 2026 Denver Beans" in html
     assert "Welcome to the" not in html
-    assert f'href="/leagues/{lg.id}/draft" class="btn btn-primary wl-go"' in html
+    # On to the draft: the top bar's next move.
+    assert f'<a class="btn nm-main" href="/leagues/{lg.id}/draft">' in html
+    assert "Go to the draft →" in html
 
     again = client.get(f"/leagues/{lg.id}/")
     assert again.headers["location"] == f"/leagues/{lg.id}/draft"
