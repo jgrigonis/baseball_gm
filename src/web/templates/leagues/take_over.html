@@ -19,20 +19,22 @@
     </p>
     {% if error %}<div role="alert" class="takeover-note" style="color:var(--red);">{{ error }}</div>{% endif %}
     <div class="card">
-      <div class="card-header"><span class="card-title">Teams you can take over ({{ teams | length }})</span></div>
+      <div class="card-header"><span class="card-title">Teams you can take over ({{ teams | length }})</span>{% if teams | length > 1 %}<span class="takeover-dim" style="margin-left:auto;">Tap Team or Last season to sort</span>{% endif %}</div>
       <div class="card-body table-scroll">
-        <table class="data-table">
-          <thead><tr><th>Team</th><th class="wide-only">AI GM</th><th>Last season</th><th></th></tr></thead>
+        <table class="data-table" data-sortable data-sort-url>
+          <thead><tr><th data-sort="text">Team</th><th class="wide-only">AI GM</th><th data-sort="num" data-sort-first="desc" title="Best record first, tap again for worst">Last season</th><th></th></tr></thead>
           <tbody>
             {% for t in teams %}
             <tr>
-              <td class="team-name">
+              <td class="team-name" data-sort-value="{{ t.city }} {{ t.mascot }}">
                 <span class="takeover-team">{{ team_badge(t.city, t.mascot) }}<span>{{ t.city }} {{ t.mascot }}</span></span>
               </td>
               <td class="wide-only" style="color:var(--text-dim);">
                 {{ t.display_name }}{% if t.archetype %}<div class="takeover-dim">{{ t.archetype }}</div>{% endif %}
               </td>
-              <td style="font-family:var(--font-mono);color:var(--text-dim);">
+              {# Win share, then wins as a tiebreak; no record sorts below every team with one. #}
+              <td style="font-family:var(--font-mono);color:var(--text-dim);"
+                  data-sort-value="{% if t.last_wl and (t.last_wl.w + t.last_wl.l) %}{{ '%.6f' | format(t.last_wl.w / (t.last_wl.w + t.last_wl.l) + t.last_wl.w / 100000) }}{% else %}-1{% endif %}">
                 {% if t.last_wl %}{{ t.last_wl.w }}-{{ t.last_wl.l }}{% else %}—{% endif %}
               </td>
               <td style="text-align:right;">
