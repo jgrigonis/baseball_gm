@@ -7,14 +7,13 @@ limit: a team can go over, and pays a luxury tax on what's over when the
 season ends. Nothing is blocked; the game warns before a move that takes a
 team over.
 
-Until owners exist, every team in a league has the same budget: the league's
-average payroll the first season budgets are needed, then BUDGET_GROWTH more
-each season after. Owners will set their own later, from their nature and
-the team's revenue. Speed Blitz leagues have no budgets
-(src/league/league_modes.py).
+Each team's owner sets its budget, from the revenue its market and fans
+bring in and how freely they spend (src/league/finances.py). The league's
+average budget is the average payroll the first season budgets are needed,
+then BUDGET_GROWTH more each season after. Speed Blitz leagues have no
+budgets (src/league/league_modes.py).
 
-The tax is only a number for now: there's no revenue to take it from. Owners
-will read it.
+The tax comes off the team's profit, which owners read.
 """
 
 from __future__ import annotations

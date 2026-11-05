@@ -1483,6 +1483,12 @@ CREATE TABLE IF NOT EXISTS team_budgets (     -- migration 074 (src/league/budge
     year        INTEGER NOT NULL,
     budget      BIGINT NOT NULL,              -- payroll the owner will pay for this season
     luxury_tax  BIGINT,                       -- tax on payroll over budget, set when the season ends
+    revenue     BIGINT,                       -- regular-season revenue the owner set the budget from (migration 076)
+    playoff_revenue BIGINT,                   -- home playoff gate, set when the season ends
+    payroll     BIGINT,                       -- final payroll, set when the season ends
+    profit      BIGINT,                       -- revenue + gate - payroll - tax - fixed costs
+    fans_before INTEGER,                      -- fan interest coming into the season (0-100)
+    fans_after  INTEGER,                      -- and after it
     PRIMARY KEY (league_id, team_id, year)
 );
 CREATE INDEX IF NOT EXISTS idx_team_budgets_team ON team_budgets(team_id);

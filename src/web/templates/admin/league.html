@@ -141,7 +141,8 @@
     <div class="card-body" style="overflow-x:auto;">
       <table class="data-table">
         <thead><tr><th>Team</th><th>Owner</th><th>Archetype</th><th>Cares most about</th><th>Rival</th>
-          <th class="num">Patience</th><th class="num">Spending</th><th class="num">Judges from</th></tr></thead>
+          <th class="num">Patience</th><th class="num">Spending</th><th class="num">Judges from</th>
+          <th class="num">Fans</th><th class="num">Revenue</th><th class="num">Budget</th><th class="num">Last profit</th></tr></thead>
         <tbody>
           {% for o in owners %}
           <tr>
@@ -153,6 +154,10 @@
             <td class="num">{{ o.patience }}</td>
             <td class="num">{{ o.spending }}</td>
             <td class="num">{{ o.since_year }}</td>
+            <td class="num">{{ o.fans if o.fans is not none else '—' }}</td>
+            <td class="num">{{ o.revenue or '—' }}</td>
+            <td class="num">{{ o.budget or '—' }}</td>
+            <td class="num" {% if o.profit and o.profit.startswith('-') %}style="color:var(--red);"{% endif %}>{{ o.profit or '—' }}</td>
           </tr>
           {% endfor %}
         </tbody>

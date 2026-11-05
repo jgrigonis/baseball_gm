@@ -39,6 +39,7 @@
         <div><span class="ow-name">{{ my_owner.name }}</span>{% if my_owner.archetype %}<span class="ow-arch">{{ my_owner.archetype }}</span>{% endif %}</div>
         {% if my_owner.bio %}<div class="ow-bio">“{{ my_owner.bio }}”</div>{% endif %}
         {% if my_owner.wants %}<div class="ow-line">{{ my_owner.wants }}</div>{% endif %}
+        {% if my_budget %}<div class="ow-line">Your {{ my_budget.year }} payroll budget: <strong>{{ my_budget.text }}</strong>. Your owner sets it from what the team brings in and how freely they spend. Go over and you pay luxury tax on the difference.</div>{% endif %}
         {% if my_owner.rival %}<div class="ow-line">Can't stand losing to the {{ my_owner.rival }}.</div>{% endif %}
         <div class="ow-dim">Your boss. Keep them happy and you keep your job. Judging you from {{ my_owner.since_year }}.</div>
       </div>
