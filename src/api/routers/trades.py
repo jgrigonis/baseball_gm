@@ -23,6 +23,8 @@ from src.api.view_models.player_cards import (
     attach_roster_stats,
     roster_card,
 )
+from src.db.repositories.budget_repo import BudgetRepository
+from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
@@ -32,6 +34,7 @@ from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsReposi
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.trade_repo import TradeRepository
+from src.league import budget as bg
 from src.league import trade_deadline
 from src.league.trades import draft_picks
 from src.team.roster_limits import (
@@ -39,6 +42,7 @@ from src.team.roster_limits import (
     MIN_PLAYING_ROSTER,
     playing_count,
 )
+from src.player.contracts import format_salary
 from src.web.utils import _shell_ctx, tab_response
 
 router = APIRouter(tags=["web"])
@@ -60,7 +64,47 @@ def team_cards(db, league_id: str, season_id: str | None, team_id: str) -> list[
     attach_injuries(
         cards, inj.get_team_injuries(team_id), inj.get_team_injury_types(team_id)
     )
-    return [c for c in cards if c["roster_status"] in trades.TRADEABLE]
+    cards = [c for c in cards if c["roster_status"] in trades.TRADEABLE]
+    attach_pay(db, league_id, cards)
+    return cards
+
+
+def attach_pay(db, league_id: str, cards: list[dict]) -> None:
+    """Each player's salary this season, and `pay`: what he adds to a
+    payroll (only a guaranteed deal counts), for the budget warnings."""
+    contracts = ContractRepository(db)
+    year = contracts.current_year(league_id)
+    deals = (
+        contracts.active_for([c["player_id"] for c in cards], year)
+        if year is not None
+        else {}
+    )
+    for c in cards:
+        deal = deals.get(c["player_id"])
+        c["salary_text"] = format_salary(deal["salary"]) if deal else None
+        c["pay"] = deal["salary"] if deal and deal["guaranteed"] else 0
+
+
+def offer_pay_change(db, league_id: str, offer: dict) -> int:
+    """How much the offer adds to the receiving team's payroll: the
+    guaranteed salaries it gets, less the ones it gives up."""
+    ids = [
+        i["player_id"] for i in offer["sent"] + offer["received"] if i.get("player_id")
+    ]
+    contracts = ContractRepository(db)
+    year = contracts.current_year(league_id)
+    if year is None:
+        return 0
+    deals = contracts.active_for(ids, year)
+
+    def pay(items):
+        return sum(
+            deals[i["player_id"]]["salary"]
+            for i in items
+            if i.get("player_id") in deals and deals[i["player_id"]]["guaranteed"]
+        )
+
+    return pay(offer["sent"]) - pay(offer["received"])
 
 
 @router.get("/leagues/{league_id}/trades", response_class=HTMLResponse)
@@ -93,6 +137,21 @@ def trades_tab(
     )
 
     trade_repo = TradeRepository(db)
+    # Payroll against budget, for the warnings (src/league/budget.py).
+    year = ContractRepository(db).current_year(league_id)
+    standing = (
+        BudgetRepository(db).standing(league_id, team_id, year)
+        if team_id and year is not None
+        else None
+    )
+    offers_to_me = trade_repo.offers_to_team(league_id, team_id) if team_id else []
+    if standing:
+        for o in offers_to_me:
+            o["budget_warning"] = bg.warning(
+                standing["payroll"],
+                standing["budget"],
+                offer_pay_change(db, league_id, o),
+            )
     ctx.update(
         {
             # AI teams' GMs, for their names and persona cards.
@@ -111,9 +170,8 @@ def trades_tab(
             "my_offers": trade_repo.offers_for_team(league_id, team_id)
             if team_id
             else [],
-            "offers_to_me": trade_repo.offers_to_team(league_id, team_id)
-            if team_id
-            else [],
+            "offers_to_me": offers_to_me,
+            "budget": standing,
             "my_votes": trade_repo.votes_for_gm(league_id, gm["id"])
             if gm.get("id")
             else [],

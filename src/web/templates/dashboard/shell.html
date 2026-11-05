@@ -101,7 +101,7 @@ async function postJson(url) {
   return body;
 }
 // An in-page confirm, in place of the browser's own dialog. Resolves true
-// when the GM presses the action button. opts: {title, lines: [text],
+// when the GM presses the action button. opts: {title, lines: [text], warn: a red warning line,
 // ok: button label, tone: 'danger' | 'go', cancel: label or null for an
 // alert with one button}. Text is escaped.
 function _esc(t) {
@@ -115,6 +115,7 @@ window.gmConfirm = function(opts) {
       <div class="gm-modal" role="dialog" aria-modal="true" aria-labelledby="gm-modal-title">
         <div class="gm-modal-title" id="gm-modal-title">${_esc(opts.title)}</div>
         ${(opts.lines || []).map(l => `<p class="gm-modal-line">${_esc(l)}</p>`).join('')}
+    ${opts.warn ? `<p class="gm-modal-line gm-modal-warn">${_esc(opts.warn)}</p>` : ''}
         <div class="gm-modal-btns">
           ${opts.cancel === null ? '' : `<button type="button" class="btn btn-secondary" data-ans="0">${_esc(opts.cancel || 'Cancel')}</button>`}
           <button type="button" class="btn btn-secondary gm-modal-ok ${opts.tone || ''}" data-ans="1">${_esc(opts.ok || 'OK')}</button>
@@ -166,14 +167,23 @@ window.releasePlayer = async function(pid, name) {
   reloadTab();
 };
 window.signFreeAgent = async function(pid, name, salary, years) {
+  const url = `/leagues/{{ league_id }}/free-agents/${pid}/sign`;
+  let ask;
+  try {
+    const r = await fetch(url);
+    ask = await r.json();
+    if (!r.ok) throw new Error(ask.detail || 'Something went wrong.');
+  } catch (e) { gmAlert(e.message); return; }
+  salary = ask.salary_text; years = ask.years;
   const term = `${salary} a season for ${years} season${years === 1 ? '' : 's'}`;
   const ok = await gmConfirm({
     title: `Sign ${name}?`,
     lines: [`${term}, guaranteed.`, 'He joins your organization (minors).'],
+    warn: ask.warning,
     ok: 'Sign', tone: 'go',
   });
   if (!ok) return;
-  try { await postJson(`/leagues/{{ league_id }}/free-agents/${pid}/sign`); }
+  try { await postJson(url); }
   catch (e) { gmAlert(e.message); return; }
   closePlayerPanel();
   reloadTab();

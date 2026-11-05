@@ -29,6 +29,9 @@ class LeagueMode:
     # Blitz-style leagues run a preference-list draft and play off the 40-man
     # roster; long form drafts interactively and plays off the 26-man.
     blitz_style: bool = False
+    # Whether teams have a budget, with a luxury tax on payroll over it
+    # (src/league/budget.py). Speed Blitz is too short for one to matter.
+    budgets: bool = True
 
 
 BLITZ = LeagueMode(
@@ -62,6 +65,7 @@ SPEED_BLITZ = LeagueMode(
     injuries_default=False,
     trades_enabled=False,
     blitz_style=True,
+    budgets=False,
 )
 
 LONGFORM = LeagueMode(

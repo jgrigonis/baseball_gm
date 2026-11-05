@@ -3,6 +3,7 @@
   one's asking price. A GM signs one at that price; the rows match the
   Roster and Lineup tabs (grades.js).
 #}
+{% from "dashboard/partials/_budget.html" import payroll_line %}
 <div class="tab-head">
   <div class="page-header" style="margin-bottom:0;">
     <h1 class="page-title">Free Agents</h1>
@@ -12,8 +13,7 @@
     {% if can_sign and payroll_text %}
     <span class="page-subtitle" style="margin-left:12px;" id="fa-minors"
           title="Signed players join your minors, which hold {{ minors_limit }}">Minors {{ minors_count }}/{{ minors_limit }}</span>
-    <span class="page-subtitle" style="margin-left:12px;"
-          title="Guaranteed salaries this season, plus dead money for players you released">Payroll {{ payroll_text }}</span>
+    {{ payroll_line(budget, payroll_text) }}
     {% endif %}
   </div>
   {% if players %}

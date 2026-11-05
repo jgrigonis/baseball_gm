@@ -1476,6 +1476,16 @@ CREATE TABLE IF NOT EXISTS player_contracts (
 );
 CREATE INDEX IF NOT EXISTS idx_player_contracts_league ON player_contracts(league_id);
 CREATE INDEX IF NOT EXISTS idx_player_contracts_team ON player_contracts(team_id);
+
+CREATE TABLE IF NOT EXISTS team_budgets (     -- migration 074 (src/league/budget.py)
+    league_id   TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    team_id     TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    year        INTEGER NOT NULL,
+    budget      BIGINT NOT NULL,              -- payroll the owner will pay for this season
+    luxury_tax  BIGINT,                       -- tax on payroll over budget, set when the season ends
+    PRIMARY KEY (league_id, team_id, year)
+);
+CREATE INDEX IF NOT EXISTS idx_team_budgets_team ON team_budgets(team_id);
 CREATE INDEX IF NOT EXISTS idx_player_moods_league ON player_moods(league_id, season_id);
 CREATE INDEX IF NOT EXISTS idx_player_moods_season ON player_moods(season_id);
 CREATE INDEX IF NOT EXISTS idx_player_moods_team ON player_moods(team_id);
