@@ -957,10 +957,12 @@ def test_the_sim_weekend_button_once_my_picks_are_in(client, lg):
     url = f"/leagues/{lg.league.id}/allstar"
     html = client.get(url).text
     assert "★ All-Star Weekend" in html
-    assert "picks aren't all in yet" in html and "as-weekend-btn" not in html
+    assert "picks aren't all in yet" in html and "Sim All-Star Weekend" not in html
     all_star.auto_draft(lg.db, lg.league.id, lg.season.id, lg.mine.id)
     html = client.get(url).text
-    assert "The teams are set." in html and "▶ Sim All-Star Weekend" in html
+    # The top bar's next move is the weekend, on every page.
+    assert "The teams are set." in html and "★ Sim All-Star Weekend" in html
+    assert "★ Sim All-Star Weekend" in client.get(f"/leagues/{lg.league.id}/roster").text
     assert f"The season picks up again on {AFTER[0]}" in html
 
 
@@ -970,7 +972,7 @@ def test_no_sim_weekend_button_in_a_multiplayer_league(client, lg):
     _multiplayer(lg)
     html = client.get(f"/leagues/{lg.league.id}/allstar").text
     assert "played when the league plays its next day" in html
-    assert "▶ Sim All-Star Weekend" not in html
+    assert "Sim All-Star Weekend" not in html
 
 
 def test_the_weekend_results_up_top_after_the_sim(client, lg):
@@ -981,6 +983,6 @@ def test_the_weekend_results_up_top_after_the_sim(client, lg):
     assert "All-Star Weekend is in the books" in html
     assert 'href="#as-asg"' in html and 'id="as-asg"' in html
     assert "MVP" in html and "Back to the Schedule" in html
-    assert "▶ Sim All-Star Weekend" not in html
+    assert "Sim All-Star Weekend" not in html
     # Just the tab, later on: no banner.
     assert "in the books" not in client.get(url).text

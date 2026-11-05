@@ -42,7 +42,7 @@ from src.league.league_constants import (
     UNLIMITED_SEASONS,
 )
 from src.league.league_modes import BLITZ, DEFAULT_MODE, SPEED_BLITZ, get_mode
-from src.web.utils import _shell_ctx, tab_response, templates
+from src.web.utils import _shell_ctx, render, tab_response, templates
 
 router = APIRouter(tags=["web"])
 
@@ -667,6 +667,22 @@ def league_page(
             league_id, besides_gm_id=gm["id"]
         )
     return tab_response(request, htmx, "dashboard/partials/league_info.html", ctx)
+
+
+@router.get("/leagues/{league_id}/next-move", response_class=HTMLResponse)
+def next_move_button(
+    request: Request,
+    league_id: str,
+    db: DB,
+    user: User,
+    gm: GMOrViewer,
+    page: str = "",
+):
+    """The top bar's next-move button for the page the GM is on, which the
+    shell reloads after each tab swap and sim (the league may have moved on,
+    or the page changed from go-to to do-it)."""
+    ctx = _shell_ctx(request, db, gm, league_id, user=user, page=page)
+    return render("dashboard/partials/_next_move.html", ctx)
 
 
 @router.get("/leagues/{league_id}/welcome", response_class=HTMLResponse)

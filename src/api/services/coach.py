@@ -77,7 +77,7 @@ STEPS = (
     (
         "draft",
         "Run the draft",
-        "Press Run Draft. Each of your picks goes to your highest pinned "
+        "Press Run Draft at the top of the page. Each of your picks goes to your highest pinned "
         "player still there, else the best prospect for your needs. The AI "
         "picks for the other teams.",
         "draft",
@@ -108,8 +108,9 @@ STEPS = (
     (
         "play",
         "Play some games",
-        "Use the play buttons on Standings or Schedule tab. Play Day plays one "
-        "day and Full Season plays to the end.",
+        "The button at the top of every page is always your next move. Play "
+        "Day plays one day, and its ▾ menu has Full Season, which plays to "
+        "the end.",
         "standings",
     ),
     (
@@ -140,7 +141,7 @@ STEPS = (
     (
         "allstar_break",
         "Play through the All-Star break",
-        "Press play to go through the break. Day 1 has the Rookie Game, day 2 "
+        "Press ★ Sim All-Star Weekend at the top to go through the break. Day 1 has the Rookie Game, day 2 "
         "the Home Run Derby, where the top home run hitters meet in a bracket "
         f"and each swings until {hr_derby.OUTS_PER_ROUND} outs, and day 3 the "
         "All-Star Game, where no pitcher goes more than "
@@ -158,15 +159,15 @@ STEPS = (
     (
         "playoffs",
         "Play the playoffs",
-        "The Playoffs tab has the bracket. Sim through it to crown a champion, "
-        "even if your team is out.",
+        "The Playoffs tab has the bracket. Sim through it with the button at "
+        "the top to crown a champion, even if your team is out.",
         "playoffs",
     ),
     (
         "offseason",
         "Get through the offseason",
         "The season summary has the awards and final standings. Press Begin "
-        "Offseason: players age, some retire, and the next season's draft "
+        "Offseason at the top: players age, some retire, and the next season's draft "
         "opens. That's the whole cycle.",
         None,
     ),
@@ -280,7 +281,7 @@ def coach_steps(db, league: dict) -> list[dict]:
         elif key == "allstar_draft" and week["captain"]:
             text += CAPTAIN_TEXT
         elif key == "allstar_break" and week["phase"] != "played":
-            tab = "standings"  # Where the play buttons are.
+            tab = None  # The top bar's button plays it, on any page.
         steps.append(
             {
                 "key": key,

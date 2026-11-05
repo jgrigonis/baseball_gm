@@ -17,22 +17,7 @@
     </a>
     {% endif %}
     <div style="margin-left:auto;display:flex;flex-wrap:wrap;align-items:center;gap:8px;">
-      {% if not champion and not multiplayer and not past_season and not is_viewer %}
-      <button id="po-day-btn" onclick="simPlayoffs('game')"
-              class="btn btn-primary">
-        ▶ Sim Day
-      </button>
-      <button id="po-round-btn" onclick="simPlayoffs('round')"
-              class="btn btn-secondary"
-              style="font-size:11px;padding:5px 10px;">
-        ▶ Sim Round
-      </button>
-      <button id="po-all-btn" onclick="simPlayoffs('all')"
-              class="btn btn-secondary"
-              style="font-size:11px;padding:5px 10px;">
-        ▶▶ Full Playoffs
-      </button>
-      {% endif %}
+      {# Sim Day, Sim Round and Full Playoffs are the top bar's next move. #}
       <span id="po-feedback" style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);"></span>
     </div>
   </div>
@@ -216,13 +201,10 @@
 (function(){
 var LEAGUE_ID = "{{ league_id }}";
 
+// The sim buttons are the top bar's next move (_next_move.html).
 function _poSetDisabled(disabled) {
-  ['po-day-btn','po-round-btn','po-all-btn'].forEach(function(id) {
-    var b = document.getElementById(id);
-    if (b) b.disabled = disabled;
-  });
-  var dayBtn = document.getElementById('po-day-btn');
-  if (dayBtn) dayBtn.textContent = disabled ? 'Simming…' : '▶ Sim Day';
+  if (disabled) window.nextMoveBusy('po-day-btn', 'Simming…');
+  else window.nextMoveIdle('po-day-btn');
 }
 
 function simPlayoffs(mode) {

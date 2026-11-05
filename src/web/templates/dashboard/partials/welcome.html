@@ -59,7 +59,6 @@
   .wl-big { font-family:var(--font-display); font-size:40px; line-height:1; color:var(--amber); }
   .wl-link { color:var(--text); cursor:pointer; text-decoration:underline dotted; text-underline-offset:3px; }
   .wl-sub { font-family:var(--font-mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-dim); margin:10px 0 2px; }
-  .wl-go { margin-left:auto; font-size:15px; padding:10px 22px; }
   .wl-move { display:flex; align-items:baseline; gap:8px; padding:5px 0; font-size:13px; }
   .wl-move .wl-meta { margin-left:auto; white-space:nowrap; }
   .wl-up { color:var(--green); }
@@ -69,7 +68,6 @@
     .wl-hero { padding:20px 16px; }
     .wl-title { font-size:32px; }
     .wl-body { padding:16px; grid-template-columns:1fr; }
-    .wl-hero .wl-go { margin-left:0; flex:1 1 100%; justify-content:center; text-align:center; font-size:13px; }
   }
 </style>
 
@@ -86,9 +84,6 @@
       {% endif %}
       <div class="wl-tagline">{{ c.tagline }}</div>
     </div>
-    {% if not w.draft_done and not setup_bar %}
-    <a href="/leagues/{{ league_id }}/draft" class="btn btn-primary wl-go">Go to the draft →</a>
-    {% endif %}
   </div>
 </section>
 

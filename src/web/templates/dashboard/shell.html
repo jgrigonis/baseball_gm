@@ -4,18 +4,6 @@
 {% block early_scripts %}
 <script>
 var LEAGUE_ID = "{{ league_id }}";
-// Play dropdown
-var _dropdownOpen = false;
-function togglePlayDropdown() {
-  const dd = document.getElementById('play-dropdown');
-  if (!dd) return;
-  const showing = dd.style.display === 'block';
-  dd.style.display = showing ? 'none' : 'block';
-}
-function closePlayDropdown() {
-  const dd = document.getElementById('play-dropdown');
-  if (dd) dd.style.display = 'none';
-}
 // Player panel functions — defined early so partials can call them
 // Players waiting to be compared with the next one clicked: [{id, side}],
 // side being 'give' / 'get' when they came from a trade offer.
@@ -252,58 +240,6 @@ function addBackdrop() {
   document.body.appendChild(bd);
 }
 function removeBackdrop() { const b = document.getElementById('panel-backdrop'); if(b) b.remove(); }
-
-async function simGames(count) {
-  closePlayDropdown();
-  const btn = document.getElementById('play-btn');
-  const fb  = document.getElementById('sim-feedback');
-  if (btn) { btn.classList.add('disabled'); btn.textContent = '⏳ Simming…'; }
-  if (fb)  { fb.style.display = 'inline'; fb.textContent = ''; }
-
-  try {
-    const d = await runLeagueJob(`/leagues/${LEAGUE_ID}/sim`, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({count}),
-    });
-    if (!d.failed) {
-      // The sim stopped for All-Star voting, the All-Stars or the game.
-      // After the All-Star weekend, its results are up top.
-      if (d.all_star_voting || d.all_stars || d.all_star_game) {
-        window.location.href = `/leagues/${LEAGUE_ID}/allstar` + (d.all_star_game ? '?weekend=1' : '');
-        return;
-      }
-      const msg = `✓ ${d.games_played} game${d.games_played!==1?'s':''} · ${d.games_remaining} remaining`;
-      if (fb) { fb.textContent = msg; fb.style.display = 'inline'; }
-      setTimeout(() => { if(fb) fb.style.display = 'none'; }, 8000);
-      // Refresh current tab content — send HX-Request so server returns partial only
-      const activeLink = document.querySelector('.tab-link.active');
-      if (activeLink) {
-        const url = activeLink.getAttribute('hx-get') || activeLink.getAttribute('href');
-        fetch(url, {headers: {'HX-Request': 'true'}})
-          .then(r => r.text())
-          .then(html => {
-            const tc = document.getElementById('tab-content');
-            if (tc) tc.innerHTML = html;
-          })
-          .catch(() => {});
-      }
-      // Update greyed-out options
-      const r = d.games_remaining;
-      const o3  = document.getElementById('play-opt-3');
-      const o10 = document.getElementById('play-opt-10');
-      if (o3)  o3.disabled  = r <= 3;
-      if (o10) o10.disabled = r <= 10;
-    } else {
-      if (fb) { fb.textContent = '✗ ' + (d.detail || 'Sim failed'); fb.style.color = 'var(--red)'; fb.style.display = 'inline'; }
-    }
-  } catch(err) {
-    if (fb) { fb.textContent = '✗ Error'; fb.style.display = 'inline'; }
-    console.error(err);
-  } finally {
-    if (btn) { btn.classList.remove('disabled'); btn.textContent = '▶ Play'; }
-  }
-}
 
 // Reload the open tab after the league has moved on without this page, e.g.
 // a ready-check period or another GM's sim. Swap through htmx so the tab's
@@ -551,11 +487,6 @@ function setActiveTab(el) {
   el.classList.add('active');
   var sb = document.getElementById('sim-status');
   if (sb) sb.style.display = 'none';
-  // Hide play button on roster and lineup tabs
-  const tab = el.getAttribute('hx-get') || el.getAttribute('href') || '';
-  const hideOn = ['/roster', '/lineup'];
-  const wrap = document.querySelector('.play-btn-wrap');
-  if (wrap) wrap.style.display = hideOn.some(t => tab.endsWith(t)) ? 'none' : 'flex';
 }
 // A link inside a tab (a team in a news story, say) can open another tab's
 // page: highlight that tab. Pages no tab owns (a GM's profile) keep the
@@ -747,34 +678,85 @@ function injuryNewsClick(ev) {
 }
 window.injuryNewsClick = injuryNewsClick;
 
-// ── Play button ────────────────────────────────────────────────────────────────
-
+// ── Next-move button (top bar, _next_move.html) ───────────────────────────────
+// Do the move: call the page's function named by data-fn with data-arg (a
+// number when it's all digits, so schedSim(1) is a single day).
+window.nextMoveAct = function(el) {
+  var more = el.closest('details');
+  if (more) more.open = false;
+  var fn = window[el.dataset.fn];
+  // The page's script isn't there (e.g. the page changed under the button):
+  // reload, which brings the right button.
+  if (typeof fn !== 'function') { window.location.reload(); return; }
+  var arg = el.dataset.arg || '';
+  if (arg === '') fn(); else fn(/^\d+$/.test(arg) ? Number(arg) : arg);
+};
+// A move that runs a while shows it on its button: busy, then back.
+window.nextMoveBusy = function(id, text) {
+  var b = document.getElementById(id);
+  if (!b) return;
+  if (b.dataset.idle === undefined) b.dataset.idle = b.innerHTML;
+  b.disabled = true;
+  b.textContent = text;
+  var caret = document.querySelector('#next-move .nm-caret');
+  if (caret) caret.style.pointerEvents = 'none';
+};
+window.nextMoveIdle = function(id) {
+  var b = document.getElementById(id);
+  if (!b) return;
+  if (b.dataset.idle !== undefined) { b.innerHTML = b.dataset.idle; delete b.dataset.idle; }
+  b.disabled = false;
+  var caret = document.querySelector('#next-move .nm-caret');
+  if (caret) caret.style.pointerEvents = '';
+};
+// A line in the status strip under the tabs.
+window.nextMoveStatus = function(msg, color) {
+  var bar = document.getElementById('sim-status');
+  var text = document.getElementById('sim-status-text');
+  if (!bar || !text) return;
+  if (!msg) { bar.style.display = 'none'; return; }
+  text.textContent = msg;
+  text.style.color = color === 'red' ? 'var(--red)' : '';
+  bar.style.setProperty('display', 'flex', 'important');
+};
+// Reload the button for the page now showing: the league may have moved on
+// (the champion is crowned), or a tab swap changed go-to into do-it. Not
+// while a sim runs, which owns the button (Stop).
+window.refreshNextMove = function(path) {
+  if (window._nmBusy || !document.getElementById('next-move')) return;
+  var page = (path || location.pathname).split('?')[0].replace(/\/$/, '').split('/').pop();
+  fetch('/leagues/' + LEAGUE_ID + '/next-move?page=' + encodeURIComponent(page))
+    .then(function(r) { return r.ok && !r.redirected ? r.text() : null; })
+    .then(function(html) {
+      var cur = document.getElementById('next-move');
+      if (!html || !cur || window._nmBusy) return;
+      var box = document.createElement('div');
+      box.innerHTML = html.trim();
+      var fresh = box.querySelector('#next-move');
+      if (!fresh || fresh.dataset.sig === cur.dataset.sig) return;
+      cur.replaceWith(fresh);
+      var tr = document.getElementById('sched-ignore-trades-box');
+      if (tr && window.schedIgnoreTrades) tr.checked = window.schedIgnoreTrades();
+    })
+    .catch(function() {});
+};
+document.body.addEventListener('htmx:afterSettle', function(e) {
+  var t = e.detail && e.detail.target;
+  if (!t || t.id !== 'tab-content') return;
+  var info = e.detail.pathInfo || {};
+  window.refreshNextMove(info.requestPath || info.finalRequestPath);
+});
+document.body.addEventListener('htmx:historyRestore', function() { window.refreshNextMove(); });
+// The ▾ menu closes on a click outside it, or Escape.
+document.addEventListener('click', function(e) {
+  document.querySelectorAll('#next-move details[open]').forEach(function(d) {
+    if (!d.contains(e.target)) d.open = false;
+  });
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key !== 'Escape') return;
+  document.querySelectorAll('#next-move details[open]').forEach(function(d) { d.open = false; });
+});
 </script>
-
-<style>
-.play-btn-wrap { position: relative; display: flex; align-items: center; }
-.play-btn {
-  background: var(--green-dim); border: 1px solid var(--green-mid);
-  color: var(--green); font-family: var(--font-mono); font-size: 12px;
-  font-weight: 600; padding: 5px 14px; cursor: pointer; letter-spacing: .04em;
-  transition: background .1s; white-space: nowrap; user-select: none;
-  display: flex; align-items: center;
-}
-.play-btn:hover { background: #1e4a28; }
-.play-btn.disabled { opacity: .5; cursor: not-allowed; pointer-events: none; }
-.play-dropdown {
-  position: absolute; top: calc(100% + 4px); right: 0;
-  background: var(--bg-2); border: 1px solid var(--border);
-  min-width: 180px; z-index: 100; box-shadow: 0 4px 16px rgba(0,0,0,.4);
-}
-.play-opt {
-  display: block; width: 100%; background: none; border: none;
-  border-bottom: 1px solid var(--border); color: var(--text);
-  font-family: var(--font-mono); font-size: 12px; padding: 9px 14px;
-  text-align: left; cursor: pointer; transition: background .08s;
-}
-.play-opt:last-child { border-bottom: none; }
-.play-opt:hover:not(:disabled) { background: var(--bg-3); color: var(--green); }
-.play-opt:disabled { color: var(--muted); cursor: not-allowed; }
-</style>
+{% if league_id and team_id and not multiplayer and not is_viewer %}{% include "dashboard/partials/_play_script.html" %}{% endif %}
 {% endblock %}

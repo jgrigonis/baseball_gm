@@ -97,11 +97,6 @@
     {% if games_played %}
     <span class="page-subtitle">{{ games_played }} league games played</span>
     {% endif %}
-    {% if not is_viewer %}
-    <div style="margin-left:auto;">
-      {% include "dashboard/partials/_play_button.html" %}
-    </div>
-    {% endif %}
     {% endif %}
   </div>
 </div>
@@ -264,4 +259,3 @@
 .team-state-rebuilding, .team-state-aging-out { color: var(--amber); }
 </style>
 
-{% include "dashboard/partials/_play_script.html" %}
