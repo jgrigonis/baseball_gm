@@ -134,6 +134,33 @@
     </div>
   </div>
 
+  {% if owners %}
+  <div class="card admin-section">
+    <div class="card-header"><span class="card-title">Owners</span>
+      <span class="admin-dim" style="font-size:11px;margin-left:8px;">GMs see the name and archetype, not the rest.</span></div>
+    <div class="card-body" style="overflow-x:auto;">
+      <table class="data-table">
+        <thead><tr><th>Team</th><th>Owner</th><th>Archetype</th><th>Cares most about</th><th>Rival</th>
+          <th class="num">Patience</th><th class="num">Spending</th><th class="num">Judges from</th></tr></thead>
+        <tbody>
+          {% for o in owners %}
+          <tr>
+            <td class="team-name">{{ o.team }}</td>
+            <td><a href="/admin/owners/{{ o.owner_id }}">{{ o.name }}</a></td>
+            <td class="admin-dim">{{ o.archetype or '—' }}</td>
+            <td class="admin-dim">{{ o.top | map(attribute='label') | join(', ') }}</td>
+            <td class="admin-dim">{{ o.rival or '—' }}</td>
+            <td class="num">{{ o.patience }}</td>
+            <td class="num">{{ o.spending }}</td>
+            <td class="num">{{ o.since_year }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
 </div></div>
 <script src="{{ static_url('js/sliders.js') }}"></script>
 {% endblock %}

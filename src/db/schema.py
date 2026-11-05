@@ -1486,6 +1486,32 @@ CREATE TABLE IF NOT EXISTS team_budgets (     -- migration 074 (src/league/budge
     PRIMARY KEY (league_id, team_id, year)
 );
 CREATE INDEX IF NOT EXISTS idx_team_budgets_team ON team_budgets(team_id);
+-- owner_personas: the site-wide library of team owners (src/league/owners.py).
+--   Never edited once created, except chance. Seeded by migration 075.
+CREATE TABLE IF NOT EXISTS owner_personas (
+    id         TEXT PRIMARY KEY,
+    name       TEXT NOT NULL UNIQUE,
+    bio        TEXT NOT NULL DEFAULT '',
+    archetype  TEXT NOT NULL DEFAULT '',
+    weights    JSONB NOT NULL,              -- what they judge a GM by, 0-100 each
+    traits     JSONB NOT NULL,              -- patience, ambition, spending...
+    chance     INTEGER NOT NULL DEFAULT 50 CHECK (chance BETWEEN 0 AND 100),
+    created_at TEXT NOT NULL DEFAULT (NOW()),
+    updated_at TEXT NOT NULL DEFAULT (NOW())
+);
+-- team_owners: each team's owner in a league (src/api/services/owners.py).
+CREATE TABLE IF NOT EXISTS team_owners (
+    league_id     TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    team_id       TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    owner_id      TEXT NOT NULL REFERENCES owner_personas(id),
+    rival_team_id TEXT REFERENCES teams(id) ON DELETE SET NULL,
+    since_year    INTEGER NOT NULL,         -- the first season they judge
+    created_at    TEXT NOT NULL DEFAULT (NOW()),
+    PRIMARY KEY (league_id, team_id)
+);
+CREATE INDEX IF NOT EXISTS idx_team_owners_owner ON team_owners(owner_id);
+CREATE INDEX IF NOT EXISTS idx_team_owners_team ON team_owners(team_id);
+CREATE INDEX IF NOT EXISTS idx_team_owners_rival ON team_owners(rival_team_id);
 CREATE INDEX IF NOT EXISTS idx_player_moods_league ON player_moods(league_id, season_id);
 CREATE INDEX IF NOT EXISTS idx_player_moods_season ON player_moods(season_id);
 CREATE INDEX IF NOT EXISTS idx_player_moods_team ON player_moods(team_id);

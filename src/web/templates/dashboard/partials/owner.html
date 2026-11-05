@@ -1,0 +1,78 @@
+{# templates/dashboard/partials/owner.html
+  The Owner tab (routers/owners.py): the GM's owner, every team's owner in
+  the league, and what each kind of owner wants. Never a number: those are
+  admin-only (plans/owners.md).
+#}
+<style>
+  .ow-card { display:flex; gap:16px; align-items:flex-start; }
+  .ow-hat { font-size:34px; line-height:1; }
+  .ow-name { font-size:18px; font-weight:700; color:var(--text); }
+  .ow-arch { display:inline-block; margin-left:8px; padding:2px 8px; border-radius:10px;
+             font-family:var(--font-mono); font-size:11px; color:var(--amber);
+             border:1px solid var(--amber); vertical-align:middle; }
+  .ow-bio { font-style:italic; color:var(--text-dim); margin:6px 0 10px; }
+  .ow-line { font-size:13px; color:var(--text); line-height:1.6; }
+  .ow-dim { font-family:var(--font-mono); font-size:11px; color:var(--muted); margin-top:8px; }
+  .ow-table tr.ow-mine td { color:var(--amber); }
+  .ow-guide { font-size:12px; line-height:1.8; color:var(--text-dim); }
+  .ow-guide strong { color:var(--text); }
+  @media (max-width: 640px) {
+    .ow-card { gap:10px; }
+    .ow-hat { font-size:26px; }
+    .ow-arch { display:table; margin:6px 0 0; }
+    .ow-table .ow-arch-col { white-space:normal; }
+  }
+</style>
+
+<div class="tab-head">
+  <div class="page-header" style="margin-bottom:0;">
+    <h1 class="page-title">{% if my_owner %}Your Owner{% else %}Owners{% endif %}</h1>
+  </div>
+</div>
+
+{% if my_owner %}
+<div class="card" style="margin-bottom:16px;">
+  <div class="card-body">
+    <div class="ow-card">
+      <div class="ow-hat" aria-hidden="true">🎩</div>
+      <div>
+        <div><span class="ow-name">{{ my_owner.name }}</span>{% if my_owner.archetype %}<span class="ow-arch">{{ my_owner.archetype }}</span>{% endif %}</div>
+        {% if my_owner.bio %}<div class="ow-bio">“{{ my_owner.bio }}”</div>{% endif %}
+        {% if my_owner.wants %}<div class="ow-line">{{ my_owner.wants }}</div>{% endif %}
+        {% if my_owner.rival %}<div class="ow-line">Can't stand losing to the {{ my_owner.rival }}.</div>{% endif %}
+        <div class="ow-dim">Your boss. Keep them happy and you keep your job. Judging you from {{ my_owner.since_year }}.</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if owners %}
+<div class="card" style="margin-bottom:16px;">
+  <div class="card-header"><span class="card-title">Owners around the league</span></div>
+  <div class="card-body" style="overflow-x:auto;">
+    <table class="data-table ow-table">
+      <thead><tr><th>Team</th><th>Owner</th><th>Kind</th></tr></thead>
+      <tbody>
+        {% for o in owners %}
+        <tr {% if o.team_id == my_team_id %}class="ow-mine"{% endif %}>
+          <td class="team-name">{{ o.team }}</td>
+          <td>{{ o.name }}</td>
+          <td class="ow-arch-col admin-dim">{{ o.archetype or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="card"><div class="card-body admin-dim">Owners take their seats when the league starts.</div></div>
+{% endif %}
+
+<div class="card">
+  <div class="card-header"><span class="card-title">What owners want</span></div>
+  <div class="card-body ow-guide">
+    {% for a in archetypes %}<div><strong>{{ a.name }}</strong> · {{ a.wants }}</div>{% endfor %}
+    <div style="margin-top:8px;color:var(--muted);">Every owner is their own person, so two of the same kind won't want exactly the same things.</div>
+  </div>
+</div>

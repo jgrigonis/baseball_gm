@@ -902,3 +902,91 @@ class TestPersonas:
         r = client.post(f"/admin/personas/{p['id']}/delete")
         assert r.status_code == 303
         assert self._get(db_conn, name) is None
+
+
+class TestOwners:
+    def _create(self, client, name, **extra):
+        data = {
+            "name": name,
+            "bio": "Wants a winner.",
+            "archetype": "The Tycoon",
+            "chance": "70",
+            "w_postseason": "95",
+            "t_spending": "90",
+        } | extra
+        return client.post("/admin/owners", data=data)
+
+    def _get(self, db, name):
+        row = db.execute(
+            "SELECT * FROM owner_personas WHERE name = %s", (name,)
+        ).fetchone()
+        return dict(row) if row else None
+
+    def test_list_shows_the_library(self, client, admin):
+        r = client.get("/admin/owners")
+        assert r.status_code == 200
+        assert "Team Owners" in r.text
+        assert "The Penny-Pincher" in r.text
+        assert "Create an Owner" in r.text
+
+    def test_create_and_see_the_numbers(self, client, db_conn, admin):
+        name = _name("Owner")
+        r = self._create(client, name)
+        o = self._get(db_conn, name)
+        assert r.headers["location"] == f"/admin/owners/{o['id']}?done=owner_created"
+        assert o["weights"]["postseason"] == 95
+        assert o["weights"]["profit"] == 50  # not on the form: middle
+        assert o["traits"]["spending"] == 90
+        page = client.get(f"/admin/owners/{o['id']}").text
+        assert name in page and ">95<" in page and "Spending" in page
+
+    def test_create_checks_the_form(self, client, db_conn, admin):
+        name = _name("Owner")
+        assert self._create(client, name).status_code == 303
+        r = self._create(client, name)
+        assert r.status_code == 400 and "already an owner" in r.text
+        zero = {
+            f"w_{k}": "0"
+            for k in (
+                "wins",
+                "postseason",
+                "profit",
+                "budget",
+                "attendance",
+                "fans",
+                "future",
+                "homegrown",
+                "stars",
+                "icons",
+                "stability",
+                "rivalry",
+            )
+        }
+        r = self._create(client, _name("Owner"), **zero)
+        assert r.status_code == 400 and "care about something" in r.text
+
+    def test_only_chance_changes_and_delete_while_unused(
+        self, client, db_conn, factory, admin
+    ):
+        name = _name("Owner")
+        self._create(client, name)
+        o = self._get(db_conn, name)
+        assert (
+            client.post(
+                f"/admin/owners/{o['id']}/chance", data={"chance": "0"}
+            ).status_code
+            == 303
+        )
+        assert self._get(db_conn, name)["chance"] == 0
+        league = _league(db_conn, factory)
+        team = factory.team()
+        db_conn.execute(
+            """INSERT INTO team_owners (league_id, team_id, owner_id, since_year)
+               VALUES (%s, %s, %s, 2026)""",
+            (league.id, team.id, o["id"]),
+        )
+        r = client.post(f"/admin/owners/{o['id']}/delete")
+        assert r.status_code == 400 and "can't be deleted" in r.text
+        db_conn.execute("DELETE FROM team_owners WHERE owner_id = %s", (o["id"],))
+        assert client.post(f"/admin/owners/{o['id']}/delete").status_code == 303
+        assert self._get(db_conn, name) is None

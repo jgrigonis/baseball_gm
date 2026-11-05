@@ -22,8 +22,10 @@ from src.api.services import admin as admin_service
 from src.api.services import badges, email_verify
 from src.api.services.passwords import clean_email, password_error, username_error
 from src.db.repositories.league_repo import LeagueRepository
+from src.api.services import owners as owner_service
+from src.db.repositories.owner_repo import OwnerRepository
 from src.db.repositories.persona_repo import PersonaRepository
-from src.league import personas
+from src.league import owners, personas
 from src.db.repositories.user_repo import UserRepository
 from src.league.league_constants import MAX_SEASONS, UNLIMITED_SEASONS
 from src.league.league_modes import LEAGUE_MODES
@@ -49,6 +51,8 @@ NOTES = {
     "persona_created": "Persona created.",
     "chance": "Chance saved.",
     "persona_deleted": "Persona deleted.",
+    "owner_created": "Owner created.",
+    "owner_deleted": "Owner deleted.",
 }
 
 
@@ -111,10 +115,47 @@ def _league_page(request, db, user, league_id: str, status_code=200, **ctx):
             "modes": [LEAGUE_MODES[k] for k in admin_service.MODES],
             "ranges": admin_service.NUMBER_RANGES,
             "season_choices": _season_choices(league["num_seasons"]),
+            "owners": _league_owners(db, league),
             **ctx,
         },
         status_code,
     )
+
+
+def _league_owners(db, league: dict) -> list[dict]:
+    """Each team's owner, with the numbers players never see."""
+    if league["state"] == "lobby":
+        return []
+    by_team = owner_service.ensure(db, league["id"])
+    db.commit()
+    names = {
+        r["id"]: f"{r['city']} {r['mascot']}"
+        for r in db.execute(
+            "SELECT id, city, mascot FROM teams WHERE id = ANY(%s)",
+            (list(by_team),),
+        ).fetchall()
+    }
+    rows = []
+    for team_id, o in by_team.items():
+        traits = owners.clean_traits(o["traits"])
+        rows.append(
+            {
+                "team": names.get(team_id, team_id),
+                "owner_id": o["owner_id"],
+                "name": o["name"],
+                "archetype": o["archetype"],
+                "rival": names.get(o["rival_team_id"]) if o["rival_team_id"] else None,
+                "since_year": o["since_year"],
+                "top": [
+                    dict(k=k, label=label)
+                    for k, label, _ in owners.DIMENSIONS
+                    if k in owners.top_dimensions(o["weights"])
+                ],
+                "patience": traits["patience"],
+                "spending": traits["spending"],
+            }
+        )
+    return sorted(rows, key=lambda r: r["team"])
 
 
 def _season_choices(current: int) -> list[int]:
@@ -534,3 +575,176 @@ def persona_delete(request: Request, persona_id: str, db: DB, user: Admin):
         )
     db.commit()
     return _done("/admin/personas", "persona_deleted")
+
+
+# ── Owners ────────────────────────────────────────────────────────────────────
+# The team owner library (src/league/owners.py), run like the personas: an
+# owner is created once and never edited; only the chance of being drawn for
+# a team changes. Duplicate pre-fills the create form.
+
+
+def _owners_page(request, db, user, status_code=200, **ctx):
+    repo = OwnerRepository(db)
+    rows = repo.all()
+    form = ctx.pop("form", None)
+    source = request.query_params.get("from")
+    if form is None and source:
+        o = repo.get(source)
+        if o:
+            form = {
+                "name": "",
+                "bio": o["bio"],
+                "archetype": o["archetype"],
+                "weights": owners.clean_weights(o["weights"]),
+                "traits": owners.clean_traits(o["traits"]),
+                "chance": o["chance"],
+                "from_name": o["name"],
+            }
+    form = form or {
+        "weights": owners.clean_weights({}),
+        "traits": owners.clean_traits({}),
+        "chance": owners.DEFAULT_CHANCE,
+    }
+    for r in rows:
+        r["traits"] = owners.clean_traits(r["traits"])
+        r["top"] = [
+            label
+            for k, label, _ in owners.DIMENSIONS
+            if k in owners.top_dimensions(r["weights"], 2)
+        ]
+    return _page(
+        request,
+        "owners.html",
+        {
+            "user": user,
+            "owners": rows,
+            "archetypes": sorted({r["archetype"] for r in rows if r["archetype"]}),
+            "dimensions": owners.DIMENSIONS,
+            "traits": owners.TRAITS,
+            "form": form,
+            **ctx,
+        },
+        status_code,
+    )
+
+
+@router.get("/owners", response_class=HTMLResponse)
+def owner_list(request: Request, db: DB, user: Admin):
+    return _owners_page(request, db, user)
+
+
+@router.post("/owners")
+async def create_owner(request: Request, db: DB, user: Admin):
+    data = await request.form()
+    name = " ".join(str(data.get("name", "")).split())
+    bio = str(data.get("bio", "")).strip()
+    archetype = " ".join(str(data.get("archetype", "")).split())
+    weights = owners.clean_weights({k: data.get(f"w_{k}") for k in owners.WEIGHTS})
+    traits = owners.clean_traits({k: data.get(f"t_{k}") for k in owners.TRAIT_KEYS})
+    chance = _chance(data.get("chance"))
+    form = {
+        "name": name,
+        "bio": bio,
+        "archetype": archetype,
+        "weights": weights,
+        "traits": traits,
+        "chance": owners.DEFAULT_CHANCE if chance is None else chance,
+    }
+    repo = OwnerRepository(db)
+    error = None
+    if not 2 <= len(name) <= 60:
+        error = "An owner needs a name of 2 to 60 characters."
+    elif len(bio) > 200 or len(archetype) > 60:
+        error = "Keep the bio under 200 characters and the archetype under 60."
+    elif chance is None:
+        error = "Chance is a whole number from 0 to 100."
+    elif not any(weights.values()):
+        error = "An owner has to care about something: give a weight above 0."
+    elif repo.name_taken(name):
+        error = "There's already an owner with that name."
+    if error:
+        return _owners_page(request, db, user, 400, error=error, form=form)
+    owner_id = repo.create(name, bio, archetype, weights, traits, chance)
+    db.commit()
+    return _done(f"/admin/owners/{owner_id}", "owner_created")
+
+
+def _owner_or_404(db, owner_id: str) -> dict:
+    o = OwnerRepository(db).get(owner_id)
+    if not o:
+        raise HTTPException(status_code=404, detail="Owner not found")
+    return o
+
+
+def _owner_page(request, db, user, owner_id: str, status_code=200, **ctx):
+    o = _owner_or_404(db, owner_id)
+    weights = owners.clean_weights(o["weights"])
+    traits = owners.clean_traits(o["traits"])
+    total = sum(weights.values()) or 1
+    return _page(
+        request,
+        "owner.html",
+        {
+            "user": user,
+            "owner": o,
+            "wants": owners.wants(o["archetype"]),
+            "weights": [
+                {
+                    "label": label,
+                    "how": how,
+                    "value": weights[k],
+                    "share": round(100 * weights[k] / total),
+                }
+                for k, label, how in owners.DIMENSIONS
+            ],
+            "traits": [
+                {"label": label, "ends": (low, high), "value": traits[k]}
+                for k, label, low, high in owners.TRAITS
+            ],
+            "leagues": OwnerRepository(db).leagues_using(owner_id),
+            **ctx,
+        },
+        status_code,
+    )
+
+
+@router.get("/owners/{owner_id}", response_class=HTMLResponse)
+def owner_detail(request: Request, owner_id: str, db: DB, user: Admin):
+    return _owner_page(request, db, user, owner_id)
+
+
+@router.post("/owners/{owner_id}/chance")
+def owner_chance(
+    request: Request, owner_id: str, db: DB, user: Admin, chance: str = Form(...)
+):
+    _owner_or_404(db, owner_id)
+    value = _chance(chance)
+    if value is None:
+        return _owner_page(
+            request,
+            db,
+            user,
+            owner_id,
+            400,
+            error="Chance is a whole number from 0 to 100.",
+        )
+    OwnerRepository(db).set_chance(owner_id, value)
+    db.commit()
+    return _done(f"/admin/owners/{owner_id}", "chance")
+
+
+@router.post("/owners/{owner_id}/delete")
+def owner_delete(request: Request, owner_id: str, db: DB, user: Admin):
+    _owner_or_404(db, owner_id)
+    if not OwnerRepository(db).delete(owner_id):
+        return _owner_page(
+            request,
+            db,
+            user,
+            owner_id,
+            400,
+            error="This owner is in a league, so they can't be deleted. "
+            "Set their chance to 0 to keep new teams from drawing them.",
+        )
+    db.commit()
+    return _done("/admin/owners", "owner_deleted")

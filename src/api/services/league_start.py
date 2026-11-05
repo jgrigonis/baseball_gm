@@ -5,7 +5,7 @@ from __future__ import annotations
 import datetime
 import random
 
-from src.api.services import lobby_teams, personas
+from src.api.services import lobby_teams, owners, personas
 from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.games_repo import GameRepository
@@ -175,6 +175,8 @@ def start_league(
             is_ai=True,
         )
         personas.give_persona(conn, league_id, ai_gm_id, persona_rng)
+    # 5b'. Every team's owner (src/api/services/owners.py), on its own stream.
+    owners.ensure(conn, league_id, random.Random(f"{seed}-owners"))
     human_gm_team = gm_repo.get_human_gm_city_mascot(league_id)
 
     # ── 5c. Contracts for the starting rosters (src/player/contracts.py) ──────

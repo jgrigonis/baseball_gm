@@ -29,6 +29,7 @@ from src.api.routers import (
     leagues,
     lineup,
     news,
+    owners,
     players,
     playoffs,
     profiles,
@@ -198,6 +199,7 @@ for _module in (
     profiles,
     news,
     free_agents,
+    owners,
 ):
     app.include_router(_module.router)
 
