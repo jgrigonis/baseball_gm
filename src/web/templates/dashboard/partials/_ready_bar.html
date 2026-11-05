@@ -83,7 +83,10 @@ function render() {
     if (d.you_out) waiting.textContent = "you're out of the playoffs" + (waiting.textContent ? ' · ' + waiting.textContent : '');
     btn.style.display = '';
     btn.disabled = d.you_away || d.you_out;
-    btn.textContent = d.you_ready ? '✓ Ready (undo)' : "I'm ready";
+    // Phones show the short label (.nm-short).
+    btn.innerHTML = d.you_ready
+      ? '<span class="nm-long">✓ Ready (undo)</span><span class="nm-short">✓ Ready</span>'
+      : "I'm ready";
   }
   away.textContent = d.you_away ? "I'm back" : 'Mark me away';
   away.style.display = d.you_out ? 'none' : '';

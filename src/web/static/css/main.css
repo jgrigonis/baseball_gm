@@ -294,15 +294,16 @@ a.topbar-team:hover strong { text-decoration: underline; text-underline-offset: 
   .topbar > .nav-menu { order: 1; }
   .topbar-spacer { display: none; }
   .topbar-state + .topbar-date, .league-info + .topbar-date { margin-left: 0; }
-  /* The next-move button takes the right end of the second row, so the
-     team badge moves up next to the menu button. */
-  .next-move { margin-left: auto; gap: 6px; }
-  .next-move .btn { font-size: 11px; padding: 7px 10px; letter-spacing: 0.06em; }
-  .next-move .nm-caret { padding: 7px 7px; }
-  .nm-pill { padding: 4px 7px; font-size: 11px; }
-  .nm-menu { min-width: 0; width: min(280px, calc(100vw - 32px)); }
+  /* The next-move button (below) takes row two's right end, so the team
+     badge moves up next to the menu button. */
   .topbar > .topbar-team { order: 0; }
-  .topbar:has(> .topbar-team) > .topbar-logo { flex-basis: calc(100% - 88px); }
+  /* Room for it on row two: tighter gaps, and the season pill drops "of N"
+     (the settings panel it opens has the season count). */
+  .topbar { column-gap: 8px; }
+  .league-info > summary .plate-of, .league-info > summary .plate-of + .num-tile { display: none; }
+  .topbar-date { letter-spacing: 0.04em; padding: 4px 6px; }
+  /* Logo + badge + menu fill row one exactly (badge 32px, menu 34px, 8px gaps). */
+  .topbar:has(> .topbar-team) > .topbar-logo { flex: 0 1 calc(100% - 82px); }
   .topbar-team { margin-left: 0; }
   .topbar-join { margin-left: auto; }
   .topbar-team > span:not(.team-badge) { display: none; }
@@ -359,6 +360,28 @@ a.topbar-team:hover strong { text-decoration: underline; text-underline-offset: 
 @media (max-width: 1000px) {
   .next-move .nm-long { display: none; }
   .next-move .nm-short { display: inline; }
+}
+/* Tablets: the bar makes room for it. The team is its badge, the logo the
+   ball, and a long league name trails off. (Phones wrap the bar instead.) */
+@media (min-width: 601px) and (max-width: 1000px) {
+  .topbar { gap: 14px; }
+  .topbar-team > span:not(.team-badge) { display: none; }
+  .topbar-logo-word.in-league { display: none; }
+  .topbar-logo { flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+
+/* Phones (the top bar wraps to two rows here, see .topbar above). */
+@media (max-width: 600px) {
+  /* The next-move button takes the right end of the second row. */
+  .next-move { margin-left: auto; gap: 6px; }
+  .next-move .btn { font-size: 11px; padding: 7px 10px; letter-spacing: 0.06em; }
+  .next-move .nm-caret { padding: 7px 7px; }
+  /* The to-do pill sits on the button's corner, a ★ badge, so it takes no
+     room on the row. */
+  .next-move { position: relative; }
+  .nm-pill { position: absolute; z-index: 1; top: -8px; right: -6px; padding: 1px 4px;
+             font-size: 10px; line-height: 1.2; border-style: solid; background: var(--bg-2); }
+  .nm-menu { min-width: 0; width: min(280px, calc(100vw - 32px)); }
 }
 
 /* ── Sim Bar ────────────────────────────────────────────────────────────────── */
