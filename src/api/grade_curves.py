@@ -143,6 +143,22 @@ def overall_to_grade(raw: float | None, kind: OverallKind) -> str:
     return "F"
 
 
+def overall_score(raw: float | None, kind: OverallKind) -> float:
+    """A number that orders players by their overall grade: the grade's
+    place (F = 0 up to A+ = 12) plus how far into that grade's band he is.
+    So it never disagrees with the letter shown, and hitters and pitchers
+    (graded on different curves) compare fairly. Free Agents sorts by it."""
+    if raw is None:
+        return -1.0
+    cuts = OVERALL_CUTOFFS[kind]
+    tops = [cuts[0] + 5, *cuts[:-1]]  # each band's top edge
+    for i, (cut, top) in enumerate(zip(cuts, tops)):
+        if raw >= cut:
+            return len(cuts) - i + min(1.0, (raw - cut) / (top - cut))
+    floor = cuts[-1] - 5
+    return max(0.0, min(1.0, (raw - floor) / 5)) * 0.999
+
+
 # Role and position ratings (SP, RP, CP, the hitter roles, each fielding
 # position and best defense) are composites too, so on the plain scale they
 # bunch: nearly every starter graded B or C+, and nearly every shortstop A- or

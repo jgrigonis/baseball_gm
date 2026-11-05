@@ -243,6 +243,38 @@ def test_the_tab_lists_free_agents_with_their_price(lg, client):
     assert "Minors 0/120" in html
 
 
+def test_best_first_follows_the_grade_shown(lg, client):
+    import json
+    import re
+
+    for i, level in enumerate((40, 55, 70, 85, 50, 65)):
+        pid = lg.factory.rated_player(
+            lg.theirs,
+            lg.league,
+            level=level,
+            status="free_agent",
+            pitcher=bool(i % 2),
+        ).id
+        lg.db.execute("DELETE FROM team_players WHERE player_id = %s", (pid,))
+    html = client.get(f"/leagues/{lg.league.id}/free-agents").text
+    players = json.loads(re.search(r"const FA = (\[.*?\]);\n", html).group(1))
+    scores = [p["overall_score"] for p in players]
+    assert scores == sorted(scores, reverse=True)
+    order = ["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-", "F"]
+    ranks = [order.index(p["overall"]) for p in players]
+    assert ranks == sorted(ranks)
+
+
+def test_overall_score_never_disagrees_with_the_grade():
+    from src.api.grade_curves import overall_score, overall_to_grade
+
+    order = ["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-", "F"]
+    pts = [(raw / 2, kind) for raw in range(40, 200) for kind in ("hitter", "pitcher")]
+    pts.sort(key=lambda p: -overall_score(*p))
+    ranks = [order.index(overall_to_grade(*p)) for p in pts]
+    assert ranks == sorted(ranks)
+
+
 def test_release_and_sign_endpoints(lg, client):
     pid = _signed(lg, level=60)
     r = client.get(f"/leagues/{lg.league.id}/players/{pid}/release")
