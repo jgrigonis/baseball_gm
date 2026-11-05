@@ -111,8 +111,10 @@ def team_strength(
     players: list[tuple[PlayerRecord, dict]], groups: dict[str, str]
 ) -> dict[str, float]:
     """A roster's hitting, pitching and defense scores (on the 0-100 skill
-    scale). `players` is the major league roster with each player's ratings;
-    `groups` puts each pitcher in the rotation (sp) or bullpen (rp)."""
+    scale), plus the rotation and bullpen that make up its pitching.
+    `players` is the major league roster with each player's ratings;
+    `groups` puts each pitcher in the rotation (sp) or bullpen (rp).
+    The welcome screen's scouting report ranks teams on these too."""
     hitters = [(p, r) for p, r in players if not p.is_pitcher()]
     pitchers = [p for p, _ in players if p.is_pitcher()]
     nine = starting_nine(hitters)
@@ -142,7 +144,13 @@ def team_strength(
     rotation = best("sp", PITCHING_WEIGHTS, ROTATION)
     bullpen = best("rp", RELIEF_WEIGHTS, BULLPEN)
     pitching = ROTATION_SHARE * rotation + (1 - ROTATION_SHARE) * bullpen
-    return {"hitting": hitting, "pitching": pitching, "defense": defense}
+    return {
+        "hitting": hitting,
+        "pitching": pitching,
+        "defense": defense,
+        "rotation": rotation,
+        "bullpen": bullpen,
+    }
 
 
 def zscores(values: dict[str, float]) -> dict[str, float]:
@@ -159,6 +167,16 @@ def results_weight(games: float) -> float:
     return games / (games + RESULTS_HALF) if games > 0 else 0.0
 
 
+def roster_rating(strength: dict[str, dict[str, float]]) -> dict[str, float]:
+    """Each team's overall rating on paper, as a z-score: its hitting,
+    pitching and defense z-scores weighted by AREA_WEIGHTS."""
+    teams = list(strength)
+    area_z = {a: zscores({t: strength[t][a] for t in teams}) for a in AREAS}
+    return zscores(
+        {t: sum(AREA_WEIGHTS[a] * area_z[a][t] for a in AREAS) for t in teams}
+    )
+
+
 def power_scores(
     strength: dict[str, dict[str, float]], records: dict[str, dict]
 ) -> dict[str, dict[str, float]]:
@@ -171,8 +189,7 @@ def power_scores(
     runs allowed; defense is ratings only."""
     teams = list(strength)
     area_z = {a: zscores({t: strength[t][a] for t in teams}) for a in AREAS}
-    rating = {t: sum(AREA_WEIGHTS[a] * area_z[a][t] for a in AREAS) for t in teams}
-    rating = zscores(rating)
+    rating = roster_rating(strength)
 
     games = {t: records.get(t, {}).get("g", 0) for t in teams}
     played = [t for t in teams if games[t]]

@@ -62,7 +62,7 @@ class TestTeamStrength:
         assert with_c["defense"] > without["defense"]
 
     def test_empty_roster_scores_zero(self):
-        assert team_strength([], {}) == {"hitting": 0, "pitching": 0, "defense": 0}
+        assert set(team_strength([], {}).values()) == {0}
 
 
 class TestStartingNine:
