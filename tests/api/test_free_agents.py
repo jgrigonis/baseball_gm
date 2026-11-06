@@ -181,6 +181,8 @@ def test_signing_a_free_agent_at_his_asking_price(lg):
     lg.contracts.sign_unsigned(lg.league.id, 2026)
     free_agents.release(lg.db, lg.league.id, lg.theirs.id, pid)
     waivers.clear_all(lg.db, lg.league.id)  # nobody claimed him
+    owed = lg.contracts.dead_money(lg.theirs.id, 2026)
+    assert owed > 0
 
     result = free_agents.sign(lg.db, lg.league.id, lg.mine.id, pid)
 
@@ -196,8 +198,9 @@ def test_signing_a_free_agent_at_his_asking_price(lg):
     assert result["years"] == ask.years
     assert lg.status.get_status(pid) == "minors"
     assert pid in PlayerRepository(lg.db).get_player_ids_from_team_players(lg.mine.id)
-    # His old team still pays his old deal; his new one is on my payroll.
-    assert lg.contracts.dead_money(lg.theirs.id, 2026) > 0
+    # Full offset: his new salary comes off what his old team still owes;
+    # his new deal is on my payroll.
+    assert lg.contracts.dead_money(lg.theirs.id, 2026) == max(0, owed - ask.salary)
     assert lg.contracts.payroll(lg.mine.id, 2026) == ask.salary
 
 

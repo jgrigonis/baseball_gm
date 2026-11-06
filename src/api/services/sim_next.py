@@ -15,6 +15,7 @@ import random
 import psycopg
 
 from src.api.services import (
+    ai_free_agents,
     ai_trades,
     all_star,
     front_office,
@@ -332,6 +333,8 @@ def sim_days(league_id: str, conn, count: int | str) -> dict:
             front_office.call_ups(conn, league_id, changed, day_result["game_date"])
             # Owners take stock weekly: mood, check-ins, reactions.
             owner_office.weekly(conn, league_id, day_result["game_date"])
+            # AI teams claim off waivers and sign free agents to fill holes.
+            ai_free_agents.after_day(conn, league_id, day_result["game_date"])
             # Released players whose time on waivers is up.
             waivers.after_day(conn, league_id, day_result["game_date"])
             conn.commit()
