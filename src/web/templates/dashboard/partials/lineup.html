@@ -1567,7 +1567,10 @@ function handleBullpenRoleChange(pid, role) {
 }
 
 /* ── Pitching: clear / auto-fill / auto-assign ───────────────────────────────── */
+// The next starter before Clear, so a Rebuild right after keeps him.
+let clearedPointer = null;
 function clearRotation() {
+  if (pointerPid) clearedPointer = pointerPid;
   rotation = [];
   pointerPid = null;
   pitchingSaved = false;
@@ -1625,7 +1628,8 @@ function autoFillRotation() {
 function rebuildRotation() {
   const before = rotation.filter(Boolean).join(',');
   const bullpenBefore = JSON.stringify(Object.entries(bullpen).sort());
-  const prevPointer = pointerPid;
+  const prevPointer = pointerPid || clearedPointer;
+  clearedPointer = null;
 
   rotation = ALL_PITCHERS
     .filter(p => !p.injured)
@@ -1768,6 +1772,7 @@ async function saveAll() {
 /* ── Go to schedule ──────────────────────────────────────────────────────────── */
 function updateScheduleBtn() {
   const btn = document.getElementById('schedule-btn');
+  syncPitchingSaved();
   if (btn) btn.style.display = (battingSaved && pitchingSaved && bullpenSaved) ? 'inline-flex' : 'none';
 }
 
@@ -1796,7 +1801,24 @@ function revertBullpen() {
 }
 
 /* ── Pitching unsaved banners ─────────────────────────────────────────────────── */
+// Like batting, the bars follow the rotation and bullpen themselves: changes
+// that land back on what's saved (Rebuild, Save, Clear, Rebuild) aren't unsaved.
+function rotationKey(rot, ptr) { return rot.filter(Boolean).join(',') + '|' + (ptr || ''); }
+function bullpenKey(bp) {
+  const inRot = new Set(nonNullRotation());
+  return Object.entries(bp)
+    .filter(([pid, role]) => role && !inRot.has(pid) && knownPitcherIds.has(pid))
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([pid, role]) => `${pid}:${role}`).join(',');
+}
+function syncPitchingSaved() {
+  pitchingSaved = !!savedRot
+    && rotationKey(rotation, pointerPid) === rotationKey(savedRot.rotation, savedRot.pointerPid);
+  bullpenSaved = !!savedBullpen && bullpenKey(bullpen) === bullpenKey(savedBullpen);
+}
+
 function updatePitchingBanners() {
+  syncPitchingSaved();
   const rotBanner = document.getElementById('rot-unsaved-banner');
   const bpBanner  = document.getElementById('bp-unsaved-banner');
   if (rotBanner) rotBanner.style.display = pitchingSaved ? 'none' : 'flex';
