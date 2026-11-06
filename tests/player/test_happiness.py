@@ -189,3 +189,27 @@ def test_a_type_says_what_it_cares_most_about():
         "playing time and a big role, money and fame and a big market"
     )
     assert hp.type_cares("Easygoing") == ""
+
+
+def test_morale_ruiners_are_rare_and_seeded_by_id():
+    ids = [f"p{i}" for i in range(4000)]
+    share = sum(hp.personality_for(pid).ruiner for pid in ids) / len(ids)
+    assert 0.03 < share < 0.09
+    assert hp.personality_for("p7").ruiner == hp.personality_for("p7").ruiner
+    row = {**hp.personality_for("p7").as_row(), "player_id": "p7"}
+    assert hp.Personality.from_row(row).ruiner == hp.personality_for("p7").ruiner
+
+
+def test_only_an_unhappy_ruiner_drags_the_clubhouse():
+    assert hp.clubhouse_drag([0.2, -0.3]) == 0
+    one = hp.clubhouse_drag([-0.5])
+    worse = hp.clubhouse_drag([-1.0])
+    assert 0 < one < worse
+    assert hp.clubhouse_drag([-1.0, -1.0, -1.0]) == hp.CLUBHOUSE_CAP
+
+
+def test_calm_players_shrug_off_the_clubhouse():
+    calm = hp.Personality("Easygoing", {}, {"ego": 50, "temper": 20, "loyalty": 50})
+    hot = hp.Personality("Mercenary", {}, {"ego": 50, "temper": 90, "loyalty": 50})
+    assert hp.susceptibility(calm) == 0
+    assert hp.susceptibility(hot) == 1
