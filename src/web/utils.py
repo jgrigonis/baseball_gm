@@ -17,6 +17,7 @@ from src.api.view_models.league_info import league_info
 from src.db.repositories.all_star_repo import AllStarRepository
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.gm_repo import GMRepository
+from src.db.repositories.happiness_repo import HappinessRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.news_repo import NewsRepository
 from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
@@ -319,6 +320,11 @@ def _shell_ctx(
                 ctx["news_unseen"] = NewsRepository(db).count_unseen(
                     league_id, gm["id"]
                 )
+            if not ctx["is_viewer"] and "roster" in tabs and gm.get("team_id"):
+                # Players who've asked to be traded: the Roster tab's badge.
+                ctx["trade_wanted"] = HappinessRepository(
+                    db, league_id
+                ).team_trade_requests(gm["team_id"])
             if not ctx["is_viewer"] and "owner" in tabs and gm.get("id"):
                 # Owner messages the GM hasn't read: the Owner tab's badge.
                 ctx["owner_unseen"] = owner_office.unseen(db, gm["id"])

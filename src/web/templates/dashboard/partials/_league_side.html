@@ -45,6 +45,9 @@
           {% if tab == 'trades' and not is_viewer %}<span class="tab-badge" id="trade-badge"
             title="Offers and votes waiting on you"
             {% if not trade_inbox %}style="display:none;"{% endif %}>{{ trade_inbox or 0 }}</span>{% endif %}
+          {% if tab == 'roster' and not is_viewer %}<span class="tab-badge" id="roster-badge"
+            title="{{ trade_wanted or 0 }} {{ 'player wants' if trade_wanted == 1 else 'players want' }} a trade"
+            {% if not trade_wanted %}style="display:none;"{% endif %}>{{ trade_wanted or 0 }}</span>{% endif %}
           {% if tab == 'headlines' and not is_viewer %}<span class="tab-badge unread" id="news-badge"
             title="New stories since you last looked"
             {% if not news_unseen %}style="display:none;"{% endif %}>{{ news_unseen or 0 }}</span>{% endif %}

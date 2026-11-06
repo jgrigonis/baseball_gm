@@ -51,6 +51,7 @@ from src.api.services.sim_playoff import sim_playoff
 from src.db.locks import LeagueBusy, league_busy
 from src.db.repositories.all_star_repo import AllStarRepository
 from src.db.repositories.draft_repo import DraftRepository
+from src.db.repositories.happiness_repo import HappinessRepository
 from src.db.repositories.news_repo import NewsRepository
 from src.db.repositories.notification_repo import NotificationRepository
 from src.db.repositories.playoff_repo import PlayoffRepository
@@ -241,6 +242,10 @@ def status(conn, league_id: str, gm_id: str) -> dict:
         "has_news": NotificationRepository(conn).has_unseen(gm_id),
         # Stories since the GM last opened the News tab (its badge).
         "news_unseen": NewsRepository(conn).count_unseen(league_id, gm_id),
+        # Players who've asked to be traded (the Roster tab's badge).
+        "trade_wanted": HappinessRepository(conn, league_id).team_trade_requests(
+            me["team_id"] if me else None
+        ),
         # Owner messages the GM hasn't read (the Owner tab's badge).
         "owner_unseen": owner_office.unseen(conn, gm_id),
         "all_star": star_phase,

@@ -421,6 +421,7 @@ function reloadWith(msg, kind, dest) {
   var result = {msg: msg, kind: kind || 'good', dest: dest};
   window._tradeResult = result;
   if (window.refreshTradeBadge) window.refreshTradeBadge();
+  if (window.refreshRosterBadge) window.refreshRosterBadge();
   if (window.htmx && window.refreshActiveTab) { window.refreshActiveTab(); return; }
   try { sessionStorage.setItem('tradeResult', JSON.stringify(result)); } catch (e) {}
   location.reload();

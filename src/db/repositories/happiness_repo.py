@@ -659,6 +659,19 @@ class HappinessRepository:
             if r["trade_request_on"] and r["team_id"] == r["now_team"]
         }
 
+    def team_trade_requests(self, team_id: str | None) -> int:
+        """How many of a team's players have asked it for a trade: the Roster
+        tab's badge."""
+        if not team_id:
+            return 0
+        ids = [
+            r["player_id"]
+            for r in self.conn.execute(
+                "SELECT player_id FROM team_players WHERE team_id = %s", (team_id,)
+            ).fetchall()
+        ]
+        return len(self.trade_requests(ids))
+
     def refusing(self, player_ids, as_of: date) -> set[str]:
         """Who among these is sitting out on this date."""
         ids = list(player_ids)

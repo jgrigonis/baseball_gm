@@ -172,3 +172,20 @@ def test_an_unhappy_morale_ruiner_drags_his_teammates_down(lg):
     assert any("souring the clubhouse" in line for line in after["detail"]["lines"])
     # The other team's clubhouse is fine.
     assert "clubhouse" not in _repo(lg).mood(rival.id, lg.season.id)["detail"]
+
+
+def test_the_roster_badge_counts_the_teams_trade_requests(lg):
+    with (
+        patch.object(hp, "target", return_value=-1.0),
+        patch.object(hp, "asks_for_trade", side_effect=lambda m, w, t, r: True),
+    ):
+        _repo(lg).update(lg.season.id, date(2025, 4, 11))
+    assert _repo(lg).team_trade_requests(lg.a.id) == 10
+    pid = lg.players[lg.a.id][0].id
+    lg.db.execute(
+        "UPDATE team_players SET team_id = %s WHERE player_id = %s", (lg.b.id, pid)
+    )
+    # Traded away: his request goes with him, and the new team doesn't count it.
+    assert _repo(lg).team_trade_requests(lg.a.id) == 9
+    assert _repo(lg).team_trade_requests(lg.b.id) == 10
+    assert _repo(lg).team_trade_requests(None) == 0

@@ -388,6 +388,22 @@ window.setOwnerBadge = function(n) {
   b.style.display = n > 0 ? '' : 'none';
 };
 
+// ── The Roster tab's badge: players who've asked to be traded ─────────────────
+window.setRosterBadge = function(n) {
+  var b = document.getElementById('roster-badge');
+  if (!b) return;
+  b.textContent = n;
+  b.title = n + (n === 1 ? ' player wants' : ' players want') + ' a trade';
+  b.style.display = n > 0 ? '' : 'none';
+};
+window.refreshRosterBadge = function() {
+  if (!document.getElementById('roster-badge')) return;
+  fetch('/leagues/{{ league_id }}/roster/trade-requests')
+    .then(function(r) { return r.ok ? r.json() : null; })
+    .then(function(d) { if (d) window.setRosterBadge(d.count); })
+    .catch(function() {});
+};
+
 // ── Tab switching ──────────────────────────────────────────────────────────────
 function setActiveTab(el) {
   document.querySelectorAll('.tab-link, .side-link').forEach(t => t.classList.remove('active'));
@@ -547,6 +563,7 @@ function showInjuryNews(d) {
       window.refreshActiveTab();
     if (!quiet) d.trades.filter(t => t.popup).forEach(t => window.showTradePopup && window.showTradePopup(t));
     if (window.refreshTradeBadge) window.refreshTradeBadge();
+    if (answers.length && window.refreshRosterBadge) window.refreshRosterBadge();
   }
   setInjuryNews(items);  // clears if empty, shows if not
   return stops;
