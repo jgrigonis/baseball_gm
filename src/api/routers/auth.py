@@ -128,15 +128,17 @@ def register(
         return _signup(request, 400, error=error, username=username, email=email)
 
     token = _new_token()
+    new_id = str(uuid.uuid4())
     try:
         user_repo.insert_user(
-            str(uuid.uuid4()),
+            new_id,
             token,
             username,
             username,
             hash_password(password),
             email=clean,
         )
+        user_repo.record_login(new_id)
         db.commit()
     except psycopg.errors.UniqueViolation:
         # Someone took the name or email between the check and the insert.
@@ -188,6 +190,7 @@ def login(
     if needs_rehash(row["password_hash"]):
         user_repo.set_password_hash(row["id"], hash_password(password))
     login_limits.clear(db, username)
+    user_repo.record_login(row["id"])
     db.commit()
     return _signed_in(row["session_token"])
 
@@ -228,6 +231,7 @@ def set_password(
             user_repo.set_credentials(
                 user["id"], username, hash_password(password), token
             )
+            user_repo.record_login(user["id"])
             db.commit()
         except psycopg.errors.UniqueViolation:
             db.rollback()
@@ -394,9 +398,11 @@ def reset(
         # Used by another tab or expired in the last moment.
         return _reset_page(request, 400, expired=True)
     session = _new_token()
-    UserRepository(db).set_password(
+    user_repo = UserRepository(db)
+    user_repo.set_password(
         user_id, hash_password(password), session, must_change=False
     )
+    user_repo.record_login(user_id)
     db.commit()
     return _signed_in(session)
 

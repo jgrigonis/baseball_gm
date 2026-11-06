@@ -638,6 +638,28 @@ class TestRemoveGM:
 
 
 class TestUsers:
+    def test_signing_in_records_last_login(self, client, db_conn):
+        user = _user(db_conn)
+        assert user["last_login_at"] is None
+
+        _sign_in(client, user)
+
+        assert _row(db_conn, user["id"])["last_login_at"] is not None
+
+    def test_lists_last_login(self, client, db_conn, admin):
+        never = _user(db_conn)
+        db_conn.execute(
+            "UPDATE users SET last_login_at = '2026-10-25 12:30+00' WHERE id = %s",
+            (admin["id"],),
+        )
+
+        r = client.get("/admin/users")
+
+        assert ">Last login</th>" in r.text
+        assert 'datetime="2026-10-25T12:30:00+00:00">2026-10-25 12:30</time>' in r.text
+        row = r.text.split(never["username"] + "</a>", 1)[1].split("</tr>", 1)[0]
+        assert ">—</td>" in row
+
     def test_lists_users_with_emails(self, client, db_conn, admin):
         email = _name() + "@example.com"
         user = _user(db_conn, email=email)
