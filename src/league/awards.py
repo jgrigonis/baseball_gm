@@ -57,6 +57,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from src.stats import qualifiers
+from src.stats.advanced import WOBA_SCALE, fip_raw as _fip_raw, pa, woba
 
 
 @dataclass(frozen=True)
@@ -110,7 +111,6 @@ POS_RUNS = {
     "1b": -12.5,
     "dh": -17.5,
 }
-WOBA_SCALE = 1.2
 REPLACEMENT_RUNS_PER_PA = 20 / 600
 RUNS_PER_WIN = 10
 # A replacement pitcher allows this many more runs per nine than average.
@@ -129,12 +129,6 @@ def _n(c: dict, k: str) -> int:
     return int(c.get(k) or 0)
 
 
-def pa(c: dict) -> int:
-    return (
-        _n(c, "bat_ab") + _n(c, "bat_walks") + _n(c, "bat_hbp") + _n(c, "bat_sac_flys")
-    )
-
-
 def avg(c: dict) -> float:
     return _n(c, "bat_hits") / _n(c, "bat_ab") if _n(c, "bat_ab") else 0.0
 
@@ -145,39 +139,6 @@ def era(c: dict) -> float:
         if _n(c, "pitch_outs")
         else 0.0
     )
-
-
-def woba(c: dict) -> float:
-    n = pa(c)
-    if not n:
-        return 0.0
-    singles = (
-        _n(c, "bat_hits")
-        - _n(c, "bat_doubles")
-        - _n(c, "bat_triples")
-        - _n(c, "bat_home_runs")
-    )
-    num = (
-        0.69 * _n(c, "bat_walks")
-        + 0.72 * _n(c, "bat_hbp")
-        + 0.89 * singles
-        + 1.27 * _n(c, "bat_doubles")
-        + 1.62 * _n(c, "bat_triples")
-        + 2.10 * _n(c, "bat_home_runs")
-    )
-    return num / n
-
-
-def _fip_raw(c: dict) -> float:
-    outs = _n(c, "pitch_outs")
-    if not outs:
-        return 0.0
-    raw = (
-        13 * _n(c, "pitch_home_runs")
-        + 3 * (_n(c, "pitch_walks") + _n(c, "pitch_hit_batters"))
-        - 2 * _n(c, "pitch_strike_outs")
-    )
-    return raw / (outs / 3)
 
 
 def is_hitter(c: dict) -> bool:

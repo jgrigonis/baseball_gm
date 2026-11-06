@@ -12,7 +12,7 @@ from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsReposi
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.team_repo import TeamRepository
-from src.stats import formulas, qualifiers as q
+from src.stats import advanced, formulas, qualifiers as q
 
 
 def team_stats_context(
@@ -73,7 +73,8 @@ def team_stats_context(
             selected_season_id, selected_team_id, is_postseason
         )
 
-        batters, pitchers = stat_lines(rows, qual_games)
+        lg = advanced.LeagueRates.of(pss_repo.get_season_totals(selected_season_id))
+        batters, pitchers = stat_lines(rows, qual_games, lg)
         fielders = fielding_lines(
             PlayerGameRepository(db).get_team_fielding_lines(
                 selected_season_id, selected_team_id
@@ -112,11 +113,14 @@ def team_stats_context(
     }
 
 
-def stat_lines(rows: list, team_games: int) -> tuple[list, list]:
+def stat_lines(
+    rows: list, team_games: int, lg: advanced.LeagueRates | None = None
+) -> tuple[list, list]:
     """Batting and pitching lines from a team's player_season_stats rows,
     each flagged qualified when he's played enough for his rate stats to
     count: 3.1 PA a team game; an inning a team game for a starter, half
-    that for a reliever (fewer than half his games started)."""
+    that for a reliever (fewer than half his games started). `lg`, the
+    league's regular season rates, fills in the "+" stats and FIP."""
     min_pa = q.min_pa(team_games)
     batters = []
     pitchers = []
@@ -164,6 +168,7 @@ def stat_lines(rows: list, team_games: int) -> tuple[list, list]:
                     "OPS": round(obp + slg, 3),
                     "AB_K": ab_k,
                     "HR_AB": hr_ab,
+                    **advanced.batting(s, lg),
                     "qualified": qualifies_bat,
                 }
             )
@@ -214,6 +219,7 @@ def stat_lines(rows: list, team_games: int) -> tuple[list, list]:
                     "BB9": bb9,
                     "HR9": hr9,
                     "K9": k9,
+                    **advanced.pitching(s, lg),
                     "qualified": qualifies_pit,
                 }
             )

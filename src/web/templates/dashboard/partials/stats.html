@@ -128,6 +128,13 @@ var BAT_COLS = [
   {key:'OPS',   label:'OPS',     fmt:'avg',   rate:true},
   {key:'AB_K',  label:'AB/K',    fmt:'era',   rate:true, asc:false},
   {key:'HR_AB', label:'HR/AB',   fmt:'avg',   rate:true, asc:false},
+  {key:'wOBA',     label:'wOBA',  fmt:'avg', rate:true, tip:'Weighted on-base average: every way of reaching base, weighted by how many runs it is worth'},
+  {key:'wRC_PLUS', label:'wRC+',  fmt:null,  rate:true, tip:'Runs created per plate appearance against the league; 100 is average, 120 is 20% better'},
+  {key:'OPS_PLUS', label:'OPS+',  fmt:null,  rate:true, tip:'OBP and SLG against the league; 100 is average'},
+  {key:'ISO',      label:'ISO',   fmt:'avg', rate:true, tip:'Isolated power: SLG minus AVG, extra bases per at-bat'},
+  {key:'BABIP',    label:'BABIP', fmt:'avg', rate:true, tip:'Batting average on balls in play (not counting home runs and strikeouts)'},
+  {key:'K_PCT',    label:'K%',    fmt:'pct', rate:true, asc:true, tip:'Strikeouts per plate appearance'},
+  {key:'BB_PCT',   label:'BB%',   fmt:'pct', rate:true, tip:'Walks per plate appearance'},
 ];
 
 var PIT_COLS = [
@@ -151,6 +158,10 @@ var PIT_COLS = [
   {key:'BB9',   label:'BB/9',    fmt:'era',   rate:true},
   {key:'HR9',   label:'HR/9',    fmt:'era',   rate:true},
   {key:'K9',    label:'K/9',     fmt:'era',   rate:true},
+  {key:'FIP',      label:'FIP',   fmt:'era', rate:true, asc:true, tip:'Fielding-independent pitching: an ERA from only strikeouts, walks, hit batters and home runs, the things a pitcher controls'},
+  {key:'ERA_PLUS', label:'ERA+',  fmt:null,  rate:true, tip:'League ERA over his ERA; 100 is average, 150 is 50% better'},
+  {key:'K_PCT',    label:'K%',    fmt:'pct', rate:true, tip:'Strikeouts per batter faced'},
+  {key:'BB_PCT',   label:'BB%',   fmt:'pct', rate:true, asc:true, tip:'Walks per batter faced'},
 ];
 
 var DEF_COLS = [
@@ -171,6 +182,7 @@ function fmtVal(val, fmt) {
   if (fmt === 'avg') return val.toFixed(3);
   if (fmt === 'era') return val.toFixed(2);
   if (fmt === 'ip')  return val;
+  if (fmt === 'pct') return val.toFixed(1) + '%';
   return String(val);
 }
 
@@ -179,6 +191,8 @@ function sortVal(row, key) {
   if (key === 'IP')   return row.IP_val || 0;
   if (key === 'AB_K') return row.AB_K || 0;
   if (key === 'HR_AB') return row.HR_AB || 0;
+  // A 0.00 ERA has no ERA+; it's the best there is.
+  if (key === 'ERA_PLUS' && row.ERA_PLUS == null) return row.IP_val > 0 ? 9999 : -999;
   var v = row[key];
   return (v === null || v === undefined) ? -999 : v;
 }
@@ -288,6 +302,7 @@ function renderTable() {
     var defaultAsc = col.asc !== undefined ? col.asc : (col.key === 'ERA' || col.key === 'BB9' || col.key === 'HR9' || col.key === 'WHIP');
     headHtml += '<th style="cursor:pointer;user-select:none;text-align:'
       + (col.key==='name'||col.key==='pos'?'left':'right') + ';white-space:nowrap;position:sticky;top:0;z-index:3;background:var(--bg-2);box-shadow:0 1px 0 var(--border);"'
+      + (col.tip ? ' title="' + col.tip + '"' : '')
       + ' onclick="setSort(\'' + col.key + '\',' + defaultAsc + ')">' 
       + col.label + arrow + '</th>';
   });
