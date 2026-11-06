@@ -10,6 +10,8 @@
   .bud-value { font-size:20px; font-weight:700; color:var(--text); margin-top:4px; font-family:var(--font-mono); }
   .bud-note { font-size:11px; color:var(--text-dim); margin-top:4px; line-height:1.4; }
   .bud-bad { color:var(--red); }
+  .bud-head { font-size:12px; font-weight:600; color:var(--text); margin-bottom:8px; }
+  .bud-section { margin-top:20px; padding-top:14px; border-top:1px solid var(--border); }
   .bud-good { color:var(--green); }
   .bud-line { font-size:13px; color:var(--text); line-height:1.6; margin-top:12px; }
   .bud-table td.bud-bad { color:var(--red); }
@@ -30,10 +32,11 @@
 <div class="card" style="margin-bottom:16px;">
   <div class="card-header"><span class="card-title">This season</span></div>
   <div class="card-body">
+    <div class="bud-head">Payroll and the league cap</div>
     <div class="bud-grid">
       <div class="bud-stat">
         <div class="bud-label">Payroll</div>
-        <div class="bud-value {% if money.at_limit %}bud-bad{% endif %}">{{ money.payroll_text }}</div>
+        <div class="bud-value {% if money.over %}bud-bad{% endif %}">{{ money.payroll_text }}</div>
         <div class="bud-note">Guaranteed salaries plus dead money.</div>
       </div>
       <div class="bud-stat">
@@ -41,32 +44,48 @@
         <div class="bud-value">{{ money.cap_text }}</div>
         <div class="bud-note">{% if money.over %}<span class="bud-bad">{{ money.over_text }} over: {{ money.tax_text }} tax</span>{% else %}{{ money.room_text }} under{% endif %}</div>
       </div>
+    </div>
+    <div class="bud-line">
+      Payroll only. The cap is the same for every team and grows {{ rules.growth_pct }}% a season. Payroll over it pays {{ rules.tax_pct }}% luxury tax when the season ends, split among the teams that stayed under.
+    </div>
+
+    <div class="bud-head bud-section">Spending and your owner</div>
+    <div class="bud-grid">
+      <div class="bud-stat">
+        <div class="bud-label">Total spending</div>
+        <div class="bud-value {% if money.at_limit %}bud-bad{% endif %}">{{ money.spend_text }}</div>
+        <div class="bud-note">{{ money.payroll_text }} payroll + {{ money.front_office_text }} front office</div>
+      </div>
       <div class="bud-stat">
         <div class="bud-label">Owner's budget</div>
         <div class="bud-value">{{ money.budget_text }}</div>
-        <div class="bud-note">{% if money.over_budget %}<span class="bud-bad">{{ money.over_budget_text }} past it</span>{% else %}{{ money.payroll_budget_text }} for payroll after the {{ money.front_office_text }} front office{% endif %}</div>
+        <div class="bud-note">{% if money.over_budget %}<span class="bud-bad">Spending is {{ money.over_budget_text }} past it</span>{% else %}{{ money.budget_room_text }} left{% endif %}</div>
       </div>
       <div class="bud-stat">
         <div class="bud-label">Owner's limit</div>
         <div class="bud-value {% if money.at_limit %}bud-bad{% endif %}">{{ money.limit_text }}</div>
         <div class="bud-note">{% if money.at_limit %}<span class="bud-bad">At the limit: no moves that add money</span>{% else %}{{ money.limit_room_text }} of room{% endif %}</div>
       </div>
-      {% if bank %}
-      <div class="bud-stat">
-        <div class="bud-label">Owner's bank</div>
-        <div class="bud-value {% if bank.empty %}bud-bad{% endif %}">{{ bank.balance_text }}</div>
-        <div class="bud-note">{% if bank.change_text != '$0K' %}<span class="{{ 'bud-good' if bank.up else 'bud-bad' }}">{{ '+' if bank.up }}{{ bank.change_text }}</span> since {{ bank.since }}{% else %}Since {{ bank.since }}{% endif %}</div>
-      </div>
-      {% endif %}
     </div>
     <div class="bud-line">
-      The cap is the same for every team and grows {{ rules.growth_pct }}% a season. Payroll over it pays {{ rules.tax_pct }}% luxury tax when the season ends, and the tax is split among the teams that stayed under.
-      Your owner's budget is what they're happy to spend on payroll and the front office together; going past it is allowed, but it comes out of their profit.
+      Payroll plus the front office. The budget is what your owner is happy to spend; going past it is allowed, but it comes out of their profit.
       Past their limit ({{ rules.margin_pct }}% of the cap above the budget) they won't sign off on any move that adds money{% if bank %}, and if their bank runs dry the limit drops to the budget{% endif %}.
-      {% if bank %}Each season's profit or loss goes into the bank, and a bank that's grown since {{ bank.since }} loosens next season's budget (a shrinking one tightens it), by up to {{ rules.swing_pct }}% of the cap.{% endif %}
     </div>
   </div>
 </div>
+
+{% if bank %}
+<div class="card" style="margin-bottom:16px;">
+  <div class="card-header"><span class="card-title">Owner's bank</span></div>
+  <div class="card-body bud-bank">
+    <div class="bud-value {% if bank.empty %}bud-bad{% endif %}" style="margin-top:0;">{{ bank.balance_text }}</div>
+    <div class="bud-note">{% if bank.change_text != '$0K' %}<span class="{{ 'bud-good' if bank.up else 'bud-bad' }}">{{ '+' if bank.up }}{{ bank.change_text }}</span> since {{ bank.since }}{% else %}Since {{ bank.since }}{% endif %}</div>
+    <div class="bud-line" style="margin-top:8px;">
+      The owner's own savings, not money you spend. Each season's profit or loss goes in, and a bank that's grown since {{ bank.since }} loosens next season's budget (a shrinking one tightens it) by up to {{ rules.swing_pct }}% of the cap.
+    </div>
+  </div>
+</div>
+{% endif %}
 
 {% if front_office %}
 <div class="card" style="margin-bottom:16px;" id="front-office">
