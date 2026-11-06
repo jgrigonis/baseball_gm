@@ -300,6 +300,7 @@ def standing(
         "room_text": format_salary(cap - payroll) if payroll < cap else None,
         "over_text": format_salary(over) if over else None,
         "over_budget_text": format_salary(over_budget) if over_budget else None,
+        "budget_room_text": format_salary(budget - spend) if spend < budget else None,
         "tax_text": format_salary(tax) if tax else None,
         "tax_rate": LUXURY_TAX_RATE,
         "limit": limit,

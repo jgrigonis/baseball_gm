@@ -405,6 +405,25 @@ def test_the_budget_tab(lg, client_for):
     assert "2026" in r.text
 
 
+def test_the_budget_tab_keeps_cap_spending_and_bank_apart(lg, client_for):
+    """Payroll vs the cap, total spending vs the owner, and the bank are
+    separate sections, and total spending shows what it adds up."""
+    x = lg()
+    x.budgets.for_league(x.league.id, 2026)
+    html = client_for(x).get(f"/leagues/{x.league.id}/budget").text
+    cap = x.budgets.cap(x.league.id, 2026)
+    pay = bg.format_salary(x.contracts.payroll(x.mine.id, 2026))
+    fo = bg.format_salary(bg.standard_front_office(cap))
+    assert "Payroll and the league cap" in html
+    assert "Spending and your owner" in html
+    assert "Total spending" in html
+    assert f"{pay} payroll + {fo} front office" in html
+    spend_at = html.index("Spending and your owner")
+    assert html.index("League cap") < spend_at < html.index("Owner's budget")
+    if "Owner's bank" in html:
+        assert html.index("Owner's limit") < html.index("Owner's bank")
+
+
 def test_speed_blitz_has_no_budget_tab(lg, client_for):
     x = lg(mode="speed_blitz")
     r = client_for(x).get(f"/leagues/{x.league.id}/roster")
