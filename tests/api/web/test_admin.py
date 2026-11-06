@@ -337,6 +337,20 @@ class TestLeagues:
         assert league.name in r.text
         assert "95 / 300 / 600" in r.text
 
+    def test_shows_when_each_league_was_last_played(
+        self, client, db_conn, factory, admin
+    ):
+        played = _league(db_conn, factory)
+        db_conn.execute(
+            "UPDATE leagues SET last_played_at = '2026-10-25 12:30+00' WHERE id = %s",
+            (played.id,),
+        )
+
+        r = client.get("/admin/leagues")
+
+        assert ">Last played</th>" in r.text
+        assert 'datetime="2026-10-25T12:30:00+00:00">2026-10-25 12:30</time>' in r.text
+
     def test_lists_league_and_current_season_ids(self, client, db_conn, factory, admin):
         league = _league(db_conn, factory)
         factory.league_season(league, factory.season(year=2025))
