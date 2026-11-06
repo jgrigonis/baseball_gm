@@ -76,6 +76,16 @@
    "Public: listed under Public Leagues, where anyone can join while it's in the lobby, and between seasons if it takes late joiners." if info.is_public
    else "Private: only people with the join code can find it."),
 ] %}
+{# The lobby's GMs card already shows the code, so this row is for once the
+   league has started, when people can still join between seasons. Viewers
+   don't get it: it's how a private league lets people in. #}
+{% if started and info.join_code and not info.is_practice and not is_viewer %}
+  {% set settings = settings + [
+    ("Join code", info.join_code,
+     "Give this code to friends so they can join from the Join tab on the Leagues page. They take over a team an AI GM runs, between seasons: from the end of the playoffs until Opening Day." if info.late_joins
+     else "This league doesn't take late joiners, so the code won't let anyone in now. The commissioner can allow them on the League page."),
+  ] %}
+{% endif %}
 {% if not info.is_practice %}
   {% set settings = settings + [
     ("Late joiners", "Allowed" if info.late_joins else "Not allowed",
@@ -96,7 +106,7 @@
     <span class="setting-tip" tabindex="0" data-tip="{{ tip }}">{{ label }}</span>
   </td>
   {# An unlimited league's ∞ is drawn bigger (.inf). #}
-  <td{% if loop.first %} class="team-name"{% endif %}>{{ value | replace("∞", '<span class="inf">∞</span>' | safe) }}
+  <td{% if loop.first %} class="team-name"{% elif label == "Join code" %} class="join-code-value"{% endif %}>{{ value | replace("∞", '<span class="inf">∞</span>' | safe) }}
     {%- if label in editable %}{% set key, now_on, verb = editable[label] %}
     <form method="POST" action="/leagues/{{ league_id }}/settings/{{ key }}" class="setting-edit">
       <input type="hidden" name="on" value="{{ 'false' if now_on else 'true' }}">

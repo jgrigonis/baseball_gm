@@ -884,6 +884,7 @@ html.side-mini .side-account-panel { left: calc(100% + 6px); right: auto; bottom
 /* A league setting that has no effect right now, e.g. the timer windows in a
    league with one human GM (_league_settings_rows.html). */
 .data-table .setting-off td:last-child { color: var(--text-dim); opacity: .6; }
+.data-table td.join-code-value { color: var(--amber); font-family: var(--font-mono); letter-spacing: .15em; }
 /* The commissioner's button beside an editable setting (_league_settings_rows.html). */
 .data-table .setting-edit { display: inline; margin-left: 8px; }
 .data-table .setting-edit .btn { font-size: 10px; padding: 2px 8px; }

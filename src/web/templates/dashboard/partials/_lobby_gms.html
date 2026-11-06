@@ -23,7 +23,7 @@
     <span class="spacer"></span>
     {% if join_code %}
     <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">
-      <span class="setting-tip" tabindex="0" data-tip="Give this code to friends so they can join from the Join tab on the Leagues page. Nobody can join once the league starts.">Join code</span>: <strong style="color:var(--amber);letter-spacing:.2em;">{{ join_code }}</strong>
+      <span class="setting-tip" tabindex="0" data-tip="Give this code to friends so they can join from the Join tab on the Leagues page. {% if late_joins %}Once it starts, people can still join between seasons by taking over an AI team.{% else %}Nobody can join once the league starts.{% endif %}">Join code</span>: <strong style="color:var(--amber);letter-spacing:.2em;">{{ join_code }}</strong>
     </span>
     {% endif %}
   </div>
