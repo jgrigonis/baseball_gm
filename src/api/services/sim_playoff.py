@@ -16,6 +16,7 @@ from itertools import groupby
 
 import psycopg
 
+from src.api.services import waivers
 from src.api.services.injury_news import InjuryNews
 from src.db.connection import rollback_quietly
 from src.api.services import owner_office, owner_review, owners
@@ -194,6 +195,8 @@ def _play_one_game(
 def end_playoffs(conn, league: dict, season_id: str) -> None:
     """The Finals are decided. On to the offseason, unless that was the
     league's last season: then the league is complete, and read-only."""
+    # Anyone still on waivers clears now, before payrolls are final.
+    waivers.clear_all(conn, league["id"])
     # The season's payrolls are final: charge luxury tax on what's over budget.
     year = ContractRepository(conn).current_year(league["id"])
     if year is not None:

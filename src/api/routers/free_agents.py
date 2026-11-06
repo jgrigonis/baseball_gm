@@ -9,13 +9,15 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from src.api.dependencies import DB, GM, ActiveLeague, GMOrViewer, IsHTMX, User
-from src.api.services import free_agents
+from src.api.services import free_agents, waivers
 from src.api.view_models.player_cards import roster_card
+from src.db.locks import league_lock
 from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.team_repo import TeamRepository
+from src.db.repositories.waiver_repo import WaiverRepository
 from src.league.offseason.roster_trimmer import MINORS_LIMIT
 from src.player.contracts import format_salary
 from src.player.face import face_url
@@ -45,11 +47,18 @@ def free_agents_tab(
     rows = player_repo.get_free_agents_with_skills(league_id)
     # Best first is by the grade shown on each row (Josh, 2026-11-05), then
     # how far into that grade he is (grade_curves.overall_score).
+    # Players on waivers come first: they're only there for a few days.
+    on_waivers = {w["player_id"]: w for w in WaiverRepository(db).open_for(league_id)}
     cards = sorted(
         ((roster_card(row), row) for row in rows),
-        key=lambda c: -c[0].get("overall_score", -1.0),
+        key=lambda c: (
+            c[1]["id"] not in on_waivers,
+            -c[0].get("overall_score", -1.0),
+        ),
     )
-    shown = cards[:MAX_SHOWN]
+    shown = cards[: max(MAX_SHOWN, len(on_waivers))]
+    team_id = gm.get("team_id") if gm else None
+    my_claims = WaiverRepository(db).claims_by(league_id, team_id) if team_id else set()
 
     last_team = contracts.last_team([r["id"] for _, r in shown])
     names = TeamRepository(db).get_names(list(set(last_team.values())))
@@ -58,20 +67,34 @@ def free_agents_tab(
     for card, row in shown:
         record = player_repo.record_from_row(row)
         card["face_url"] = face_url(row["id"], card.get("age"), None, None)
-        if year is not None:
+        w = on_waivers.get(row["id"])
+        if w and year is not None:
+            # On waivers: a claim takes over the deal he has.
+            view = waivers.deal_view(
+                contracts.released_deal(row["id"], w["from_team_id"]), year
+            )
+            card["salary"] = view.get("salary")
+            card["salary_text"] = view["salary_text"]
+            card["ask_years"] = view["years_left"]
+            card["waiver"] = {
+                "clears_text": waivers.clears_text(w),
+                "claimed": row["id"] in my_claims,
+                "mine": w["from_team_id"] == team_id,
+            }
+        elif year is not None:
             deal = free_agents.asking_deal(record, year, scale)
             card["salary"] = deal.salary
             card["salary_text"] = format_salary(deal.salary)
             card["ask_years"] = deal.years
-        team_id = last_team.get(row["id"])
-        card["last_team"] = names.get(team_id) if team_id else None
+        last = last_team.get(row["id"])
+        card["last_team"] = names.get(last) if last else None
         players.append(card)
 
     ctx["players"] = players
     ctx["pool_size"] = len(rows)
     ctx["max_shown"] = MAX_SHOWN
     ctx["minors_limit"] = MINORS_LIMIT
-    team_id = gm.get("team_id") if gm else None
+    ctx["waiver_count"] = len(on_waivers)
     ctx["can_sign"] = bool(team_id) and not ctx.get("is_viewer")
     if ctx["can_sign"] and year is not None:
         ctx["minors_count"] = len(
@@ -101,6 +124,48 @@ def sign_free_agent(
     except free_agents.FreeAgentError as e:
         return JSONResponse({"detail": str(e)}, status_code=422)
     return JSONResponse(result)
+
+
+@router.get("/leagues/{league_id}/waivers/{player_id}/claim")
+def claim_preview(league_id: str, player_id: str, db: DB, gm: GM):
+    """His deal and when he clears, for the claim confirm."""
+    year = ContractRepository(db).current_year(league_id)
+    try:
+        result = waivers.claim_preview(db, league_id, gm["team_id"], player_id, year)
+    except waivers.WaiverError as e:
+        return JSONResponse({"detail": str(e)}, status_code=422)
+    result["warning"] = (
+        free_agents.budget_warning(
+            db, league_id, gm["team_id"], year, result.get("salary") or 0
+        )
+        if result.get("years_left")
+        else None
+    )
+    return JSONResponse(result)
+
+
+@router.post("/leagues/{league_id}/waivers/{player_id}/claim")
+def claim_off_waivers(
+    league_id: str, player_id: str, db: DB, gm: GM, _active: ActiveLeague
+):
+    year = ContractRepository(db).current_year(league_id)
+    try:
+        with league_lock(db, league_id):
+            result = waivers.claim(db, league_id, gm["team_id"], player_id, year)
+            db.commit()
+    except waivers.WaiverError as e:
+        return JSONResponse({"detail": str(e)}, status_code=422)
+    return JSONResponse(result)
+
+
+@router.post("/leagues/{league_id}/waivers/{player_id}/withdraw")
+def withdraw_claim(
+    league_id: str, player_id: str, db: DB, gm: GM, _active: ActiveLeague
+):
+    with league_lock(db, league_id):
+        waivers.withdraw(db, league_id, gm["team_id"], player_id)
+        db.commit()
+    return JSONResponse({"ok": True})
 
 
 @router.get("/leagues/{league_id}/players/{player_id}/release")

@@ -1193,6 +1193,7 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
 .pp-action:disabled { opacity: .45; cursor: default; }
 .pp-release { border-color: var(--red); color: var(--red); margin-right: 6px; }
 .pp-sign { border-color: var(--green); color: var(--green); margin-right: 6px; }
+.pp-claim { border-color: var(--amber); color: var(--amber); margin-right: 6px; }
 
 /* In-page confirm (gmConfirm in shell.html), in place of the browser's. */
 .gm-modal-wrap {

@@ -117,13 +117,46 @@ window.releasePlayer = async function(pid, name) {
                         : `his ${cost.salary_text} for this season`) +
       `, even after he's gone.`
     : `His deal isn't guaranteed (he hasn't been on the 40-man), so it costs nothing.`;
+  const next = cost.waivers
+    ? 'He goes on waivers for two sim periods. If another team claims him, they take over his deal and you owe nothing. If not, he becomes a free agent.'
+    : 'He becomes a free agent any team can sign.';
   const ok = await gmConfirm({
     title: `Release ${name}?`,
-    lines: [owed, 'He becomes a free agent any team can sign.'],
+    lines: [owed, next],
     ok: 'Release', tone: 'danger',
   });
   if (!ok) return;
   try { await postJson(base); } catch (e) { gmAlert(e.message); return; }
+  closePlayerPanel();
+  reloadTab();
+};
+// Claim a player off waivers (src/api/services/waivers.py), or take a claim back.
+window.claimWaiver = async function(pid, name) {
+  const base = `/leagues/{{ league_id }}/waivers/${pid}/claim`;
+  let w;
+  try {
+    const r = await fetch(base);
+    w = await r.json();
+    if (!r.ok) throw new Error(w.detail || 'Something went wrong.');
+  } catch (e) { gmAlert(e.message); return; }
+  if (w.blocked) { gmAlert(w.blocked); return; }
+  const deal = w.years_left
+    ? `You'd take over his deal: ${w.salary_text} a season through ${w.through}.`
+    : `His deal has run out, so he costs nothing this season.`;
+  const ok = await gmConfirm({
+    title: `Claim ${name}?`,
+    lines: [deal, `${w.clears_text}. If other teams claim him too, the worst record gets him.`],
+    warn: w.warning,
+    ok: 'Claim', tone: 'go',
+  });
+  if (!ok) return;
+  try { await postJson(base); } catch (e) { gmAlert(e.message); return; }
+  closePlayerPanel();
+  reloadTab();
+};
+window.withdrawClaim = async function(pid) {
+  try { await postJson(`/leagues/{{ league_id }}/waivers/${pid}/withdraw`); }
+  catch (e) { gmAlert(e.message); return; }
   closePlayerPanel();
   reloadTab();
 };

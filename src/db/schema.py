@@ -1476,10 +1476,35 @@ CREATE TABLE IF NOT EXISTS player_contracts (
     created_at  TEXT NOT NULL DEFAULT (NOW()),
     guaranteed  BOOLEAN NOT NULL DEFAULT FALSE,  -- owed in full: been on the 40-man, or a free agent signing (migration 072)
     released_year    INTEGER,                    -- season a team released him; the deal ends for him then
-    released_team_id TEXT REFERENCES teams(id) ON DELETE SET NULL  -- who still owes the rest, if guaranteed
+    released_team_id TEXT REFERENCES teams(id) ON DELETE SET NULL, -- who still owes the rest, if guaranteed
+    offset_salary    INTEGER NOT NULL DEFAULT 0,  -- off the old team's bill a season, once he signs elsewhere (migration 084)
+    offset_through   INTEGER                      -- last season the offset covers
 );
 CREATE INDEX IF NOT EXISTS idx_player_contracts_league ON player_contracts(league_id);
 CREATE INDEX IF NOT EXISTS idx_player_contracts_team ON player_contracts(team_id);
+
+CREATE TABLE IF NOT EXISTS waivers (          -- migration 084 (src/api/services/waivers.py)
+    id            SERIAL PRIMARY KEY,
+    league_id     TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    player_id     TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    from_team_id  TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    placed_on     TEXT NOT NULL,               -- league date he was released
+    clears_on     TEXT,                        -- after that day's games; NULL = when the phase ends
+    status        TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'claimed', 'cleared')),
+    claimed_by    TEXT REFERENCES teams(id) ON DELETE SET NULL,
+    created_at    TEXT NOT NULL DEFAULT (NOW())
+);
+CREATE INDEX IF NOT EXISTS idx_waivers_league ON waivers(league_id, status);
+CREATE INDEX IF NOT EXISTS idx_waivers_player ON waivers(player_id);
+CREATE INDEX IF NOT EXISTS idx_waivers_from_team ON waivers(from_team_id);
+CREATE INDEX IF NOT EXISTS idx_waivers_claimed_by ON waivers(claimed_by);
+CREATE TABLE IF NOT EXISTS waiver_claims (
+    waiver_id   INTEGER NOT NULL REFERENCES waivers(id) ON DELETE CASCADE,
+    team_id     TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    created_at  TEXT NOT NULL DEFAULT (NOW()),
+    PRIMARY KEY (waiver_id, team_id)
+);
+CREATE INDEX IF NOT EXISTS idx_waiver_claims_team ON waiver_claims(team_id);
 
 CREATE TABLE IF NOT EXISTS team_budgets (     -- migration 074 (src/league/budget.py)
     league_id   TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
