@@ -64,6 +64,9 @@
 
 {# ── Status badges ─────────────────────────────────────────────────────────── #}
 <div class="pd-badges">
+ {% if player.hall_of_fame %}
+   <span class="badge {{ 'badge-hof' if player.hall_of_fame.elected else 'badge-hof-ballot' }}" title="{{ player.hall_of_fame.title }}">🏛️ {{ player.hall_of_fame.text }}</span>
+ {% endif %}
  {% if player.all_star_years %}
    <span class="badge badge-all-star" title="All-Star {{ player.all_star_years | join(', ') }}">
      ★ {% if player.all_star_years | length > 1 %}{{ player.all_star_years | length }}× {% endif %}All-Star

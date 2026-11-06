@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from src.api.services import awards as awards_service
+from src.api.services import hall_of_fame
 from src.api.view_models.draft import draft_rounds
 from src.api.view_models.leaders import leaders_context, team_leaders
 from src.api.view_models.playoffs import playoffs_context
@@ -56,6 +57,7 @@ MY_LEADER_CATS = [
     ("pit", "K"),
 ]
 SUMMARY_LEADERS_SHOWN = 5
+HOF_CLOSE_SHOWN = 3  # Hall of Fame near-misses on the season summary
 
 
 def season_summary_context(
@@ -100,6 +102,8 @@ def season_summary_context(
         "position_awards": [],
         "my_leaders": [],
         "my_highlights": [],
+        "hof_class": [],
+        "hof_close": [],
     }
     if not season_id:
         return ctx
@@ -155,6 +159,13 @@ def season_summary_context(
 
     ctx["awards"] = season_awards(db, season_id, my_team_id)
     ctx["position_awards"] = position_awards(db, season_id, my_team_id)
+    # The Hall of Fame vote held as the season ended: who got in, and the
+    # closest of the rest.
+    hof_rows = hall_of_fame.for_season(db, season_id, my_team_id)
+    ctx["hof_class"] = [r for r in hof_rows if r["outcome"] == "elected"]
+    ctx["hof_close"] = [r for r in hof_rows if r["outcome"] != "elected"][
+        :HOF_CLOSE_SHOWN
+    ]
     if my_team_id:
         ctx["my_leaders"] = team_leaders(
             db, league_id, season_id, my_team_id, MY_LEADER_CATS
@@ -423,6 +434,7 @@ def history_context(db, league_id: str, my_team_id: str | None) -> dict:
     tg_repo = TeamGameRepository(db)
     draft_repo = DraftRepository(db)
     retired_counts = RetirementRepository(db).counts_by_season(league_id)
+    hof_years = set(hall_of_fame.election_years(db, league_id))
 
     seasons = season_repo.get_seasons_for_league(league_id)
 
@@ -450,6 +462,7 @@ def history_context(db, league_id: str, my_team_id: str | None) -> dict:
                 "has_draft": draft_repo.get_for_season(league_id, s["id"]) is not None,
                 "retired": retired_counts.get(s["id"], 0),
                 "has_awards": bool(season_awards_rows),
+                "hof_vote": s["year"] in hof_years,
                 "mvps": [
                     {
                         "player_id": r["player_id"],

@@ -9,7 +9,14 @@ from fastapi.templating import Jinja2Templates
 
 from src.config import settings
 from src.player.injury_types import injury_effect, injury_label
-from src.api.services import all_star, next_move, owner_office, takeover, trades
+from src.api.services import (
+    all_star,
+    hall_of_fame,
+    next_move,
+    owner_office,
+    takeover,
+    trades,
+)
 from src.api.services.admin import uses_default_admin_name
 from src.api.services.coach import coach_ctx, mark_visit
 from src.api.services.ready_check import is_multiplayer
@@ -340,6 +347,8 @@ def _shell_ctx(
             # The top bar's season pill opens the league's settings.
             if league["state"] != "lobby":
                 ctx["league_info"] = league_info(db, league)
+                # The sidebar's Hall of Fame link, once there's been a vote.
+                ctx["hall_of_fame"] = hall_of_fame.has_hall(db, league_id)
             if not ctx["is_viewer"]:
                 mark_visit(db, league, active_tab)
                 ctx["coach"] = coach_ctx(db, league)

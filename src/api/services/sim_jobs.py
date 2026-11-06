@@ -20,7 +20,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 
-from src.api.services import awards, badges, career, coach, news
+from src.api.services import awards, badges, career, coach, hall_of_fame, news
 from src.api.services.draft_execute import execute_blitz_draft
 from src.api.services.league_start import start_league
 from src.api.services.offseason_service import run_offseason
@@ -129,13 +129,20 @@ def league_has_job(conn, league_id: str) -> bool:
 
 
 def _decide_awards(conn, league_id: str) -> None:
-    """Decide any season awards the job made due (services/awards.py). In a
+    """Decide any season awards the job made due (services/awards.py), then
+    any Hall of Fame vote (services/hall_of_fame.py). In a
     savepoint, so a problem there is logged and never undoes the sim."""
     try:
         with conn.transaction():
             awards.decide_league(conn, league_id)
     except Exception:
         log.exception("League %s: couldn't decide season awards", league_id)
+    # The Hall of Fame vote comes after the awards it looks at.
+    try:
+        with conn.transaction():
+            hall_of_fame.decide_league(conn, league_id)
+    except Exception:
+        log.exception("League %s: couldn't hold the Hall of Fame vote", league_id)
 
 
 def _record_careers(conn, league_id: str) -> None:

@@ -1,0 +1,162 @@
+{# templates/dashboard/partials/hall_of_fame.html
+   The Hall of Fame (services/hall_of_fame.py): a plaque per inductee, newest
+   class first, then one year's ballot results with the 75% line. #}
+<div class="tab-head">
+  <h1 class="page-title">Hall of Fame</h1>
+  <div class="hof-rules">
+    Writers vote each year once the Finals end. A player needs 10 seasons and 5 years retired,
+    and {{ elect_pct }}% of the ballots to get in. Under {{ keep_pct }}% or 10 years on the ballot and he's off.
+    Seasons from before the league started count half.
+  </div>
+</div>
+
+<div class="tab-body">
+  {% if not election_years %}
+  <div class="hof-empty">
+    No elections yet.{% if first_year %} The first one comes after the {{ first_year }} season.{% endif %}
+  </div>
+  {% else %}
+
+  <div class="hof-section-head">
+    <span class="hof-kicker">Inductees</span>
+    <span class="hof-count">{{ inductees|length }}</span>
+  </div>
+  {% if inductees %}
+  <div class="hof-plaques">
+    {% for p in inductees %}
+    <div class="hof-plaque{% if p.is_mine %} mine{% endif %}" onclick="openPlayerPanel('{{ p.player_id }}')"
+         title="{{ p.name }}: elected in {{ p.year }} with {{ p.pct }} of the vote">
+      <div class="hof-plaque-top">
+        <img class="hof-face" src="{{ p.face }}" alt="" loading="lazy" width="64" height="64">
+        <div class="hof-plaque-id">
+          <div class="hof-class">Class of {{ p.year }}</div>
+          <div class="hof-name">{{ p.name }}</div>
+          <div class="hof-meta">{{ p.position }}{% if p.team %} · {{ p.team }}{% endif %}</div>
+          <div class="hof-meta">{{ p.summary.first_year }}–{{ p.summary.last_year }} · {{ p.summary.seasons }} seasons</div>
+        </div>
+      </div>
+      <div class="hof-line">{{ p.line }}</div>
+      {% if p.honors %}<div class="hof-honors">{{ p.honors }}</div>{% endif %}
+      <div class="hof-vote">
+        {{ p.pct }} of the vote ·
+        {% if p.year_on_ballot == 1 %}first ballot{% else %}{{ p.year_on_ballot }}{{ 'nd' if p.year_on_ballot == 2 else 'rd' if p.year_on_ballot == 3 else 'th' }} year on the ballot{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="hof-empty" style="padding:20px 0;">Nobody has been voted in yet.</div>
+  {% endif %}
+
+  <div class="hof-section-head" id="ballot">
+    <span class="hof-kicker">{% if election_years|length > 1 %}Ballot{% else %}{{ ballot_year }} ballot{% endif %}</span>
+    {% if election_years|length > 1 %}
+    <select class="hof-year" name="year" aria-label="Ballot year"
+            hx-get="/leagues/{{ league_id }}/hall-of-fame" hx-trigger="change"
+            hx-target="#tab-content" hx-swap="innerHTML" hx-push-url="true">
+      {% for y in election_years %}<option value="{{ y }}"{% if y == ballot_year %} selected{% endif %}>{{ y }}</option>{% endfor %}
+    </select>
+    {% endif %}
+    {% if ballot %}<span class="hof-count">{{ ballot[0].ballots }} ballots</span>{% endif %}
+  </div>
+  {% if ballot %}
+  <div class="card table-scroll pin-first">
+    <table class="data-table hof-ballot">
+      <thead>
+        <tr>
+          <th>Player</th>
+          <th>Pos</th>
+          <th title="Year on the ballot (10 at most)">Yr</th>
+          <th class="hof-num">Votes</th>
+          <th class="hof-bar-col">Share</th>
+          <th>Career</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in ballot %}
+        <tr class="hof-row hof-{{ r.outcome }}{% if r.is_mine %} mine{% endif %}" onclick="openPlayerPanel('{{ r.player_id }}')">
+          <td class="hof-who">
+            <span class="hof-who-name">{{ r.name }}</span>
+            {% if r.outcome == 'elected' %}<span class="hof-tag in">Elected</span>
+            {% elif r.outcome == 'dropped' %}<span class="hof-tag off" title="Under {{ keep_pct }}%: off the ballot">Off</span>
+            {% elif r.outcome == 'final' %}<span class="hof-tag off" title="His 10th and last year on the ballot">Last year</span>{% endif %}
+            <div class="hof-who-team">{{ r.team }}</div>
+          </td>
+          <td class="hof-mono">{{ r.position }}</td>
+          <td class="hof-mono">{{ r.year_on_ballot }}</td>
+          <td class="hof-num">{{ r.votes }}</td>
+          <td class="hof-bar-col">
+            <div class="hof-bar" title="{{ r.pct }} ({{ elect_pct }}% gets in)">
+              <div class="hof-bar-fill" style="width:{{ (r.share * 100)|round(1) }}%;"></div>
+              <div class="hof-bar-line" style="left:{{ elect_pct }}%;"></div>
+            </div>
+            <span class="hof-pct">{{ r.pct }}</span>
+          </td>
+          <td class="hof-career">
+            <div>{{ r.line }}</div>
+            {% if r.honors %}<div class="hof-who-team">{{ r.honors }}</div>{% endif %}
+            {% if r.summary.backstory_seasons %}<div class="hof-who-team hof-counted"
+              title="Seasons from before the league started count half with the writers">Writers count {{ '%.1f'|format(r.summary.weighted_war) }} WAR · {{ r.summary.backstory_seasons }} of {{ r.summary.seasons }} seasons before the league</div>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="hof-empty" style="padding:20px 0;">Nobody was eligible this year.</div>
+  {% endif %}
+  {% endif %}
+</div>
+
+<style>
+.hof-rules { font-size:12px;color:var(--text-dim);margin-top:6px;max-width:720px;line-height:1.5; }
+.hof-empty { padding:48px 0;text-align:center;font-family:var(--font-mono);font-size:13px;color:var(--text-dim); }
+.hof-section-head { display:flex;align-items:center;gap:12px;margin:8px 0 12px;flex-wrap:wrap; }
+.hof-section-head#ballot { margin-top:28px; }
+.hof-kicker { font-family:var(--font-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--amber); }
+.hof-count { font-family:var(--font-mono);font-size:11px;color:var(--text-dim); }
+.hof-year { width:auto;flex:none;margin:0;font-family:var(--font-mono);font-size:12px;background:var(--bg-2);color:var(--text);
+  border:1px solid var(--border);border-radius:4px;padding:3px 6px; }
+.hof-plaques { display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:12px; }
+.hof-plaque { background:linear-gradient(180deg, var(--amber-lo), var(--bg-2));border:1px solid var(--amber-dim);
+  border-radius:8px;padding:14px 16px;cursor:pointer; }
+.hof-plaque:hover { border-color:var(--amber); }
+.hof-plaque.mine { box-shadow:inset 3px 0 0 var(--green); }
+.hof-plaque-top { display:flex;gap:12px;align-items:center; }
+.hof-face { width:64px;height:64px;border-radius:50%;background:var(--tile);border:2px solid var(--amber-dim);flex:none; }
+.hof-plaque-id { min-width:0; }
+.hof-class { font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--amber); }
+.hof-name { font-family:var(--font-display);font-size:22px;font-weight:700;line-height:1.1;color:var(--text-hi); }
+.hof-meta { font-family:var(--font-mono);font-size:11px;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.hof-line { font-family:var(--font-mono);font-size:12px;margin-top:10px;color:var(--text); }
+.hof-honors { font-size:12px;color:var(--text-dim);margin-top:4px; }
+.hof-vote { font-family:var(--font-mono);font-size:10px;color:var(--amber);margin-top:8px; }
+.hof-ballot { width:100%; }
+.hof-row { cursor:pointer; }
+.hof-row:hover td { background:var(--bg-3); }
+.hof-row.mine .hof-who-name { color:var(--green); }
+.hof-row.hof-dropped td, .hof-row.hof-final td { color:var(--text-dim); }
+.hof-who-name { font-weight:600; }
+.hof-who-team { font-family:var(--font-mono);font-size:10px;color:var(--text-dim); }
+.hof-counted { color:var(--amber);opacity:.75; }
+.hof-mono { font-family:var(--font-mono);font-size:12px; }
+.hof-num { font-family:var(--font-mono);font-size:12px;text-align:right; }
+.hof-tag { font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;
+  padding:1px 5px;border-radius:3px;margin-left:6px;vertical-align:1px; }
+.hof-tag.in { background:var(--amber);color:var(--bg); }
+.hof-tag.off { border:1px solid var(--muted);color:var(--text-dim); }
+.hof-bar-col { min-width:150px; }
+.hof-bar { position:relative;display:inline-block;vertical-align:middle;width:90px;height:8px;
+  background:var(--tile);border-radius:4px;overflow:visible; }
+.hof-bar-fill { height:100%;background:var(--sky);border-radius:4px; }
+.hof-elected .hof-bar-fill { background:var(--amber); }
+.hof-bar-line { position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--text-hi);opacity:.7; }
+.hof-pct { font-family:var(--font-mono);font-size:12px;margin-left:8px; }
+.hof-career { font-family:var(--font-mono);font-size:11px;white-space:nowrap; }
+@media (max-width: 600px) {
+  .hof-plaques { grid-template-columns:1fr; }
+  .hof-bar { width:56px; }
+  .hof-bar-col { min-width:110px; }
+}
+</style>

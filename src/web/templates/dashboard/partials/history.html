@@ -67,6 +67,10 @@
             <a href="/leagues/{{ league_id }}/season-summary?season_id={{ row.season_id }}#awards"
                class="history-link">Awards</a>
             {% endif %}
+            {% if row.hof_vote %}
+            <a href="/leagues/{{ league_id }}/hall-of-fame?year={{ row.year }}#ballot"
+               class="history-link">Hall of Fame vote</a>
+            {% endif %}
             <a href="/leagues/{{ league_id }}/season-summary?season_id={{ row.season_id }}"
                class="history-link">Summary →</a>
           </td>

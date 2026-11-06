@@ -79,6 +79,11 @@
         <a href="/leagues/{{ league_id }}/history" title="History"
            class="side-link{% if '/history' in path %} active{% endif %}">
           <span class="tab-icon" aria-hidden="true">📜</span><span class="tab-label">History</span></a>
+        {% if hall_of_fame %}
+        <a href="/leagues/{{ league_id }}/hall-of-fame" title="Hall of Fame"
+           class="side-link{% if '/hall-of-fame' in path %} active{% endif %}">
+          <span class="tab-icon" aria-hidden="true">🏛️</span><span class="tab-label">Hall of Fame</span></a>
+        {% endif %}
       {% endif %}
     </div>
     {% endif %}
