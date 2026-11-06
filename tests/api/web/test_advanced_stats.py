@@ -58,6 +58,8 @@ def league(db_conn, factory):
         team,
         **games,
         **dict(zip(BAT, (400, 130, 30, 3, 30, 60, 80, 5, 5, 80))),
+        bat_wpa=3.21,
+        bat_re24=30.5,
     )
     _stats(
         db_conn,
@@ -145,3 +147,19 @@ def test_season_values_split_hitters_and_pitchers(db_conn, league):
     assert not ace["hitter"] and ace["WAR"] > 0 and ace["Def"] is None
     assert season_value.pit_war(values, league["star"]) is None
     assert season_value.bat_war(values, league["ace"]) is None
+
+
+def test_wpa_shows_where_it_was_tracked(client, league):
+    lid, sid = league["league"].id, league["season"].id
+    r = client.get(
+        f"/leagues/{lid}/leaders?season={sid}", headers={"HX-Request": "true"}
+    )
+    assert ">WPA</span>" in r.text and "+3.21" in r.text
+    r = client.get(
+        f"/leagues/{lid}/stats?season_id={sid}", headers={"HX-Request": "true"}
+    )
+    assert '"WPA": 3.21' in r.text
+    # Lines from before WPA was tracked show none rather than 0.
+    assert '"WPA": null' in r.text
+    r = client.get(f"/leagues/{lid}/players/{league['star']}/career")
+    assert ">WPA</th>" in r.text and "+3.21" in r.text

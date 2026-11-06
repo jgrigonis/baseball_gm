@@ -420,3 +420,83 @@ def test_no_team_no_team_card(db_conn, league):
         db_conn, league["league"].id, league["past"].id, None, None
     )
     assert ctx["my_leaders"] == [] and ctx["my_highlights"] == []
+
+
+def _all_star_break(db, league):
+    """2025's All-Stars, and its Rookie Game and All-Star Game played: Ray
+    Hudgins (Champs) MVP of the All-Star Game, Will Wilson (mine) of the
+    Rookie Game."""
+    p, past = league["players"], league["past"].id
+    champ, best, mine = league["champ"].id, league["best"].id, league["mine"].id
+    for pid, team, slot in (
+        (p["avg"], champ, "1b"),
+        (p["hr"], best, "c"),
+        (p["k"], best, "p"),
+        (p["era"], mine, "p"),
+    ):
+        db.execute(
+            "INSERT INTO all_stars (season_id, player_id, team_id, slot, points)"
+            " VALUES (%s, %s, %s, %s, 1)",
+            (past, pid, team, slot),
+        )
+    db.execute(
+        "INSERT INTO rookie_game_players (season_id, player_id, team_id, slot)"
+        " VALUES (%s, %s, %s, 'p')",
+        (past, p["rookie"], mine),
+    )
+    for table, stats, mvp, score in (
+        ("all_star_games", "all_star_game_stats", p["avg"], (3, 5)),
+        ("rookie_games", "rookie_game_stats", p["rookie"], (4, 2)),
+    ):
+        db.execute(
+            f"""INSERT INTO {table} (season_id, captain1_team_id, captain2_team_id,
+                   state, score1, score2, innings, mvp_player_id)
+               VALUES (%s, %s, %s, 'played', %s, %s, 9, %s)""",
+            (past, best, champ, *score, mvp),
+        )
+        db.execute(
+            f"""INSERT INTO {stats} (season_id, player_id, side, batting_order,
+                   bat_ab, bat_hits, bat_home_runs, bat_rbi)
+               VALUES (%s, %s, 2, 3, 4, 2, 1, 3)""",
+            (past, mvp),
+        )
+
+
+def test_summary_lists_all_stars_and_game_mvps(db_conn, league):
+    _all_star_break(db_conn, league)
+    p = league["players"]
+    ctx = _summary(db_conn, league)
+    # A row per position, in the ballot's order: C, 1B, then the pitchers.
+    assert [r["position"] for r in ctx["all_stars"]] == ["C", "1B", "P"]
+    assert [x["player_id"] for x in ctx["all_stars"][2]["players"]] == [
+        p["k"],
+        p["era"],
+    ]
+    assert ctx["all_star_mine"] == 1
+    rookie, asg = ctx["all_star_games"]
+    assert rookie["name"] == "Rookie Game" and asg["name"] == "All-Star Game"
+    assert asg["mvp"]["player_id"] == p["avg"]
+    assert asg["mvp"]["team"] == "Chicago Champs" and not asg["mvp"]["is_mine"]
+    assert asg["mvp"]["line"] == "2-4, HR, 3 RBI"
+    assert asg["final"] == "Team Chicago 5, Team Boston 3"
+    assert (
+        rookie["mvp"]["is_mine"] and rookie["final"] == "Team Boston 4, Team Chicago 2"
+    )
+    # My team's MVP gets a highlight chip.
+    assert any(h["what"] == "Rookie Game MVP" for h in ctx["my_highlights"])
+
+
+def test_summary_page_shows_all_stars(client, db_conn, league):
+    _all_star_break(db_conn, league)
+    lid, sid = league["league"].id, league["past"].id
+    r = client.get(f"/leagues/{lid}/season-summary?season_id={sid}")
+    assert r.status_code == 200
+    assert 'id="all-stars"' in r.text
+    assert "All-Star Game MVP" in r.text and "Rookie Game MVP" in r.text
+    assert "2025 All-Stars" in r.text
+
+
+def test_no_all_star_break_no_card(client, league):
+    lid, sid = league["league"].id, league["past"].id
+    r = client.get(f"/leagues/{lid}/season-summary?season_id={sid}")
+    assert 'id="all-stars"' not in r.text

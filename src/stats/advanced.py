@@ -167,6 +167,15 @@ class LeagueRates:
         )
 
 
+def win_values(c: dict, side: str) -> dict:
+    """WPA and RE24 for "bat" or "pitch". Both None for games from before
+    they were tracked (exactly zero; a real line is never exactly 0)."""
+    wpa, re24 = c.get(f"{side}_wpa") or 0.0, c.get(f"{side}_re24") or 0.0
+    if not wpa and not re24:
+        return {"WPA": None, "RE24": None}
+    return {"WPA": round(float(wpa), 2), "RE24": round(float(re24), 1)}
+
+
 def batting(c: dict, lg: LeagueRates | None) -> dict:
     """The advanced hitting line: wOBA, wRC+, OPS+, ISO, BABIP, K%, BB%.
     The league-relative ones are None without league rates."""

@@ -53,6 +53,11 @@ class PitchingStats:
     # Pitch count
     pitch_count: int = 0
 
+    # Win probability added and run value over the base-out state (RE24),
+    # credited by Game._close_segment
+    wpa: float = 0.0
+    re24: float = 0.0
+
     @property
     def ip_float(self):
         """Return the innings pitched as a float."""

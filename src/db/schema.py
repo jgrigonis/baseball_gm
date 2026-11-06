@@ -488,6 +488,12 @@ CREATE TABLE IF NOT EXISTS player_season_stats (
     field_catcher_sb        INTEGER NOT NULL DEFAULT 0,
     field_double_plays      INTEGER NOT NULL DEFAULT 0,
     field_triple_plays      INTEGER NOT NULL DEFAULT 0,
+
+    -- ── Win probability added and RE24 (migration 087) ────────────────────
+    bat_wpa             DOUBLE PRECISION NOT NULL DEFAULT 0,
+    bat_re24            DOUBLE PRECISION NOT NULL DEFAULT 0,
+    pitch_wpa           DOUBLE PRECISION NOT NULL DEFAULT 0,
+    pitch_re24          DOUBLE PRECISION NOT NULL DEFAULT 0,
  
     PRIMARY KEY (player_id, season_id, team_id, is_postseason),
  
@@ -1119,6 +1125,10 @@ CREATE TABLE IF NOT EXISTS player_game_stats (
     catcher_sb INTEGER CHECK (catcher_sb >= 0),
     field_double_plays INTEGER DEFAULT 0 CHECK (field_double_plays >= 0),
     field_triple_plays INTEGER DEFAULT 0 CHECK (field_triple_plays >= 0),
+    bat_wpa DOUBLE PRECISION NOT NULL DEFAULT 0,     -- win probability added (migration 087)
+    bat_re24 DOUBLE PRECISION NOT NULL DEFAULT 0,
+    pitch_wpa DOUBLE PRECISION NOT NULL DEFAULT 0,
+    pitch_re24 DOUBLE PRECISION NOT NULL DEFAULT 0,
 
     PRIMARY KEY (game_id, player_id),
     FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
@@ -1435,7 +1445,7 @@ CREATE INDEX IF NOT EXISTS idx_season_awards_player ON season_awards(player_id);
 CREATE INDEX IF NOT EXISTS idx_season_awards_gm ON season_awards(gm_id);
 CREATE INDEX IF NOT EXISTS idx_season_awards_team ON season_awards(team_id);
 
--- The Hall of Fame (migration 087, src/league/hall_of_fame.py): one row per
+-- The Hall of Fame (migration 088, src/league/hall_of_fame.py): one row per
 -- played season that held an election, and one per player on its ballot.
 CREATE TABLE IF NOT EXISTS hall_elections (
     season_id  TEXT PRIMARY KEY REFERENCES seasons(id) ON DELETE CASCADE,

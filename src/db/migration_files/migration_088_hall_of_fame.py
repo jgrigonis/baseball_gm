@@ -1,4 +1,4 @@
-# src/db/migration_files/migration_087_hall_of_fame.py
+# src/db/migration_files/migration_088_hall_of_fame.py
 """
 The Hall of Fame (src/league/hall_of_fame.py, plans/hall-of-fame.md).
 
@@ -9,7 +9,7 @@ The Hall of Fame (src/league/hall_of_fame.py, plans/hall-of-fame.md).
   the team he gave the most to, and the career numbers the writers saw.
 """
 
-VERSION = 87
+VERSION = 88
 
 
 def upgrade(conn):
