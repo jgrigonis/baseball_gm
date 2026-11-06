@@ -571,3 +571,60 @@ def test_analytics_levels_are_read_for_games(db_conn):
         "a": bg.STANDARD,
         "b": bg.STANDARD,
     }
+
+
+# ── Revenue breakdown ─────────────────────────────────────────────────────────
+
+
+def test_books_add_up_and_back_out_the_revenue_base():
+    from src.league import finances as fn
+
+    b = fn.books(
+        revenue=112 * M, market=4, fans=50, playoff_gate=4 * M,
+        home_playoff_games=2, gate_per_game=2 * M, tax_share=3 * M,
+        payroll=80 * M, front_office=10 * M, luxury_tax=0, costs=15 * M,
+    )  # fmt: skip
+    assert b["projected"] and b["base"] == 100 * M
+    assert b["market_name"] == "Big"
+    assert b["total_in"] == 119 * M and b["total_out"] == 105 * M
+    assert b["profit"] == 14 * M and b["other"] == 0
+    # A finished season's profit stands; anything left over is other costs.
+    done = fn.books(
+        revenue=112 * M, market=4, fans=50, playoff_gate=0,
+        home_playoff_games=0, gate_per_game=2 * M, tax_share=0,
+        payroll=80 * M, front_office=10 * M, luxury_tax=0, costs=15 * M,
+        profit=5 * M,
+    )  # fmt: skip
+    assert not done["projected"] and done["other"] == 2 * M
+    assert done["total_in"] - done["total_out"] == done["profit"]
+
+
+def test_the_books_match_the_profit_the_season_closed_with(lg):
+    x = lg()
+    x.budgets.for_league(x.league.id, 2026)
+    projected = x.budgets.books(x.league.id, x.mine.id, 2026)
+    assert [b["year"] for b in projected] == [2026] and projected[0]["projected"]
+    x.budgets.assess(x.league.id, 2026)
+    (closed,) = x.budgets.books(x.league.id, x.mine.id, 2026)
+    assert not closed["projected"]
+    assert closed["other"] == 0
+    assert closed["profit"] == projected[0]["profit"]
+    x.budgets.for_league(x.league.id, 2027)
+    books = x.budgets.books(x.league.id, x.mine.id, 2027)
+    assert [(b["year"], b["projected"]) for b in books] == [(2027, True), (2026, False)]
+
+
+def test_the_budget_tab_shows_the_revenue_breakdown(lg, client_for):
+    x = lg()
+    x.budgets.for_league(x.league.id, 2026)
+    html = client_for(x).get(f"/leagues/{x.league.id}/budget").text
+    assert "Revenue and profit" in html and "Projected profit" in html
+    assert "league base" in html and "Fixed costs" in html
+    assert (
+        "Spending" not in html.split("Revenue and profit")[1].split("Past seasons")[0]
+    )
+
+
+def test_speed_blitz_has_no_books(lg):
+    x = lg(mode="speed_blitz")
+    assert x.budgets.books(x.league.id, x.mine.id, 2026) == []

@@ -46,8 +46,9 @@ FAN_MAX_ALL_STARS = 4
 # league.
 FAN_DRIFT = 7
 
-# Revenue multiplier by market size.
+# Revenue multiplier by market size, and what the Budget tab calls it.
 MARKET_MULT = {1: 0.80, 2: 0.90, 3: 1.00, 4: 1.12, 5: 1.25}
+MARKET_NAMES = {1: "Small", 2: "Modest", 3: "Mid-size", 4: "Big", 5: "Huge"}
 # Fan interest 0 is FAN_MULT_LOW x revenue, 100 is FAN_MULT_LOW + FAN_MULT_SPAN.
 FAN_MULT_LOW = 0.80
 FAN_MULT_SPAN = 0.40
@@ -152,3 +153,56 @@ def profit(
     front_office: int = 0,
 ) -> int:
     return revenue + tax_share - payroll - luxury_tax - costs - front_office
+
+
+def books(
+    *,
+    revenue: int,
+    market: int,
+    fans: float,
+    playoff_gate: int,
+    home_playoff_games: int,
+    gate_per_game: int,
+    tax_share: int,
+    payroll: int,
+    front_office: int,
+    luxury_tax: int,
+    costs: int,
+    profit: int | None = None,
+) -> dict:
+    """A team's season as money in and money out, for the Budget tab.
+
+    Revenue is the league's base times the market and fan interest, so the
+    base is backed out of it. With a profit (a finished season) anything it
+    doesn't explain shows as other costs; without one the profit is
+    projected from the lines.
+    """
+    mm, fm = market_mult(market), fan_mult(fans)
+    total_in = revenue + playoff_gate + tax_share
+    known_out = payroll + front_office + luxury_tax + costs
+    projected = profit is None
+    if projected:
+        profit = total_in - known_out
+    other = total_in - known_out - profit
+    return {
+        "base": _round(revenue / (mm * fm)),
+        "market": market,
+        "market_name": MARKET_NAMES.get(int(market), "Mid-size"),
+        "market_mult": mm,
+        "fans": int(round(fans)),
+        "fan_mult": fm,
+        "revenue": revenue,
+        "playoff_gate": playoff_gate,
+        "home_playoff_games": home_playoff_games,
+        "gate_per_game": gate_per_game,
+        "tax_share": tax_share,
+        "total_in": total_in,
+        "payroll": payroll,
+        "front_office": front_office,
+        "luxury_tax": luxury_tax,
+        "costs": costs,
+        "other": other,
+        "total_out": known_out + other,
+        "profit": profit,
+        "projected": projected,
+    }

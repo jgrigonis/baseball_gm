@@ -19,6 +19,15 @@
   .bud-dept:last-of-type { border-bottom:none; }
   .bud-dept-name { flex:1; min-width:0; font-size:13px; color:var(--text); }
   .bud-dept select { width:auto; font-size:12px; }
+  .bud-books { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  @media (max-width: 640px) { .bud-books { grid-template-columns:1fr; gap:14px; } }
+  .bud-row { display:flex; gap:12px; align-items:baseline; padding:6px 0; border-bottom:1px solid var(--border); }
+  .bud-row-name { flex:1; min-width:0; font-size:13px; color:var(--text); }
+  .bud-row-amt { font-family:var(--font-mono); font-size:13px; color:var(--text); white-space:nowrap; }
+  .bud-row.bud-total { border-bottom:none; font-weight:700; }
+  .bud-row-dim .bud-row-amt { color:var(--muted); }
+  .bud-profit { display:flex; align-items:baseline; gap:12px; margin-top:14px; padding-top:12px; border-top:2px solid var(--border); }
+  .bud-profit .bud-value { margin-top:0; }
 </style>
 
 <div class="tab-head">
@@ -107,6 +116,57 @@
   </div>
 </div>
 {% if fo_saved %}<script>if (window.gmToast) gmToast('Front office saved');</script>{% endif %}
+{% endif %}
+
+{% if books %}
+<div class="card" style="margin-bottom:16px;" id="revenue">
+  <div class="card-header"><span class="card-title">Revenue and profit</span>
+    {% if books|length > 1 %}
+    <select id="bud-books-year" style="margin-left:auto;width:auto;font-size:12px;" aria-label="Season"
+            onchange="document.querySelectorAll('.bud-books-year').forEach(function(el){el.hidden = el.dataset.year !== this.value;}, this)">
+      {% for b in books %}<option value="{{ b.year }}">{{ b.year }}{% if b.projected %} (projected){% endif %}</option>{% endfor %}
+    </select>
+    {% elif books[0].projected %}<span class="admin-dim" style="margin-left:auto;font-size:11px;">{{ books[0].year }} projected</span>{% endif %}
+  </div>
+  <div class="card-body">
+    {% for b in books %}
+    <div class="bud-books-year" data-year="{{ b.year }}" {% if not loop.first %}hidden{% endif %}>
+      <div class="bud-books">
+        <div>
+          <div class="bud-head">Money in</div>
+          {% for r in b.money_in %}
+          <div class="bud-row {% if not r.amount %}bud-row-dim{% endif %}">
+            <div class="bud-row-name">{{ r.label }}<div class="bud-note">{{ r.note }}</div></div>
+            <div class="bud-row-amt">{{ r.amount or '—' }}</div>
+          </div>
+          {% endfor %}
+          <div class="bud-row bud-total"><div class="bud-row-name">Total</div><div class="bud-row-amt">{{ b.total_in }}</div></div>
+        </div>
+        <div>
+          <div class="bud-head">Money out</div>
+          {% for r in b.money_out %}
+          <div class="bud-row {% if not r.amount %}bud-row-dim{% endif %}">
+            <div class="bud-row-name">{{ r.label }}<div class="bud-note">{{ r.note }}</div></div>
+            <div class="bud-row-amt {% if r.bad %}bud-bad{% endif %}">{{ r.amount or '—' }}</div>
+          </div>
+          {% endfor %}
+          <div class="bud-row bud-total"><div class="bud-row-name">Total</div><div class="bud-row-amt">{{ b.total_out }}</div></div>
+        </div>
+      </div>
+      <div class="bud-profit">
+        <div class="bud-label" style="flex:1;">{% if b.projected %}Projected profit{% else %}Profit{% endif %}</div>
+        <div class="bud-value {% if b.loss %}bud-bad{% endif %}">{{ b.profit }}</div>
+      </div>
+      {% if b.projected %}
+      <div class="bud-line">
+        On today's payroll. The playoff gate and the luxury tax are settled when the playoffs end, and the tax share depends on every team's final payroll.
+        Your market is fixed; fan interest moves each season with winning, the playoffs, a title and your All-Stars, and sets next season's revenue.
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
 {% endif %}
 
 <div class="card">
