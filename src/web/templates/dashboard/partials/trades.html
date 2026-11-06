@@ -513,7 +513,6 @@ function shopRow(p) {
       '<span class="tr-meta">' + esc(p.position || '') + ' · ' + p.age +
         (p.salary_text ? ' · ' + esc(p.salary_text) : '') + (statLine(p) ? ' · ' + esc(statLine(p)) : '') +
       '</span></span>' +
-    '<span class="badge ' + (onForty(p) ? 'badge-40man">40' : 'badge-minors">ORG') + '</span>' +
   '</div>';
 }
 
@@ -681,7 +680,6 @@ if (done) { showResult(done.msg, done.kind, done.dest); window._tradeResult = nu
 #trades-page .tr-shop-pick { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
 #trades-page .tr-shop-pick .tr-team { flex: 1; min-width: 0; max-width: 420px; padding: 5px 6px; }
 #trades-page .tr-shop-player { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
-#trades-page .tr-shop-player .badge { flex: none; }
 #trades-page .tr-shop-none { padding: 8px 4px 2px; }
 #trades-page .tr-link { background: none; border: none; padding: 0; color: var(--sky); cursor: pointer;
   font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; }
