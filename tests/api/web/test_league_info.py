@@ -4,6 +4,8 @@ Once a league has started, its settings stay in view: the top bar's season
 pill opens them, and the League page lists them with who runs each team.
 """
 
+import uuid
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -125,3 +127,41 @@ def test_ai_gms_link_to_their_persona_card(client, db_conn, league):
 def test_unknown_persona_is_404(client, league):
     lg, _ = league
     assert client.get(f"/leagues/{lg.id}/personas/nope").status_code == 404
+
+
+def _code():
+    return uuid.uuid4().hex[:6].upper()
+
+
+def test_join_code_shows_once_the_league_has_started(client, db_conn, league):
+    lg, _ = league
+    code = _code()
+    db_conn.execute(
+        "UPDATE leagues SET join_code = %s, late_joins = TRUE WHERE id = %s",
+        (code, lg.id),
+    )
+
+    pill = client.get(f"/leagues/{lg.id}/standings").text.split('id="league-info"')[1]
+    page = client.get(f"/leagues/{lg.id}/league").text
+
+    assert "Join code" in pill.split("</details>")[0]
+    assert code in pill.split("</details>")[0]
+    assert code in page
+
+
+def test_viewers_do_not_see_the_join_code(client, db_conn, league):
+    lg, gm = league
+    code = _code()
+    db_conn.execute(
+        "UPDATE leagues SET join_code = %s, is_public = TRUE WHERE id = %s",
+        (code, lg.id),
+    )
+    app.dependency_overrides[get_gm_or_viewer] = lambda: {
+        "id": None,
+        "team_id": None,
+        "is_viewer": True,
+    }
+
+    page = client.get(f"/leagues/{lg.id}/league").text
+
+    assert code not in page

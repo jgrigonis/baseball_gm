@@ -783,6 +783,8 @@ def _lobby_gms_context(gm_repo: GMRepository, league, gm) -> dict:
         "is_commissioner": league["commissioner_gm_id"] == str(gm["id"]),
         "num_teams": league["num_teams"],
         "join_code": league.get("join_code"),
+        # The join code's tip says whether it still works after the start.
+        "late_joins": bool(league.get("late_joins")),
         "current_gm_id": str(gm["id"]),
         "team_choices": lobby_teams.choices(gm_repo.conn, league["id"]),
     }
