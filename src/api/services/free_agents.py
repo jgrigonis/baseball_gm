@@ -5,9 +5,10 @@ Releasing players and signing free agents.
 - Release: a GM lets one of his players go. He becomes a free agent anyone
   can sign. A guaranteed deal (he's been on the 40-man under it) stays on the
   team's payroll as dead money for the seasons it had left; a minors player
-  who never made the 40-man costs nothing. (Josh's decisions, 2026-11-04:
-  the old team owes all of it for now, with an offset for what his new team
-  pays coming later.)
+  who never made the 40-man costs nothing. Released off the 40-man, he goes
+  on waivers first (src/api/services/waivers.py). When he signs elsewhere,
+  his new salary comes off what his old team owes (full offset, Josh
+  2026-11-05).
 - Sign: a GM signs a free agent at his asking price, a standard deal priced
   from his grade and age (src/player/contracts.py). It starts this season,
   is guaranteed, and he joins the organization (minors) like a traded player.
@@ -17,17 +18,17 @@ Releasing players and signing free agents.
   about the luxury tax and the owner.
 
 Both wait for any sim in the league to finish (the league lock), and neither
-works in a lobby or a finished league. Waivers, bidding and AI GMs signing
-free agents are later phases.
+works in a lobby or a finished league. Bidding and AI GMs signing free
+agents are later phases.
 """
 
 from __future__ import annotations
 
 import random
-from src.api.services import trades
+from src.api.services import trades, waivers
 from src.db.locks import league_lock
 from src.db.repositories.budget_repo import BudgetRepository
-from src.db.repositories.contract_repo import ContractRepository
+from src.db.repositories.contract_repo import FORTY_MAN_STATUSES, ContractRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
@@ -78,7 +79,11 @@ def release_preview(conn, league_id: str, team_id: str, player_id: str) -> dict:
     _, year = _context(conn, league_id)
     if not _on_team(conn, team_id, player_id):
         raise FreeAgentError("He isn't on your team.")
-    return _owed_view(ContractRepository(conn).release_cost(player_id, year))
+    up = PlayerStatusRepository(conn).get_status(player_id) in FORTY_MAN_STATUSES
+    return {
+        "waivers": up,
+        **_owed_view(ContractRepository(conn).release_cost(player_id, year)),
+    }
 
 
 def release(conn, league_id: str, team_id: str, player_id: str) -> dict:
@@ -88,13 +93,22 @@ def release(conn, league_id: str, team_id: str, player_id: str) -> dict:
         if not _on_team(conn, team_id, player_id):
             raise FreeAgentError("He isn't on your team.")
         player = PlayerRepository(conn).look_up(player_id)
+        status_repo = PlayerStatusRepository(conn)
+        was_up = status_repo.get_status(player_id) in FORTY_MAN_STATUSES
         owed = ContractRepository(conn).release(player_id, team_id, year)
 
         TeamRepository(conn).remove_player(team_id, player_id)
-        PlayerStatusRepository(conn).set_status(player_id, "free_agent")
+        status_repo.set_status(player_id, "free_agent")
         # Out of the rotation, bullpen and saved lineup from the next game,
         # and out of any trade offer he was in.
         effective = trades._next_game_date(conn, season_id)
+        # Off the 40-man, he goes on waivers first (src/api/services/waivers.py).
+        waiver = None
+        if was_up:
+            league = dict(LeagueRepository(conn).get_by_id(league_id))
+            waiver = waivers.place(
+                conn, league, season_id, player_id, team_id, effective
+            )
         trades._clear_roles(conn, team_id, season_id, [player_id], effective)
         trade_repo = trades.TradeRepository(conn)
         for offer_id in trade_repo.open_offers_with_players(league_id, [player_id]):
@@ -105,7 +119,12 @@ def release(conn, league_id: str, team_id: str, player_id: str) -> dict:
                 "a player in it was released.",
             )
         conn.commit()
-    return {"name": player.name if player else "", **_owed_view(owed)}
+    return {
+        "name": player.name if player else "",
+        "waivers": waiver is not None,
+        "clears_on": waiver["clears_on"] if waiver else None,
+        **_owed_view(owed),
+    }
 
 
 def sign_preview(conn, league_id: str, team_id: str, player_id: str) -> dict:
@@ -119,6 +138,7 @@ def sign_preview(conn, league_id: str, team_id: str, player_id: str) -> dict:
         or PlayerStatusRepository(conn).get_status(player_id) != "free_agent"
     ):
         raise FreeAgentError("He isn't a free agent.")
+    _not_on_waivers(conn, player_id)
     deal = asking_deal(player, year, price_scale(conn, league_id, year))
     return {
         "salary_text": ct.format_salary(deal.salary),
@@ -158,6 +178,7 @@ def sign(conn, league_id: str, team_id: str, player_id: str) -> dict:
             or status_repo.get_status(player_id) != "free_agent"
         ):
             raise FreeAgentError("He isn't a free agent.")
+        _not_on_waivers(conn, player_id)
         minors = len(status_repo.get_by_team_and_status(team_id, "minors"))
         if minors >= MINORS_LIMIT:
             raise FreeAgentError(
@@ -170,15 +191,27 @@ def sign(conn, league_id: str, team_id: str, player_id: str) -> dict:
         team_repo = TeamRepository(conn)
         team_repo.add_player(team_id, player_id)
         status_repo.set_status(player_id, "minors")
-        ContractRepository(conn).sign_free_agent(
-            player_id, league_id, team_id, deal, year
-        )
+        contracts = ContractRepository(conn)
+        contracts.sign_free_agent(player_id, league_id, team_id, deal, year)
+        # Full offset: his new salary comes off what old teams still owe.
+        contracts.apply_offset(player_id, year, deal.salary, year + deal.years - 1)
         conn.commit()
     return {
         "name": player.name,
         "salary_text": ct.format_salary(deal.salary),
         "years": deal.years,
     }
+
+
+def _not_on_waivers(conn, player_id: str) -> None:
+    w = waivers.on_waivers(conn, player_id)
+    if w:
+        when = (
+            f"until after the games on {w['clears_on']}"
+            if w["clears_on"]
+            else "until this phase ends"
+        )
+        raise FreeAgentError(f"He's on waivers {when}. Claim him instead.")
 
 
 def _on_team(conn, team_id: str, player_id: str) -> bool:

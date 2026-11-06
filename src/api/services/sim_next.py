@@ -23,6 +23,7 @@ from src.api.services import (
     rookie_game,
     team_states,
     trades,
+    waivers,
 )
 from src.api.services.injury_news import InjuryNews
 from src.db.connection import rollback_quietly
@@ -331,6 +332,8 @@ def sim_days(league_id: str, conn, count: int | str) -> dict:
             front_office.call_ups(conn, league_id, changed, day_result["game_date"])
             # Owners take stock weekly: mood, check-ins, reactions.
             owner_office.weekly(conn, league_id, day_result["game_date"])
+            # Released players whose time on waivers is up.
+            waivers.after_day(conn, league_id, day_result["game_date"])
             conn.commit()
         # AI teams make offers and trades between game days.
         if deadline and gp > 0:

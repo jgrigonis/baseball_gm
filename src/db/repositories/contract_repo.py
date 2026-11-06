@@ -122,19 +122,67 @@ class ContractRepository:
     def dead_money_rows(self, team_id: str, year: int) -> list[dict]:
         """Each released deal the team still pays this season: the player,
         his salary, and the last season it's owed."""
+        # Once he signs elsewhere, his new salary comes off what's owed
+        # (the offset, through the last season of his new deal).
         rows = self.conn.execute(
             """
-            SELECT c.player_id, c.salary, c.start_year + c.years - 1 AS through,
+            SELECT c.player_id, c.start_year + c.years - 1 AS through,
+                   c.salary - CASE WHEN c.offset_through >= %s
+                                   THEN LEAST(c.offset_salary, c.salary)
+                                   ELSE 0 END AS salary,
+                   c.salary AS full_salary,
                    p.first_name, p.last_name
             FROM player_contracts c
             JOIN players p ON p.id = c.player_id
             WHERE c.released_team_id = %s AND c.guaranteed
               AND c.released_year <= %s AND c.start_year + c.years > %s
-            ORDER BY c.salary DESC
+            ORDER BY salary DESC
             """,
-            (team_id, year, year),
+            (year, team_id, year, year),
         ).fetchall()
-        return [dict(r) for r in rows]
+        return [dict(r) for r in rows if r["salary"] > 0]
+
+    def apply_offset(
+        self, player_id: str, year: int, salary: int, through: int
+    ) -> None:
+        """He signed elsewhere for this salary a season through that season:
+        take it off what his old teams still owe him (full offset, Josh
+        2026-11-05)."""
+        self.conn.execute(
+            """UPDATE player_contracts SET offset_salary = %s, offset_through = %s
+               WHERE player_id = %s AND guaranteed AND released_year IS NOT NULL
+                 AND start_year + years > %s""",
+            (salary, through, player_id, year),
+        )
+
+    def claim(self, player_id: str, from_team_id: str, to_team_id: str) -> dict | None:
+        """A team claimed him off waivers: it takes over the deal his old
+        team released, so the old team owes nothing. Returns the deal."""
+        row = self.conn.execute(
+            """SELECT * FROM player_contracts
+               WHERE player_id = %s AND released_team_id = %s
+               ORDER BY start_year DESC, id DESC LIMIT 1""",
+            (player_id, from_team_id),
+        ).fetchone()
+        if row is None:
+            return None
+        self.conn.execute(
+            """UPDATE player_contracts
+               SET released_year = NULL, released_team_id = NULL, team_id = %s
+               WHERE id = %s""",
+            (to_team_id, row["id"]),
+        )
+        return dict(row)
+
+    def released_deal(self, player_id: str, from_team_id: str) -> dict | None:
+        """The deal his old team released, for the claim confirm."""
+        row = self.conn.execute(
+            """SELECT * FROM player_contracts
+               WHERE player_id = %s AND released_team_id = %s
+               ORDER BY start_year DESC, id DESC LIMIT 1""",
+            (player_id, from_team_id),
+        ).fetchone()
+        return dict(row) if row else None
 
     def guarantee(self, player_ids) -> None:
         """Make the deals of any of these players now on a 40-man

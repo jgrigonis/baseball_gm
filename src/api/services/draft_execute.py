@@ -13,7 +13,7 @@ import logging
 import random
 from datetime import datetime, UTC
 
-from src.api.services import front_office, trades
+from src.api.services import front_office, trades, waivers
 from src.api.services.draft_needs import draft_strategies
 from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.draft_repo import DraftRepository
@@ -243,6 +243,8 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
     )
     log.info("Seeded rotations for %s AI teams post-draft.", seeded)
 
+    # Players released during the draft clear waivers as it ends.
+    waivers.clear_all(conn, league_id)
     lr = LeagueRepository(conn)
     lr.set_state(league_id, "preseason")
 

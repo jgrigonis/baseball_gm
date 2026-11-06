@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 from src.api.database import get_db
 from src.api.dependencies import get_current_gm, get_current_user, get_gm_or_viewer
 from src.api.main import app
-from src.api.services import free_agents
+from src.api.services import free_agents, waivers
 from src.api.services.free_agents import FreeAgentError
 from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.player_repo import PlayerRepository
@@ -180,6 +180,7 @@ def test_signing_a_free_agent_at_his_asking_price(lg):
     pid = lg.factory.rated_player(lg.theirs, lg.league, level=62).id
     lg.contracts.sign_unsigned(lg.league.id, 2026)
     free_agents.release(lg.db, lg.league.id, lg.theirs.id, pid)
+    waivers.clear_all(lg.db, lg.league.id)  # nobody claimed him
 
     result = free_agents.sign(lg.db, lg.league.id, lg.mine.id, pid)
 
@@ -290,6 +291,10 @@ def test_release_and_sign_endpoints(lg, client):
     r = client.post(f"/leagues/{lg.league.id}/players/{pid}/release")
     assert r.status_code == 200
     assert lg.status.get_status(pid) == "free_agent"
+    # On waivers first; nobody claims him.
+    r = client.post(f"/leagues/{lg.league.id}/free-agents/{pid}/sign")
+    assert r.status_code == 422 and "waivers" in r.json()["detail"]
+    waivers.clear_all(lg.db, lg.league.id)
     r = client.post(f"/leagues/{lg.league.id}/free-agents/{pid}/sign")
     assert r.status_code == 200
     assert lg.status.get_status(pid) == "minors"
@@ -303,6 +308,9 @@ def test_the_panel_offers_release_for_my_player_and_sign_for_a_free_agent(lg, cl
     html = client.get(f"/leagues/{lg.league.id}/players/{mine}/panel").text
     assert "releasePlayer(" in html
     free_agents.release(lg.db, lg.league.id, lg.mine.id, mine)
+    html = client.get(f"/leagues/{lg.league.id}/players/{mine}/panel").text
+    assert "releasePlayer(" not in html  # on waivers: he was mine
+    waivers.clear_all(lg.db, lg.league.id)
     html = client.get(f"/leagues/{lg.league.id}/players/{mine}/panel").text
     assert "signFreeAgent(" in html and "releasePlayer(" not in html
 

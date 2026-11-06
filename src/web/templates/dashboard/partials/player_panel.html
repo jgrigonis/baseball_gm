@@ -41,6 +41,20 @@
                title="Let him go to free agency">
          Release
        </button>
+       {% elif my_team_id and player.waiver %}
+       {% if player.waiver.from_team_id == my_team_id %}
+       {% elif my_team_id in player.waiver.claimants %}
+       <button class="btn btn-secondary pp-action pp-sign" onclick="withdrawClaim('{{ player.player_id }}')"
+               title="You've claimed him. Click to take the claim back. {{ player.waiver.clears_text }}.">
+         Claimed ✓
+       </button>
+       {% else %}
+       <button class="btn btn-secondary pp-action pp-claim"
+               onclick="claimWaiver('{{ player.player_id }}', '{{ player.first_name }} {{ player.last_name }}')"
+               title="He's on waivers. {{ player.waiver.clears_text }}. Claim him to take over his deal.">
+         Claim off waivers
+       </button>
+       {% endif %}
        {% elif my_team_id and player.roster_status == 'free_agent' and player.asking %}
        <button class="btn btn-secondary pp-action pp-sign"
                onclick="signFreeAgent('{{ player.player_id }}', '{{ player.first_name }} {{ player.last_name }}', '{{ player.asking.salary_text }}', {{ player.asking.years }})"

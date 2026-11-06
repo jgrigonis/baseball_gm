@@ -8,7 +8,7 @@
   <div class="page-header" style="margin-bottom:0;">
     <h1 class="page-title">Free Agents</h1>
     <span class="page-subtitle" style="margin-left:8px;">
-      {{ pool_size }} in the pool{% if pool_size > max_shown %} · best {{ max_shown }} shown{% endif %}
+      {{ pool_size }} in the pool{% if waiver_count %} · {{ waiver_count }} on waivers{% endif %}{% if pool_size > max_shown %} · best {{ max_shown }} shown{% endif %}
     </span>
     {% if can_sign and payroll_text %}
     <span class="page-subtitle" style="margin-left:12px;" id="fa-minors"
@@ -75,11 +75,14 @@
 .fa-ask small { display: block; color: var(--text-dim); font-size: 10px; }
 .fa-right { display: flex; align-items: center; gap: 10px; }
 .fa-sign { font-size: 10px; padding: 4px 10px; border-color: var(--green); color: var(--green); }
+.fa-claim { font-size: 10px; padding: 4px 10px; border-color: var(--amber); color: var(--amber); }
+.fa-claimed { font-size: 10px; padding: 4px 10px; border-color: var(--green); color: var(--green); background: var(--green-dim); }
+.fa-waiver { color: var(--amber); }
 .fa-empty { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); padding: 12px 0; max-width: 520px; line-height: 1.5; }
 @media (max-width: 700px) {
   .fa-row { grid-template-columns: 26px 34px minmax(0, 1fr) auto; padding: 8px; }
   .fa-right { flex-direction: column; align-items: flex-end; gap: 4px; }
-  .fa-sign { font-size: 11px; padding: 6px 11px; }
+  .fa-sign, .fa-claim, .fa-claimed { font-size: 11px; padding: 6px 11px; }
   #fa-q { width: 100% !important; }
 }
 </style>
@@ -110,9 +113,16 @@ function row(p) {
   const isPitcher = p.player_type === 'pitcher';
   const trail = [p.position || '?', `${p.bats}/${p.throws}`, `Age ${p.age}`];
   if (p.last_team) trail.push(`<span title="His last team">ex-${p.last_team}</span>`);
-  const years = p.ask_years ? `${p.ask_years} yr${p.ask_years === 1 ? '' : 's'}` : '';
-  const sign = CAN_SIGN && p.salary_text
+  const w = p.waiver;
+  const years = p.ask_years ? `${p.ask_years} yr${p.ask_years === 1 ? '' : 's'}${w ? ' left' : ''}` : '';
+  let sign = CAN_SIGN && p.salary_text
     ? `<button class="btn btn-secondary fa-sign" title="Sign him at his asking price">Sign</button>` : '';
+  if (w) {
+    trail.unshift(`<span class="fa-waiver" title="Another team can claim him and take over his deal">On waivers · ${w.clears_text.replace('Clears', 'clears')}</span>`);
+    sign = !CAN_SIGN || w.mine ? ''
+      : w.claimed ? `<button class="btn btn-secondary fa-claimed" title="You've claimed him. Click to take the claim back.">Claimed ✓</button>`
+      : `<button class="btn btn-secondary fa-claim" title="Claim him: you take over his deal if you win the claim">Claim</button>`;
+  }
   el.innerHTML = `
     <span class="${gradeClass(p.overall)} lu-grade">${p.overall}</span>
     ${faceImgHtml(p, false)}
@@ -121,10 +131,12 @@ function row(p) {
       ${isPitcher ? `<div class="lu-skills">${pitcherGradesHtml(p)}</div>` : hitterGradesHtml(p, null)}
     </div>
     <div class="fa-right">
-      ${p.salary_text ? `<div class="fa-ask" title="His asking price: a season, and how many seasons">${p.salary_text}<small>${years}</small></div>` : ''}
+      ${p.salary_text ? `<div class="fa-ask" title="${w ? 'His deal: a season, and seasons left' : 'His asking price: a season, and how many seasons'}">${p.salary_text}<small>${years}</small></div>` : ''}
       ${sign}
     </div>`;
   el.addEventListener('click', e => {
+    if (e.target.closest('.fa-claim')) { claimWaiver(p.player_id, `${p.first_name} ${p.last_name}`); return; }
+    if (e.target.closest('.fa-claimed')) { withdrawClaim(p.player_id); return; }
     if (e.target.closest('.fa-sign')) {
       signFreeAgent(p.player_id, `${p.first_name} ${p.last_name}`, p.salary_text, p.ask_years);
       return;

@@ -76,6 +76,22 @@ def _asking(db, league_id: str, pid: str) -> dict | None:
     return {"salary_text": format_salary(deal.salary), "years": deal.years}
 
 
+def _waiver(db, pid: str) -> dict | None:
+    """He's on waivers: when he clears, who let him go, and who's claimed
+    him (services/waivers.py)."""
+    from src.api.services import waivers
+    from src.db.repositories.waiver_repo import WaiverRepository
+
+    w = waivers.on_waivers(db, pid)
+    if not w:
+        return None
+    return {
+        "clears_text": waivers.clears_text(w),
+        "from_team_id": w["from_team_id"],
+        "claimants": WaiverRepository(db).claimants(w["id"]),
+    }
+
+
 def _happiness(db, league_id: str, pid: str) -> dict | None:
     """His public type and mood word, what's on his mind, and (for admins)
     the numbers behind it (src/player/happiness.py)."""
@@ -271,6 +287,7 @@ def player_panel_data(
         ),
         "contract": _contract(db, league_id, pid),
         "asking": _asking(db, league_id, pid) if status == "free_agent" else None,
+        "waiver": _waiver(db, pid) if status == "free_agent" else None,
         "home_region": p.get("home_region"),
         "happiness": _happiness(db, league_id, pid),
         "grades": grade_map,
