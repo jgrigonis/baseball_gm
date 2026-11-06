@@ -19,7 +19,11 @@ gathers each team's numbers, calls these, and stores the moods.
 - A few players are morale ruiners: when one of them is unhappy, his
   teammates' moods sink with him, more for the touchy ones.
 
-Coaching is a planned drive that isn't built yet. There's no web of friends
+- The team's Coaching department (src/league/budget.py) lifts or sours
+  everyone a little, young players the most. It isn't a drive: a good staff
+  pleases anyone, and the level itself stays private.
+
+There's no web of friends
 and rivals: morale ruiners are the whole of the teammates side (Josh,
 2026-11-06).
 """
@@ -239,6 +243,43 @@ def susceptibility(personality: Personality) -> float:
 CLUBHOUSE_LINE = 0.08
 CLUBHOUSE_LINE_TEXT = "Fed up with {name} souring the clubhouse."
 RUINER_LINE_TEXT = "His moods are souring the clubhouse."
+
+
+# ── Coaching ────────────────────────────────────────────────────────────────
+# The team's Coaching level (Bare bones .. Elite) nudges every player's target
+# mood: the full amount at COACHING_FULL_AGE and under, fading to
+# COACHING_VET_SHARE of it by COACHING_VET_AGE. Standard does nothing.
+COACHING_MOOD = (-0.1, -0.05, 0.0, 0.05, 0.1)
+COACHING_FULL_AGE = 23
+COACHING_VET_AGE = 28
+COACHING_VET_SHARE = 0.35
+# A lift (or drag) this big comes up in what's on his mind.
+COACHING_LINE = 0.07
+COACHING_GOOD_TEXT = "Likes working with the coaches."
+COACHING_BAD_TEXT = "Wants better coaching."
+
+
+def coaching_lift(level: int | None, age: int) -> float:
+    """How much his team's coaching staff moves his target mood."""
+    if level is None:
+        return 0.0
+    full = COACHING_MOOD[max(0, min(len(COACHING_MOOD) - 1, int(level)))]
+    if age <= COACHING_FULL_AGE:
+        share = 1.0
+    elif age >= COACHING_VET_AGE:
+        share = COACHING_VET_SHARE
+    else:
+        fade = (age - COACHING_FULL_AGE) / (COACHING_VET_AGE - COACHING_FULL_AGE)
+        share = 1.0 - (1.0 - COACHING_VET_SHARE) * fade
+    return full * share
+
+
+def coaching_line(lift: float) -> str | None:
+    if lift >= COACHING_LINE:
+        return COACHING_GOOD_TEXT
+    if lift <= -COACHING_LINE:
+        return COACHING_BAD_TEXT
+    return None
 
 
 # ── Drive satisfaction ──────────────────────────────────────────────────────

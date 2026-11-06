@@ -1,6 +1,8 @@
 # tests/player/test_happiness.py
 from collections import Counter
 
+import pytest
+
 from src.league import team_pool
 from src.player import happiness as hp
 
@@ -213,3 +215,18 @@ def test_calm_players_shrug_off_the_clubhouse():
     hot = hp.Personality("Mercenary", {}, {"ego": 50, "temper": 90, "loyalty": 50})
     assert hp.susceptibility(calm) == 0
     assert hp.susceptibility(hot) == 1
+
+
+def test_coaching_lifts_young_players_most_and_standard_does_nothing():
+    assert hp.coaching_lift(None, 22) == 0
+    assert hp.coaching_lift(2, 22) == 0  # Standard
+    assert hp.coaching_lift(4, 22) == pytest.approx(0.1)
+    assert hp.coaching_lift(0, 22) == pytest.approx(-0.1)
+    # Fades with age, but a veteran still feels some of it.
+    assert 0 < hp.coaching_lift(4, 31) < hp.coaching_lift(4, 26) < 0.1
+    assert hp.coaching_lift(4, 35) == pytest.approx(0.1 * hp.COACHING_VET_SHARE)
+    # Only a big lift (or drag) comes up, and never by its level's name.
+    assert hp.coaching_line(hp.coaching_lift(4, 22)) == hp.COACHING_GOOD_TEXT
+    assert hp.coaching_line(hp.coaching_lift(0, 22)) == hp.COACHING_BAD_TEXT
+    assert hp.coaching_line(hp.coaching_lift(3, 22)) is None
+    assert hp.coaching_line(hp.coaching_lift(4, 33)) is None
