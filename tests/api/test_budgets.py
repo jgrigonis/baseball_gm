@@ -107,7 +107,8 @@ def test_every_team_has_the_same_cap(lg):
     assert set(budgets) == {x.mine.id, x.theirs.id}
     assert x.budgets.cap(x.league.id, 2026) == cap
     # No owners yet: a middle owner's leash.
-    assert budgets[x.mine.id] == budgets[x.theirs.id] == bg.owner_budget(cap, 50)
+    fo = bg.standard_front_office(cap)
+    assert budgets[x.mine.id] == budgets[x.theirs.id] == bg.owner_budget(cap, 50) + fo
     caps = x.db.execute(
         "SELECT DISTINCT cap FROM team_budgets WHERE league_id = %s", (x.league.id,)
     ).fetchall()
@@ -189,7 +190,8 @@ def test_the_roster_shows_payroll_against_cap_and_budget(lg, client_for):
     cap = x.budgets.cap(x.league.id, 2026)
     html = client.get(f"/leagues/{x.league.id}/roster").text
     assert f"Cap {bg.format_salary(cap)}" in html
-    assert f"Owner's number {bg.format_salary(budget)}" in html
+    fo = bg.standard_front_office(cap)
+    assert f"Owner's number {bg.format_salary(budget - fo)}" in html
     x.db.execute("UPDATE team_budgets SET budget = 1000000, cap = 1000000")
     html = client.get(f"/leagues/{x.league.id}/roster").text
     assert " over cap</span>" in html and "past it." in html
@@ -242,8 +244,9 @@ def test_a_spender_gets_more_than_a_miser(lg):
     budgets = x.budgets.for_league(x.league.id, 2026)
     pays = [x.contracts.payroll(t.id, 2026) for t in (x.mine, x.theirs)]
     cap = bg.first_cap(pays)
-    assert budgets[x.mine.id] == bg.owner_budget(cap, 95) > cap
-    assert budgets[x.theirs.id] == bg.owner_budget(cap, 5) < cap
+    fo = bg.standard_front_office(cap)
+    assert budgets[x.mine.id] - fo == bg.owner_budget(cap, 95) > cap
+    assert budgets[x.theirs.id] - fo == bg.owner_budget(cap, 5) < cap
     row = x.db.execute(
         "SELECT revenue, fans_before FROM team_budgets WHERE team_id = %s",
         (x.mine.id,),
@@ -373,7 +376,7 @@ def test_the_bank_carries_profit_into_next_seasons_budget(lg):
     assert x.budgets.banks(x.league.id)[x.mine.id]["change"] == profit
     nxt = x.budgets.for_league(x.league.id, 2027)[x.mine.id]
     cap2 = x.budgets.cap(x.league.id, 2027)
-    assert nxt == bg.owner_budget(cap2, 95, profit)
+    assert nxt == bg.owner_budget(cap2, 95, profit) + bg.standard_front_office(cap2)
     history = x.budgets.history(x.league.id, x.mine.id)
     assert [r["year"] for r in history] == [2027, 2026]
     assert history[1]["bank_after"] == bank["start"] + profit
@@ -426,3 +429,88 @@ def test_the_owner_refuses_a_trade_that_adds_payroll_past_the_limit(lg):
     )
     # Sending him away is always fine.
     assert trades.owner_refusal(x.db, x.league.id, x.theirs.id, [], [star]) is None
+
+
+# ── The front office (plans/budget.md, section 7) ─────────────────────────────
+
+
+def test_department_levels_cost_a_share_of_the_cap():
+    assert [bg.level_cost(160 * M, i) for i in range(5)] == [
+        2 * M,
+        4 * M,
+        6 * M,
+        9 * M,
+        12 * M,
+    ]
+    assert bg.standard_front_office(160 * M) == 18 * M
+    assert bg.front_office_cost(160 * M, {"coaching": 4}) == 24 * M
+    assert bg.clean_level("x") == bg.STANDARD and bg.clean_level(9) == 4
+
+
+def test_ai_levels_follow_the_owners_spending():
+    miser = bg.ai_levels(5, "a")
+    spender = bg.ai_levels(95, "a")
+    assert set(miser) == set(bg.DEPARTMENT_KEYS)
+    assert sum(spender.values()) > sum(miser.values())
+
+
+def test_the_front_office_counts_against_the_budget_not_the_cap(lg):
+    x = lg()
+    x.budgets.for_league(x.league.id, 2026)
+    before = x.budgets.standing(x.league.id, x.mine.id, 2026)
+    assert x.budgets.levels(x.league.id, x.mine.id, 2026) == dict.fromkeys(
+        bg.DEPARTMENT_KEYS, bg.STANDARD
+    )
+    x.budgets.set_level(x.league.id, x.mine.id, 2026, "coaching", 4)
+    after = x.budgets.standing(x.league.id, x.mine.id, 2026)
+    cap = after["cap"]
+    extra = bg.level_cost(cap, 4) - bg.level_cost(cap, bg.STANDARD)
+    assert after["front_office"] == before["front_office"] + extra
+    assert after["spend"] == after["payroll"] + after["front_office"]
+    assert after["tax"] == before["tax"]  # tax is payroll only
+    # It's in the season's profit.
+    x.budgets.assess(x.league.id, 2026)
+    money = x.budgets.finances(x.league.id, 2026)
+    row = x.db.execute(
+        "SELECT front_office FROM team_budgets WHERE team_id = %s AND year = 2026",
+        (x.mine.id,),
+    ).fetchone()
+    assert row["front_office"] == after["front_office"]
+    assert money[x.mine.id]["profit"] is not None
+
+
+def test_ai_teams_get_their_own_levels(lg):
+    x = lg()
+    x.budgets.for_league(x.league.id, 2026)
+    row = x.db.execute(
+        "SELECT coaching FROM team_budgets WHERE team_id = %s", (x.theirs.id,)
+    ).fetchone()
+    assert row["coaching"] is not None
+    mine = x.db.execute(
+        "SELECT coaching FROM team_budgets WHERE team_id = %s", (x.mine.id,)
+    ).fetchone()
+    assert mine["coaching"] is None  # a person's starts at Standard
+
+
+def test_setting_the_front_office_on_the_budget_tab(lg, client_for):
+    x = lg()
+    x.budgets.for_league(x.league.id, 2026)
+    client = client_for(x)
+    url = f"/leagues/{x.league.id}/budget/front-office"
+    # Locked during the season.
+    r = client.post(url, data={"department": "coaching", "level": 4})
+    assert "between seasons" in r.text
+    assert x.budgets.levels(x.league.id, x.mine.id, 2026)["coaching"] == bg.STANDARD
+    x.db.execute("UPDATE leagues SET state = 'preseason' WHERE id = %s", (x.league.id,))
+    x.db.execute("UPDATE team_budgets SET budget = 900000000")
+    r = client.post(url, data={"department": "coaching", "level": 4})
+    assert r.status_code == 200 and "Front office saved" in r.text
+    assert x.budgets.levels(x.league.id, x.mine.id, 2026)["coaching"] == 4
+    # The owner won't fund a raise past their hard limit.
+    x.db.execute("UPDATE team_budgets SET budget = 1000000, cap = 1000000")
+    r = client.post(url, data={"department": "analytics", "level": 4})
+    assert "won't allow" in r.text
+    assert x.budgets.levels(x.league.id, x.mine.id, 2026)["analytics"] == bg.STANDARD
+    # Cutting back is always fine.
+    r = client.post(url, data={"department": "coaching", "level": 0})
+    assert x.budgets.levels(x.league.id, x.mine.id, 2026)["coaching"] == 0

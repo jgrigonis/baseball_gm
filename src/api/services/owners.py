@@ -23,6 +23,7 @@ import random
 from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.owner_repo import OwnerRepository
+from src.league import budget as bg
 from src.league import divisions, owners, team_pool
 
 FALLBACK_MARKET = 3
@@ -165,8 +166,12 @@ def pay_rooms(
     if not budgets:
         return {}
     contracts = ContractRepository(conn)
+    repo = BudgetRepository(conn)
+    cap = repo.cap(league_id, year)
+    levels = repo.league_levels(league_id, year)
+    # The budget pays the front office too (src/league/budget.py).
     return {
-        t: b - contracts.payroll(t, year)
+        t: b - contracts.payroll(t, year) - bg.front_office_cost(cap, levels.get(t, {}))
         for t, b in budgets.items()
         if team_ids is None or t in team_ids
     }

@@ -19,7 +19,9 @@ def test_budgets_come_from_the_cap_by_spending():
         "middle": fn.TeamMoney(market=3, fans=50, spending=50),
     }
     plans = fn.plan(160 * M, teams)
-    assert plans["small_miser"].budget < 160 * M < plans["big_spender"].budget
+    # Budgets pay a Standard front office on top of payroll.
+    fo = fn.bg.standard_front_office(160 * M)
+    assert plans["small_miser"].budget - fo < 160 * M < plans["big_spender"].budget - fo
     assert (
         plans["big_spender"].budget
         > plans["middle"].budget

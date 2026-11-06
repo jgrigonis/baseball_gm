@@ -10,7 +10,8 @@ A light money model, just enough for owners to set budgets and judge profit:
 - **Revenue** per season: a league-wide base, times the team's market size
   (the team pool's 1 to 5), times how interested its fans are, plus a gate
   for every home playoff game.
-- **Budget**: the league sets one payroll cap for every team
+- **Budget**: what the owner will spend on payroll and the front office
+  (src/league/budget.py DEPARTMENTS). The league sets one payroll cap for every team
   (src/league/budget.py: the average payroll, then 5% more a season), and
   each owner gives the GM a leash from it by their Spending trait: a miser
   wants payroll under the cap, a spender lets it go well over.
@@ -127,7 +128,8 @@ def plan(cap: int, teams: dict[str, TeamMoney]) -> dict[str, Plan]:
     return {
         t: Plan(
             revenue=_round(base * pull[t]),
-            budget=bg.owner_budget(cap, m.spending, m.bank_change),
+            budget=bg.owner_budget(cap, m.spending, m.bank_change)
+            + bg.standard_front_office(cap),
         )
         for t, m in teams.items()
     }
@@ -142,6 +144,11 @@ def fixed_costs(average_revenue: int) -> int:
 
 
 def profit(
-    revenue: int, payroll: int, luxury_tax: int, costs: int, tax_share: int = 0
+    revenue: int,
+    payroll: int,
+    luxury_tax: int,
+    costs: int,
+    tax_share: int = 0,
+    front_office: int = 0,
 ) -> int:
-    return revenue + tax_share - payroll - luxury_tax - costs
+    return revenue + tax_share - payroll - luxury_tax - costs - front_office

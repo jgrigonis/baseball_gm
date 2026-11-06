@@ -61,16 +61,94 @@ class BudgetRepository:
         self._pending: dict[str, tuple[int, int]] = {}
         cap = self.cap(league_id, year)
         made = self._make(league_id, year, missing, cap)
+        ai = self._ai_teams(league_id)
+        spending = self._spending(league_id)
         for team_id, amount in made.items():
             revenue, fans = self._pending.get(team_id, (None, None))
+            # AI GMs fund their front office by their owner (src/league/
+            # budget.py ai_levels); a person's starts at Standard.
+            levels = (
+                bg.ai_levels(spending.get(team_id, 50), f"fo:{team_id}:{year}")
+                if team_id in ai
+                else {}
+            )
             self.conn.execute(
                 """INSERT INTO team_budgets
-                       (league_id, team_id, year, cap, budget, revenue, fans_before)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s)
+                       (league_id, team_id, year, cap, budget, revenue, fans_before,
+                        coaching, facilities, analytics)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                    ON CONFLICT (league_id, team_id, year) DO NOTHING""",
-                (league_id, team_id, year, cap, amount, revenue, fans),
-            )
+                (
+                    league_id, team_id, year, cap, amount, revenue, fans,
+                    levels.get("coaching"), levels.get("facilities"),
+                    levels.get("analytics"),
+                ),
+            )  # fmt: skip
         return {**have, **made}
+
+    def _ai_teams(self, league_id: str) -> set[str]:
+        return {
+            r["team_id"]
+            for r in self.conn.execute(
+                "SELECT team_id FROM gms WHERE league_id = %s AND is_ai",
+                (league_id,),
+            ).fetchall()
+        }
+
+    # ── The front office ─────────────────────────────────────────────────────
+
+    def levels(self, league_id: str, team_id: str, year: int) -> dict[str, int]:
+        """The team's front office levels for the season (Standard where
+        unset). Empty without budgets."""
+        if self.budget(league_id, team_id, year) is None:
+            return {}
+        row = self.conn.execute(
+            """SELECT coaching, facilities, analytics FROM team_budgets
+               WHERE league_id = %s AND team_id = %s AND year = %s""",
+            (league_id, team_id, year),
+        ).fetchone()
+        return {
+            k: bg.STANDARD if row is None or row[k] is None else bg.clean_level(row[k])
+            for k in bg.DEPARTMENT_KEYS
+        }
+
+    def league_levels(self, league_id: str, year: int) -> dict[str, dict[str, int]]:
+        """Every team's front office levels for the season, by team id."""
+        if not self.for_league(league_id, year):
+            return {}
+        rows = self.conn.execute(
+            """SELECT team_id, coaching, facilities, analytics FROM team_budgets
+               WHERE league_id = %s AND year = %s""",
+            (league_id, year),
+        ).fetchall()
+        return {
+            r["team_id"]: {
+                k: bg.STANDARD if r[k] is None else bg.clean_level(r[k])
+                for k in bg.DEPARTMENT_KEYS
+            }
+            for r in rows
+        }
+
+    def front_office(self, league_id: str, team_id: str, year: int) -> int:
+        """What the team's front office costs this season (0 without
+        budgets)."""
+        levels = self.levels(league_id, team_id, year)
+        if not levels:
+            return 0
+        return bg.front_office_cost(self.cap(league_id, year), levels)
+
+    def set_level(
+        self, league_id: str, team_id: str, year: int, department: str, level: int
+    ) -> None:
+        """Set one department's level (the caller checks it's allowed)."""
+        if department not in bg.DEPARTMENT_KEYS:
+            raise ValueError(department)
+        self.for_league(league_id, year)
+        self.conn.execute(
+            f"""UPDATE team_budgets SET {department} = %s
+                WHERE league_id = %s AND team_id = %s AND year = %s""",
+            (bg.clean_level(level), league_id, team_id, year),
+        )
 
     def _make(
         self, league_id: str, year: int, team_ids: list[str], cap: int
@@ -234,7 +312,13 @@ class BudgetRepository:
         cap = self.cap(league_id, year)
         bank = self.banks(league_id).get(team_id)
         limit = bg.hard_limit(cap, amount, bank["balance"] if bank else None)
-        return bg.standing(self.contracts.payroll(team_id, year), cap, amount, limit)
+        return bg.standing(
+            self.contracts.payroll(team_id, year),
+            cap,
+            amount,
+            limit,
+            bg.front_office_cost(cap, self.levels(league_id, team_id, year)),
+        )
 
     def refusal(
         self, league_id: str, team_id: str, year: int, added: int
@@ -246,7 +330,7 @@ class BudgetRepository:
         standing = self.standing(league_id, team_id, year)
         if standing is None:
             return None
-        return bg.refusal(standing["payroll"], standing["limit"], added)
+        return bg.refusal(standing["spend"], standing["limit"], added)
 
     def history(self, league_id: str, team_id: str) -> list[dict]:
         """The team's money season by season, newest first, for the Budget
@@ -255,7 +339,8 @@ class BudgetRepository:
             dict(r)
             for r in self.conn.execute(
                 """SELECT year, cap, budget, payroll, revenue, playoff_revenue,
-                          luxury_tax, tax_share, profit, fans_before, fans_after
+                          luxury_tax, tax_share, front_office, profit,
+                          fans_before, fans_after
                    FROM team_budgets WHERE league_id = %s AND team_id = %s
                    ORDER BY year""",
                 (league_id, team_id),
@@ -300,7 +385,10 @@ class BudgetRepository:
         planned = fn.plan(cap, money)
         revenue = {t: rows[t]["revenue"] or planned[t].revenue for t in budgets}
         average = sum(revenue.values()) / len(revenue)
-        costs = fn.fixed_costs(average)
+        # A Standard front office is in every owner's budget, so the fixed
+        # costs leave it out; each team pays for its own front office.
+        costs = fn.fixed_costs(average) - bg.standard_front_office(cap)
+        levels = self.league_levels(league_id, year)
         payrolls = {t: self.contracts.payroll(t, year) for t in budgets}
         shares = bg.tax_shares(payrolls, cap)
         taxes = {}
@@ -308,6 +396,7 @@ class BudgetRepository:
             payroll = payrolls[team_id]
             tax = bg.luxury_tax(payroll, cap)
             share = shares.get(team_id, 0)
+            office = bg.front_office_cost(cap, levels.get(team_id, {}))
             r = results.get(team_id, {})
             before = rows[team_id]["fans_before"]
             before = money[team_id].fans if before is None else before
@@ -324,7 +413,7 @@ class BudgetRepository:
                 """UPDATE team_budgets
                    SET luxury_tax = %s, revenue = %s, fans_before = %s,
                        fans_after = %s, playoff_revenue = %s, payroll = %s,
-                       tax_share = %s, profit = %s
+                       tax_share = %s, front_office = %s, profit = %s
                    WHERE league_id = %s AND team_id = %s AND year = %s""",
                 (
                     tax,
@@ -334,7 +423,8 @@ class BudgetRepository:
                     gate,
                     payroll,
                     share,
-                    fn.profit(total, payroll, tax, costs, share),
+                    office,
+                    fn.profit(total, payroll, tax, costs, share, office),
                     league_id,
                     team_id,
                     year,
