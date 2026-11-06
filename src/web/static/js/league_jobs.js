@@ -37,6 +37,8 @@ async function runLeagueJob(url, init, onWaiting) {
       if (job.state === 'done') {
         // The job may have made the news: update the News tab's badge.
         if (window.refreshNewsBadge) window.refreshNewsBadge();
+        // ...and players may have asked to be traded: the Roster tab's.
+        if (window.refreshRosterBadge) window.refreshRosterBadge();
         return job;
       }
       if (job.state === 'failed') return {failed: true, detail: job.detail};

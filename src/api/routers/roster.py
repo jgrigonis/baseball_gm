@@ -24,6 +24,7 @@ from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.gm_repo import GMRepository
+from src.db.repositories.happiness_repo import HappinessRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
@@ -102,6 +103,19 @@ def roster(
         ctx["budget"] = BudgetRepository(db).standing(league_id, team_id, year)
     ctx["players"] = players
     return tab_response(request, htmx, "dashboard/partials/roster.html", ctx)
+
+
+@router.get("/leagues/{league_id}/roster/trade-requests")
+def roster_trade_requests(league_id: str, db: DB, gm: GM):
+    """How many of the GM's players have asked to be traded: the Roster tab's
+    badge, refreshed after each sim and trade."""
+    return JSONResponse(
+        {
+            "count": HappinessRepository(db, league_id).team_trade_requests(
+                gm.get("team_id")
+            )
+        }
+    )
 
 
 @router.post("/leagues/{league_id}/roster/save", response_class=HTMLResponse)

@@ -46,3 +46,18 @@ def test_every_player_on_both_sides_has_a_face(client, setup):
     for p in players:
         assert f"/faces/{p.id}.svg?age=" in r.text
     assert urlencode({"team": "Tokyo|Samurai"}) in r.text
+
+
+def test_the_roster_tab_badge_counts_players_who_want_a_trade(
+    client, setup, monkeypatch
+):
+    from src.db.repositories.happiness_repo import HappinessRepository
+
+    league, *_ = setup
+    monkeypatch.setattr(HappinessRepository, "team_trade_requests", lambda self, t: 2)
+    html = client.get(f"/leagues/{league.id}/roster").text
+    assert 'id="roster-badge"' in html
+    assert 'title="2 players want a trade"' in html
+    assert client.get(f"/leagues/{league.id}/roster/trade-requests").json() == {
+        "count": 2
+    }

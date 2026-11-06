@@ -141,6 +141,7 @@ function apply(d) {
     // On the News tab itself the stories are in front of the GM.
     window.setNewsBadge(location.pathname.endsWith('/headlines') ? 0 : d.news_unseen);
   }
+  if (window.setRosterBadge && d.trade_wanted !== undefined) window.setRosterBadge(d.trade_wanted);
   if (window.setOwnerBadge && d.owner_unseen !== undefined) {
     window.setOwnerBadge(location.pathname.endsWith('/owner') ? 0 : d.owner_unseen);
   }

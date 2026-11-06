@@ -379,6 +379,8 @@ window.removeFromRoster = removeFromRoster;
 /* ── Data ───────────────────────────────────────────────────────────────────── */
 var  LEAGUE_ID    = "{{ league_id }}";
 const ALL_PLAYERS = {{ players | tojson }};
+// The rows are fresh: so is the count of players who want a trade.
+if (window.setRosterBadge) window.setRosterBadge(ALL_PLAYERS.filter(p => p.mood_badge && p.mood_badge.wants_trade).length);
 const ROSTER_KEY  = `roster3_${LEAGUE_ID}`;
 
 
