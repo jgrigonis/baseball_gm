@@ -36,6 +36,8 @@ BAT = {
     "BB%": "Walks per plate appearance",
     "Def": "Defensive runs saved against an average fielder at his main position: mostly his defense rating there, plus plays made, errors avoided and (catchers) runners thrown out",
     "WAR": "Wins above replacement: batting, base stealing, position and defense, against a replacement-level player (regular season). 2 is a solid starter, 5 an All-Star",
+    "WPA": "Win probability added: how much his plate appearances raised (or lowered) his team's chance of winning, added up. A big hit in the 9th counts far more than one in a blowout. +3 is an excellent season",
+    "RE24": "Runs added: how much his plate appearances changed the runs his team could expect that inning, from the runners on and outs, plus the runs that scored. 0 is average",
 }
 
 PIT = {
@@ -64,6 +66,8 @@ PIT = {
     "K%": "Strikeouts per batter faced",
     "BB%": "Walks per batter faced",
     "WAR": "Wins above replacement: runs saved against a replacement-level pitcher, half by FIP and half by ERA (regular season)",
+    "WPA": "Win probability added: how much he raised his team's chance of winning, added up over every batter he faced. Escaping a late jam counts far more than mop-up work",
+    "RE24": "Runs saved: how much the batters he faced lowered the runs the other team could expect that inning, from the runners on and outs. 0 is average",
 }
 
 FIELD = {

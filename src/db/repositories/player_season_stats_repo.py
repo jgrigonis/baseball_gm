@@ -57,6 +57,8 @@ class PlayerSeasonStatsRepository:
                 "bat_hbp",
                 "bat_sac_flys",
                 "bat_games_played",
+                "bat_wpa",
+                "bat_re24",
             ],
             "SUM(bat_ab) >= 1",
         )
@@ -98,7 +100,12 @@ class PlayerSeasonStatsRepository:
         ).fetchall()
         # SUM comes back as a Decimal
         return [
-            {k: int(v) if k in columns and v is not None else v for k, v in r.items()}
+            {
+                k: (float(v) if k.endswith(("_wpa", "_re24")) else int(v))
+                if k in columns and v is not None
+                else v
+                for k, v in r.items()
+            }
             for r in rows
         ]
 
@@ -147,7 +154,7 @@ class PlayerSeasonStatsRepository:
         total = dict(rows[0])
         for row in rows[1:]:
             for k, v in row.items():
-                if isinstance(v, int) and not isinstance(v, bool):
+                if isinstance(v, (int, float)) and not isinstance(v, bool):
                     total[k] = (total[k] or 0) + v
         return total
 
@@ -290,6 +297,8 @@ class PlayerSeasonStatsRepository:
                 "pitch_complete_games",
                 "pitch_shutouts",
                 "pitch_hit_batters",
+                "pitch_wpa",
+                "pitch_re24",
             ],
             "SUM(pitch_outs) >= 9",
         )
