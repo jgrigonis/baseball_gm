@@ -15,7 +15,7 @@
         <th class="num" data-sort="num" title="Days per sim period">Days</th>
         <th class="num" title="Decision / draft / lineup windows, in seconds">Windows (s)</th>
         <th class="num" data-sort="num">Seasons</th><th class="num" data-sort="num">Teams</th><th class="num" data-sort="num" title="Human GMs">GMs</th>
-        <th data-sort="text">Commissioner</th><th data-sort="text">Public</th><th>Code</th><th data-sort="text">Created</th><th></th>
+        <th data-sort="text">Commissioner</th><th data-sort="text">Public</th><th>Code</th><th data-sort="text">Created</th><th data-sort="text" data-sort-first="desc">Last played</th><th></th>
       </tr></thead>
       <tbody>
         {% for l in leagues %}
@@ -38,6 +38,7 @@
           <td class="admin-dim">{{ 'Yes' if l.is_public else 'No' }}</td>
           <td style="font-family:var(--font-mono);letter-spacing:.1em;color:var(--amber);">{{ l.join_code or '—' }}</td>
           <td class="admin-dim" data-sort-value="{{ l.created_at or '' }}">{{ (l.created_at or '')[:10] }}</td>
+          <td class="admin-dim" style="white-space:nowrap;" data-sort-value="{{ l.last_played_at.isoformat() if l.last_played_at else '' }}">{% if l.last_played_at %}<time class="local-time" datetime="{{ l.last_played_at.isoformat() }}">{{ l.last_played_at.strftime('%Y-%m-%d %H:%M') }}</time>{% else %}—{% endif %}</td>
           <td style="text-align:right;white-space:nowrap;">
             {% if l.state != 'lobby' %}<a href="/leagues/{{ l.id }}/" class="btn btn-secondary admin-small">View</a>{% endif %}
             <a href="/admin/leagues/{{ l.id }}" class="btn btn-secondary admin-small">Manage →</a>
@@ -51,4 +52,17 @@
   <div style="padding:60px 0;text-align:center;" class="admin-dim">No leagues yet.</div>
   {% endif %}
 </div></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Show last-played times in the viewer's own time zone.
+document.querySelectorAll('time.local-time').forEach(t => {
+  const d = new Date(t.dateTime);
+  if (isNaN(d)) return;
+  const pad = n => String(n).padStart(2, '0');
+  t.textContent = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  t.title = d.toLocaleString();
+});
+</script>
 {% endblock %}

@@ -204,3 +204,22 @@ def test_league_name_is_escaped(client, db_conn, league, user_id):
 
     assert "<League>" not in html
     assert "Bob&#39;s &lt;League&gt;" in html
+
+
+# ── Sorting: click a column header to sort the list ──────────────────────────
+
+
+def test_list_sorts_by_its_column_headers(client, db_conn, league):
+    db_conn.execute(
+        "UPDATE leagues SET last_played_at = '2026-10-25 12:00+00' WHERE id = %s",
+        (league.id,),
+    )
+
+    html = _table(client.get("/leagues/?tab=running").text)
+
+    assert '<table class="data-table" data-sortable data-sort-url>' in html
+    assert '<th data-sort="text">League</th>' in html
+    assert 'data-sort="text" data-sort-first="desc">Last Played</th>' in html
+    assert 'data-sort-value="2026-10-25T12:00:00+00:00"' in html
+    # The join code isn't something to sort by.
+    assert "<th>Code</th>" in html

@@ -52,8 +52,9 @@
   {% if leagues %}
   {% set mine = active_tab in ('tutorial', 'running', 'completed') %}
   <div class="card leagues-table-card">
-    <table class="data-table">
-      <thead><tr><th>League</th><th class="wide-only">Year</th>{% if active_tab != 'tutorial' %}<th class="wide-only">Mode</th>{% endif %}<th>State</th>{% if active_tab != 'tutorial' %}<th class="wide-only">GMs</th>{% endif %}<th class="wide-only">Last Played</th>{% if active_tab in ('running', 'completed') %}<th>Code</th>{% endif %}<th></th></tr></thead>
+    <table class="data-table" data-sortable data-sort-url>
+      {# Click a header to sort by it (table_sort.js); the code column isn't sortable. #}
+      <thead><tr><th data-sort="text">League</th><th class="wide-only" data-sort="num" data-sort-first="desc">Year</th>{% if active_tab != 'tutorial' %}<th class="wide-only" data-sort="text">Mode</th>{% endif %}<th data-sort="text">State</th>{% if active_tab != 'tutorial' %}<th class="wide-only" data-sort="num" data-sort-first="desc">GMs</th>{% endif %}<th class="wide-only" data-sort="text" data-sort-first="desc">Last Played</th>{% if active_tab in ('running', 'completed') %}<th>Code</th>{% endif %}<th></th></tr></thead>
       <tbody>
         {% for l in leagues %}
         {# Your own leagues open with a click anywhere on the row, or Enter
@@ -61,12 +62,12 @@
            its name, which edits in place. #}
         <tr{% if mine %} class="league-row" data-href="/leagues/{{ l.id }}/" tabindex="0" aria-label="Open {{ l.name }}"{% endif %}>
           {# The team the GM runs there, once the lobby is over and they have one. #}
-          <td class="team-name">{% if mine and l.team_city and l.state != 'lobby' %}<span class="league-team" title="{{ l.team_city }} {{ l.team_mascot }}">{{ team_badge(l.team_city, l.team_mascot) }}</span>{% endif %}{% if mine and l.is_commissioner %}<span class="league-name-wrap"><span class="league-name" contenteditable="true" spellcheck="false" role="textbox" aria-label="League name, edit to rename" title="Click to rename" data-league-id="{{ l.id }}" data-original="{{ l.name }}">{{ l.name }}</span><button type="button" class="btn btn-primary league-name-save" hidden>Save</button></span>{% else %}{{ l.name }}{% endif %}</td>
-          <td class="wide-only" style="font-family:var(--font-mono);color:var(--text-dim);">{{ l.current_year or '—' }}</td>
+          <td class="team-name" data-sort-value="{{ l.name }}">{% if mine and l.team_city and l.state != 'lobby' %}<span class="league-team" title="{{ l.team_city }} {{ l.team_mascot }}">{{ team_badge(l.team_city, l.team_mascot) }}</span>{% endif %}{% if mine and l.is_commissioner %}<span class="league-name-wrap"><span class="league-name" contenteditable="true" spellcheck="false" role="textbox" aria-label="League name, edit to rename" title="Click to rename" data-league-id="{{ l.id }}" data-original="{{ l.name }}">{{ l.name }}</span><button type="button" class="btn btn-primary league-name-save" hidden>Save</button></span>{% else %}{{ l.name }}{% endif %}</td>
+          <td class="wide-only" style="font-family:var(--font-mono);color:var(--text-dim);" data-sort-value="{{ l.current_year or 0 }}">{{ l.current_year or '—' }}</td>
           {% if active_tab != 'tutorial' %}<td class="wide-only" style="color:var(--text-dim);">{{ l.mode | replace('_', ' ') | title }}</td>{% endif %}
           <td><span class="topbar-state state-{{ l.state }}" style="font-size:10px;padding:2px 6px;">{{ l.state_label }}</span></td>
           {% if active_tab != 'tutorial' %}<td class="wide-only" style="font-family:var(--font-mono);color:var(--text-dim);" title="Human GMs">{{ l.people }}</td>{% endif %}
-          <td class="wide-only" style="font-family:var(--font-mono);color:var(--text-dim);">{% if l.last_played_at %}<time class="local-time" datetime="{{ l.last_played_at.isoformat() }}">{{ l.last_played_at.strftime('%b %-d, %Y') }}</time>{% else %}—{% endif %}</td>
+          <td class="wide-only" style="font-family:var(--font-mono);color:var(--text-dim);" data-sort-value="{{ l.last_played_at.isoformat() if l.last_played_at else '' }}">{% if l.last_played_at %}<time class="local-time" datetime="{{ l.last_played_at.isoformat() }}">{{ l.last_played_at.strftime('%b %-d, %Y') }}</time>{% else %}—{% endif %}</td>
           {% if active_tab in ('running', 'completed') %}<td style="font-family:var(--font-mono);letter-spacing:.1em;color:var(--amber);">{{ l.join_code or '—' }}</td>{% endif %}
           <td style="text-align:right;display:flex;gap:6px;justify-content:flex-end;align-items:center;">
             {% if mine %}
