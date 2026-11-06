@@ -15,8 +15,10 @@ season's score adds to it or takes from it; patience softens the losses, and
 a title buys a lot of time. Below HOT_SEAT the GM is on the hot seat; below
 FIRE, at a season's end, they'd be fired (not yet: firing comes later).
 
-Speed Blitz has no money, so profit, budget and attendance aren't judged
-there; the other weights carry the score.
+Speed Blitz has no money, so profit, attendance and fans aren't judged
+there; the other weights carry the score. Money is judged by profit alone:
+payroll past the budget only matters through what it costs (Josh,
+2026-11-06).
 """
 
 from __future__ import annotations
@@ -135,11 +137,6 @@ def score_dimensions(
             out["profit"] = _clamp((margin - PROFIT_TARGET) / PROFIT_SCALE)
     else:
         out["profit"] = None
-    if has_money and s.budget:
-        diff = (s.budget - s.payroll) / s.budget  # + under, - over
-        out["budget"] = _clamp(diff * 3 if diff >= 0 else diff * 5, -1.0, 0.5)
-    else:
-        out["budget"] = None
     if has_money and s.fans_after is not None:
         # No ballpark to count yet: a full park is fans who care.
         out["attendance"] = _clamp((s.fans_after - 50) / 30)

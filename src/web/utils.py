@@ -22,7 +22,7 @@ from src.db.repositories.news_repo import NewsRepository
 from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
-from src.league.league_modes import injuries_allowed
+from src.league.league_modes import get_mode, injuries_allowed
 from src.league.trade_deadline import deadline_date, trades_enabled_for
 from src.player.face import player_face
 from src.team.colors import team_badge
@@ -100,6 +100,7 @@ def _compute_visible_tabs(state: str, draft_complete: bool = False) -> list[str]
             "stats",
             "free-agents",
             "owner",
+            "budget",
             "strategy",
             "draft",
         ]
@@ -116,6 +117,7 @@ def _compute_visible_tabs(state: str, draft_complete: bool = False) -> list[str]
         "stats",
         "free-agents",
         "owner",
+        "budget",
         "strategy",
     ]
 
@@ -299,6 +301,9 @@ def _shell_ctx(
                 if not ctx["is_viewer"]:
                     # Offers and votes waiting on this GM: the tab's badge.
                     ctx["trade_inbox"] = trades.inbox_count(db, league_id, gm)
+            # The Budget tab only where there are budgets (not Speed Blitz).
+            if "budget" in tabs and not get_mode(league["mode"]).budgets:
+                tabs.remove("budget")
             if ctx["is_viewer"]:
                 tabs = _viewer_tabs(tabs, draft_complete)
                 # A viewer of a public league that takes late joiners can

@@ -12,8 +12,14 @@ blocked; the game warns before a move that takes a team over.
 Each team's owner sets how far from the cap they'll let payroll go, by
 their Spending trait: a miser wants payroll under the cap, an owner who
 spends to win gives a long leash over it. That's the GM's budget. Going
-past it costs no more tax, but the owner judges payroll against it
-(src/league/owner_scoring.py), and AI GMs keep to it.
+past it costs no more tax; the owner feels it in their profit, and AI GMs
+keep to it. Past a hard limit above the budget, the owner refuses moves
+that add money (hard_limit, refusal), for people too.
+
+Each owner has a bank that carries over between seasons. It starts rich,
+by their Spending, and the season's profit or loss goes into it. A bank
+that's grown loosens the next budget, one that's shrunk tightens it, and
+an empty bank pulls the hard limit down to the budget.
 
 Speed Blitz leagues have no budgets (src/league/league_modes.py). The tax
 comes off the team's profit, which owners read, and is split among the
@@ -38,6 +44,18 @@ CAP_ROUNDING = 100_000
 LEASH_ZERO = 35
 LEASH_PER_POINT = 0.003
 LEASH_ROUNDING = 1_000_000
+# The owner's bank (Josh, 2026-11-06: "these are rich cats"): it starts at
+# the cap times BANK_BASE plus Spending/100, so a miser (5) starts with about
+# half a cap and a big spender (95) with about one and a half. Profits and
+# losses carry over in it.
+BANK_BASE = 0.5
+# Each season the budget moves by BANK_PULL of how far the bank is above
+# (or below) where it started, at most BANK_SWING of the cap either way.
+BANK_PULL = 0.2
+BANK_SWING = 0.10
+# The owner's hard limit: they refuse moves that add money past their budget
+# plus this share of the cap. With the bank empty, the budget is the limit.
+HARD_MARGIN = 0.10
 
 
 def first_cap(payrolls: list[int]) -> int:
@@ -73,9 +91,46 @@ def leash(cap: int, spending: int) -> int:
     return round(value / LEASH_ROUNDING) * LEASH_ROUNDING
 
 
-def owner_budget(cap: int, spending: int) -> int:
-    """The payroll an owner with this Spending trait will stand for."""
-    return cap + leash(cap, spending)
+def owner_budget(cap: int, spending: int, bank_change: int = 0) -> int:
+    """The payroll an owner with this Spending trait will stand for, moved
+    by how their bank has done since it started."""
+    return cap + leash(cap, spending) + bank_adjust(cap, bank_change)
+
+
+def starting_bank(cap: int, spending: int) -> int:
+    """What an owner has in the bank when they start."""
+    spending = max(0, min(100, spending))
+    value = cap * (BANK_BASE + spending / 100)
+    return round(value / LEASH_ROUNDING) * LEASH_ROUNDING
+
+
+def bank_adjust(cap: int, bank_change: int) -> int:
+    """How much a bank that's up (or down) this much since it started moves
+    the owner's budget."""
+    swing = cap * BANK_SWING
+    value = max(-swing, min(swing, bank_change * BANK_PULL))
+    return round(value / LEASH_ROUNDING) * LEASH_ROUNDING
+
+
+def hard_limit(cap: int, budget: int, bank: int | None) -> int:
+    """The most payroll an owner will allow: a margin past their budget,
+    or just the budget once their bank is empty."""
+    if bank is not None and bank <= 0:
+        return budget
+    margin = round(cap * HARD_MARGIN / LEASH_ROUNDING) * LEASH_ROUNDING
+    return budget + margin
+
+
+def refusal(payroll: int, limit: int, added: int) -> str | None:
+    """Why the owner refuses a move that adds this much payroll, or None
+    when it stays inside their hard limit (or takes payroll off)."""
+    if added <= 0 or payroll + added <= limit:
+        return None
+    return (
+        f"Your owner won't allow it: that takes payroll to "
+        f"{format_salary(payroll + added)}, past their "
+        f"{format_salary(limit)} limit."
+    )
 
 
 def luxury_tax(payroll: int, cap: int) -> int:
@@ -103,9 +158,10 @@ def _leash_text(cap: int, budget: int) -> str:
     return "right at the cap"
 
 
-def standing(payroll: int, cap: int, budget: int) -> dict:
-    """A team's payroll against the league's cap and its owner's budget,
-    for the views."""
+def standing(payroll: int, cap: int, budget: int, limit: int | None = None) -> dict:
+    """A team's payroll against the league's cap, its owner's budget and
+    the owner's hard limit, for the views."""
+    limit = hard_limit(cap, budget, None) if limit is None else limit
     over = max(0, payroll - cap)
     tax = luxury_tax(payroll, cap)
     over_budget = max(0, payroll - budget)
@@ -125,6 +181,10 @@ def standing(payroll: int, cap: int, budget: int) -> dict:
         "over_budget_text": format_salary(over_budget) if over_budget else None,
         "tax_text": format_salary(tax) if tax else None,
         "tax_rate": LUXURY_TAX_RATE,
+        "limit": limit,
+        "limit_text": format_salary(limit),
+        "limit_room_text": format_salary(limit - payroll) if payroll < limit else None,
+        "at_limit": payroll >= limit,
     }
 
 

@@ -157,9 +157,11 @@ def test_signing_over_budget_warns_but_is_allowed(lg):
     assert (
         free_agents.sign_preview(x.db, x.league.id, x.mine.id, pid)["warning"] is None
     )
-    x.db.execute("UPDATE team_budgets SET budget = 1000000, cap = 1000000")
+    # Over the cap and the budget, but inside the owner's hard limit.
+    pay = x.contracts.payroll(x.mine.id, 2026)
+    x.db.execute("UPDATE team_budgets SET budget = %s, cap = %s", (pay + 100 * M, pay))
     preview = free_agents.sign_preview(x.db, x.league.id, x.mine.id, pid)
-    assert "luxury tax" in preview["warning"]
+    assert "luxury tax" in preview["warning"] and preview["blocked"] is None
     free_agents.sign(x.db, x.league.id, x.mine.id, pid)  # not blocked
 
 
@@ -317,3 +319,110 @@ def test_teams_under_the_cap_get_a_share_of_the_tax(lg):
     assert taxes[x.mine.id] > 0 and money[x.mine.id]["tax_share"] == 0
     share = money[x.theirs.id]["tax_share"]
     assert abs(share - taxes[x.mine.id]) <= bg.CAP_ROUNDING // 2
+
+
+# ── The owner's bank and hard limit (plans/budget.md, Q4 and Q5) ──────────────
+
+
+def test_rich_owners_start_with_a_bank_by_spending():
+    assert bg.starting_bank(160 * M, 5) == 88 * M
+    assert bg.starting_bank(160 * M, 95) == 232 * M
+
+
+def test_the_bank_moves_the_budget_a_little():
+    assert bg.bank_adjust(160 * M, 0) == 0
+    assert bg.bank_adjust(160 * M, 30 * M) == 6 * M
+    assert bg.bank_adjust(160 * M, -500 * M) == -16 * M  # at most 10% of the cap
+    assert bg.owner_budget(160 * M, 35, 30 * M) == 166 * M
+
+
+def test_the_hard_limit_and_refusal():
+    assert bg.hard_limit(160 * M, 170 * M, 50 * M) == 186 * M
+    assert bg.hard_limit(160 * M, 170 * M, 0) == 170 * M  # bank's dry
+    assert bg.refusal(180 * M, 186 * M, 5 * M) is None
+    assert bg.refusal(180 * M, 186 * M, -5 * M) is None
+    assert "$186M limit" in bg.refusal(180 * M, 186 * M, 10 * M)
+
+
+def _owned(x, spending=50):
+    x.db.execute(
+        """INSERT INTO owner_personas (id, name, archetype, bio, weights, traits)
+           VALUES ('own1', 'Rich Cat', 'The Tycoon', '', '{}', %s)
+           ON CONFLICT (id) DO NOTHING""",
+        (f'{{"spending": {spending}}}',),
+    )
+    x.db.execute(
+        """INSERT INTO team_owners (league_id, team_id, owner_id, since_year)
+           VALUES (%s, %s, 'own1', 2026)""",
+        (x.league.id, x.mine.id),
+    )
+
+
+def test_the_bank_carries_profit_into_next_seasons_budget(lg):
+    x = lg()
+    _owned(x, spending=95)
+    x.budgets.for_league(x.league.id, 2026)
+    cap = x.budgets.cap(x.league.id, 2026)
+    bank = x.budgets.banks(x.league.id)[x.mine.id]
+    assert bank["start"] == bg.starting_bank(cap, 95) == bank["balance"]
+    x.budgets.assess(x.league.id, 2026)
+    profit = x.budgets.finances(x.league.id, 2026)[x.mine.id]["profit"]
+    assert x.budgets.banks(x.league.id)[x.mine.id]["balance"] == bank["start"] + profit
+    # Assessing again doesn't count the season twice.
+    x.budgets.assess(x.league.id, 2026)
+    assert x.budgets.banks(x.league.id)[x.mine.id]["change"] == profit
+    nxt = x.budgets.for_league(x.league.id, 2027)[x.mine.id]
+    cap2 = x.budgets.cap(x.league.id, 2027)
+    assert nxt == bg.owner_budget(cap2, 95, profit)
+    history = x.budgets.history(x.league.id, x.mine.id)
+    assert [r["year"] for r in history] == [2027, 2026]
+    assert history[1]["bank_after"] == bank["start"] + profit
+
+
+def test_the_owner_refuses_a_signing_past_the_limit(lg):
+    x = lg()
+    pid = x.factory.rated_player(x.theirs, x.league, level=70, status="free_agent").id
+    x.db.execute("DELETE FROM team_players WHERE player_id = %s", (pid,))
+    x.budgets.for_league(x.league.id, 2026)
+    pay = x.contracts.payroll(x.mine.id, 2026)
+    x.db.execute("UPDATE team_budgets SET budget = %s, cap = %s", (pay, M))
+    preview = free_agents.sign_preview(x.db, x.league.id, x.mine.id, pid)
+    assert "won't allow" in preview["blocked"]
+    with pytest.raises(free_agents.FreeAgentError, match="won't allow"):
+        free_agents.sign(x.db, x.league.id, x.mine.id, pid)
+
+
+def test_the_budget_tab(lg, client_for):
+    x = lg()
+    x.budgets.for_league(x.league.id, 2026)
+    x.budgets.assess(x.league.id, 2026)
+    r = client_for(x).get(f"/leagues/{x.league.id}/budget")
+    assert r.status_code == 200
+    assert "Owner's limit" in r.text and "Past seasons" in r.text
+    assert "2026" in r.text
+
+
+def test_speed_blitz_has_no_budget_tab(lg, client_for):
+    x = lg(mode="speed_blitz")
+    r = client_for(x).get(f"/leagues/{x.league.id}/roster")
+    assert f"/leagues/{x.league.id}/budget" not in r.text
+    x = lg()
+    r = client_for(x).get(f"/leagues/{x.league.id}/roster")
+    assert f"/leagues/{x.league.id}/budget" in r.text
+
+
+def test_the_owner_refuses_a_trade_that_adds_payroll_past_the_limit(lg):
+    from src.api.services import trades
+
+    x = lg()
+    star = x.factory.rated_player(x.theirs, x.league, level=80).id
+    x.contracts.sign_unsigned(x.league.id, 2026)
+    x.contracts.guarantee([star])
+    x.budgets.for_league(x.league.id, 2026)
+    pay = x.contracts.payroll(x.mine.id, 2026)
+    x.db.execute("UPDATE team_budgets SET budget = %s, cap = %s", (pay, M))
+    assert "won't allow" in trades.owner_refusal(
+        x.db, x.league.id, x.mine.id, [star], []
+    )
+    # Sending him away is always fine.
+    assert trades.owner_refusal(x.db, x.league.id, x.theirs.id, [], [star]) is None

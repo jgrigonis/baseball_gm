@@ -1518,6 +1518,8 @@ CREATE TABLE IF NOT EXISTS team_owners (
     owner_id      TEXT NOT NULL REFERENCES owner_personas(id),
     rival_team_id TEXT REFERENCES teams(id) ON DELETE SET NULL,
     since_year    INTEGER NOT NULL,         -- the first season they judge
+    bank_start    BIGINT,                   -- their bank when it started (migration 082, src/league/budget.py)
+    bank_year     INTEGER,                  -- the season it started; profits from then on add to it
     created_at    TEXT NOT NULL DEFAULT (NOW()),
     PRIMARY KEY (league_id, team_id)
 );

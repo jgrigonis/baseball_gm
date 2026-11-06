@@ -40,13 +40,14 @@ def test_october():
 
 def test_no_money_no_money_scores():
     sc_ = sc.score_dimensions(season(), MID, money=False)
-    assert sc_["profit"] is sc_["budget"] is sc_["attendance"] is sc_["fans"] is None
+    assert sc_["profit"] is sc_["attendance"] is sc_["fans"] is None
 
 
-def test_budget_over_hurts_more_than_under_helps():
-    under = sc.score_dimensions(season(payroll=90, budget=100), MID)["budget"]
-    over = sc.score_dimensions(season(payroll=110, budget=100), MID)["budget"]
-    assert 0 < under <= 0.5 and over < -under
+def test_money_is_judged_by_profit_alone():
+    # Josh, 2026-11-06: going past the budget only costs profit.
+    scores = sc.score_dimensions(season(payroll=110, budget=100), MID)
+    assert "budget" not in scores
+    assert "budget" not in owners.WEIGHTS
 
 
 def test_losing_an_icon_and_churn():

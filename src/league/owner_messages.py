@@ -84,11 +84,6 @@ WANTS = {
         "I need us in the black when the books close.",
         "Every dollar you spend comes out of my pocket. Spend like it.",
     ),
-    "budget": (
-        "You've got {budget} for payroll. Stay under it.",
-        "{budget}. That's the payroll. Not a dollar more.",
-        "The budget is {budget}, and I mean it.",
-    ),
     "attendance": (
         "I want this ballpark full every night.",
         "Empty seats make me sick. Fill them.",
@@ -169,18 +164,6 @@ NOTES = {
         "bad": (
             "We're bleeding money. Fix it.",
             "I've looked at the numbers. I don't like them.",
-        ),
-    },
-    "budget": {
-        "good": (
-            "Payroll's under control. Thank you.",
-            "You're living within the budget. Good.",
-        ),
-        "ok": ("Payroll's right at the line. Watch it.",),
-        "bad": (
-            "Payroll's over budget. I didn't sign off on that.",
-            "You're over the budget I gave you. Not happy.",
-            "We are over budget. That ends now.",
         ),
     },
     "attendance": {
@@ -362,7 +345,7 @@ def _pick(rng: random.Random, options: tuple[str, ...], fields: dict) -> str:
 def _speakable(weights: dict, fields: dict, money: bool) -> list[str]:
     """The owner's top dimensions they can talk about here: no money talk
     without budgets, no rival talk without a rival."""
-    skip = set() if money else {"profit", "budget", "attendance", "fans"}
+    skip = set() if money else {"profit", "attendance", "fans"}
     if not fields.get("rival"):
         skip.add("rivalry")
     return [k for k in owners.top_dimensions(weights, 12) if k not in skip]
@@ -375,7 +358,7 @@ def preseason(
     top = _speakable(weights, fields, money)[:3]
     lines = [_pick(rng, PRESEASON_OPEN, fields)]
     lines += [_pick(rng, WANTS[k], fields) for k in top]
-    if money and fields.get("budget") and "budget" not in top:
+    if money and fields.get("budget"):
         lines.append(_fill("Your payroll budget is {budget}.", fields))
     return " ".join(lines)
 

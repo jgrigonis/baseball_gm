@@ -129,15 +129,8 @@ class BudgetRepository:
                 "SELECT id, city, mascot FROM teams WHERE id = ANY(%s)", (team_ids,)
             ).fetchall()
         }
-        spending = {
-            r["team_id"]: r["traits"].get("spending", 50)
-            for r in self.conn.execute(
-                """SELECT t.team_id, o.traits FROM team_owners t
-                   JOIN owner_personas o ON o.id = t.owner_id
-                   WHERE t.league_id = %s""",
-                (league_id,),
-            ).fetchall()
-        }
+        spending = self._spending(league_id)
+        banks = self.banks(league_id, year)
         fans = {
             r["team_id"]: r["fans_after"]
             for r in self.conn.execute(
@@ -160,21 +153,125 @@ class BudgetRepository:
                 market=pool.market if pool else 3,
                 fans=fans.get(team_id, fn.FAN_START),
                 spending=int(spending.get(team_id, 50)),
+                bank_change=banks[team_id]["change"] if team_id in banks else 0,
             )
         return out
+
+    def _spending(self, league_id: str) -> dict[str, int]:
+        """Each owned team's owner's Spending trait."""
+        return {
+            r["team_id"]: int(r["traits"].get("spending", 50))
+            for r in self.conn.execute(
+                """SELECT t.team_id, o.traits FROM team_owners t
+                   JOIN owner_personas o ON o.id = t.owner_id
+                   WHERE t.league_id = %s""",
+                (league_id,),
+            ).fetchall()
+        }
+
+    # ── The owner's bank ─────────────────────────────────────────────────────
+
+    def _open_banks(self, league_id: str, year: int) -> None:
+        """Give any owner without a bank their starting one, from this
+        season's cap (src/league/budget.py starting_bank)."""
+        rows = self.conn.execute(
+            """SELECT team_id FROM team_owners
+               WHERE league_id = %s AND bank_start IS NULL""",
+            (league_id,),
+        ).fetchall()
+        if not rows:
+            return
+        spending = self._spending(league_id)
+        cap = self.cap(league_id, year)
+        for r in rows:
+            start = bg.starting_bank(cap, spending.get(r["team_id"], 50))
+            self.conn.execute(
+                """UPDATE team_owners SET bank_start = %s, bank_year = %s
+                   WHERE league_id = %s AND team_id = %s AND bank_start IS NULL""",
+                (start, year, league_id, r["team_id"]),
+            )
+
+    def banks(self, league_id: str, year: int | None = None) -> dict[str, dict]:
+        """Each owner's bank by team id: where it started, and its balance
+        coming into this season (every season's profit before it), or with
+        year None, now (every season taxed so far). Opens any missing ones
+        from the season's cap. Empty without budgets."""
+        if not self.enabled(league_id):
+            return {}
+        if year is not None:
+            self._open_banks(league_id, year)
+        rows = self.conn.execute(
+            """SELECT t.team_id, t.bank_start, t.bank_year,
+                      COALESCE(SUM(b.profit) FILTER (
+                          WHERE b.year >= t.bank_year
+                            AND (%s::INT IS NULL OR b.year < %s::INT)), 0) AS made
+               FROM team_owners t
+               LEFT JOIN team_budgets b
+                 ON b.league_id = t.league_id AND b.team_id = t.team_id
+               WHERE t.league_id = %s AND t.bank_start IS NOT NULL
+               GROUP BY t.team_id, t.bank_start, t.bank_year""",
+            (year, year, league_id),
+        ).fetchall()
+        return {
+            r["team_id"]: {
+                "start": int(r["bank_start"]),
+                "since": r["bank_year"],
+                "balance": int(r["bank_start"]) + int(r["made"]),
+                "change": int(r["made"]),
+            }
+            for r in rows
+        }
 
     def budget(self, league_id: str, team_id: str, year: int) -> int | None:
         return self.for_league(league_id, year).get(team_id)
 
     def standing(self, league_id: str, team_id: str, year: int) -> dict | None:
-        """Payroll against the cap and the owner's budget, for the views;
-        None without budgets."""
+        """Payroll against the cap, the owner's budget and their hard limit,
+        for the views; None without budgets."""
         amount = self.budget(league_id, team_id, year)
         if amount is None:
             return None
-        return bg.standing(
-            self.contracts.payroll(team_id, year), self.cap(league_id, year), amount
-        )
+        cap = self.cap(league_id, year)
+        bank = self.banks(league_id).get(team_id)
+        limit = bg.hard_limit(cap, amount, bank["balance"] if bank else None)
+        return bg.standing(self.contracts.payroll(team_id, year), cap, amount, limit)
+
+    def refusal(
+        self, league_id: str, team_id: str, year: int, added: int
+    ) -> str | None:
+        """Why the owner refuses a move that adds this much payroll (past
+        their hard limit), or None. Always None without budgets."""
+        if added <= 0:
+            return None
+        standing = self.standing(league_id, team_id, year)
+        if standing is None:
+            return None
+        return bg.refusal(standing["payroll"], standing["limit"], added)
+
+    def history(self, league_id: str, team_id: str) -> list[dict]:
+        """The team's money season by season, newest first, for the Budget
+        tab, with the owner's bank after each finished season."""
+        rows = [
+            dict(r)
+            for r in self.conn.execute(
+                """SELECT year, cap, budget, payroll, revenue, playoff_revenue,
+                          luxury_tax, tax_share, profit, fans_before, fans_after
+                   FROM team_budgets WHERE league_id = %s AND team_id = %s
+                   ORDER BY year""",
+                (league_id, team_id),
+            ).fetchall()
+        ]
+        bank = self.banks(league_id).get(team_id)
+        balance = None
+        if bank:
+            balance = bank["start"]
+        for r in rows:
+            if bank and r["year"] >= bank["since"] and r["profit"] is not None:
+                balance += r["profit"]
+                r["bank_after"] = balance
+            else:
+                r["bank_after"] = None
+        return list(reversed(rows))
 
     def assess(self, league_id: str, year: int) -> dict[str, int]:
         """The season is over: record each team's luxury tax on its final
