@@ -189,3 +189,33 @@ def test_the_roster_badge_counts_the_teams_trade_requests(lg):
     assert _repo(lg).team_trade_requests(lg.a.id) == 9
     assert _repo(lg).team_trade_requests(lg.b.id) == 10
     assert _repo(lg).team_trade_requests(None) == 0
+
+
+def test_an_elite_coaching_staff_lifts_moods_and_bare_bones_sours_them(lg):
+    repo = _repo(lg)
+    repo.update(lg.season.id, date(2025, 4, 4))
+    before = {
+        p.id: repo.mood(p.id, lg.season.id)
+        for t in (lg.a, lg.b)
+        for p in lg.players[t.id]
+    }
+    assert all("coaching" not in m["detail"] for m in before.values())
+    for team, level in ((lg.a, 4), (lg.b, 0)):
+        lg.db.execute(
+            """INSERT INTO team_budgets (league_id, team_id, year, cap, budget,
+                   coaching)
+               VALUES (%s, %s, 2025, 160000000, 160000000, %s)""",
+            (lg.league.id, team.id, level),
+        )
+    # Same day again, so only the coaching has changed.
+    repo.update(lg.season.id, date(2025, 4, 4))
+    for team, sign in ((lg.a, 1), (lg.b, -1)):
+        for p in lg.players[team.id]:
+            after = repo.mood(p.id, lg.season.id)
+            lift = after["detail"]["coaching"]
+            assert lift * sign > 0
+            # Everyone here is 27: most of the way to a veteran's share.
+            level = 4 if sign > 0 else 0
+            assert lift == pytest.approx(hp.coaching_lift(level, 27), abs=1e-3)
+            goal = before[p.id]["target"] + lift
+            assert after["target"] == pytest.approx(max(-1, min(1, goal)), abs=1e-3)

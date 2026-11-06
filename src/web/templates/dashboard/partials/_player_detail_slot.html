@@ -42,7 +42,7 @@
      {% if h.lines %}<div class="pd-mood-lines">{{ h.lines | join(' ') }}</div>{% endif %}
      {% if is_admin %}
      <details class="pd-mood-admin"><summary>Happiness (admin)</summary>
-       <div>ego {{ h.admin.traits.ego }} · temper {{ h.admin.traits.temper }} · loyalty {{ h.admin.traits.loyalty }}{% if h.admin.climate %} · likes {{ h.admin.climate }}{% endif %}{% if h.admin.clubhouse %} · clubhouse −{{ h.admin.clubhouse[0] }}{% endif %}</div>
+       <div>ego {{ h.admin.traits.ego }} · temper {{ h.admin.traits.temper }} · loyalty {{ h.admin.traits.loyalty }}{% if h.admin.climate %} · likes {{ h.admin.climate }}{% endif %}{% if h.admin.clubhouse %} · clubhouse −{{ h.admin.clubhouse[0] }}{% endif %}{% if h.admin.coaching %} · coaching {{ '%+.2f'|format(h.admin.coaching) }}{% endif %}</div>
        <table>
          <tr><th>Drive</th><th>Weight</th><th>Sat</th><th>Why</th></tr>
          {% for d in h.admin.drives %}

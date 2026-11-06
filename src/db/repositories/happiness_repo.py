@@ -10,8 +10,9 @@ update_if_due runs from the game loop: once a league week, it works out
 every rostered player's satisfaction on each drive from what the league
 already stores (contracts, the standings, team states, lineups, rotations,
 bullpen roles, past seasons, trades, All-Stars, the team pool's market and
-climate) and moves his mood a step toward where that points. An unhappy
-morale ruiner drags his teammates' targets down too.
+climate) and moves his mood a step toward where that points. The team's
+Coaching staff lifts or sours it a little, and an unhappy morale ruiner
+drags his teammates' targets down too.
 """
 
 from __future__ import annotations
@@ -145,6 +146,7 @@ class HappinessRepository:
         history = self._history(season_id, team_ids)
         trades = self._trades(season_id, team_ids)
         all_stars = self._all_stars(season_id, ids)
+        coaching = self._coaching(year, team_ids)
         previous = self._previous_moods(season_id, ids)
         current = self.moods(ids, season_id)
         league_regions = {t["region"] for t in teams.values() if t["region"]}
@@ -218,6 +220,9 @@ class HappinessRepository:
                 "fame": hp.fame(team["market"], pid in all_stars),
             }
             goal = hp.target(person, p["age"], sats)
+            # The coaching staff: a good one pleases, young players most.
+            lift = hp.coaching_lift(coaching.get(p["team_id"]), p["age"])
+            goal = max(-1.0, min(1.0, goal + lift))
             # The clubhouse: unhappy morale ruiners (other than him) pull
             # down an active teammate, if he's the touchy sort.
             pull = 0.0
@@ -264,6 +269,9 @@ class HappinessRepository:
             lines = hp.on_his_mind(
                 person, p["age"], sats, p["affinity"], p["home_region"]
             )
+            coach_line = hp.coaching_line(lift)
+            if coach_line:
+                lines = lines[:1] + [coach_line]
             worst = min(others)[1] if others else None
             if pull >= hp.CLUBHOUSE_LINE and worst:
                 from src.api.services.news.names import pretty
@@ -278,6 +286,8 @@ class HappinessRepository:
             }
             if pull:
                 detail["clubhouse"] = [round(pull, 3), worst]
+            if lift:
+                detail["coaching"] = round(lift, 3)
             rows.append(
                 (
                     pid,
@@ -378,6 +388,17 @@ class HappinessRepository:
         from src.db.repositories.budget_repo import BudgetRepository
 
         return BudgetRepository(self.conn).first_year(self.league_id)
+
+    def _coaching(self, year: int | None, team_ids: list[str]) -> dict[str, int]:
+        """Each team's Coaching level this season (Standard without
+        budgets)."""
+        if year is None:
+            return {}
+        from src.db.repositories.budget_repo import BudgetRepository
+
+        return BudgetRepository(self.conn).department(
+            self.league_id, year, "coaching", team_ids
+        )
 
     def _contracts(self, ids: list[str], year: int | None) -> dict[str, dict]:
         if year is None:

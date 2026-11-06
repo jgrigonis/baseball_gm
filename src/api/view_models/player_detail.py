@@ -103,6 +103,7 @@ def _happiness(db, league_id: str, pid: str) -> dict | None:
             "traits": pers.traits,
             "climate": pers.climate,
             "clubhouse": detail.get("clubhouse"),
+            "coaching": detail.get("coaching"),
             "drives": [
                 {
                     "drive": d,
