@@ -176,6 +176,54 @@
   </div>
   {% endif %}
 
+  {# All-Star break: each game's MVP and score, then every All-Star by position #}
+  {% if all_stars or all_star_games %}
+  <div class="card" id="all-stars" style="margin-bottom:24px;padding:20px 24px;">
+    <div class="ss-kicker" style="margin-bottom:12px;">All-Stars</div>
+    {% if all_star_games %}
+    <div class="ss-awards" style="margin-bottom:16px;">
+      {% for g in all_star_games %}
+      <div class="ss-award">
+        <div class="ss-award-name">{{ g.icon }} {{ g.name }} MVP</div>
+        {% if g.mvp %}
+        <div class="ss-award-winner ss-clickable" onclick="openPlayerPanel('{{ g.mvp.player_id }}')" title="View {{ g.mvp.name }}">
+          <span class="ss-award-who" style="color:{% if g.mvp.is_mine %}var(--green){% else %}var(--text){% endif %};">{{ g.mvp.name }}</span>
+          <div class="ss-award-detail">{% if g.mvp.team %}{{ g.mvp.team }} · {% endif %}{{ g.mvp.line }}</div>
+        </div>
+        {% else %}
+        <div class="ss-award-detail">No MVP named</div>
+        {% endif %}
+        <div class="ss-award-detail ss-as-final">{{ g.final }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% if all_stars %}
+    <div class="ss-as-head">
+      <span class="ss-award-name" style="margin:0;">★ {{ season_year }} All-Stars</span>
+      {% if all_star_mine %}
+      <span class="ss-award-detail"><span style="color:var(--green);">{{ all_star_mine }}</span> from {{ my_team_name or 'your team' }}</span>
+      {% endif %}
+    </div>
+    <table class="data-table ss-pos-awards ss-as-table">
+      <tbody>
+        {% for row in all_stars %}
+        <tr>
+          <td class="ss-as-pos">{{ row.position }}</td>
+          <td>
+            {%- for p in row.players -%}
+            <span class="ss-clickable ss-as-player" onclick="openPlayerPanel('{{ p.player_id }}')" title="{{ p.name }} · {{ p.team }}"
+                  style="color:{% if p.is_mine %}var(--green){% else %}var(--text){% endif %};">{{ p.name }}</span>{% if not loop.last %}<span class="ss-as-sep">, </span>{% endif %}
+            {%- endfor -%}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+  {% endif %}
+
   <div class="ss-two-col">
 
     {# Final standings #}
@@ -424,6 +472,12 @@
 .ss-pos-awards td { font-size:12px; }
 .ss-award-detail { font-family:var(--font-mono);font-size:10px;color:var(--text-dim); }
 .ss-clickable:hover { background:var(--bg-3); }
+.ss-as-final { margin-top:2px; }
+.ss-as-head { display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 12px; }
+.ss-as-table td { line-height:1.7; }
+.ss-as-pos { width:40px;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);vertical-align:top; }
+.ss-as-player { font-weight:600;white-space:nowrap;border-radius:3px; }
+.ss-as-sep { color:var(--text-dim); }
 .ss-two-col {
   display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:16px;
   align-items:start;margin-bottom:24px;

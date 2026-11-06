@@ -19,7 +19,9 @@ from src.db.repositories.retirement_repo import RetirementRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.series_repo import SeriesRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
+from src.league import all_star as all_star_mod
 from src.league import awards as awards_mod
+from src.league import swing_off
 from src.stats import formulas
 
 
@@ -98,6 +100,9 @@ def season_summary_context(
         "no_hitters": [],
         "awards": [],
         "position_awards": [],
+        "all_stars": [],
+        "all_star_mine": 0,
+        "all_star_games": [],
         "my_leaders": [],
         "my_highlights": [],
     }
@@ -155,6 +160,7 @@ def season_summary_context(
 
     ctx["awards"] = season_awards(db, season_id, my_team_id)
     ctx["position_awards"] = position_awards(db, season_id, my_team_id)
+    ctx.update(all_star_summary(db, season_id, my_team_id))
     if my_team_id:
         ctx["my_leaders"] = team_leaders(
             db, league_id, season_id, my_team_id, MY_LEADER_CATS
@@ -246,6 +252,17 @@ def my_highlights(ctx: dict) -> list[dict]:
                             "title": w["line"],
                         }
                     )
+    for g in ctx["all_star_games"]:
+        if g["mvp"] and g["mvp"]["is_mine"]:
+            out.append(
+                {
+                    "icon": g["icon"],
+                    "what": f"{g['name']} MVP",
+                    "name": g["mvp"]["name"],
+                    "player_id": g["mvp"]["player_id"],
+                    "title": g["mvp"]["line"],
+                }
+            )
     for nh in ctx["no_hitters"]:
         if nh["is_mine"]:
             out.append(
@@ -258,6 +275,86 @@ def my_highlights(ctx: dict) -> list[dict]:
                 }
             )
     return out
+
+
+# The break's two games on the summary, in the order they're played.
+ALL_STAR_GAMES = (("rookie", "Rookie Game", "🌱"), ("all_star", "All-Star Game", "★"))
+
+
+def all_star_summary(db, season_id: str, my_team_id: str | None) -> dict:
+    """The season's All-Stars, a row per position, and the MVP and final
+    score of the Rookie Game and the All-Star Game once each is played."""
+    stars = AllStarRepository(db).all_stars(season_id)
+    order = {slot: i for i, slot in enumerate(all_star_mod.SLOTS)}
+    by_slot: dict[str, list] = {}
+    for r in sorted(stars, key=lambda r: order.get(r["slot"], len(order))):
+        by_slot.setdefault(r["slot"], []).append(
+            {
+                "player_id": r["player_id"],
+                "name": r["name"],
+                "team": f"{r['city']} {r['mascot']}",
+                "is_mine": r["team_id"] == my_team_id,
+            }
+        )
+    rows = [
+        {"position": "P" if slot == "p" else slot.upper(), "players": players}
+        for slot, players in by_slot.items()
+    ]
+    games = []
+    for event, name, icon in ALL_STAR_GAMES:
+        repo = AllStarRepository(db, event)
+        g = repo.game(season_id)
+        if not g or g["state"] != "played":
+            continue
+        games.append(
+            {
+                "name": name,
+                "icon": icon,
+                "final": _final(g),
+                "mvp": _mvp(repo, season_id, g, my_team_id),
+            }
+        )
+    return {
+        "all_stars": rows,
+        "all_star_mine": sum(1 for r in stars if r["team_id"] == my_team_id),
+        "all_star_games": games,
+    }
+
+
+def _final(g: dict) -> str:
+    """A played All-Star or Rookie Game's score, winner first."""
+    sides = [(g["city1"], g["score1"]), (g["city2"], g["score2"])]
+    if swing_off.winner(g) == 2:
+        sides.reverse()
+    text = ", ".join(f"Team {city} {runs}" for city, runs in sides)
+    if g.get("swingoff"):
+        return f"{text} (swing-off)"
+    if g.get("innings") and g["innings"] != 9:
+        return f"{text} ({g['innings']})"
+    return text
+
+
+def _mvp(repo, season_id: str, g: dict, my_team_id: str | None) -> dict | None:
+    """The game's MVP with his team and his line, or None if none was named."""
+    if not g["mvp_player_id"]:
+        return None
+    line = next(
+        (r for r in repo.lines(season_id) if r["player_id"] == g["mvp_player_id"]),
+        None,
+    )
+    if not line:
+        return None
+    star = next(
+        (r for r in repo.all_stars(season_id) if r["player_id"] == line["player_id"]),
+        None,
+    )
+    return {
+        "player_id": line["player_id"],
+        "name": line["name"],
+        "team": f"{star['city']} {star['mascot']}" if star else "",
+        "line": all_star_mod.line_text(line),
+        "is_mine": bool(star and star["team_id"] == my_team_id),
+    }
 
 
 # Given at each position: shown as their own tables, not in the Awards card.
