@@ -120,10 +120,23 @@ def _league_page(request, db, user, league_id: str, status_code=200, **ctx):
             "ranges": admin_service.NUMBER_RANGES,
             "season_choices": _season_choices(league["num_seasons"]),
             "owners": _league_owners(db, league),
+            "owner_cap": _league_cap(db, league),
             **ctx,
         },
         status_code,
     )
+
+
+def _league_cap(db, league) -> str | None:
+    """The league's payroll cap this season, for the owners table."""
+    year = ContractRepository(db).current_year(league["id"])
+    if year is None:
+        return None
+    caps = {
+        m.get("cap") for m in BudgetRepository(db).finances(league["id"], year).values()
+    }
+    cap = next(iter(caps - {None}), None)
+    return _money(cap) if cap else None
 
 
 def _league_owners(db, league: dict) -> list[dict]:

@@ -10,11 +10,13 @@ A light money model, just enough for owners to set budgets and judge profit:
 - **Revenue** per season: a league-wide base, times the team's market size
   (the team pool's 1 to 5), times how interested its fans are, plus a gate
   for every home playoff game.
-- **Budget**: the owner gives the GM a share of revenue to spend on payroll,
-  from about 45% (a miser) to 75% (spends to win), by their Spending trait.
-  The base is scaled so the league's average budget is what the flat budget
-  would have been (src/league/budget.py: the average payroll, then 5% more a
-  season), so payrolls already in place still fit.
+- **Budget**: the league sets one payroll cap for every team
+  (src/league/budget.py: the average payroll, then 5% more a season), and
+  each owner gives the GM a leash from it by their Spending trait: a miser
+  wants payroll under the cap, a spender lets it go well over.
+- The revenue base is scaled so an owner who spends an average share of
+  revenue (from about 45% for a miser to 75% for a spender) would spend
+  about the cap.
 - **Profit** = revenue minus payroll, luxury tax and fixed costs. Nothing
   carries over between seasons; owners only read it.
 
@@ -24,6 +26,8 @@ Speed Blitz has no budgets, so none of this runs there.
 from __future__ import annotations
 
 from dataclasses import dataclass
+
+from src.league import budget as bg
 
 FAN_START = 50
 FAN_MIN, FAN_MAX = 5, 95
@@ -109,18 +113,20 @@ class Plan:
     budget: int
 
 
-def plan(average_budget: int, teams: dict[str, TeamMoney]) -> dict[str, Plan]:
-    """Each team's revenue and budget for a season, scaled so the league's
-    average budget is average_budget."""
+def plan(cap: int, teams: dict[str, TeamMoney]) -> dict[str, Plan]:
+    """Each team's revenue and budget for a season under the league's cap."""
     if not teams:
         return {}
     pull = {t: market_mult(m.market) * fan_mult(m.fans) for t, m in teams.items()}
     raw = {t: pull[t] * spend_share(m.spending) for t, m in teams.items()}
     mean = sum(raw.values()) / len(raw)
-    base = average_budget / mean  # league revenue at market 3, fans 50
+    base = cap / mean  # league revenue at market 3, fans 50
     return {
-        t: Plan(revenue=_round(base * pull[t]), budget=_round(base * raw[t]))
-        for t in teams
+        t: Plan(
+            revenue=_round(base * pull[t]),
+            budget=bg.owner_budget(cap, m.spending),
+        )
+        for t, m in teams.items()
     }
 
 

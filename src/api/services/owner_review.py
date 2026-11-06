@@ -18,6 +18,8 @@ from __future__ import annotations
 from psycopg.types.json import Jsonb
 
 from src.api.services import owners as owner_service
+from src.league import budget as bg
+from src.league import finances as fn
 from src.league import owner_scoring as sc
 from src.league import owners
 from src.league.league_modes import get_mode
@@ -162,12 +164,13 @@ def gather(
     money = {
         r["team_id"]: dict(r)
         for r in conn.execute(
-            """SELECT team_id, budget, payroll, revenue, playoff_revenue, profit,
-                      fans_before, fans_after
+            """SELECT team_id, cap, budget, payroll, revenue, playoff_revenue,
+                      profit, fans_before, fans_after
                FROM team_budgets WHERE league_id = %s AND year = %s""",
             (league_id, year),
         ).fetchall()
     }
+    par = _profit_par(money)
     homegrown = _homegrown(conn, league_id, list(by_team))
     all_stars = _count(
         conn,
@@ -224,6 +227,7 @@ def gather(
             budget=m.get("budget"),
             revenue=revenue,
             profit=m.get("profit"),
+            profit_par=par.get(team_id),
             fans_before=m.get("fans_before"),
             fans_after=m.get("fans_after"),
             homegrown_share=homegrown.get(team_id, 0.0),
@@ -236,6 +240,24 @@ def gather(
             rival_wins=rw,
             rival_losses=rl,
         )
+    return out
+
+
+def _profit_par(money: dict[str, dict]) -> dict[str, int]:
+    """Each team's par profit: its regular-season revenue less what a middle
+    owner (Spending 50) would pay under the league's cap, the tax on it and
+    fixed costs (src/league/budget.py, src/league/finances.py)."""
+    revenues = [m["revenue"] for m in money.values() if m.get("revenue")]
+    if not revenues:
+        return {}
+    costs = fn.fixed_costs(sum(revenues) / len(revenues))
+    out = {}
+    for team_id, m in money.items():
+        if not m.get("revenue") or not m.get("cap"):
+            continue
+        payroll = bg.owner_budget(m["cap"], 50)
+        tax = bg.luxury_tax(payroll, m["cap"])
+        out[team_id] = fn.profit(m["revenue"], payroll, tax, costs)
     return out
 
 

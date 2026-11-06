@@ -1486,7 +1486,8 @@ CREATE TABLE IF NOT EXISTS team_budgets (     -- migration 074 (src/league/budge
     team_id     TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     year        INTEGER NOT NULL,
     budget      BIGINT NOT NULL,              -- payroll the owner will pay for this season
-    luxury_tax  BIGINT,                       -- tax on payroll over budget, set when the season ends
+    cap         BIGINT,                       -- the league's payroll cap this season, same for every team (migration 079)
+    luxury_tax  BIGINT,                       -- tax on payroll over the cap, set when the season ends
     revenue     BIGINT,                       -- regular-season revenue the owner set the budget from (migration 076)
     playoff_revenue BIGINT,                   -- home playoff gate, set when the season ends
     payroll     BIGINT,                       -- final payroll, set when the season ends

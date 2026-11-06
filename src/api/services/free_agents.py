@@ -12,7 +12,8 @@ Releasing players and signing free agents.
   from his grade and age (src/player/contracts.py). It starts this season,
   is guaranteed, and he joins the organization (minors) like a traded player.
   The minors can hold MINORS_LIMIT players, so a full team releases first.
-  Going over budget is allowed; the confirm warns about the luxury tax.
+  Going over the cap or the owner's budget is allowed; the confirm warns
+  about the luxury tax and the owner.
 
 Both wait for any sim in the league to finish (the league lock), and neither
 works in a lobby or a finished league. Waivers, bidding and AI GMs signing
@@ -126,7 +127,7 @@ def budget_warning(
     standing = BudgetRepository(conn).standing(league_id, team_id, year)
     if standing is None:
         return None
-    return bg.warning(standing["payroll"], standing["budget"], added)
+    return bg.warning(standing["payroll"], standing["cap"], standing["budget"], added)
 
 
 def sign(conn, league_id: str, team_id: str, player_id: str) -> dict:

@@ -46,6 +46,10 @@ class TeamSeason:
     budget: int | None = None
     revenue: int | None = None
     profit: int | None = None
+    # What a team in this market would make spending like a middle owner
+    # under the league's cap: profit is judged against it, so a small market
+    # isn't marked down for being small (None: against PROFIT_TARGET).
+    profit_par: int | None = None
     fans_before: int | None = None
     fans_after: int | None = None
     homegrown_share: float = 0.0
@@ -123,8 +127,12 @@ def score_dimensions(
 
     has_money = money and s.budget is not None and s.payroll is not None
     if has_money and s.revenue and s.profit is not None:
-        margin = s.profit / s.revenue
-        out["profit"] = _clamp((margin - PROFIT_TARGET) / PROFIT_SCALE)
+        if s.profit_par is not None:
+            margin = (s.profit - s.profit_par) / s.revenue
+            out["profit"] = _clamp(margin / PROFIT_SCALE)
+        else:
+            margin = s.profit / s.revenue
+            out["profit"] = _clamp((margin - PROFIT_TARGET) / PROFIT_SCALE)
     else:
         out["profit"] = None
     if has_money and s.budget:

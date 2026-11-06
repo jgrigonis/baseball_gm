@@ -52,7 +52,10 @@
         {% if office and office.mood %}<div class="ow-mood">Mood: <span class="ow-mood-{{ office.mood }}">{{ office.mood }}</span></div>{% endif %}
         {% if my_owner.bio %}<div class="ow-bio">“{{ my_owner.bio }}”</div>{% endif %}
         {% if my_owner.wants %}<div class="ow-line">{{ my_owner.wants }}</div>{% endif %}
-        {% if my_budget %}<div class="ow-line">Your {{ my_budget.year }} payroll budget: <strong>{{ my_budget.text }}</strong>. Your owner sets it from what the team brings in and how freely they spend. Go over and you pay luxury tax on the difference.</div>{% endif %}
+        {% if my_budget %}<div class="ow-line">The league's {{ my_budget.year }} payroll cap is <strong>{{ my_budget.cap_text }}</strong>, the same for every team. Go over it and you pay {{ (my_budget.tax_rate * 100) | round | int }}% luxury tax on the difference.
+          {% if my_budget.budget > my_budget.cap %}Your owner will spend up to <strong>{{ my_budget.budget_text }}</strong>, {{ my_budget.leash_text }}.
+          {%- elif my_budget.budget < my_budget.cap %}Your owner wants payroll under <strong>{{ my_budget.budget_text }}</strong>, {{ my_budget.leash_text }}.
+          {%- else %}Your owner wants payroll under the cap.{% endif %}</div>{% endif %}
         {% if my_owner.rival %}<div class="ow-line">Can't stand losing to the {{ my_owner.rival }}.</div>{% endif %}
         <div class="ow-dim">Your boss. Keep them happy and you keep your job. Judging you from {{ my_owner.since_year }}.</div>
       </div>

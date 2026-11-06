@@ -1,6 +1,7 @@
 # tests/api/test_budgets.py
-"""Team budgets and the luxury tax (src/league/budget.py,
-src/db/repositories/budget_repo.py), and the warnings."""
+"""The league's payroll cap, owners' budgets and the luxury tax
+(src/league/budget.py, src/db/repositories/budget_repo.py), and the
+warnings."""
 
 from types import SimpleNamespace
 
@@ -21,26 +22,42 @@ M = 1_000_000
 # ── Rules ─────────────────────────────────────────────────────────────────────
 
 
-def test_the_first_budget_is_the_average_payroll_rounded():
-    assert bg.first_budget([150 * M, 170 * M, 161 * M]) == 160 * M
+def test_the_first_cap_is_the_average_payroll_rounded():
+    assert bg.first_cap([150 * M, 170 * M, 161 * M]) == 160 * M
 
 
-def test_budgets_grow_five_percent_a_season():
+def test_the_cap_grows_five_percent_a_season():
     assert bg.grown(160 * M) == 168 * M
     assert bg.grown(160 * M, 2) == 176_400_000
 
 
-def test_luxury_tax_is_half_of_whats_over():
+def test_luxury_tax_is_half_of_whats_over_the_cap():
     assert bg.luxury_tax(150 * M, 160 * M) == 0
     assert bg.luxury_tax(170 * M, 160 * M) == 5 * M
 
 
+def test_a_miser_wants_payroll_under_the_cap_and_a_spender_allows_more():
+    assert bg.owner_budget(160 * M, 5) == 146 * M
+    assert bg.owner_budget(160 * M, 35) == 160 * M
+    assert 5 * M <= bg.leash(160 * M, 50) <= 10 * M
+    assert bg.owner_budget(160 * M, 95) == 189 * M
+
+
 def test_a_warning_only_when_a_move_goes_over():
-    assert bg.warning(150 * M, 160 * M, 5 * M) is None
-    assert bg.warning(150 * M, 160 * M, -5 * M) is None
-    msg = bg.warning(150 * M, 160 * M, 20 * M)
+    # Cap 160, owner allows 170.
+    assert bg.warning(150 * M, 160 * M, 170 * M, 5 * M) is None
+    assert bg.warning(150 * M, 160 * M, 170 * M, -5 * M) is None
+    msg = bg.warning(150 * M, 160 * M, 170 * M, 20 * M)
     assert "$10M over" in msg and "$5M in luxury tax" in msg
-    assert "already over" in bg.warning(170 * M, 160 * M, 2 * M)
+    assert "owner" not in msg
+    msg = bg.warning(150 * M, 160 * M, 170 * M, 30 * M)
+    assert "luxury tax" in msg and "$170M budget" in msg
+    assert "already over" in bg.warning(165 * M, 160 * M, 170 * M, 2 * M)
+
+
+def test_a_misers_budget_warns_under_the_cap_without_tax():
+    msg = bg.warning(140 * M, 160 * M, 146 * M, 10 * M)
+    assert "luxury tax" not in msg and "$146M budget" in msg
 
 
 # ── Budgets in a league ───────────────────────────────────────────────────────
@@ -78,22 +95,31 @@ def lg(db_conn, factory):
     return make
 
 
-def test_every_team_starts_with_the_same_budget(lg):
+def test_every_team_has_the_same_cap(lg):
     x = lg()
     budgets = x.budgets.for_league(x.league.id, 2026)
     pays = [x.contracts.payroll(t.id, 2026) for t in (x.mine, x.theirs)]
+    cap = bg.first_cap(pays)
     assert set(budgets) == {x.mine.id, x.theirs.id}
-    assert budgets[x.mine.id] == budgets[x.theirs.id] == bg.first_budget(pays)
+    assert x.budgets.cap(x.league.id, 2026) == cap
+    # No owners yet: a middle owner's leash.
+    assert budgets[x.mine.id] == budgets[x.theirs.id] == bg.owner_budget(cap, 50)
+    caps = x.db.execute(
+        "SELECT DISTINCT cap FROM team_budgets WHERE league_id = %s", (x.league.id,)
+    ).fetchall()
+    assert [r["cap"] for r in caps] == [cap]
     # Stored: asking again gives the same, even after payroll changes.
     x.factory.rated_player(x.theirs, x.league, level=80)
     x.contracts.sign_unsigned(x.league.id, 2026)
     assert x.budgets.for_league(x.league.id, 2026) == budgets
 
 
-def test_next_seasons_budget_grows_from_this_ones(lg):
+def test_next_seasons_cap_grows_from_this_ones(lg):
     x = lg()
-    now = x.budgets.budget(x.league.id, x.mine.id, 2026)
-    assert x.budgets.budget(x.league.id, x.mine.id, 2027) == bg.grown(now)
+    x.budgets.for_league(x.league.id, 2026)
+    now = x.budgets.cap(x.league.id, 2026)
+    x.budgets.for_league(x.league.id, 2027)
+    assert x.budgets.cap(x.league.id, 2027) == bg.grown(now)
 
 
 def test_speed_blitz_has_no_budgets(lg):
@@ -102,13 +128,13 @@ def test_speed_blitz_has_no_budgets(lg):
     assert x.budgets.standing(x.league.id, x.mine.id, 2026) is None
 
 
-def test_the_tax_is_charged_on_payroll_over_budget(lg):
+def test_the_tax_is_charged_on_payroll_over_the_cap_not_the_budget(lg):
     x = lg()
     x.budgets.for_league(x.league.id, 2026)
-    x.db.execute(
-        "UPDATE team_budgets SET budget = 1000000 WHERE team_id = %s",
-        (x.mine.id,),
-    )
+    # A stingy owner's budget alone doesn't tax anyone.
+    x.db.execute("UPDATE team_budgets SET budget = 1000000, cap = 900000000")
+    assert x.budgets.assess(x.league.id, 2026)[x.mine.id] == 0
+    x.db.execute("UPDATE team_budgets SET cap = 1000000")
     taxes = x.budgets.assess(x.league.id, 2026)
     pay = x.contracts.payroll(x.mine.id, 2026)
     assert taxes[x.mine.id] == bg.luxury_tax(pay, 1_000_000) > 0
@@ -123,17 +149,11 @@ def test_signing_over_budget_warns_but_is_allowed(lg):
     pid = x.factory.rated_player(x.theirs, x.league, level=70, status="free_agent").id
     x.db.execute("DELETE FROM team_players WHERE player_id = %s", (pid,))
     x.budgets.for_league(x.league.id, 2026)
-    x.db.execute(
-        "UPDATE team_budgets SET budget = 900000000 WHERE team_id = %s",
-        (x.mine.id,),
-    )
+    x.db.execute("UPDATE team_budgets SET budget = 900000000, cap = 900000000")
     assert (
         free_agents.sign_preview(x.db, x.league.id, x.mine.id, pid)["warning"] is None
     )
-    x.db.execute(
-        "UPDATE team_budgets SET budget = 1000000 WHERE team_id = %s",
-        (x.mine.id,),
-    )
+    x.db.execute("UPDATE team_budgets SET budget = 1000000, cap = 1000000")
     preview = free_agents.sign_preview(x.db, x.league.id, x.mine.id, pid)
     assert "luxury tax" in preview["warning"]
     free_agents.sign(x.db, x.league.id, x.mine.id, pid)  # not blocked
@@ -156,18 +176,28 @@ def client_for():
     app.dependency_overrides.clear()
 
 
-def test_the_roster_shows_payroll_against_budget(lg, client_for):
+def test_the_roster_shows_payroll_against_cap_and_budget(lg, client_for):
     x = lg()
     client = client_for(x)
     budget = x.budgets.budget(x.league.id, x.mine.id, 2026)
+    cap = x.budgets.cap(x.league.id, 2026)
     html = client.get(f"/leagues/{x.league.id}/roster").text
-    assert f"of {bg.format_salary(budget)}" in html
-    x.db.execute(
-        "UPDATE team_budgets SET budget = 1000000 WHERE team_id = %s",
-        (x.mine.id,),
-    )
+    assert f"cap {bg.format_salary(cap)}" in html
+    assert f"owner {bg.format_salary(budget)}" in html
+    x.db.execute("UPDATE team_budgets SET budget = 1000000, cap = 1000000")
     html = client.get(f"/leagues/{x.league.id}/roster").text
-    assert "over · " in html and " tax</span>" in html
+    assert "over cap · " in html and " tax</span>" in html
+    assert "past owner</span>" in html
+
+
+def test_the_owner_tab_explains_the_cap_and_leash(lg, client_for):
+    x = lg()
+    _seat(x, x.mine, 95)
+    cap = x.budgets.cap(x.league.id, 2026)
+    html = client_for(x).get(f"/leagues/{x.league.id}/owner").text
+    assert f"payroll cap is <strong>{bg.format_salary(cap)}</strong>" in html
+    assert "the same for every team" in html
+    assert "over the cap" in html
 
 
 def test_speed_blitz_roster_shows_just_payroll(lg, client_for):
@@ -201,9 +231,9 @@ def test_a_spender_gets_more_than_a_miser(lg):
     _seat(x, x.theirs, 5)
     budgets = x.budgets.for_league(x.league.id, 2026)
     pays = [x.contracts.payroll(t.id, 2026) for t in (x.mine, x.theirs)]
-    assert budgets[x.mine.id] > budgets[x.theirs.id]
-    average = (budgets[x.mine.id] + budgets[x.theirs.id]) / 2
-    assert abs(average - bg.first_budget(pays)) <= 100_000
+    cap = bg.first_cap(pays)
+    assert budgets[x.mine.id] == bg.owner_budget(cap, 95) > cap
+    assert budgets[x.theirs.id] == bg.owner_budget(cap, 5) < cap
     row = x.db.execute(
         "SELECT revenue, fans_before FROM team_budgets WHERE team_id = %s",
         (x.mine.id,),
@@ -218,7 +248,8 @@ def test_the_season_end_records_fans_and_profit(lg):
     money = x.budgets.finances(x.league.id, 2026)[x.mine.id]
     assert money["fans_after"] is not None and money["profit"] is not None
     assert money["payroll"] == x.contracts.payroll(x.mine.id, 2026)
-    # Next season's average budget still grows 5%.
-    now = x.budgets.for_league(x.league.id, 2026)
-    nxt = x.budgets.for_league(x.league.id, 2027)
-    assert abs(sum(nxt.values()) / 2 - bg.grown(sum(now.values()) / 2)) <= 100_000
+    # Next season's cap still grows 5%.
+    x.budgets.for_league(x.league.id, 2027)
+    assert x.budgets.cap(x.league.id, 2027) == bg.grown(
+        x.budgets.cap(x.league.id, 2026)
+    )

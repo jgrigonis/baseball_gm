@@ -1,91 +1,138 @@
 # src/league/budget.py
 """
-Team budgets and the luxury tax (Josh's decisions, 2026-11-05).
+The league's payroll cap and each owner's budget (Josh's decisions,
+2026-11-05 and 2026-11-06).
 
-A team's budget is the payroll its owner will pay for a season. It's a soft
-limit: a team can go over, and pays a luxury tax on what's over when the
-season ends. Nothing is blocked; the game warns before a move that takes a
-team over.
+The league sets one payroll cap a season, the same for every team: the
+league's average payroll the first season budgets are needed, then
+CAP_GROWTH more each season after. It's a soft cap: a team can go over
+it, and pays a luxury tax on what's over when the season ends. Nothing is
+blocked; the game warns before a move that takes a team over.
 
-Each team's owner sets its budget, from the revenue its market and fans
-bring in and how freely they spend (src/league/finances.py). The league's
-average budget is the average payroll the first season budgets are needed,
-then BUDGET_GROWTH more each season after. Speed Blitz leagues have no
-budgets (src/league/league_modes.py).
+Each team's owner sets how far from the cap they'll let payroll go, by
+their Spending trait: a miser wants payroll under the cap, an owner who
+spends to win gives a long leash over it. That's the GM's budget. Going
+past it costs no more tax, but the owner judges payroll against it
+(src/league/owner_scoring.py), and AI GMs keep to it.
 
-The tax comes off the team's profit, which owners read.
+Speed Blitz leagues have no budgets (src/league/league_modes.py). The tax
+comes off the team's profit, which owners read.
 """
 
 from __future__ import annotations
 
 from src.player.contracts import format_salary
 
-# How much a budget grows each season (Josh: "something like 5%").
-BUDGET_GROWTH = 0.05
-# Luxury tax: this share of every dollar of payroll over budget.
+# How much the cap grows each season (Josh: "something like 5%").
+CAP_GROWTH = 0.05
+# Luxury tax: this share of every dollar of payroll over the cap.
 LUXURY_TAX_RATE = 0.5
-# The first budget rounds to this, so it reads as a round number.
-FIRST_BUDGET_ROUNDING = 5_000_000
-# Later budgets round to this.
-BUDGET_ROUNDING = 100_000
+# The first cap rounds to this, so it reads as a round number.
+FIRST_CAP_ROUNDING = 5_000_000
+# Later caps round to this.
+CAP_ROUNDING = 100_000
+# The owner's leash, as a share of the cap: LEASH_PER_POINT for every point
+# of Spending over LEASH_ZERO. At a $160M cap, Spending 5 (a miser) wants
+# about $14M under, 50 allows about $7M over, 95 about $29M over.
+LEASH_ZERO = 35
+LEASH_PER_POINT = 0.003
+LEASH_ROUNDING = 1_000_000
 
 
-def first_budget(payrolls: list[int]) -> int:
-    """The budget every team starts with: the league's average payroll."""
+def first_cap(payrolls: list[int]) -> int:
+    """The league's first cap: its average payroll."""
     if not payrolls:
         return 0
     avg = sum(payrolls) / len(payrolls)
     return max(
-        FIRST_BUDGET_ROUNDING,
-        round(avg / FIRST_BUDGET_ROUNDING) * FIRST_BUDGET_ROUNDING,
+        FIRST_CAP_ROUNDING,
+        round(avg / FIRST_CAP_ROUNDING) * FIRST_CAP_ROUNDING,
     )
 
 
-def grown(budget: int, seasons: int = 1) -> int:
-    """A budget some seasons later."""
-    value = budget * (1 + BUDGET_GROWTH) ** seasons
-    return round(value / BUDGET_ROUNDING) * BUDGET_ROUNDING
+def grown(cap: int, seasons: int = 1) -> int:
+    """The cap some seasons later."""
+    value = cap * (1 + CAP_GROWTH) ** seasons
+    return round(value / CAP_ROUNDING) * CAP_ROUNDING
 
 
-def luxury_tax(payroll: int, budget: int) -> int:
-    """The tax on a payroll over budget (0 when it's under)."""
-    return round(max(0, payroll - budget) * LUXURY_TAX_RATE)
+def leash(cap: int, spending: int) -> int:
+    """How far over the cap (negative: under) an owner with this Spending
+    trait lets payroll go."""
+    spending = max(0, min(100, spending))
+    value = cap * LEASH_PER_POINT * (spending - LEASH_ZERO)
+    return round(value / LEASH_ROUNDING) * LEASH_ROUNDING
 
 
-def standing(payroll: int, budget: int) -> dict:
-    """A team's payroll against its budget, for the views."""
-    over = max(0, payroll - budget)
-    tax = luxury_tax(payroll, budget)
+def owner_budget(cap: int, spending: int) -> int:
+    """The payroll an owner with this Spending trait will stand for."""
+    return cap + leash(cap, spending)
+
+
+def luxury_tax(payroll: int, cap: int) -> int:
+    """The tax on a payroll over the cap (0 when it's under)."""
+    return round(max(0, payroll - cap) * LUXURY_TAX_RATE)
+
+
+def _leash_text(cap: int, budget: int) -> str:
+    if budget > cap:
+        return f"{format_salary(budget - cap)} over the cap"
+    if budget < cap:
+        return f"{format_salary(cap - budget)} under the cap"
+    return "right at the cap"
+
+
+def standing(payroll: int, cap: int, budget: int) -> dict:
+    """A team's payroll against the league's cap and its owner's budget,
+    for the views."""
+    over = max(0, payroll - cap)
+    tax = luxury_tax(payroll, cap)
+    over_budget = max(0, payroll - budget)
     return {
         "payroll": payroll,
+        "cap": cap,
         "budget": budget,
         "over": over,
-        "room": max(0, budget - payroll),
+        "over_budget": over_budget,
         "tax": tax,
         "payroll_text": format_salary(payroll),
+        "cap_text": format_salary(cap),
         "budget_text": format_salary(budget),
+        "leash_text": _leash_text(cap, budget),
         "over_text": format_salary(over) if over else None,
-        "room_text": format_salary(budget - payroll) if budget > payroll else None,
+        "over_budget_text": format_salary(over_budget) if over_budget else None,
         "tax_text": format_salary(tax) if tax else None,
         "tax_rate": LUXURY_TAX_RATE,
     }
 
 
-def warning(payroll: int, budget: int, added: int) -> str | None:
-    """What to warn a GM about a move that adds this much payroll, or None
-    when it leaves him under budget (or takes payroll off)."""
+def warning(payroll: int, cap: int, budget: int, added: int) -> str | None:
+    """What to warn a GM about a move that adds this much payroll: luxury
+    tax past the league's cap, and the owner's budget. None when it leaves
+    him under both (or takes payroll off)."""
     if added <= 0:
         return None
     after = payroll + added
-    if after <= budget:
-        return None
-    extra = luxury_tax(after, budget) - luxury_tax(payroll, budget)
-    if payroll > budget:
-        return (
-            f"You're already over budget. This adds {format_salary(added)}, "
-            f"and {format_salary(extra)} more luxury tax."
-        )
-    return (
-        f"This takes you {format_salary(after - budget)} over your "
-        f"{format_salary(budget)} budget: {format_salary(extra)} in luxury tax."
-    )
+    parts = []
+    extra = luxury_tax(after, cap) - luxury_tax(payroll, cap)
+    if extra > 0:
+        if payroll > cap:
+            parts.append(
+                f"You're already over the {format_salary(cap)} cap. "
+                f"This adds {format_salary(extra)} more luxury tax."
+            )
+        else:
+            parts.append(
+                f"This takes you {format_salary(after - cap)} over the "
+                f"{format_salary(cap)} cap: {format_salary(extra)} in "
+                "luxury tax."
+            )
+    if after > budget:
+        if payroll > budget:
+            parts.append("You're already past what your owner will spend.")
+        else:
+            parts.append(
+                f"Your owner won't like it: that's past their "
+                f"{format_salary(budget)} budget."
+            )
+    return " ".join(parts) or None
