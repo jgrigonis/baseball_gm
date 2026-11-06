@@ -431,3 +431,16 @@ def test_confirmed_pace_keeps_the_windows_greyed_out(client, db_conn, lobby):
         assert 'class="setting-off"' in rows[label], label
         # The lobby's live update leaves these alone.
         assert "data-needs-humans" not in rows[label], label
+
+
+def test_commissioner_controls_sit_above_the_settings(client, db_conn, lobby):
+    league, gm = lobby
+    _fill(db_conn, league)
+    db_conn.execute(
+        "UPDATE leagues SET commissioner_gm_id = %s WHERE id = %s", (gm.id, league.id)
+    )
+    app.dependency_overrides[get_current_user] = lambda: {"id": None}
+
+    html = client.get(f"/leagues/{league.id}/").text
+
+    assert html.index("Commissioner Controls") < html.index("League Settings</span>")
