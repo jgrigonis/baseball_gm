@@ -194,6 +194,43 @@ def standard_front_office(cap: int) -> int:
     return front_office_cost(cap, {})
 
 
+# What each level does (Bare bones .. Elite).
+# Coaching: how fast young players' coachable skills grow toward their
+# ceilings (src/player/player_skill_aging.py; the cap doesn't move). Full
+# effect at COACHING_FULL_AGE and under, none by COACHING_NO_AGE.
+COACHING_GROWTH = (0.85, 0.93, 1.0, 1.08, 1.15)
+COACHING_FULL_AGE = 23
+COACHING_NO_AGE = 28
+# Facilities: the chance of getting hurt, and days out once hurt, for
+# hitters and pitchers alike (Josh, 2026-11-06).
+FACILITIES_INJURY = (1.15, 1.07, 1.0, 0.93, 0.85)
+FACILITIES_DAYS = (1.15, 1.07, 1.0, 0.93, 0.85)
+
+
+def coaching_growth(level: int, age: int) -> float:
+    """The growth multiplier a coaching staff at this level gives a player
+    this age: its full effect for the young, fading to none by 28."""
+    full = COACHING_GROWTH[clean_level(level)]
+    if age <= COACHING_FULL_AGE:
+        share = 1.0
+    elif age >= COACHING_NO_AGE:
+        share = 0.0
+    else:
+        share = (COACHING_NO_AGE - age) / (COACHING_NO_AGE - COACHING_FULL_AGE)
+    return 1.0 + (full - 1.0) * share
+
+
+def facilities_injury(level: int) -> float:
+    return FACILITIES_INJURY[clean_level(level)]
+
+
+def facilities_days(level: int, days: int) -> int:
+    """Days out once hurt, with this level of medical staff and facilities."""
+    if days <= 0:
+        return days
+    return max(1, round(days * FACILITIES_DAYS[clean_level(level)]))
+
+
 def ai_levels(spending: int, seed: str) -> dict[str, int]:
     """An AI team's levels: a miser owner squeezes the front office, a
     spender funds it, with a little variety per department."""

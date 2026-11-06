@@ -16,7 +16,10 @@ from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.happiness_repo import HappinessRepository
 from src.player import happiness
+from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.injury_repo import InjuryRepository
+from src.league import budget as bg
+from src.player.injury_types import roll_days_missed
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.lineup_preference_repo import LineupPreferenceRepository
 from src.team.manager_profile import DEFAULT_PROFILE, ManagerProfile
@@ -660,6 +663,10 @@ def _play_game(
     # AI teams have no saved lineup, so theirs is built fresh for every game.
 
     event_logger = GameEventLogger(conn, game_id=game_info["game_id"])
+    # Facilities: each team's injury odds and days out (src/league/budget.py).
+    facilities = _facilities(
+        conn, league_id, season_id, [home_team.record.id, away_team.record.id]
+    )
     game = Game(
         home_team=home_team,
         away_team=away_team,
@@ -675,6 +682,7 @@ def _play_game(
         injuries_enabled=LeagueRepository(conn).injuries_enabled(league_id),
         # Extra-innings runner on second: regular season only.
         ghost_runner=not playoffs,
+        injury_mults={t: bg.facilities_injury(lv) for t, lv in facilities.items()},
     )
 
     home_team.set_lineup(
@@ -785,6 +793,9 @@ def _play_game(
         for player in team.players
     }
     for player_id, severity, activity, injury_type in game.new_injuries:
+        team_id = team_of.get(player_id)
+        days = roll_days_missed(severity, rng, injury_type=injury_type)
+        days = bg.facilities_days(facilities.get(team_id, bg.STANDARD), days)
         injury_repo.injure(
             player_id,
             season_id,
@@ -793,7 +804,8 @@ def _play_game(
             activity=activity,
             injury_type=injury_type,
             rng=rng,
-            team_id=team_of.get(player_id),
+            days=days,
+            team_id=team_id,
         )
 
     logger.info(home_team.output_defensive_stats())
@@ -804,6 +816,18 @@ def _play_game(
     logger.info(away_team.output_pitching_stats())
 
     return result
+
+
+def _facilities(conn, league_id, season_id, team_ids) -> dict[str, int]:
+    """Each team's Facilities level this season (Standard without budgets)."""
+    row = conn.execute(
+        "SELECT year FROM seasons WHERE id = %s", (season_id,)
+    ).fetchone()
+    if not row or not league_id:
+        return dict.fromkeys(team_ids, bg.STANDARD)
+    return BudgetRepository(conn).department(
+        league_id, row["year"], "facilities", team_ids
+    )
 
 
 def main():

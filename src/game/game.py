@@ -170,6 +170,7 @@ class Game:
         max_pitcher_outs: int | None = None,
         ghost_runner: bool = False,
         max_innings: int | None = None,
+        injury_mults: dict[str, float] | None = None,
     ) -> None:
         """
         Initialize a new game.
@@ -197,6 +198,9 @@ class Game:
             max_innings: Stop after this many innings even if it's tied, and
                 leave the tie to the caller (the All-Star Game's swing-off)
                 (default: None, play until someone wins)
+            injury_mults: Each team's injury chance multiplier, by team id,
+                from its Facilities department (src/league/budget.py)
+                (default: None, 1.0 for both)
 
         Raises:
             ValueError: If teams are invalid/missing
@@ -259,6 +263,7 @@ class Game:
         # Injury info
         self.injured_ids = set(injured_ids or {})
         self.injuries_enabled = injuries_enabled
+        self.injury_mults = injury_mults or {}
         self.max_pitcher_outs = max_pitcher_outs
         self.ghost_runner = ghost_runner
         self.max_innings = max_innings
@@ -884,14 +889,17 @@ class Game:
         # Build candidates as (player, activity) tuples
         candidates: list[tuple] = []
 
+        # Each candidate carries his team, for its Facilities multiplier.
+        bat_id = self.bat_team.record.id
+        pitch_id = self.pitch_team.record.id
         if self.current_batter:
-            candidates.append((self.current_batter.player, "batting"))
+            candidates.append((self.current_batter.player, "batting", bat_id))
 
         for runner in self.bases.runners():
-            candidates.append((runner, "running"))
+            candidates.append((runner, "running", bat_id))
 
         if self.current_pitcher:
-            candidates.append((self.current_pitcher, "pitching"))
+            candidates.append((self.current_pitcher, "pitching", pitch_id))
 
         for slot in self.pitch_team.lineup:
             if slot.position == "dh":
@@ -899,13 +907,14 @@ class Game:
             player = slot.player
             if any(player.id == c[0].id for c in candidates):
                 continue
-            candidates.append((player, "fielding"))
+            candidates.append((player, "fielding", pitch_id))
 
-        for player, activity in candidates:
+        for player, activity, team_id in candidates:
             if getattr(player, "is_injured", False):
                 continue
 
             prob = self._injury_probability(player, activity)
+            prob *= self.injury_mults.get(team_id, 1.0)
             if prob <= 0:
                 continue
 

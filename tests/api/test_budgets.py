@@ -514,3 +514,31 @@ def test_setting_the_front_office_on_the_budget_tab(lg, client_for):
     # Cutting back is always fine.
     r = client.post(url, data={"department": "coaching", "level": 0})
     assert x.budgets.levels(x.league.id, x.mine.id, 2026)["coaching"] == 0
+
+
+def test_coaching_helps_the_young_most():
+    assert bg.coaching_growth(4, 21) == 1.15
+    assert bg.coaching_growth(0, 21) == 0.85
+    assert 1.0 < bg.coaching_growth(4, 25) < 1.15
+    assert bg.coaching_growth(4, 30) == 1.0
+    assert bg.coaching_growth(bg.STANDARD, 21) == 1.0
+
+
+def test_facilities_move_injury_odds_and_days_out():
+    assert bg.facilities_injury(4) < 1.0 < bg.facilities_injury(0)
+    assert bg.facilities_injury(bg.STANDARD) == 1.0
+    assert bg.facilities_days(4, 20) == 17 and bg.facilities_days(0, 20) == 23
+    assert bg.facilities_days(4, 1) == 1 and bg.facilities_days(2, 9) == 9
+
+
+def test_department_reads_levels_without_making_rows(lg):
+    x = lg()
+    assert x.budgets.department(x.league.id, 2026, "facilities", [x.mine.id]) == {
+        x.mine.id: bg.STANDARD
+    }
+    x.budgets.for_league(x.league.id, 2026)
+    x.budgets.set_level(x.league.id, x.mine.id, 2026, "facilities", 4)
+    got = x.budgets.department(
+        x.league.id, 2026, "facilities", [x.mine.id, x.theirs.id]
+    )
+    assert got[x.mine.id] == 4 and got[x.theirs.id] in range(5)

@@ -129,6 +129,27 @@ class BudgetRepository:
             for r in rows
         }
 
+    def department(
+        self, league_id: str, year: int, department: str, team_ids
+    ) -> dict[str, int]:
+        """One department's level for these teams this season, by team id,
+        Standard where unset or without budgets. A plain read for the game
+        loop: it makes no rows."""
+        if department not in bg.DEPARTMENT_KEYS:
+            raise ValueError(department)
+        ids = list(team_ids)
+        out = dict.fromkeys(ids, bg.STANDARD)
+        if not ids:
+            return out
+        for r in self.conn.execute(
+            f"""SELECT team_id, {department} AS level FROM team_budgets
+                WHERE league_id = %s AND year = %s AND team_id = ANY(%s)""",
+            (league_id, year, ids),
+        ).fetchall():
+            if r["level"] is not None:
+                out[r["team_id"]] = bg.clean_level(r["level"])
+        return out
+
     def front_office(self, league_id: str, team_id: str, year: int) -> int:
         """What the team's front office costs this season (0 without
         budgets)."""
