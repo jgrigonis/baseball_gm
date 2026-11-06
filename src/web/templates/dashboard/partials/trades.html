@@ -110,6 +110,25 @@
     before your next game, your best healthy players are called up for you.
   </div>
 
+  {# Shop a player: every AI team's best offer for him at once
+     (src/api/services/trade_shop.py). #}
+  <div class="card tr-shop" id="tr-shop">
+    <div class="card-header"><span class="card-title">🛒 Shop a player</span>
+      <span class="tr-hint">Every AI team's best offer for him, best for you first</span></div>
+    <div class="card-body">
+      <div class="tr-shop-pick">
+        <select id="tr-shop-player" class="tr-team" onchange="document.getElementById('tr-shop-btn').disabled = !this.value">
+          <option value="">Pick one of your players…</option>
+          {% for p in shop_players %}
+          <option value="{{ p.player_id }}">{{ p.name }} ({{ p.position }}{% if p.overall %}, {{ p.overall }}{% endif %}){% if p.wants_trade %} · wants a trade{% endif %}{% if not p.forty %} · org{% endif %}</option>
+          {% endfor %}
+        </select>
+        <button class="btn btn-primary" id="tr-shop-btn" onclick="trShop()" disabled>Shop him</button>
+      </div>
+      <div id="tr-shop-results"></div>
+    </div>
+  </div>
+
   <div class="grid-2 trade-cols">
     <div class="card">
       <div class="card-header">
@@ -485,8 +504,108 @@ window.trSend = function() {
     .catch(function() { showResult('✗ Couldn\'t reach the server.', 'bad'); summarize(); });
 };
 
+// ── Shop a player ──────────────────────────────────────────────────────
+function shopRow(p) {
+  return '<div class="tr-shop-player">' +
+    '<span class="' + gradeClass(p.overall) + ' tr-grade">' + esc(p.overall) + '</span>' +
+    '<span class="tr-name"><a href="#" onclick="openPlayerPanel(\'' + p.player_id + '\');return false;">' +
+      esc(p.first_name + ' ' + p.last_name) + '</a>' + rookieTag(p.player_id) +
+      '<span class="tr-meta">' + esc(p.position || '') + ' · ' + p.age +
+        (p.salary_text ? ' · ' + esc(p.salary_text) : '') + (statLine(p) ? ' · ' + esc(statLine(p)) : '') +
+      '</span></span>' +
+    '<span class="badge ' + (onForty(p) ? 'badge-40man">40' : 'badge-minors">ORG') + '</span>' +
+  '</div>';
+}
+
+var SHOP = null;  // the last shop: {pid, player, offers, no_interest}
+
+function renderShop() {
+  var el = document.getElementById('tr-shop-results');
+  if (!SHOP) { el.innerHTML = ''; return; }
+  var html = '';
+  if (!SHOP.offers.length) {
+    html += '<div class="tr-empty">No AI team has a deal for ' + esc(SHOP.player) + ' today. ' +
+            'Try again after a few more games, or build an offer yourself below.</div>';
+  }
+  SHOP.offers.forEach(function(o, i) {
+    html += '<div class="tr-offer tr-shop-offer">' +
+      '<div class="tr-offer-text">' +
+        '<div>' + (i === 0 ? '<span class="tr-tag">best for you</span>' : '') +
+          'The <strong>' + esc(o.team_name) + '</strong>' +
+          (o.gm_name ? ' <span class="tr-gm">(' + esc(o.gm_name) + ')</span>' : '') +
+          ' give</div>' +
+        o.players.map(shopRow).join('') +
+      '</div>' +
+      '<div class="tr-offer-btns">' +
+        '<button class="btn btn-secondary" title="Open it in the builder to change it" onclick="trShopTweak(' + i + ')">Tweak</button>' +
+        '<button class="btn btn-primary" onclick="trShopTake(' + i + ')">Make this trade</button>' +
+      '</div>' +
+    '</div>';
+  });
+  if (SHOP.no_interest.length)
+    html += '<div class="tr-reason tr-shop-none">No interest: ' + esc(SHOP.no_interest.join(', ')) + '</div>';
+  el.innerHTML = html;
+}
+
+window.trShop = function(pid) {
+  var sel = document.getElementById('tr-shop-player');
+  var btn = document.getElementById('tr-shop-btn');
+  if (pid) sel.value = pid;
+  pid = sel.value;
+  if (!pid) return;
+  window._shopPlayer = null;
+  btn.disabled = true;
+  btn.textContent = 'Asking around…';
+  var el = document.getElementById('tr-shop-results');
+  el.innerHTML = '<div class="tr-empty">Calling every AI team…</div>';
+  document.getElementById('tr-shop').scrollIntoView({behavior: 'smooth', block: 'start'});
+  post('/shop/' + encodeURIComponent(pid)).then(function(res) {
+    var ok = res[0], d = res[1];
+    btn.disabled = false; btn.textContent = 'Shop him';
+    if (!ok) { SHOP = null; el.innerHTML = '<div class="tr-empty">✗ ' + esc(d.detail || 'Something went wrong.') + '</div>'; return; }
+    SHOP = {pid: pid, player: d.player, offers: d.offers, no_interest: d.no_interest};
+    renderShop();
+  }).catch(function() {
+    btn.disabled = false; btn.textContent = 'Shop him';
+    el.innerHTML = '<div class="tr-empty">✗ Couldn\'t reach the server.</div>';
+  });
+};
+
+window.trShopTake = function(i) {
+  var o = SHOP && SHOP.offers[i];
+  if (!o) return;
+  var names = o.players.map(function(p) { return (p.first_name + ' ' + p.last_name).trim(); });
+  window.gmConfirm({
+    title: 'Trade ' + SHOP.player + '?',
+    lines: ['The ' + o.team_name + ' give ' + names.join(' and ') + '.'],
+    ok: 'Make this trade',
+  }).then(function(yes) {
+    if (!yes) return;
+    post('/shop/' + encodeURIComponent(SHOP.pid) + '/take', {team_id: o.team_id}).then(function(res) {
+      var ok = res[0], d = res[1];
+      if (!ok) { showResult('✗ ' + esc(d.detail || 'Something went wrong.'), 'bad'); return trShop(SHOP.pid); }
+      if (!d.accepted) { showResult('✗ The ' + esc(o.team_name) + ' said no: “' + esc(d.reason) + '”', 'warn'); return trShop(SHOP.pid); }
+      reloadWith(arrivedMsg(d.arrived, d.playing_count), 'good', 'roster');
+    }).catch(function() { showResult('✗ Couldn\'t reach the server.', 'bad'); });
+  });
+};
+
+// Open a shop offer in the builder, to change it before sending.
+window.trShopTweak = function(i) {
+  var o = SHOP && SHOP.offers[i];
+  if (!o) return;
+  COUNTER = null;
+  document.getElementById('tr-team').value = o.team_id;
+  SIDES.mine.picked = new Set([SHOP.pid]);
+  render('mine');
+  trLoadTeam(o.team_id, o.give);
+  document.getElementById('tr-bar').scrollIntoView({behavior: 'smooth', block: 'center'});
+};
+
 render('mine');
 renderFilters('theirs');
+// From the player panel's Shop him button.
+if (window._shopPlayer) window.trShop(window._shopPlayer);
 var done = window._tradeResult;
 try { done = done || JSON.parse(sessionStorage.getItem('tradeResult')); sessionStorage.removeItem('tradeResult'); } catch (e) {}
 if (done) { showResult(done.msg, done.kind, done.dest); window._tradeResult = null; }
@@ -558,6 +677,12 @@ if (done) { showResult(done.msg, done.kind, done.dest); window._tradeResult = nu
 #trades-page .tr-offer-btns .btn { font-size: 11px; padding: 4px 10px; }
 #trades-page .tr-tag { font-family: var(--font-mono); font-size: 10px; color: var(--amber); border: 1px solid var(--amber-dim);
   padding: 0 4px; margin-right: 6px; text-transform: uppercase; }
+#trades-page .tr-shop { margin-bottom: 14px; }
+#trades-page .tr-shop-pick { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+#trades-page .tr-shop-pick .tr-team { flex: 1; min-width: 0; max-width: 420px; padding: 5px 6px; }
+#trades-page .tr-shop-player { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
+#trades-page .tr-shop-player .badge { flex: none; }
+#trades-page .tr-shop-none { padding: 8px 4px 2px; }
 #trades-page .tr-link { background: none; border: none; padding: 0; color: var(--sky); cursor: pointer;
   font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; }
 @media (max-width: 760px) {

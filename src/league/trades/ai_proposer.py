@@ -136,3 +136,63 @@ def find_deal(
                 best = Deal(give, [target], verdict.score)
             break
     return best
+
+
+# Shopping a player: every AI team's best offer for one of a GM's players.
+# Each looks at the players it could send (the MAX_SHOP_GIVERS worth most to
+# the shopping team), one at a time and in pairs, and keeps the package it
+# would really take the deal for that helps the shopping team most.
+MAX_SHOP_GIVERS = 10
+
+
+@dataclass
+class ShopOffer:
+    give: list[Asset]  # from the AI team
+    score: float  # how much it helps the shopping team, as it sees him
+
+
+def shop_offer(
+    ai: Side,
+    seller: Side,
+    target: Asset,
+    days_left: int,
+    blocked: set[str] = frozenset(),
+) -> ShopOffer | None:
+    """The AI team's best offer for `target`, the seller's player, or None
+    if it has no deal it would take. blocked: its players who can't go to
+    the seller (traded away by the seller this season). The seller judges
+    as a person does, with no margin; the AI with its own."""
+    ai_base = ai_evaluator.strengths(ai.see(ai.roster), days_left)
+    seller_base = ai_evaluator.strengths(seller.see(seller.roster), days_left)
+    if _verdict(ai, [], [target], days_left, 0.0, ai_base).score <= 0:
+        return None
+
+    def for_seller(give):
+        return _verdict(seller, [target], give, days_left, 0.0, seller_base).score
+
+    mine = [
+        a
+        for a in ai.roster
+        if a.id in ai.tradeable and not a.injured_days and a.id not in blocked
+    ]
+    worth = sorted(
+        (
+            (_verdict(seller, [], [a], days_left, 0.0, seller_base).score, a)
+            for a in mine
+        ),
+        key=lambda x: x[0],
+        reverse=True,
+    )
+    givers = [a for w, a in worth[:MAX_SHOP_GIVERS] if w > 0]
+    packages = [[g] for g in givers]
+    if MAX_GIVE >= 2:
+        packages += [list(p) for p in combinations(givers, 2)]
+
+    best: ShopOffer | None = None
+    for give in packages:
+        if not _verdict(ai, give, [target], days_left, ai.margin, ai_base).accept:
+            continue
+        score = for_seller(give)
+        if best is None or score > best.score:
+            best = ShopOffer(give, score)
+    return best

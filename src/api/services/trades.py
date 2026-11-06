@@ -110,7 +110,12 @@ def propose(
         raise TradeError("Games are being played. Try again in a moment.")
 
 
-def _propose(conn, league_id, gm, to_team_id, give_ids, get_ids, counter_of):
+def _propose(
+    conn, league_id, gm, to_team_id, give_ids, get_ids, counter_of, call_limit=True
+):
+    """propose, under the league lock. call_limit False: an offer the AI
+    team made itself when the GM shopped a player (src/api/services/
+    trade_shop.py), so the day's limit on calls doesn't stop it."""
     league = dict(LeagueRepository(conn).get_by_id(league_id))
     season_id = SeasonRepository(conn).get_current_id_for_league(league_id)
     _check_window(conn, league, season_id)
@@ -150,7 +155,8 @@ def _propose(conn, league_id, gm, to_team_id, give_ids, get_ids, counter_of):
         )
 
     if (
-        trade_repo.rejections_today(league_id, my_team_id, to_team_id, today)
+        call_limit
+        and trade_repo.rejections_today(league_id, my_team_id, to_team_id, today)
         >= MAX_REJECTIONS_A_DAY
     ):
         raise TradeError(

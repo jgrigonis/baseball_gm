@@ -14,10 +14,11 @@ from src.api.dependencies import DB, GM, ActiveLeague, IsHTMX, Unpaused, User
 from src.api.schemas import (
     TradeOfferRequest,
     TradeSettingsRequest,
+    TradeShopTakeRequest,
     TradeVoteRequest,
 )
 from src.api.services.ready_check import is_multiplayer
-from src.api.services import trades
+from src.api.services import trade_shop, trades
 from src.api.view_models.player_cards import (
     attach_injuries,
     attach_roster_stats,
@@ -26,6 +27,7 @@ from src.api.view_models.player_cards import (
 from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.gm_repo import GMRepository
+from src.db.repositories.happiness_repo import HappinessRepository
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.persona_repo import PersonaRepository
@@ -152,16 +154,39 @@ def trades_tab(
                 standing["budget"],
                 offer_pay_change(db, league_id, o),
             )
+    my_players = (
+        team_cards(db, league_id, season_id, team_id)
+        + trades.pick_cards(db, dict(league), season_id, team_id)
+        if team_id
+        else []
+    )
+    # Who's asked out: first in the Shop a player list, and flagged.
+    asks = HappinessRepository(db, league_id).trade_requests(
+        p["player_id"] for p in my_players if p.get("roster_status") != "pick"
+    )
+    shop_players = sorted(
+        (
+            {
+                "player_id": p["player_id"],
+                "name": f"{p['first_name']} {p['last_name']}".strip(),
+                "position": p.get("position") or "",
+                "overall": p.get("overall") or "",
+                "wants_trade": p["player_id"] in asks,
+                "forty": p.get("roster_status") in ("26man", "40man"),
+            }
+            for p in my_players
+            if p.get("roster_status") != "pick"
+        ),
+        key=lambda p: (not p["wants_trade"], not p["forty"], p["name"]),
+    )
     ctx.update(
         {
+            "shop_players": shop_players,
             # AI teams' GMs, for their names and persona cards.
             "ai_gms": PersonaRepository(db).by_team(league_id),
             "trade_window": trade_deadline.window(db, dict(league), season_id),
             "trade_teams": teams,
-            "my_players": team_cards(db, league_id, season_id, team_id)
-            + trades.pick_cards(db, dict(league), season_id, team_id)
-            if team_id
-            else [],
+            "my_players": my_players,
             "pick_trades": draft_picks.enabled(dict(league)),
             "my_playing_count": playing_count(db, team_id) if team_id else 0,
             "min_roster": MIN_PLAYING_ROSTER,
@@ -231,6 +256,54 @@ def propose_trade(
             body.get,
             counter_of=body.counter_of,
         )
+    except trades.TradeError as e:
+        return JSONResponse({"detail": str(e)}, status_code=422)
+    return JSONResponse(result)
+
+
+@router.post("/leagues/{league_id}/trades/shop/{player_id}")
+def shop_player(
+    league_id: str,
+    player_id: str,
+    db: DB,
+    gm: GM,
+    _active: ActiveLeague,
+    _unpaused: Unpaused,
+):
+    """Every AI team's best offer for one of your players, each with the
+    players it would send as roster cards. (Before the routes below, which
+    would take "shop" for an offer.)"""
+    try:
+        result = trade_shop.shop(db, league_id, gm, player_id)
+    except trades.TradeError as e:
+        return JSONResponse({"detail": str(e)}, status_code=422)
+    season_id = SeasonRepository(db).get_current_id_for_league(league_id)
+    ai_gms = PersonaRepository(db).by_team(league_id)
+    for o in result["offers"]:
+        cards = {
+            c["player_id"]: c
+            for c in team_cards(db, league_id, season_id, o["team_id"])
+        }
+        o["players"] = [cards[pid] for pid in o["give"] if pid in cards]
+        g = ai_gms.get(o["team_id"])
+        o["gm_name"] = g["name"] if g else None
+    return JSONResponse(result)
+
+
+@router.post("/leagues/{league_id}/trades/shop/{player_id}/take")
+def take_shop_offer(
+    league_id: str,
+    player_id: str,
+    body: TradeShopTakeRequest,
+    db: DB,
+    gm: GM,
+    _active: ActiveLeague,
+    _unpaused: Unpaused,
+):
+    """Trade your player for an AI team's shop offer, worked out again now.
+    Answers like an offer to an AI team."""
+    try:
+        result = trade_shop.take(db, league_id, gm, player_id, body.team_id)
     except trades.TradeError as e:
         return JSONResponse({"detail": str(e)}, status_code=422)
     return JSONResponse(result)

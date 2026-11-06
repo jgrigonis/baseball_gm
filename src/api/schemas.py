@@ -242,6 +242,10 @@ class TradeOfferRequest(BaseModel):
     counter_of: str | None = None  # the offer to the GM this one answers
 
 
+class TradeShopTakeRequest(BaseModel):
+    team_id: str  # the AI team whose shop offer the GM takes
+
+
 class TradeVoteRequest(BaseModel):
     yes: bool
 

@@ -235,6 +235,9 @@ def weights(state: str, horizon: float = 0.0) -> tuple[float, float]:
 # How much of a player who asked for a trade his AI team insists on getting
 # back.
 WANTS_OUT_SHARE = 0.5
+# And how much less any team pays for one: everyone knows his team wants to
+# move him (a share of his worth on his own).
+WANTS_OUT_DISCOUNT = 0.2
 
 
 OVER_BUDGET_REASON = "Our owner won't pay for that much more salary."
@@ -271,16 +274,18 @@ def evaluate(
     d_future = team_strength(after, future=True) - base[1]
     score = w_now * d_now + w_future * d_future
 
+    def alone(a: Asset) -> float:
+        return w_now * team_strength(
+            [a], days_left=days_left
+        ) + w_future * team_strength([a], future=True)
+
+    # A player who asked out of his team is worth less to whoever takes him:
+    # everyone knows his team wants to move him.
+    score -= WANTS_OUT_DISCOUNT * sum(alone(a) for a in getting if a.wants_out)
+
     # What it gives up, player by player, is what the margin is measured on.
     # A player who asked out counts for less: his team is ready to move him.
-    out = sum(
-        (
-            w_now * team_strength([a], days_left=days_left)
-            + w_future * team_strength([a], future=True)
-        )
-        * (WANTS_OUT_SHARE if a.wants_out else 1.0)
-        for a in giving
-    )
+    out = sum(alone(a) * (WANTS_OUT_SHARE if a.wants_out else 1.0) for a in giving)
     threshold = margin_share * out
     accept = score > 0 and score >= threshold
     details = {"d_now": d_now, "d_future": d_future, "out": out}

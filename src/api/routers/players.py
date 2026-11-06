@@ -15,6 +15,10 @@ from src.api.view_models.player_detail import (
     player_career_data,
     player_panel_data,
 )
+from src.api.services import trades
+from src.db.repositories.league_repo import LeagueRepository
+from src.db.repositories.season_repo import SeasonRepository
+from src.league import trade_deadline
 from src.web.utils import _shell_ctx, templates
 
 router = APIRouter(tags=["web"])
@@ -49,9 +53,24 @@ def player_panel(
     ctx["sides"] = {**{i: "give" for i in give}, **{i: "get" for i in get}}
     # Your own players can be released, and free agents signed.
     ctx["my_team_id"] = gm.get("team_id") if gm and not ctx.get("is_viewer") else None
+    ctx["can_shop"] = _can_shop(db, league_id, ctx["player"], ctx["my_team_id"])
     return templates.TemplateResponse(
         request, "dashboard/partials/player_panel.html", ctx
     )
+
+
+def _can_shop(db, league_id: str, player: dict | None, my_team_id) -> bool:
+    """Your own player, while the trade window is open: he can be shopped
+    to the AI teams (src/api/services/trade_shop.py)."""
+    if not player or not my_team_id or player["team_id"] != my_team_id:
+        return False
+    if player.get("roster_status") not in trades.TRADEABLE:
+        return False
+    league = LeagueRepository(db).get_by_id(league_id)
+    season_id = SeasonRepository(db).get_current_id_for_league(league_id)
+    if not league or not season_id:
+        return False
+    return bool(trade_deadline.window(db, dict(league), season_id)["open"])
 
 
 @router.get(

@@ -92,3 +92,58 @@ def test_it_skips_a_deal_it_was_told_to_avoid():
     avoid = {frozenset({veteran.id, prospect.id})}
     deal = find_deal(contender, seller, days_left=60, avoid=avoid)
     assert deal is None or {a.id for a in deal.give + deal.get} not in avoid
+
+
+# ── Shopping a player (shop_offer) ─────────────────────────────────────────
+
+from src.league.trades.ai_proposer import shop_offer  # noqa: E402
+
+
+def test_a_contender_offers_for_a_shopped_veteran():
+    veteran = _p(70, age=31)
+    seller = _side("rebuilding", [veteran], margin=0.0)
+    prospects = [_p(64, age=22), _p(62, age=23)]
+    buyer = _side("contending", prospects)
+    offer = shop_offer(buyer, seller, veteran, days_left=60)
+    assert offer is not None
+    assert 1 <= len(offer.give) <= 2
+    # The AI really takes it, by its own margin.
+    assert evaluate(
+        buyer.roster, offer.give, [veteran], buyer.state, 60, buyer.margin
+    ).accept
+
+
+def test_the_offer_is_the_best_for_the_seller_the_ai_will_take():
+    from itertools import combinations
+
+    veteran = _p(70, age=31)
+    seller = _side("rebuilding", [veteran], margin=0.0)
+    buyer = _side("contending", [_p(64, age=22), _p(62, age=23), _p(60, age=24)])
+    offer = shop_offer(buyer, seller, veteran, days_left=60)
+    mine = [a for a in buyer.roster if a.id in buyer.tradeable]
+    taken = [
+        list(g)
+        for n in (1, 2)
+        for g in combinations(mine, n)
+        if evaluate(buyer.roster, list(g), [veteran], "contending", 60, 0.08).accept
+    ]
+
+    def for_seller(give):
+        return evaluate(seller.roster, [veteran], give, "rebuilding", 60, 0.0).score
+
+    assert for_seller(offer.give) >= max(for_seller(g) for g in taken) - 1e-9
+
+
+def test_no_offer_when_he_wouldnt_help_them():
+    scrub = _p(50)
+    seller = _side("retooling", [scrub], margin=0.0)
+    assert shop_offer(_side("contending"), seller, scrub, days_left=60) is None
+
+
+def test_blocked_players_arent_offered():
+    veteran = _p(70, age=31)
+    prospect = _p(66, age=22)
+    seller = _side("rebuilding", [veteran], margin=0.0)
+    buyer = _side("contending", [prospect])
+    offer = shop_offer(buyer, seller, veteran, 60, blocked={prospect.id})
+    assert offer is None or prospect not in offer.give

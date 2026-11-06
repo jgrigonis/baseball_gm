@@ -1,0 +1,229 @@
+# src/api/services/trade_shop.py
+#
+# Shopping a player: a GM asks every AI team at once what it would give for
+# one of their players, instead of building offers team by team.
+#
+# Each AI team puts together its best package of one or two of its own
+# players that it would really take the deal for (src/league/trades/
+# ai_proposer.py, shop_offer), judged exactly as it judges an offer: its team
+# state, its GM's persona and margin for this team today, its owner's
+# budget. The offers come back sorted by how much they help the GM's team.
+# Teams with no deal they'd take are listed as having no interest.
+#
+# Everything is fixed for the league day (the margins are seeded by the
+# date), so shopping again the same day gives the same list. Shopping isn't
+# an offer, so it doesn't count toward the calls a team will take in a day.
+# Taking an offer (take) works it out again and makes it as a normal
+# trade, which the AI answers at once, as it would any offer.
+#
+# In a league with other people, they hear (news bar) that the player is on
+# the block, once a league day, so they can make an offer too.
+
+from __future__ import annotations
+
+from src.api.services import owners, personas, team_states, trades
+from src.db.locks import LeagueBusy, league_lock
+from src.db.repositories.gm_repo import GMRepository
+from src.db.repositories.injury_repo import InjuryRepository
+from src.db.repositories.league_repo import LeagueRepository
+from src.db.repositories.notification_repo import NotificationRepository
+from src.db.repositories.player_repo import PlayerRepository
+from src.db.repositories.player_status_repo import PlayerStatusRepository
+from src.db.repositories.season_repo import SeasonRepository
+from src.db.repositories.team_repo import TeamRepository
+from src.db.repositories.trade_repo import TradeRepository
+from src.league.personas import Leanings
+from src.league.trades import ai_evaluator
+from src.league.trades.ai_proposer import ShopOffer, Side, shop_offer
+
+
+class _Ctx:
+    """What a shop needs: the league, the day, and the GM's side."""
+
+    def __init__(self, conn, league_id: str, gm: dict, player_id: str):
+        self.conn = conn
+        self.league_id = league_id
+        self.league = dict(LeagueRepository(conn).get_by_id(league_id))
+        self.season_id = SeasonRepository(conn).get_current_id_for_league(league_id)
+        trades._check_window(conn, self.league, self.season_id)
+        self.team_id = gm.get("team_id")
+        if not self.team_id:
+            raise trades.TradeError("You don't run a team in this league.")
+        if player_id not in PlayerRepository(conn).get_player_ids_from_team_players(
+            self.team_id
+        ):
+            raise trades.TradeError("He isn't on your team.")
+        if PlayerStatusRepository(conn).get_status(player_id) not in trades.TRADEABLE:
+            raise trades.TradeError("He can't be traded.")
+        self.player_id = player_id
+        self.today = trades._league_date(conn, self.season_id)
+        self.days_left = trades._season_days_left(
+            conn, league_id, self.season_id, self.today
+        )
+        self.injuries = InjuryRepository(conn, league_id)
+        self.leanings = personas.leanings(conn, league_id)
+        self.humans = set(GMRepository(conn).get_human_team_ids(league_id))
+        self.trade_repo = TradeRepository(conn)
+        roster = self._roster(self.team_id)
+        self.target = next(a for a in roster if a.id == player_id)
+        self.seller = Side(
+            team_id=self.team_id,
+            state=self._state(self.team_id),
+            roster=roster,
+            tradeable=set(),
+            margin=0.0,
+            stats_weight=self.leanings.get(self.team_id, Leanings()).stats_weight,
+        )
+        self._rooms = None
+
+    def _roster(self, team_id: str):
+        hurt = self.injuries.get_team_injuries(team_id, self.today)
+        return trades._assets(self.conn, team_id, hurt, self.season_id)
+
+    def _state(self, team_id: str) -> str:
+        return team_states.state_of(
+            self.conn, self.league_id, self.season_id, team_id, self.today
+        )
+
+    def ai_teams(self) -> list[dict]:
+        return [
+            t
+            for t in TeamRepository(self.conn).get_teams_in_league_season(
+                self.league_id, self.season_id
+            )
+            if t["id"] != self.team_id and t["id"] not in self.humans
+        ]
+
+    def offer_from(self, team_id: str) -> ShopOffer | None:
+        """This AI team's best offer, as its answer to the offer would be."""
+        # A player can't go back to a team that traded him away this season.
+        former = self.trade_repo.former_teams(self.season_id, [self.player_id])
+        if team_id in former.get(self.player_id, ()):
+            return None
+        roster = self._roster(team_id)
+        statuses = _statuses(self.conn, team_id)
+        tradeable = {a.id for a in roster if statuses.get(a.id) in trades.TRADEABLE}
+        back = self.trade_repo.former_teams(self.season_id, list(tradeable))
+        blocked = {pid for pid, teams in back.items() if self.team_id in teams}
+        if self._rooms is None:
+            self._rooms = owners.pay_rooms(self.conn, self.league_id, self.season_id)
+        lean = self.leanings.get(team_id, Leanings())
+        ai = Side(
+            team_id=team_id,
+            state=self._state(team_id),
+            roster=roster,
+            tradeable=tradeable,
+            # The same margin it would answer this GM's offer with today
+            # (trades.ai_answer).
+            margin=ai_evaluator.margin(
+                team_id, self.team_id, self.today, lean.margin_factor
+            ),
+            stats_weight=lean.stats_weight,
+            horizon=lean.horizon,
+            pay_room=self._rooms.get(team_id),
+        )
+        return shop_offer(ai, self.seller, self.target, self.days_left, blocked)
+
+
+def _statuses(conn, team_id: str) -> dict[str, str]:
+    rows = conn.execute(
+        """SELECT tp.player_id, s.status FROM team_players tp
+           JOIN player_status s ON s.player_id = tp.player_id
+           WHERE tp.team_id = %s""",
+        (team_id,),
+    ).fetchall()
+    return {r["player_id"]: r["status"] for r in rows}
+
+
+def shop(conn, league_id: str, gm: dict, player_id: str) -> dict:
+    """Every AI team's best offer for the GM's player:
+    {"player", "offers": [{team_id, team_name, give: [ids], score}], best
+    for the GM first, "no_interest": [team names]}."""
+    ctx = _Ctx(conn, league_id, gm, player_id)
+    offers, none = [], []
+    for t in ctx.ai_teams():
+        name = f"{t['city']} {t['mascot']}"
+        offer = ctx.offer_from(t["id"])
+        if offer is None:
+            none.append(name)
+            continue
+        offers.append(
+            {
+                "team_id": t["id"],
+                "team_name": name,
+                "give": [a.id for a in offer.give],
+                "score": round(offer.score, 1),
+            }
+        )
+    offers.sort(key=lambda o: o["score"], reverse=True)
+    _tell_other_gms(conn, ctx, gm)
+    conn.commit()
+    return {
+        "player": ctx.target.name,
+        "offers": offers,
+        "no_interest": sorted(none),
+    }
+
+
+def take(conn, league_id: str, gm: dict, player_id: str, team_id: str) -> dict:
+    """Make the AI team's shop offer for the GM's player as a trade, worked
+    out again now. Answers like trades.propose for an AI team."""
+    try:
+        with league_lock(conn, league_id):
+            ctx = _Ctx(conn, league_id, gm, player_id)
+            if team_id not in {t["id"] for t in ctx.ai_teams()}:
+                raise trades.TradeError("That team isn't taking offers here.")
+            offer = ctx.offer_from(team_id)
+            if offer is None:
+                raise trades.TradeError(
+                    f"The {TeamRepository(conn).get_name(team_id)} aren't "
+                    "interested any more."
+                )
+            return trades._propose(
+                conn,
+                league_id,
+                gm,
+                team_id,
+                [player_id],
+                [a.id for a in offer.give],
+                None,
+                call_limit=False,
+            )
+    except LeagueBusy:
+        raise trades.TradeError("Games are being played. Try again in a moment.")
+
+
+def _tell_other_gms(conn, ctx: _Ctx, gm: dict) -> None:
+    """In a league with other people, tell them he's on the block, once a
+    league day."""
+    others = [
+        g
+        for g, team in GMRepository(conn).get_human_gm_teams(ctx.league_id).items()
+        if team != ctx.team_id
+    ]
+    if not others:
+        return
+    seen = conn.execute(
+        """SELECT 1 FROM gm_notifications
+           WHERE kind = 'trade' AND payload->>'event' = 'block'
+             AND payload->>'player_id' = %s AND payload->>'on' = %s LIMIT 1""",
+        (ctx.player_id, ctx.today),
+    ).fetchone()
+    if seen:
+        return
+    team = TeamRepository(conn).get_name(ctx.team_id)
+    text = f"The {team} are shopping {ctx.target.name}. Make them an offer."
+    repo = NotificationRepository(conn)
+    for g in others:
+        repo.add(
+            g,
+            "trade",
+            {
+                "event": "block",
+                "offer_id": None,
+                "player_id": ctx.player_id,
+                "on": ctx.today,
+                "text": text,
+                "popup": False,
+            },
+        )
