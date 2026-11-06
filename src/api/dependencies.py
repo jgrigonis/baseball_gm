@@ -36,6 +36,7 @@ def get_current_user(request: Request, db: DB, gm_session: str = Cookie(None)):
         raise HTTPException(status_code=401, detail="Please log in")
     if user["must_change_password"] and request.url.path not in _PASSWORD_CHANGE_PATHS:
         raise PasswordChangeRequired()
+    UserRepository(db).record_seen(user["id"])
     # base.html reads this so every page's top bar knows who is signed in.
     request.state.user = user
     return user
@@ -50,6 +51,8 @@ def get_admin(user: Any = Depends(get_current_user)):
 def get_optional_user(request: Request, db: DB, gm_session: str = Cookie(None)):
     """Use this for public pages that change if you are logged in."""
     user = UserRepository(db).get_by_token(gm_session)
+    if user:
+        UserRepository(db).record_seen(user["id"])
     request.state.user = user
     return user
 

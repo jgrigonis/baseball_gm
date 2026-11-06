@@ -12,7 +12,7 @@
     <table class="data-table" data-sortable data-sort-url>
       <thead><tr>
         <th data-sort="text">Username</th><th data-sort="text">Display Name</th><th data-sort="text">Email</th>
-        <th class="num" data-sort="num">Leagues</th><th data-sort="text">Role</th><th data-sort="text">Created</th><th data-sort="text" data-sort-first="desc">Last login</th><th></th>
+        <th class="num" data-sort="num">Leagues</th><th data-sort="text">Role</th><th data-sort="text">Created</th><th data-sort="text" data-sort-first="desc" title="Last page load, to within a few minutes">Last seen</th><th></th>
       </tr></thead>
       <tbody>
         {% for u in users %}
@@ -26,7 +26,7 @@
             {% if not u.has_password %} · no password{% elif u.must_change_password %} · must change password{% endif %}
           </td>
           <td class="admin-dim" data-sort-value="{{ u.created_at or '' }}">{{ (u.created_at or '')[:10] }}</td>
-          <td class="admin-dim" style="white-space:nowrap;" data-sort-value="{{ u.last_login_at.isoformat() if u.last_login_at else '' }}">{% if u.last_login_at %}<time class="local-time" datetime="{{ u.last_login_at.isoformat() }}">{{ u.last_login_at.strftime('%Y-%m-%d %H:%M') }}</time>{% else %}—{% endif %}</td>
+          <td class="admin-dim" style="white-space:nowrap;" data-sort-value="{{ u.last_seen_at.isoformat() if u.last_seen_at else '' }}">{% if u.last_seen_at %}<time class="local-time" datetime="{{ u.last_seen_at.isoformat() }}">{{ u.last_seen_at.strftime('%Y-%m-%d %H:%M') }}</time>{% else %}—{% endif %}</td>
           <td style="text-align:right;"><a href="/admin/users/{{ u.id }}" class="btn btn-secondary admin-small">Manage →</a></td>
         </tr>
         {% endfor %}
@@ -61,7 +61,7 @@
 
 {% block scripts %}
 <script>
-// Show last-login times in the viewer's own time zone.
+// Show last-seen times in the viewer's own time zone.
 document.querySelectorAll('time.local-time').forEach(t => {
   const d = new Date(t.dateTime);
   if (isNaN(d)) return;

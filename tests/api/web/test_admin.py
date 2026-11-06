@@ -644,21 +644,58 @@ class TestUsers:
 
         _sign_in(client, user)
 
-        assert _row(db_conn, user["id"])["last_login_at"] is not None
+        row = _row(db_conn, user["id"])
+        assert row["last_login_at"] is not None
+        assert row["last_seen_at"] is not None
 
-    def test_lists_last_login(self, client, db_conn, admin):
-        never = _user(db_conn)
+    def test_page_loads_record_last_seen_every_few_minutes(self, client, db_conn):
+        user = _user(db_conn)
+        _sign_in(client, user)
+
         db_conn.execute(
-            "UPDATE users SET last_login_at = '2026-10-25 12:30+00' WHERE id = %s",
-            (admin["id"],),
+            "UPDATE users SET last_seen_at = NOW() - INTERVAL '1 hour' WHERE id = %s",
+            (user["id"],),
+        )
+        old = _row(db_conn, user["id"])["last_seen_at"]
+        client.get("/leagues/")
+        assert _row(db_conn, user["id"])["last_seen_at"] > old
+
+        # Seen a moment ago: not written again.
+        db_conn.execute(
+            "UPDATE users SET last_seen_at = NOW() - INTERVAL '1 minute' WHERE id = %s",
+            (user["id"],),
+        )
+        before = _row(db_conn, user["id"])["last_seen_at"]
+        client.get("/leagues/")
+        assert _row(db_conn, user["id"])["last_seen_at"] == before
+
+    def test_lists_last_seen(self, client, db_conn, admin):
+        never = _user(db_conn)
+        other = _user(db_conn)
+        db_conn.execute(
+            "UPDATE users SET last_seen_at = '2026-10-25 12:30+00' WHERE id = %s",
+            (other["id"],),
         )
 
         r = client.get("/admin/users")
 
-        assert ">Last login</th>" in r.text
+        assert ">Last seen</th>" in r.text
         assert 'datetime="2026-10-25T12:30:00+00:00">2026-10-25 12:30</time>' in r.text
         row = r.text.split(never["username"] + "</a>", 1)[1].split("</tr>", 1)[0]
         assert ">—</td>" in row
+
+    def test_user_page_shows_last_seen_and_sign_in(self, client, db_conn, admin):
+        other = _user(db_conn)
+        db_conn.execute(
+            """UPDATE users SET last_seen_at = '2026-10-25 12:30+00',
+                                last_login_at = '2026-10-20 08:05+00' WHERE id = %s""",
+            (other["id"],),
+        )
+
+        r = client.get(f"/admin/users/{other['id']}")
+
+        assert 'datetime="2026-10-25T12:30:00+00:00">2026-10-25 12:30</time>' in r.text
+        assert 'datetime="2026-10-20T08:05:00+00:00">2026-10-20 08:05</time>' in r.text
 
     def test_lists_users_with_emails(self, client, db_conn, admin):
         email = _name() + "@example.com"
