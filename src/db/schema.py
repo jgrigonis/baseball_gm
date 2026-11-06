@@ -1458,6 +1458,7 @@ CREATE TABLE IF NOT EXISTS hall_ballot (
     PRIMARY KEY (season_id, player_id)
 );
 CREATE INDEX IF NOT EXISTS idx_hall_ballot_player ON hall_ballot(player_id);
+CREATE INDEX IF NOT EXISTS idx_hall_ballot_team ON hall_ballot(team_id);
 CREATE INDEX IF NOT EXISTS idx_hall_ballot_league ON hall_ballot(league_id, outcome);
 
 -- Player contracts (src/player/contracts.py, src/db/repositories/contract_repo.py):

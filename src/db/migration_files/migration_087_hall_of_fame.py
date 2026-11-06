@@ -45,6 +45,9 @@ def upgrade(conn):
         "CREATE INDEX IF NOT EXISTS idx_hall_ballot_player ON hall_ballot(player_id)"
     )
     conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_hall_ballot_team ON hall_ballot(team_id)"
+    )
+    conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_hall_ballot_league"
         " ON hall_ballot(league_id, outcome)"
     )
