@@ -501,7 +501,7 @@ function setActiveTab(el) {
 // highlight where it was.
 function syncActiveTab(path) {
   path = (path || '').split('?')[0].replace(/\/$/, '');
-  var links = document.querySelectorAll('.tab-link');
+  var links = document.querySelectorAll('.tab-link, .side-link');
   for (var i = 0; i < links.length; i++) {
     var href = (links[i].getAttribute('href') || '').split('?')[0];
     if (href && href === path) {
@@ -665,7 +665,7 @@ fetch(`/leagues/${LEAGUE_ID}/news`)
 
 // Open a tab by the end of its URL, e.g. 'roster' or 'trades'.
 function goToTab(name) {
-  var links = document.querySelectorAll('.tab-link');
+  var links = document.querySelectorAll('.tab-link, .side-link');
   for (var i = 0; i < links.length; i++) {
     if ((links[i].getAttribute('hx-get') || '').indexOf('/' + name) !== -1) {
       setActiveTab(links[i]); links[i].click(); break;
