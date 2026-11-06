@@ -100,6 +100,24 @@ class BudgetRepository:
         payrolls = [self.contracts.payroll(t, year) for t in self._team_ids(league_id)]
         return bg.first_cap(payrolls)
 
+    def first_year(self, league_id: str) -> int | None:
+        """The league's first season with a cap; None without budgets."""
+        if not self.enabled(league_id):
+            return None
+        row = self.conn.execute(
+            "SELECT MIN(year) AS y FROM team_budgets"
+            " WHERE league_id = %s AND cap IS NOT NULL",
+            (league_id,),
+        ).fetchone()
+        return row["y"] if row and row["y"] is not None else None
+
+    def salary_scale(self, league_id: str, year: int) -> float:
+        """How far contract prices have grown with the cap by this season
+        (src/league/budget.py salary_scale). 1 before the league's first
+        cap, and always 1 without budgets (Speed Blitz)."""
+        first = self.first_year(league_id)
+        return 1.0 if first is None else bg.salary_scale(year - first)
+
     def _team_money(
         self, league_id: str, year: int, team_ids: list[str]
     ) -> dict[str, fn.TeamMoney]:
@@ -186,10 +204,13 @@ class BudgetRepository:
         revenue = {t: rows[t]["revenue"] or planned[t].revenue for t in budgets}
         average = sum(revenue.values()) / len(revenue)
         costs = fn.fixed_costs(average)
+        payrolls = {t: self.contracts.payroll(t, year) for t in budgets}
+        shares = bg.tax_shares(payrolls, cap)
         taxes = {}
         for team_id in budgets:
-            payroll = self.contracts.payroll(team_id, year)
+            payroll = payrolls[team_id]
             tax = bg.luxury_tax(payroll, cap)
+            share = shares.get(team_id, 0)
             r = results.get(team_id, {})
             before = rows[team_id]["fans_before"]
             before = money[team_id].fans if before is None else before
@@ -206,7 +227,7 @@ class BudgetRepository:
                 """UPDATE team_budgets
                    SET luxury_tax = %s, revenue = %s, fans_before = %s,
                        fans_after = %s, playoff_revenue = %s, payroll = %s,
-                       profit = %s
+                       tax_share = %s, profit = %s
                    WHERE league_id = %s AND team_id = %s AND year = %s""",
                 (
                     tax,
@@ -215,7 +236,8 @@ class BudgetRepository:
                     fans,
                     gate,
                     payroll,
-                    fn.profit(total, payroll, tax, costs),
+                    share,
+                    fn.profit(total, payroll, tax, costs, share),
                     league_id,
                     team_id,
                     year,
@@ -280,7 +302,7 @@ class BudgetRepository:
         """Each team's money for a season, by team id, for the admin pages."""
         rows = self.conn.execute(
             """SELECT team_id, cap, budget, revenue, playoff_revenue, payroll,
-                      luxury_tax, profit, fans_before, fans_after
+                      luxury_tax, tax_share, profit, fans_before, fans_after
                FROM team_budgets WHERE league_id = %s AND year = %s""",
             (league_id, year),
         ).fetchall()

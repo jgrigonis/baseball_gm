@@ -54,11 +54,12 @@ def free_agents_tab(
     last_team = contracts.last_team([r["id"] for _, r in shown])
     names = TeamRepository(db).get_names(list(set(last_team.values())))
     players = []
+    scale = free_agents.price_scale(db, league_id, year) if year is not None else 1.0
     for card, row in shown:
         record = player_repo.record_from_row(row)
         card["face_url"] = face_url(row["id"], card.get("age"), None, None)
         if year is not None:
-            deal = free_agents.asking_deal(record, year)
+            deal = free_agents.asking_deal(record, year, scale)
             card["salary"] = deal.salary
             card["salary_text"] = format_salary(deal.salary)
             card["ask_years"] = deal.years

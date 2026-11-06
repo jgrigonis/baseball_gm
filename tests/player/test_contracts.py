@@ -57,3 +57,15 @@ def test_format_salary():
     assert ct.format_salary(4_500_000) == "$4.5M"
     assert ct.format_salary(32_000_000) == "$32M"
     assert ct.format_salary(None) == "—"
+
+
+def test_a_scaled_deal_costs_more_and_moves_the_floor():
+    import random as _r
+
+    base = ct.standard_deal(27, 70, "hitter", _r.Random(1))
+    grown = ct.standard_deal(27, 70, "hitter", _r.Random(1), 1.2)
+    assert grown.years == base.years
+    assert abs(grown.salary - base.salary * 1.2) <= 60_000
+    assert ct.rookie_salary(200, 1.2) == ct.round_salary(ct.MIN_SALARY * 1.2, 1.2)
+    assert ct.rookie_salary(200, 1.2) > ct.rookie_salary(200)
+    assert ct.round_salary(1, 1.0) == ct.MIN_SALARY

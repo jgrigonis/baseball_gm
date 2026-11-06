@@ -71,11 +71,14 @@ class Deal:
     kind: str  # 'rookie' or 'standard'
 
 
-def round_salary(amount: float) -> int:
-    """Round to $10K under $1M, $50K above, inside the min and max."""
-    amount = max(MIN_SALARY, min(MAX_SALARY, amount))
+def round_salary(amount: float, scale: float = 1.0) -> int:
+    """Round to $10K under $1M, $50K above, inside the min and max. scale
+    is how far the league's salaries have grown with its payroll cap
+    (src/league/budget.py salary_scale), which moves the min and max too."""
+    lo, hi = MIN_SALARY * scale, MAX_SALARY * scale
+    amount = max(lo, min(hi, amount))
     step = 10_000 if amount < 1_000_000 else 50_000
-    return max(MIN_SALARY, int(round(amount / step) * step))
+    return max(round(lo / 10_000) * 10_000, int(round(amount / step) * step))
 
 
 def grade_position(value: float, kind: str) -> float:
@@ -136,20 +139,27 @@ def standard_years(age: int, value: float, kind: str, rng: random.Random) -> int
     return rng.randint(lo, hi)
 
 
-def standard_deal(age: int, value: float, kind: str, rng: random.Random) -> Deal:
-    salary = prime_salary(value, kind) * age_factor(age)
+def standard_deal(
+    age: int, value: float, kind: str, rng: random.Random, scale: float = 1.0
+) -> Deal:
+    """A deal at his market price. scale grows prices with the league's
+    payroll cap (src/league/budget.py salary_scale)."""
+    salary = prime_salary(value, kind) * age_factor(age) * scale
     salary *= 1 + rng.uniform(-SALARY_NOISE, SALARY_NOISE)
-    return Deal(round_salary(salary), standard_years(age, value, kind, rng), "standard")
+    return Deal(
+        round_salary(salary, scale), standard_years(age, value, kind, rng), "standard"
+    )
 
 
-def rookie_salary(pick_number: int) -> int:
-    """A rookie deal's salary for the nth pick of the draft (1 = first)."""
+def rookie_salary(pick_number: int, scale: float = 1.0) -> int:
+    """A rookie deal's salary for the nth pick of the draft (1 = first),
+    grown with the league's cap by scale."""
     bonus = TOP_PICK_BONUS * math.exp(-(max(1, pick_number) - 1) / BONUS_DECAY_PICKS)
-    return round_salary(MIN_SALARY + bonus / ROOKIE_YEARS)
+    return round_salary((MIN_SALARY + bonus / ROOKIE_YEARS) * scale, scale)
 
 
-def rookie_deal(pick_number: int) -> Deal:
-    return Deal(rookie_salary(pick_number), ROOKIE_YEARS, "rookie")
+def rookie_deal(pick_number: int, scale: float = 1.0) -> Deal:
+    return Deal(rookie_salary(pick_number, scale), ROOKIE_YEARS, "rookie")
 
 
 def years_already_served(years: int, rng: random.Random) -> int:

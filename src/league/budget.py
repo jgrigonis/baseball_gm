@@ -16,7 +16,8 @@ past it costs no more tax, but the owner judges payroll against it
 (src/league/owner_scoring.py), and AI GMs keep to it.
 
 Speed Blitz leagues have no budgets (src/league/league_modes.py). The tax
-comes off the team's profit, which owners read.
+comes off the team's profit, which owners read, and is split among the
+teams that stayed under the cap.
 """
 
 from __future__ import annotations
@@ -56,6 +57,14 @@ def grown(cap: int, seasons: int = 1) -> int:
     return round(value / CAP_ROUNDING) * CAP_ROUNDING
 
 
+def salary_scale(seasons: int) -> float:
+    """How much contract prices have grown since the league's first cap,
+    in step with the cap: new deals are priced off it, so the cap doesn't
+    get looser every season (plans/budget.md, Q2). Deals already signed
+    keep their numbers."""
+    return (1 + CAP_GROWTH) ** max(0, seasons)
+
+
 def leash(cap: int, spending: int) -> int:
     """How far over the cap (negative: under) an owner with this Spending
     trait lets payroll go."""
@@ -72,6 +81,18 @@ def owner_budget(cap: int, spending: int) -> int:
 def luxury_tax(payroll: int, cap: int) -> int:
     """The tax on a payroll over the cap (0 when it's under)."""
     return round(max(0, payroll - cap) * LUXURY_TAX_RATE)
+
+
+def tax_shares(payrolls: dict[str, int], cap: int) -> dict[str, int]:
+    """The season's luxury tax, split evenly among the teams that finished
+    under the cap (plans/budget.md, Q6). {team_id: share} for those teams;
+    empty when nobody paid tax or nobody was under."""
+    pool = sum(luxury_tax(p, cap) for p in payrolls.values())
+    under = [t for t, p in payrolls.items() if p < cap]
+    if not pool or not under:
+        return {}
+    share = round(pool / len(under) / CAP_ROUNDING) * CAP_ROUNDING
+    return {t: share for t in under}
 
 
 def _leash_text(cap: int, budget: int) -> str:

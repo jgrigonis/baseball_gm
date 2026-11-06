@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import random
 
+from src.league import budget as bg
 from src.player import contracts as ct
 from src.player.player_value import role_rating
 
@@ -312,6 +313,15 @@ class ContractRepository:
         from src.db.repositories.happiness_repo import HappinessRepository
 
         happy = HappinessRepository(self.conn, league_id)
+        # New deals are priced in step with the league's payroll cap
+        # (src/league/budget.py salary_scale).
+        from src.db.repositories.budget_repo import BudgetRepository
+
+        first = BudgetRepository(self.conn).first_year(league_id)
+
+        def scale(at: int) -> float:
+            return 1.0 if first is None else bg.salary_scale(at - first)
+
         happy.prepare_resign([r["player_id"] for r in rows if r["signed_before"]])
         unhappy_out: list[tuple[str, str]] = []
 
@@ -325,7 +335,7 @@ class ContractRepository:
                 and draft_year is not None
                 and draft_year <= year < draft_year + ct.ROOKIE_YEARS
             ):
-                deal = ct.rookie_deal(r["pick_number"])
+                deal = ct.rookie_deal(r["pick_number"], scale(draft_year))
                 self._insert(
                     pid, league_id, r["team_id"], deal, draft_year, r["pick_number"]
                 )
@@ -336,12 +346,14 @@ class ContractRepository:
             if p is None:
                 continue
             kind = "pitcher" if p.is_pitcher() else "hitter"
-            deal = ct.standard_deal(p.age, role_rating(p), kind, rng)
+            deal = ct.standard_deal(p.age, role_rating(p), kind, rng, scale(year))
             start = year
             if not r["signed_before"]:
                 start -= ct.years_already_served(deal.years, rng)
             else:
-                deal, wants_out = self._mood_terms(happy, pid, r["team_id"], deal)
+                deal, wants_out = self._mood_terms(
+                    happy, pid, r["team_id"], deal, scale(year)
+                )
                 if wants_out:
                     unhappy_out.append((pid, r["team_id"]))
             self._insert(pid, league_id, r["team_id"], deal, start)
@@ -352,10 +364,10 @@ class ContractRepository:
         return signed
 
     @staticmethod
-    def _mood_terms(happy, pid: str, team_id: str, deal: ct.Deal):
+    def _mood_terms(happy, pid: str, team_id: str, deal: ct.Deal, scale: float = 1.0):
         """His new deal with his mood worked in: a discount when he's happy
         and loyal, more money for fewer years when he isn't."""
         mult, max_years, wants_out = happy.resign_terms(pid)
         years = deal.years if max_years is None else min(deal.years, max_years)
-        salary = ct.round_salary(deal.salary * mult)
+        salary = ct.round_salary(deal.salary * mult, scale)
         return ct.Deal(salary, years, deal.kind), wants_out
