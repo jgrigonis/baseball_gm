@@ -252,30 +252,37 @@ def analytics_aim(level: int, quality: float) -> float:
 
 # ── The minor leagues ───────────────────────────────────────────────────────
 # Minor leaguers who've never been on the 40-man aren't payroll (their deals
-# aren't guaranteed, and they don't count toward the cap or the tax), but the
-# farm still costs the owner money (Josh, 2026-11-06). Each one costs a flat
-# minor league wage a season, not his contract, so a full farm is about one
-# Elite department. Owners' budgets include the league's average farm, and
-# the league's fixed costs are that much lower (src/league/finances.py), so
-# an average farm leaves the money as it was and a big one costs.
-MINOR_LEAGUE_PAY = 100_000
-MINOR_LEAGUE_ROUNDING = 10_000
-
-
-def minor_league_cost(players: int, scale: float = 1.0) -> int:
-    """What this many minor leaguers cost a season, with salaries grown
-    this much since the league's first cap (salary_scale)."""
-    value = max(0, players) * MINOR_LEAGUE_PAY * scale
-    return round(value / MINOR_LEAGUE_ROUNDING) * MINOR_LEAGUE_ROUNDING
+# aren't guaranteed, and they don't count toward the cap or the tax), but
+# their full salaries count against the owner's budget (Josh, 2026-11-06).
+# Each owner's budget grows to cover a farm: the league's average farm cost,
+# times a share set by their Spending, so a miser covers less than an average
+# farm and a spender more (farm_allowance). The league's fixed costs are an
+# average farm lower (src/league/finances.py), so an average farm leaves
+# profit as it was and a big one costs.
+FARM_SHARE_LOW = 0.8
+FARM_SHARE_SPAN = 0.4
+FARM_ROUNDING = 100_000
 
 
 def average_farm(costs) -> int:
-    """The league's average minor league cost, rounded like one."""
+    """The league's average minor league salaries, rounded."""
     costs = list(costs)
     if not costs:
         return 0
     value = sum(costs) / len(costs)
-    return round(value / MINOR_LEAGUE_ROUNDING) * MINOR_LEAGUE_ROUNDING
+    return round(value / FARM_ROUNDING) * FARM_ROUNDING
+
+
+def farm_share(spending: int) -> float:
+    """How much of an average farm an owner with this Spending trait covers:
+    0.8 at 0, 1.0 at 50, 1.2 at 100."""
+    return FARM_SHARE_LOW + FARM_SHARE_SPAN * max(0, min(100, spending)) / 100
+
+
+def farm_allowance(average: int, spending: int) -> int:
+    """What an owner adds to their budget for the minor leagues."""
+    value = average * farm_share(spending)
+    return round(value / FARM_ROUNDING) * FARM_ROUNDING
 
 
 def ai_levels(spending: int, seed: str) -> dict[str, int]:
@@ -303,6 +310,7 @@ def standing(
     limit: int | None = None,
     front_office: int = 0,
     minors: int = 0,
+    farm_allowance: int = 0,
 ) -> dict:
     """A team's payroll against the league's cap, and its spending (payroll
     plus the front office and the minor leagues) against its owner's budget
@@ -342,6 +350,9 @@ def standing(
         "front_office_text": format_salary(front_office),
         "minors": minors,
         "minors_text": format_salary(minors),
+        # The part of the budget the owner set aside for the farm.
+        "farm_allowance": farm_allowance,
+        "farm_allowance_text": format_salary(farm_allowance),
         "spend": spend,
         "spend_text": format_salary(spend),
     }

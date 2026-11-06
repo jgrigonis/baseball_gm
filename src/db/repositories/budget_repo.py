@@ -11,8 +11,8 @@ Uses tables:
                 interest after
 - team_owners, owner_personas  for each owner's Spending
 - player_contracts (through ContractRepository) for payroll, and how many
-                never-guaranteed minor leaguers each team holds (they cost a
-                flat minor league wage, not payroll)
+                what its never-guaranteed minor leaguers are paid (not
+                payroll, but it counts against the owner's budget)
 
 A league's rows are made the first time they're needed for a season, so a
 league needs no setup step and older leagues pick budgets up on their own.
@@ -59,7 +59,7 @@ class BudgetRepository:
         have = {r["team_id"]: int(r["budget"]) for r in rows}
         missing = [t for t in self._team_ids(league_id) if t not in have]
         if not missing:
-            return have
+            return self._with_farm(league_id, year, have)
         self._pending: dict[str, tuple[int, int]] = {}
         cap = self.cap(league_id, year)
         made = self._make(league_id, year, missing, cap)
@@ -86,7 +86,26 @@ class BudgetRepository:
                     levels.get("analytics"),
                 ),
             )  # fmt: skip
-        return {**have, **made}
+        return self._with_farm(league_id, year, {**have, **made})
+
+    def _with_farm(
+        self, league_id: str, year: int, budgets: dict[str, int]
+    ) -> dict[str, int]:
+        """The stored budgets plus each owner's farm allowance, worked out
+        live from the league's minor league salaries now, so the draft or a
+        release moves it (src/league/budget.py farm_allowance)."""
+        allowances = self.farm_allowances(league_id, year)
+        return {t: b + allowances.get(t, 0) for t, b in budgets.items()}
+
+    def farm_allowances(self, league_id: str, year: int) -> dict[str, int]:
+        """What each owner adds to their budget for the minor leagues, by
+        team id: the league's average farm times their share by Spending."""
+        average = bg.average_farm(self._minor_leagues(league_id, year).values())
+        spending = self._spending(league_id)
+        return {
+            t: bg.farm_allowance(average, spending.get(t, 50))
+            for t in self._team_ids(league_id)
+        }
 
     def _ai_teams(self, league_id: str) -> set[str]:
         return {
@@ -163,15 +182,11 @@ class BudgetRepository:
     def _minor_leagues(
         self, league_id: str, year: int, team_ids=None
     ) -> dict[str, int]:
-        """What each team's minor leaguers off the payroll cost this season,
-        by team id (src/league/budget.py minor_league_cost). Every team in
-        the league unless team_ids says which."""
+        """What each team pays its minor leaguers off the payroll this
+        season, by team id. Every team in the league unless team_ids says
+        which."""
         ids = self._team_ids(league_id) if team_ids is None else list(team_ids)
-        scale = self.salary_scale(league_id, year)
-        return {
-            t: bg.minor_league_cost(n, scale)
-            for t, n in self.contracts.minor_leaguers(ids, year).items()
-        }
+        return self.contracts.minor_league_pay(ids, year)
 
     def minor_leagues(self, league_id: str, team_id: str, year: int) -> int:
         """What the team's farm costs this season (0 without budgets)."""
@@ -210,9 +225,8 @@ class BudgetRepository:
         plans = fn.plan(cap, money)
         for team_id, p in plans.items():
             self._pending[team_id] = (p.revenue, int(round(money[team_id].fans)))
-        # Every owner pays for an average farm (src/league/budget.py).
-        farm = bg.average_farm(self._minor_leagues(league_id, year).values())
-        return {t: p.budget + farm for t, p in plans.items()}
+        # The farm allowance is added live (_with_farm), not stored.
+        return {t: p.budget for t, p in plans.items()}
 
     def cap(self, league_id: str, year: int) -> int:
         """The league's payroll cap for the season, the same for every
@@ -370,6 +384,7 @@ class BudgetRepository:
             limit,
             bg.front_office_cost(cap, self.levels(league_id, team_id, year)),
             self.minor_leagues(league_id, team_id, year),
+            self.farm_allowances(league_id, year).get(team_id, 0),
         )
 
     def refusal(
@@ -440,7 +455,9 @@ class BudgetRepository:
         average = sum(revenue.values()) / len(revenue)
         # A Standard front office and an average farm are in every owner's
         # budget, so the fixed costs leave them out; each team pays for its
-        # own front office and minor leaguers.
+        # own front office and minor leaguers. A full farm can be bigger than
+        # the fixed costs, so this can go below zero: the league's money
+        # covering an average farm.
         farms = self._minor_leagues(league_id, year, list(budgets))
         costs = (
             fn.fixed_costs(average)
