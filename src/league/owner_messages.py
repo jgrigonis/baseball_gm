@@ -179,7 +179,7 @@ NOTES = {
         "ok": ("Payroll's right at the line. Watch it.",),
         "bad": (
             "Payroll's over budget. I didn't sign off on that.",
-            "You're over the budget and I'm paying tax on it. Not happy.",
+            "You're over the budget I gave you. Not happy.",
             "We are over budget. That ends now.",
         ),
     },
@@ -343,7 +343,7 @@ TRADE_REACTIONS = {
 
 OVER_BUDGET = (
     "Payroll just went over the budget I gave you. I didn't sign off on that.",
-    "We're over budget. Every dollar over costs me tax. Fix it.",
+    "We're over budget. I gave you a number for a reason. Fix it.",
     "{budget} was the number. You're past it.",
 )
 

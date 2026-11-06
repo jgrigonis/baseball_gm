@@ -1,13 +1,15 @@
 {# templates/dashboard/partials/_budget.html
-  A team's payroll against its budget (src/league/budget.py), for tab
-  headers. Without budgets (Speed Blitz) it's just the payroll.
+  A team's payroll against the league's cap and its owner's budget
+  (src/league/budget.py), for tab headers. Without budgets (Speed Blitz)
+  it's just the payroll.
 #}
 {% macro payroll_line(budget, payroll_text, dead_money_text=None) %}
 <span class="page-subtitle payroll-line" style="margin-left:12px;"
-      title="This season's guaranteed salaries: every deal of a player who's been on the 40-man, plus dead money for players you released. Minors players who've never been up aren't guaranteed.{% if budget %} Your owner's budget is {{ budget.budget_text }}. Going over is allowed, but when the season ends you pay a luxury tax of {{ (budget.tax_rate * 100) | round | int }}% on what's over.{% endif %}">
-  Payroll {{ budget.payroll_text if budget else payroll_text }}{% if budget %}<span class="pl-dim"> of {{ budget.budget_text }}</span>{% endif %}
+      title="This season's guaranteed salaries: every deal of a player who's been on the 40-man, plus dead money for players you released. Minors players who've never been up aren't guaranteed.{% if budget %} The league's payroll cap is {{ budget.cap_text }}, the same for every team. Going over is allowed, but when the season ends you pay a luxury tax of {{ (budget.tax_rate * 100) | round | int }}% on what's over. Your owner's budget is {{ budget.budget_text }}, {{ budget.leash_text }}.{% endif %}">
+  Payroll {{ budget.payroll_text if budget else payroll_text }}{% if budget %}<span class="pl-dim"> · cap {{ budget.cap_text }} · owner {{ budget.budget_text }}</span>{% endif %}
   {%- if dead_money_text %} <span style="color:var(--red);">({{ dead_money_text }} dead)</span>{% endif %}
-  {%- if budget and budget.over %} <span class="pl-over">{{ budget.over_text }} over · {{ budget.tax_text }} tax</span>{% endif %}
+  {%- if budget and budget.over %} <span class="pl-over">{{ budget.over_text }} over cap · {{ budget.tax_text }} tax</span>{% endif %}
+  {%- if budget and budget.over_budget %} <span class="pl-over">{{ budget.over_budget_text }} past owner</span>{% endif %}
 </span>
 <style>
 .payroll-line .pl-dim { color: var(--text-dim); }

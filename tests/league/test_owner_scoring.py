@@ -81,3 +81,15 @@ def test_job_security():
     assert sc.next_security(40, 0, MID, True) == 40 + sc.TITLE_BONUS
     assert sc.verdict(10) == "fired" and sc.verdict(20) == "warned"
     assert sc.verdict(80) == "retained"
+
+
+def test_profit_is_judged_against_the_markets_par():
+    # A small market making what a middle owner would there is on par, even
+    # at a loss; a big market with a fat margin under its par isn't.
+    small = sc.score_dimensions(
+        season(payroll=100, budget=100, revenue=200, profit=-10, profit_par=-10), MID
+    )["profit"]
+    big = sc.score_dimensions(
+        season(payroll=100, budget=100, revenue=300, profit=60, profit_par=90), MID
+    )["profit"]
+    assert small == 0 and big < 0

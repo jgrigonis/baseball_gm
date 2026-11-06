@@ -151,6 +151,7 @@ def trades_tab(
         for o in offers_to_me:
             o["budget_warning"] = bg.warning(
                 standing["payroll"],
+                standing["cap"],
                 standing["budget"],
                 offer_pay_change(db, league_id, o),
             )

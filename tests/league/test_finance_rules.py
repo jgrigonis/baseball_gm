@@ -12,15 +12,14 @@ def test_spenders_get_a_bigger_share_than_misers():
     assert fn.spend_share(5) < fn.spend_share(50) < fn.spend_share(95)
 
 
-def test_the_average_budget_is_the_flat_one():
+def test_budgets_come_from_the_cap_by_spending():
     teams = {
         "big_spender": fn.TeamMoney(market=5, fans=70, spending=95),
         "small_miser": fn.TeamMoney(market=1, fans=40, spending=5),
         "middle": fn.TeamMoney(market=3, fans=50, spending=50),
     }
     plans = fn.plan(160 * M, teams)
-    avg = sum(p.budget for p in plans.values()) / 3
-    assert abs(avg - 160 * M) < 200_000
+    assert plans["small_miser"].budget < 160 * M < plans["big_spender"].budget
     assert (
         plans["big_spender"].budget
         > plans["middle"].budget

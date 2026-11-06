@@ -240,7 +240,7 @@ var SIDES = {
 var FILTERS = [['all', 'All'], ['40', '40-man'], ['org', 'Org'], ['hit', 'Hit'], ['pit', 'Pit']];
 {% if pick_trades %}FILTERS.push(['pick', 'Picks']);{% endif %}
 var UNIT = {{ ('players or picks' if pick_trades else 'players') | tojson }};
-// Payroll against budget (src/league/budget.py), null without budgets.
+// Payroll against the cap and owner's budget (src/league/budget.py), null without budgets.
 var BUDGET = {{ budget | tojson }};
 var COUNTER = null;  // the offer to you this one counters
 
@@ -330,17 +330,21 @@ function pickedPay(key) {
     return t + (side.picked.has(p.player_id) ? (p.pay || 0) : 0);
   }, 0);
 }
-// A warning when the trade takes you over budget. Going over is allowed;
-// you pay luxury tax on what's over when the season ends.
+// A warning when the trade takes you over the league's cap or your owner's
+// budget. Going over is allowed; you pay luxury tax on what's over the cap
+// when the season ends, and your owner judges payroll against the budget.
 function budgetNote() {
   if (!BUDGET) return '';
   var added = pickedPay('theirs') - pickedPay('mine');
   var after = BUDGET.payroll + added;
-  if (added <= 0 || after <= BUDGET.budget) return '';
-  var tax = function(p) { return Math.max(0, p - BUDGET.budget) * BUDGET.tax_rate; };
+  if (added <= 0 || (after <= BUDGET.cap && after <= BUDGET.budget)) return '';
+  var tax = function(p) { return Math.max(0, p - BUDGET.cap) * BUDGET.tax_rate; };
   var extra = tax(after) - tax(BUDGET.payroll);
-  return '<div class="tr-budget">Payroll after: ' + money(after) + ' of ' + money(BUDGET.budget) +
-         ', ' + money(extra) + ' more luxury tax.</div>';
+  var bits = [];
+  if (extra > 0) bits.push(money(extra) + ' more luxury tax');
+  if (after > BUDGET.budget) bits.push('past your owner\'s ' + money(BUDGET.budget));
+  return '<div class="tr-budget">Payroll after: ' + money(after) + ' (cap ' + money(BUDGET.cap) +
+         '), ' + bits.join(', ') + '.</div>';
 }
 
 function summarize() {

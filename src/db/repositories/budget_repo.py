@@ -4,8 +4,9 @@ Team budgets, luxury tax and team money (rules in src/league/budget.py and
 src/league/finances.py).
 
 Uses tables:
-- team_budgets  one row per team and season: the budget its owner set, the
-                revenue and fan interest it was set from, and once the season
+- team_budgets  one row per team and season: the league's payroll cap (the
+                same in every row of a season), the budget its owner set
+                from it, the revenue and fan interest coming in, and once the season
                 is over the luxury tax, playoff gate, payroll, profit and fan
                 interest after
 - team_owners, owner_personas  for each owner's Spending
@@ -58,45 +59,46 @@ class BudgetRepository:
         if not missing:
             return have
         self._pending: dict[str, tuple[int, int]] = {}
-        made = self._make(league_id, year, missing)
+        cap = self.cap(league_id, year)
+        made = self._make(league_id, year, missing, cap)
         for team_id, amount in made.items():
             revenue, fans = self._pending.get(team_id, (None, None))
             self.conn.execute(
                 """INSERT INTO team_budgets
-                       (league_id, team_id, year, budget, revenue, fans_before)
-                   VALUES (%s, %s, %s, %s, %s, %s)
+                       (league_id, team_id, year, cap, budget, revenue, fans_before)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s)
                    ON CONFLICT (league_id, team_id, year) DO NOTHING""",
-                (league_id, team_id, year, amount, revenue, fans),
+                (league_id, team_id, year, cap, amount, revenue, fans),
             )
         return {**have, **made}
 
-    def _make(self, league_id: str, year: int, team_ids: list[str]) -> dict[str, int]:
-        """New budgets, set by each team's owner (src/league/finances.py):
-        a share of the revenue its market and fans bring in, by how freely
-        the owner spends. Scaled so the league's average budget is the flat
-        one: the average payroll the first season, then 5% more a season.
-        Also records each team's expected revenue and starting fan interest."""
-        average = self._average_budget(league_id, year)
+    def _make(
+        self, league_id: str, year: int, team_ids: list[str], cap: int
+    ) -> dict[str, int]:
+        """New budgets, set by each team's owner from the league's cap, by
+        how freely they spend (src/league/budget.py). Also records each
+        team's expected revenue and starting fan interest
+        (src/league/finances.py)."""
         money = self._team_money(league_id, year, team_ids)
-        plans = fn.plan(average, money)
+        plans = fn.plan(cap, money)
         for team_id, p in plans.items():
             self._pending[team_id] = (p.revenue, int(round(money[team_id].fans)))
         return {t: p.budget for t, p in plans.items()}
 
-    def _average_budget(self, league_id: str, year: int) -> int:
-        """What the league's average budget is this season: the newest
-        season's average grown to now, or the average payroll if there's
-        none yet."""
+    def cap(self, league_id: str, year: int) -> int:
+        """The league's payroll cap for the season, the same for every
+        team: the one already set, else the newest season's grown to now,
+        else the league's average payroll."""
         row = self.conn.execute(
-            """SELECT year, AVG(budget) AS avg FROM team_budgets
-               WHERE league_id = %s AND year < %s
+            """SELECT year, MAX(cap) AS cap FROM team_budgets
+               WHERE league_id = %s AND year <= %s AND cap IS NOT NULL
                GROUP BY year ORDER BY year DESC LIMIT 1""",
             (league_id, year),
         ).fetchone()
         if row:
-            return bg.grown(int(row["avg"]), year - row["year"])
+            return bg.grown(int(row["cap"]), year - row["year"])
         payrolls = [self.contracts.payroll(t, year) for t in self._team_ids(league_id)]
-        return bg.first_budget(payrolls)
+        return bg.first_cap(payrolls)
 
     def _team_money(
         self, league_id: str, year: int, team_ids: list[str]
@@ -147,15 +149,18 @@ class BudgetRepository:
         return self.for_league(league_id, year).get(team_id)
 
     def standing(self, league_id: str, team_id: str, year: int) -> dict | None:
-        """Payroll against budget, for the views; None without budgets."""
+        """Payroll against the cap and the owner's budget, for the views;
+        None without budgets."""
         amount = self.budget(league_id, team_id, year)
         if amount is None:
             return None
-        return bg.standing(self.contracts.payroll(team_id, year), amount)
+        return bg.standing(
+            self.contracts.payroll(team_id, year), self.cap(league_id, year), amount
+        )
 
     def assess(self, league_id: str, year: int) -> dict[str, int]:
         """The season is over: record each team's luxury tax on its final
-        payroll, its fans after the season, its playoff gate and its profit
+        payroll over the league's cap, its fans after the season, its playoff gate and its profit
         (src/league/finances.py). Returns {team_id: tax}."""
         budgets = self.for_league(league_id, year)
         if not budgets:
@@ -174,20 +179,17 @@ class BudgetRepository:
             (league_id, year),
         ).fetchone()
         results = self._results(league_id, season["id"]) if season else {}
+        cap = self.cap(league_id, year)
         money = self._team_money(league_id, year, list(budgets))
-        # A season budgeted before owners set budgets has no revenue yet:
-        # back it out of the budget and the owner's share.
-        revenue = {
-            t: rows[t]["revenue"]
-            or round(budgets[t] / fn.spend_share(money[t].spending))
-            for t in budgets
-        }
+        # A season budgeted before owners set budgets has no revenue yet.
+        planned = fn.plan(cap, money)
+        revenue = {t: rows[t]["revenue"] or planned[t].revenue for t in budgets}
         average = sum(revenue.values()) / len(revenue)
         costs = fn.fixed_costs(average)
         taxes = {}
-        for team_id, amount in budgets.items():
+        for team_id in budgets:
             payroll = self.contracts.payroll(team_id, year)
-            tax = bg.luxury_tax(payroll, amount)
+            tax = bg.luxury_tax(payroll, cap)
             r = results.get(team_id, {})
             before = rows[team_id]["fans_before"]
             before = money[team_id].fans if before is None else before
@@ -277,7 +279,7 @@ class BudgetRepository:
     def finances(self, league_id: str, year: int) -> dict[str, dict]:
         """Each team's money for a season, by team id, for the admin pages."""
         rows = self.conn.execute(
-            """SELECT team_id, budget, revenue, playoff_revenue, payroll,
+            """SELECT team_id, cap, budget, revenue, playoff_revenue, payroll,
                       luxury_tax, profit, fans_before, fans_after
                FROM team_budgets WHERE league_id = %s AND year = %s""",
             (league_id, year),

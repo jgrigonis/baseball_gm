@@ -13,7 +13,6 @@ from src.api.dependencies import DB, GMOrViewer, IsHTMX, User
 from src.api.services import owner_office, owners
 from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.contract_repo import ContractRepository
-from src.player.contracts import format_salary
 from src.web.utils import _shell_ctx, tab_response
 
 router = APIRouter(tags=["web"])
@@ -38,9 +37,9 @@ def owner_tab(
         ctx["owner_unseen"] = 0  # just read
     year = ContractRepository(db).current_year(league_id)
     if ctx["my_owner"] and year is not None:
-        budget = BudgetRepository(db).budget(league_id, team_id, year)
-        if budget:
-            ctx["my_budget"] = {"year": year, "text": format_salary(budget)}
+        standing = BudgetRepository(db).standing(league_id, team_id, year)
+        if standing:
+            ctx["my_budget"] = {"year": year, **standing}
     ctx["owners"] = owners.league_table(db, league_id)
     ctx["my_team_id"] = team_id
     ctx["archetypes"] = owners.archetype_guide()
