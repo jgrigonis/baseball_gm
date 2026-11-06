@@ -96,15 +96,19 @@ window.gmToast = function(msg, kind) {
     box.setAttribute('aria-live', 'polite');
     document.body.appendChild(box);
   }
-  // Just under whatever is pinned at the top: the top bar, and the league
-  // tabs when they're on screen. Both are sticky and the top bar wraps to
-  // two rows on phones, so measure each time.
+  // Just under whatever bar is pinned across the top: the top bar, and a
+  // row of league tabs if there is one. The top bar wraps to two rows on
+  // phones, so measure each time. Only bars across the top count: the league
+  // pages' sidebar (also #tab-bar) runs the full height, and measuring it put
+  // the toast below the bottom of the screen. Never lower than a third of
+  // the way down, whatever is up there.
   let top = 0;
   document.querySelectorAll('.topbar, #tab-bar').forEach(el => {
     const r = el.getBoundingClientRect();
-    if (r.height && r.bottom > top) top = r.bottom;
+    if (r.height && r.width > r.height && r.top <= 1 + top && r.bottom > top) top = r.bottom;
   });
-  box.style.top = Math.max(0, top) + 10 + 'px';
+  top = Math.min(Math.max(0, top), window.innerHeight / 3);
+  box.style.top = top + 10 + 'px';
   // The same notice twice in a row just restarts its timer.
   const last = box.lastElementChild;
   if (last && last.textContent === msg && !last.classList.contains('out')) last.remove();
