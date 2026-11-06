@@ -231,6 +231,24 @@ def facilities_days(level: int, days: int) -> int:
     return max(1, round(days * FACILITIES_DAYS[clean_level(level)]))
 
 
+# Analytics: how well a manager's running game is aimed. Each level bends a
+# steal or hit and run call toward good spots (a fast runner on a weak arm, a
+# contact hitter with a fast runner): the chance is multiplied by the spot's
+# quality raised to this power. Bare bones flattens the choice (more tries in
+# bad spots, more caught stealing); Elite sharpens it. Standard changes nothing.
+ANALYTICS_AIM = (-0.6, -0.3, 0.0, 0.4, 0.8)
+SPOT_MIN, SPOT_MAX = 0.4, 2.5
+
+
+def analytics_aim(level: int, quality: float) -> float:
+    """The multiplier for a running-game call in a spot of this quality
+    (1.0 = an average spot)."""
+    power = ANALYTICS_AIM[clean_level(level)]
+    if power == 0.0:
+        return 1.0
+    return min(SPOT_MAX, max(SPOT_MIN, quality)) ** power
+
+
 def ai_levels(spending: int, seed: str) -> dict[str, int]:
     """An AI team's levels: a miser owner squeezes the front office, a
     spender funds it, with a little variety per department."""

@@ -664,9 +664,9 @@ def _play_game(
 
     event_logger = GameEventLogger(conn, game_id=game_info["game_id"])
     # Facilities: each team's injury odds and days out (src/league/budget.py).
-    facilities = _facilities(
-        conn, league_id, season_id, [home_team.record.id, away_team.record.id]
-    )
+    team_ids = [home_team.record.id, away_team.record.id]
+    facilities = _department(conn, league_id, season_id, "facilities", team_ids)
+    analytics = _department(conn, league_id, season_id, "analytics", team_ids)
     game = Game(
         home_team=home_team,
         away_team=away_team,
@@ -683,6 +683,7 @@ def _play_game(
         # Extra-innings runner on second: regular season only.
         ghost_runner=not playoffs,
         injury_mults={t: bg.facilities_injury(lv) for t, lv in facilities.items()},
+        analytics_levels=analytics,
     )
 
     home_team.set_lineup(
@@ -818,15 +819,16 @@ def _play_game(
     return result
 
 
-def _facilities(conn, league_id, season_id, team_ids) -> dict[str, int]:
-    """Each team's Facilities level this season (Standard without budgets)."""
+def _department(conn, league_id, season_id, department, team_ids) -> dict[str, int]:
+    """Each team's level in one front office department this season
+    (Standard without budgets)."""
     row = conn.execute(
         "SELECT year FROM seasons WHERE id = %s", (season_id,)
     ).fetchone()
     if not row or not league_id:
         return dict.fromkeys(team_ids, bg.STANDARD)
     return BudgetRepository(conn).department(
-        league_id, row["year"], "facilities", team_ids
+        league_id, row["year"], department, team_ids
     )
 
 

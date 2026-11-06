@@ -49,6 +49,7 @@ from src.game.probabilities import (
     PITCHER_CHANGE_MULTIPLIERS,
 )
 from src.game.score import Score
+from src.league import budget as bg
 from src.player.fatigue import FatigueLevel
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_in_game import PlayerInGame
@@ -59,6 +60,13 @@ from src.team.team_in_game import TeamInGame
 def _get_rng(rng: random.Random | None) -> random.Random:
     """Helper to get RNG instance, creating default if needed."""
     return rng if rng is not None else random.Random()
+
+
+def _analytics_level(game) -> int:
+    """The batting team's Analytics level (Standard when not set)."""
+    levels = getattr(game, "analytics_levels", None) or {}
+    record = getattr(getattr(game, "bat_team", None), "record", None)
+    return levels.get(getattr(record, "id", None), bg.STANDARD)
 
 
 class GameStrategy:
@@ -84,6 +92,7 @@ class GameStrategy:
         """
         rng = _get_rng(rng)
         offense = profile_of(getattr(game, "bat_team", None))
+        analytics = _analytics_level(game)
         steal_attempt = None
         double_steal_attempt = None
         pickoff_attempt = None
@@ -146,6 +155,7 @@ class GameStrategy:
                         arm,
                         rng,
                         aggression=offense.steal_factor,
+                        analytics=analytics,
                     ):
                         steal_attempt = base
 
@@ -171,6 +181,7 @@ class GameStrategy:
                 game.count.strikes,
                 rng,
                 aggression=offense.steal_factor,
+                analytics=analytics,
             ):
                 hit_and_run = True
         if runner_speeds:
@@ -267,6 +278,7 @@ class GameStrategy:
         catcher_arm: int = 50,
         rng: random.Random | None = None,
         aggression: float = 1.0,
+        analytics: int = bg.STANDARD,
     ) -> bool:
         """
         Decide if runner should attempt to steal.
@@ -327,8 +339,9 @@ class GameStrategy:
         elif score.differential > 2:
             prob *= STEAL_BLOWOUT_MOD
 
-        # The manager's baserunning setting
+        # The manager's baserunning setting, aimed by his analytics staff
         prob *= aggression
+        prob *= bg.analytics_aim(analytics, speed_factor * arm_factor)
 
         return rng.random() < prob
 
@@ -539,6 +552,7 @@ class GameStrategy:
         count_strikes: int = 0,
         rng: random.Random | None = None,
         aggression: float = 1.0,
+        analytics: int = bg.STANDARD,
     ) -> bool:
         """
         Decide if offense should call hit-and-run.
@@ -597,6 +611,7 @@ class GameStrategy:
             prob *= HNR_FAVORABLE_COUNT_MOD
 
         prob *= aggression
+        prob *= bg.analytics_aim(analytics, (batter_contact / 50) * (runner_speed / 50))
 
         return rng.random() < prob
 

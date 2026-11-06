@@ -542,3 +542,13 @@ def test_department_reads_levels_without_making_rows(lg):
         x.league.id, 2026, "facilities", [x.mine.id, x.theirs.id]
     )
     assert got[x.mine.id] == 4 and got[x.theirs.id] in range(5)
+
+
+def test_analytics_levels_are_read_for_games(db_conn):
+    """play_season reads Analytics the same way as Facilities."""
+    from src.league.play_season import _department
+
+    assert _department(db_conn, None, None, "analytics", ["a", "b"]) == {
+        "a": bg.STANDARD,
+        "b": bg.STANDARD,
+    }
