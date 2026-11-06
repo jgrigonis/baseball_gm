@@ -29,6 +29,13 @@
    <div class="pp-header-actions">
      {% if n == 1 %}
        {% if my_team_id and player.team_id == my_team_id %}
+       {% if can_shop %}
+       <button class="btn {{ 'btn-primary' if player.happiness and player.happiness.wants_trade else 'btn-secondary' }} pp-action pp-shop"
+               onclick="shopPlayer('{{ player.player_id }}')"
+               title="Ask every AI team what they'd give for him">
+         Shop him
+       </button>
+       {% endif %}
        <button class="btn btn-secondary pp-action pp-release"
                onclick="releasePlayer('{{ player.player_id }}', '{{ player.first_name }} {{ player.last_name }}')"
                title="Let him go to free agency">

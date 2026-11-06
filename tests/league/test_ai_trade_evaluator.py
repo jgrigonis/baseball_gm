@@ -190,6 +190,16 @@ def test_a_team_asks_less_for_a_player_who_wants_out():
     assert b.threshold < a.threshold
 
 
+def test_a_team_pays_less_for_a_player_who_wants_out():
+    from dataclasses import replace
+
+    roster = _roster()
+    star = _p(70)
+    a = _judge(roster, [roster[0]], [star])
+    b = _judge(roster, [roster[0]], [replace(star, wants_out=True)])
+    assert b.score < a.score
+
+
 def test_an_ai_team_wont_take_on_more_salary_than_its_owner_allows():
     from src.league.trades import ai_evaluator as ev
 
