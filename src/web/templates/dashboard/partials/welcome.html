@@ -64,6 +64,17 @@
   .wl-up { color:var(--green); }
   .wl-down { color:var(--red); }
   .wl-rival { display:flex; align-items:center; gap:8px; padding:5px 0; font-size:13px; }
+  .wl-money-row { display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; }
+  .wl-money-row .wl-meta { margin-left:auto; }
+  .wl-mbar { position:relative; height:8px; background:var(--tile); border-radius:4px; margin:8px 0 4px; }
+  .wl-mbar > span { display:block; height:100%; border-radius:4px; background:var(--amber); }
+  .wl-mbar > span.bad { background:var(--red); }
+  .wl-mbar > i { position:absolute; top:-3px; bottom:-3px; width:2px; background:var(--text); opacity:.6; }
+  .wl-fo { display:flex; gap:8px; flex-wrap:wrap; margin-top:4px; }
+  .wl-fo span { font-family:var(--font-mono); font-size:11px; border:1px solid var(--border); border-radius:4px; padding:3px 7px; }
+  .wl-fo b { color:var(--text); font-weight:600; }
+  .wl-fo .lv-0, .wl-fo .lv-1 { color:var(--red); }
+  .wl-fo .lv-3, .wl-fo .lv-4 { color:var(--green); }
   @media (max-width: 600px) {
     .wl-hero { padding:20px 16px; }
     .wl-title { font-size:32px; }
@@ -242,6 +253,69 @@
         {% for g in w.ages.groups %}<div><i></i>{{ g.label }} ({{ g.range }}): <b>{{ g.count }}</b></div>{% endfor %}
       </div>
       {% if w.age_rank %}<p class="wl-verdict">{{ w.age_rank.outlook }}</p>{% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if w.budget %}
+  {% set b = w.budget %}
+  {% set m = b.money %}
+  <div class="card">
+    <div class="card-header"><span class="card-title">Your budget</span>
+      <span class="wl-meta" style="margin-left:auto;">{{ b.year }}</span></div>
+    <div class="card-body">
+      <div class="wl-sub" style="margin-top:0;">Payroll and the league cap</div>
+      <div class="wl-money-row">
+        <span class="wl-big" style="font-size:28px;{% if m.over %}color:var(--red);{% endif %}">{{ m.payroll_text }}</span>
+        <span class="wl-meta" style="margin-left:0;">of a {{ m.cap_text }} cap</span>
+      </div>
+      <div class="wl-mbar"><span class="{{ 'bad' if m.over }}" style="width:{{ b.payroll_pct }}%;"></span></div>
+      <div class="wl-money-row">
+        <span class="wl-meta" style="margin-left:0;">{% if m.over %}<span class="wl-down">{{ m.over_text }} over: {{ m.tax_text }} luxury tax</span>{% else %}{{ m.room_text }} under the cap{% endif %}</span>
+        <span class="wl-meta">{{ b.rank_text }}</span>
+      </div>
+
+      <div class="wl-sub">Spending and your owner</div>
+      <div class="wl-money-row">
+        <span style="font-size:14px;"><b>{{ m.spend_text }}</b> total spending</span>
+        <span class="wl-meta">{{ m.payroll_text }} payroll + {{ m.front_office_text }} front office</span>
+      </div>
+      <div class="wl-mbar" title="Spending against your owner's limit; the mark is their budget">
+        <span class="{{ 'bad' if m.over_budget }}" style="width:{{ b.spend_pct }}%;"></span>
+        <i style="left:{{ b.budget_pct }}%;"></i>
+      </div>
+      <div class="wl-money-row">
+        <span class="wl-meta" style="margin-left:0;">Budget {{ m.budget_text }}: {% if m.over_budget %}<span class="wl-down">{{ m.over_budget_text }} past it</span>{% else %}{{ m.budget_room_text }} left{% endif %}</span>
+        <span class="wl-meta">{% if m.at_limit %}<span class="wl-down">At the {{ m.limit_text }} limit</span>{% else %}Limit {{ m.limit_text }}{% endif %}</span>
+      </div>
+      {% if b.bank_text or b.last %}
+      <div class="wl-meta" style="margin-top:8px;line-height:1.7;">
+        {% if b.bank_text %}Owner's bank: <b class="{{ 'wl-down' if b.bank_empty }}" style="color:var(--text);">{{ b.bank_text }}</b>{% endif %}
+        {% if b.bank_text and b.last %} · {% endif %}
+        {% if b.last %}{{ b.last.year }} profit: <b class="{{ 'wl-down' if b.last.loss else 'wl-up' }}">{{ b.last.profit_text }}</b>{% endif %}
+      </div>
+      {% endif %}
+
+      <div class="wl-sub">Front office</div>
+      <div class="wl-fo">
+        {% for d in b.front_office %}<span title="{{ d.cost_text }} a season">{{ d.label }} <b class="lv-{{ d.rank }}">{{ d.level }}</b></span>{% endfor %}
+      </div>
+      {% if league_state in ('draft', 'preseason') %}
+      <div class="wl-meta" style="margin-top:6px;">Set between seasons, until Opening Day.</div>
+      {% endif %}
+
+      {% if b.biggest %}
+      <div class="wl-sub">Biggest contracts</div>
+      {% for d in b.biggest %}
+      <div class="wl-move">
+        <span class="wl-link" onclick="openPlayerPanel('{{ d.player_id }}')">{{ d.name }}</span>
+        <span class="wl-meta" style="margin-left:0;">{{ d.position }}</span>
+        <span class="wl-meta">{{ d.salary_text }} through {{ d.through }}</span>
+      </div>
+      {% endfor %}
+      {% endif %}
+      <a href="/leagues/{{ league_id }}/budget" hx-get="/leagues/{{ league_id }}/budget" hx-target="#tab-content" hx-push-url="true"
+         class="wl-meta wl-link" style="display:inline-block;margin-top:8px;">Open the Budget tab →</a>
     </div>
   </div>
   {% endif %}

@@ -22,6 +22,8 @@ from src.api.schemas import skill_to_grade
 from src.api.services.draft_needs import needs_for_draft
 from src.api.view_models.draft import last_season
 from src.api.view_models.league_info import league_gms
+from src.db.repositories.budget_repo import BudgetRepository
+from src.db.repositories.contract_repo import SIGNED_STATUSES, ContractRepository
 from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.league_repo import LeagueRepository
@@ -35,6 +37,8 @@ from src.league.power_rankings import (
     starting_nine,
     team_strength,
 )
+from src.league import budget as bg
+from src.player.contracts import format_salary
 from src.player.player_record import PlayerRecord
 from src.player.player_skills import PlayerSkills
 from src.player.player_value import role_rating
@@ -463,6 +467,102 @@ def history(db, league_id: str, team_id: str, draft_season_id: str) -> dict | No
     }
 
 
+# How many of the team's biggest contracts the budget card lists.
+BIG_DEALS = 3
+
+
+def _money(amount: int) -> str:
+    text = format_salary(abs(int(amount)))
+    return f"-{text}" if amount < 0 else text
+
+
+def budget_card(
+    db, league_id: str, team_id: str, rosters: dict[str, list]
+) -> dict | None:
+    """The team's money going into the season, for the welcome screen and
+    season preview: payroll against the cap (and where it ranks), spending
+    against the owner's budget and limit, the owner's bank, last season's
+    profit, the front office and the biggest deals. None without budgets.
+    `rosters` is {team_id: [(player, status)]} for every team."""
+    year = ContractRepository(db).current_year(league_id)
+    if year is None:
+        return None
+    budgets = BudgetRepository(db)
+    money = budgets.standing(league_id, team_id, year)
+    if money is None:
+        return None
+    contracts = ContractRepository(db)
+    payrolls = {tid: contracts.payroll(tid, year) for tid in rosters}
+    payrolls[team_id] = money["payroll"]
+    higher = sum(1 for v in payrolls.values() if v > money["payroll"])
+    rank = higher + 1
+    n = len(payrolls)
+    if rank == 1:
+        rank_text = f"Highest payroll of {n} teams"
+    elif rank == n:
+        rank_text = f"Lowest payroll of {n} teams"
+    else:
+        rank_text = f"{ordinal(rank)} highest payroll of {n} teams"
+
+    mine = {
+        p.id: p for p, status in rosters.get(team_id, []) if status in SIGNED_STATUSES
+    }
+    deals = [
+        (mine[pid], c)
+        for pid, c in contracts.active_for(mine, year).items()
+        if c["guaranteed"]
+    ]
+    deals.sort(key=lambda d: d[1]["salary"], reverse=True)
+    biggest = [
+        {
+            "player_id": p.id,
+            "name": f"{p.first_name} {p.last_name}",
+            "position": p.position.upper(),
+            "salary_text": format_salary(c["salary"]),
+            "through": c["start_year"] + c["years"] - 1,
+        }
+        for p, c in deals[:BIG_DEALS]
+    ]
+
+    bank = budgets.banks(league_id).get(team_id)
+    last = next(
+        (r for r in budgets.history(league_id, team_id) if r["profit"] is not None),
+        None,
+    )
+    levels = budgets.levels(league_id, team_id, year)
+    cap = money["cap"]
+    # Two bars: payroll against the cap, and spending against the owner's
+    # limit with their budget marked.
+    top = max(money["limit"], money["spend"]) or 1
+    return {
+        "year": year,
+        "money": money,
+        "payroll_pct": min(100, round(100 * money["payroll"] / cap)) if cap else 0,
+        "spend_pct": round(100 * money["spend"] / top),
+        "budget_pct": round(100 * money["budget"] / top),
+        "rank_text": rank_text,
+        "bank_text": _money(bank["balance"]) if bank else None,
+        "bank_empty": bool(bank) and bank["balance"] <= 0,
+        "last": {
+            "year": last["year"],
+            "profit_text": _money(last["profit"]),
+            "loss": last["profit"] < 0,
+        }
+        if last
+        else None,
+        "front_office": [
+            {
+                "label": label,
+                "level": bg.LEVELS[levels[key]],
+                "rank": levels[key],
+                "cost_text": format_salary(bg.level_cost(cap, levels[key])),
+            }
+            for key, label, _ in bg.DEPARTMENTS
+        ],
+        "biggest": biggest,
+    }
+
+
 def welcome(db, league: dict, gm: dict) -> dict | None:
     """Everything the welcome screen shows, or None when the GM has no team
     or the league has no draft yet."""
@@ -547,4 +647,5 @@ def welcome(db, league: dict, gm: dict) -> dict | None:
         "history": past,
         "movers": movers(db, [p for p, _ in mine], last_id),
         "retirees": retirees(db, team_id, last_id),
+        "budget": budget_card(db, league["id"], team_id, rosters),
     }
