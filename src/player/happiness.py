@@ -561,6 +561,28 @@ def age_weights(drives: dict[str, int], age: int) -> dict[str, float]:
     return w
 
 
+# Drives a team can offer a free agent besides the money (offseason free
+# agency, src/api/services/offseason_fa.py).
+FIT_DRIVES = ("winning", "location", "fame")
+
+
+def team_fit(
+    personality: Personality,
+    age: int,
+    sats: dict[str, float],
+    coaching: float = 0.0,
+) -> tuple[float, float]:
+    """How well a team suits a free agent beyond the money, -1 to 1, and how
+    much that counts for him against the money, 0 to 1: a Ring Chaser cares
+    mostly about the fit, a Mercenary hardly at all. `sats` is each fit
+    drive's satisfaction there; `coaching` is coaching_lift there."""
+    w = age_weights(personality.drives, age)
+    fit_w = sum(w[d] for d in sats)
+    score = sum(w[d] * sats[d] for d in sats) / fit_w if fit_w else 0.0
+    share = fit_w / (fit_w + w["money"]) if fit_w + w["money"] else 0.5
+    return _clamp(score + 3 * coaching), share
+
+
 def target(
     personality: Personality, age: int, sats: dict[str, tuple[float, str]]
 ) -> float:

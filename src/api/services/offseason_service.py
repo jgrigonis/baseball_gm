@@ -25,7 +25,7 @@ import datetime
 import random
 
 
-from src.api.services import trades, waivers
+from src.api.services import offseason_fa, trades, waivers
 from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.league_repo import LeagueRepository
@@ -113,6 +113,9 @@ def run_offseason(league_id: str, conn) -> dict:
     trades.close_all(conn, league_id)
     # Players released in the offseason clear waivers before the draft.
     waivers.clear_all(conn, league_id)
+    # The re-sign window closes: re-signed players get their new deals, the
+    # rest of the expiring market goes to free agency.
+    offseason_fa.close_window(conn, league_id)
 
     season = sr.get_season(season_id)
     current_year = season["year"]

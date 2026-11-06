@@ -89,8 +89,9 @@ function reloadTab() {
   if (window.htmx) htmx.ajax('GET', url, {target: '#tab-content', swap: 'innerHTML'});
   else location.reload();
 }
-async function postJson(url) {
-  const r = await fetch(url, {method: 'POST'});
+async function postJson(url, data) {
+  const r = await fetch(url, data === undefined ? {method: 'POST'} : {
+    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)});
   const body = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(body.detail || 'Something went wrong.');
   return body;
@@ -168,6 +169,8 @@ window.signFreeAgent = async function(pid, name, salary, years) {
     ask = await r.json();
     if (!r.ok) throw new Error(ask.detail || 'Something went wrong.');
   } catch (e) { gmAlert(e.message); return; }
+  // During the draft free agents take bids instead (offseason_fa.py).
+  if (ask.bidding) { bidFreeAgent(pid, name, ask); return; }
   // Past the owner's hard limit: they won't allow it (src/league/budget.py).
   if (ask.blocked) { gmAlert(ask.blocked); return; }
   salary = ask.salary_text; years = ask.years;
@@ -182,6 +185,55 @@ window.signFreeAgent = async function(pid, name, salary, years) {
   try { await postJson(url); }
   catch (e) { gmAlert(e.message); return; }
   closePlayerPanel();
+  reloadTab();
+};
+// Offseason free agency (src/api/services/offseason_fa.py): a bid during
+// the draft, and re-signing or letting go of expiring players.
+window.bidFreeAgent = async function(pid, name, ask) {
+  const url = `/leagues/{{ league_id }}/free-agents/${pid}`;
+  if (!ask) {
+    try {
+      const r = await fetch(`${url}/sign`);
+      ask = await r.json();
+      if (!r.ok) throw new Error(ask.detail || 'Something went wrong.');
+    } catch (e) { gmAlert(e.message); return; }
+  }
+  const mine = ask.bid;
+  const others = ask.bids - (mine ? 1 : 0);
+  const vals = await gmConfirm({
+    title: mine ? `Change your bid for ${name}?` : `Bid for ${name}?`,
+    lines: [
+      `He asks ${ask.ask_text} a season for ${ask.ask_years} season${ask.ask_years === 1 ? '' : 's'}.`,
+      `He picks one bid when the preseason starts: the money, and how well the team suits him (winning, home, market, coaching). ${others > 0 ? `${others} other team${others === 1 ? ' has' : 's have'} bid.` : 'No other bids yet.'}`,
+    ],
+    fields: [
+      {name: 'salary', label: 'Salary a season ($M)', value: ((mine ? mine.salary : ask.ask_salary) / 1e6).toFixed(2),
+       min: (ask.min_salary / 1e6).toFixed(2), step: 0.05},
+      {name: 'years', label: 'Seasons', value: mine ? mine.years : ask.ask_years, min: 1, max: ask.max_years, step: 1},
+    ],
+    warn: ask.warning,
+    ok: mine ? 'Update bid' : 'Bid', tone: 'go',
+    cancel: 'Cancel',
+  });
+  if (!vals) return;
+  try {
+    await postJson(`${url}/bid`, {salary: Math.round(vals.salary * 1e6), years: Math.round(vals.years)});
+  } catch (e) { gmAlert(e.message); return; }
+  gmToast(`Bid in for ${name}`, 'ok');
+  closePlayerPanel();
+  reloadTab();
+};
+window.withdrawBid = async function(pid, name) {
+  const ok = await gmConfirm({title: `Take back your bid for ${name}?`, ok: 'Take it back', tone: 'danger'});
+  if (!ok) return;
+  try { await postJson(`/leagues/{{ league_id }}/free-agents/${pid}/bid/withdraw`); }
+  catch (e) { gmAlert(e.message); return; }
+  closePlayerPanel();
+  reloadTab();
+};
+window.expiringChoice = async function(pid, choice) {
+  try { await postJson(`/leagues/{{ league_id }}/players/${pid}/expiring`, {choice}); }
+  catch (e) { gmAlert(e.message); return; }
   reloadTab();
 };
 window.pinForCompare = function(pid, name) { _pinned = [{id: pid}]; closeAndBrowse(name); };

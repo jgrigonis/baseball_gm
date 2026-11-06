@@ -6,7 +6,9 @@
 // gmConfirm(opts) resolves true when the GM presses the action button.
 // opts: {title, lines: [text], warn: a red warning line, ok: button label,
 // tone: 'danger' | 'go', cancel: label, or null for an alert with one
-// button}. Text is escaped.
+// button, fields: [{name, label, value, min, max, step, hint}] number inputs;
+// with fields it resolves {name: number} on OK, false otherwise}. Text is
+// escaped.
 //
 // gmAlert(title, line) shows a message with a single OK button.
 //
@@ -34,6 +36,11 @@ window.gmConfirm = function(opts) {
       <div class="gm-modal" role="dialog" aria-modal="true" aria-labelledby="gm-modal-title">
         <div class="gm-modal-title" id="gm-modal-title">${_esc(opts.title)}</div>
         ${(opts.lines || []).filter(Boolean).map(l => `<p class="gm-modal-line">${_esc(l)}</p>`).join('')}
+        ${(opts.fields || []).map(f => `<label class="gm-modal-field"><span>${_esc(f.label)}</span>
+          <input type="number" name="${_esc(f.name)}" value="${_esc(f.value ?? '')}"
+                 ${f.min !== undefined ? `min="${_esc(f.min)}"` : ''} ${f.max !== undefined ? `max="${_esc(f.max)}"` : ''}
+                 step="${_esc(f.step ?? 1)}" inputmode="decimal">
+          ${f.hint ? `<small>${_esc(f.hint)}</small>` : ''}</label>`).join('')}
         ${opts.warn ? `<p class="gm-modal-line gm-modal-warn">${_esc(opts.warn)}</p>` : ''}
         <div class="gm-modal-btns">
           ${opts.cancel === null ? '' : `<button type="button" class="btn btn-secondary" data-ans="0">${_esc(opts.cancel || 'Cancel')}</button>`}
@@ -42,12 +49,17 @@ window.gmConfirm = function(opts) {
       </div>`;
     function done(ans) {
       document.removeEventListener('keydown', onKey, true);
+      const values = {};
+      wrap.querySelectorAll('.gm-modal-field input').forEach(i => { values[i.name] = parseFloat(i.value); });
       wrap.remove();
       if (back && back.focus && document.contains(back)) back.focus();
-      resolve(ans);
+      resolve(opts.fields ? (ans ? values : false) : ans);
     }
     function onKey(e) {
       if (e.key === 'Escape') { e.stopPropagation(); done(false); }
+      else if (e.key === 'Enter' && e.target.closest && e.target.closest('.gm-modal-field')) {
+        e.preventDefault(); done(true);
+      }
     }
     wrap.addEventListener('click', e => {
       const b = e.target.closest('[data-ans]');
@@ -56,7 +68,7 @@ window.gmConfirm = function(opts) {
     });
     document.addEventListener('keydown', onKey, true);
     document.body.appendChild(wrap);
-    wrap.querySelector('.gm-modal-ok').focus();
+    (wrap.querySelector('.gm-modal-field input') || wrap.querySelector('.gm-modal-ok')).focus();
   });
 };
 window.gmAlert = function(title, line) {

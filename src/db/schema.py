@@ -1505,6 +1505,29 @@ CREATE TABLE IF NOT EXISTS waiver_claims (
     PRIMARY KEY (waiver_id, team_id)
 );
 CREATE INDEX IF NOT EXISTS idx_waiver_claims_team ON waiver_claims(team_id);
+CREATE TABLE IF NOT EXISTS contract_choices ( -- migration 085 (src/api/services/offseason_fa.py)
+    league_id   TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    player_id   TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    team_id     TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    year        INTEGER NOT NULL,              -- the season his deal ends
+    choice      TEXT NOT NULL CHECK (choice IN ('resign', 'let_go')),
+    created_at  TEXT NOT NULL DEFAULT (NOW()),
+    PRIMARY KEY (player_id, year)
+);
+CREATE INDEX IF NOT EXISTS idx_contract_choices_league ON contract_choices(league_id, year);
+CREATE INDEX IF NOT EXISTS idx_contract_choices_team ON contract_choices(team_id);
+CREATE TABLE IF NOT EXISTS fa_bids (          -- migration 085: offers made during the draft
+    league_id   TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    player_id   TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    team_id     TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    year        INTEGER NOT NULL,              -- the season the deal starts
+    salary      INTEGER NOT NULL CHECK (salary > 0),
+    years       INTEGER NOT NULL CHECK (years >= 1),
+    created_at  TEXT NOT NULL DEFAULT (NOW()),
+    PRIMARY KEY (player_id, team_id, year)
+);
+CREATE INDEX IF NOT EXISTS idx_fa_bids_league ON fa_bids(league_id, year);
+CREATE INDEX IF NOT EXISTS idx_fa_bids_team ON fa_bids(team_id);
 
 CREATE TABLE IF NOT EXISTS team_budgets (     -- migration 074 (src/league/budget.py)
     league_id   TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
