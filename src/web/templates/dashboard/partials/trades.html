@@ -538,7 +538,13 @@ function shopRow(p) {
   '</div>';
 }
 
-var SHOP = null;  // the last shop: {pid, player, offers, no_interest}
+var SHOP = null;  // the last shop: {pid, player, offers, no_interest, why, offseason}
+var SHOP_WHY = [
+  ['price', 'Like him, but won\'t give enough for him'],
+  ['fit', 'He wouldn\'t help them'],
+  ['pay', 'No room in their budget for his salary'],
+  ['traded', 'Traded him away this season'],
+];
 
 function renderShop() {
   var el = document.getElementById('tr-shop-results');
@@ -546,7 +552,8 @@ function renderShop() {
   var html = '';
   if (!SHOP.offers.length) {
     html += '<div class="tr-empty">No AI team has a deal for ' + esc(SHOP.player) + ' today. ' +
-            'Try again after a few more games, or build an offer yourself below.</div>';
+            (SHOP.offseason ? 'Try again later in the offseason' : 'Try again after a few more games') +
+            ', or build an offer yourself below.</div>';
   }
   SHOP.offers.forEach(function(o, i) {
     html += '<div class="tr-offer tr-shop-offer">' +
@@ -564,8 +571,12 @@ function renderShop() {
       '</div>' +
     '</div>';
   });
-  if (SHOP.no_interest.length)
-    html += '<div class="tr-reason tr-shop-none">No interest: ' + esc(SHOP.no_interest.join(', ')) + '</div>';
+  // Why each team passed (trade_shop.shop's "why").
+  SHOP_WHY.forEach(function(w) {
+    var teams = SHOP.why[w[0]];
+    if (teams && teams.length)
+      html += '<div class="tr-reason tr-shop-none"><strong>' + w[1] + ':</strong> ' + esc(teams.join(', ')) + '</div>';
+  });
   el.innerHTML = html;
 }
 
@@ -585,7 +596,7 @@ window.trShop = function(pid) {
     var ok = res[0], d = res[1];
     btn.disabled = false; btn.textContent = 'Shop him';
     if (!ok) { SHOP = null; el.innerHTML = '<div class="tr-empty">✗ ' + esc(d.detail || 'Something went wrong.') + '</div>'; return; }
-    SHOP = {pid: pid, player: d.player, offers: d.offers, no_interest: d.no_interest};
+    SHOP = {pid: pid, player: d.player, offers: d.offers, no_interest: d.no_interest, why: d.why || {}, offseason: d.offseason};
     renderShop();
   }).catch(function() {
     btn.disabled = false; btn.textContent = 'Shop him';

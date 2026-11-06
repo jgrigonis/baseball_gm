@@ -19,7 +19,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from itertools import combinations
 
 from src.league.trades import ai_evaluator
@@ -162,10 +162,31 @@ def shop_offer(
     if it has no deal it would take. blocked: its players who can't go to
     the seller (traded away by the seller this season). The seller judges
     as a person does, with no margin; the AI with its own."""
+    offer = shop_offer_or_why(ai, seller, target, days_left, blocked)
+    return offer if isinstance(offer, ShopOffer) else None
+
+
+# Why an AI team made no shop offer, for the shopping GM: he doesn't help
+# them, every deal it would take adds more salary than its owner allows, or
+# it wants him but nothing it would part with is worth enough to the seller.
+NO_HELP, NO_ROOM, NO_MATCH = "fit", "pay", "price"
+
+
+def shop_offer_or_why(
+    ai: Side,
+    seller: Side,
+    target: Asset,
+    days_left: int,
+    blocked: set[str] = frozenset(),
+) -> ShopOffer | str:
+    """shop_offer, or why there's none (NO_HELP, NO_ROOM or NO_MATCH)."""
     ai_base = ai_evaluator.strengths(ai.see(ai.roster), days_left)
     seller_base = ai_evaluator.strengths(seller.see(seller.roster), days_left)
-    if _verdict(ai, [], [target], days_left, 0.0, ai_base).score <= 0:
-        return None
+    # Whether he'd help at all, before pay: the salary it sends back in a
+    # package counts against his, so the budget is judged package by package.
+    free = replace(ai, pay_room=None, _seen=ai._seen)
+    if _verdict(free, [], [target], days_left, 0.0, ai_base).score <= 0:
+        return NO_HELP
 
     def for_seller(give):
         return _verdict(seller, [target], give, days_left, 0.0, seller_base).score
@@ -189,10 +210,18 @@ def shop_offer(
         packages += [list(p) for p in combinations(givers, 2)]
 
     best: ShopOffer | None = None
+    over_budget = False
     for give in packages:
-        if not _verdict(ai, give, [target], days_left, ai.margin, ai_base).accept:
+        v = _verdict(ai, give, [target], days_left, ai.margin, ai_base)
+        if not v.accept:
+            if v.reason == ai_evaluator.OVER_BUDGET_REASON and not over_budget:
+                over_budget = _verdict(
+                    free, give, [target], days_left, ai.margin, ai_base
+                ).accept
             continue
         score = for_seller(give)
         if best is None or score > best.score:
             best = ShopOffer(give, score)
-    return best
+    if best is not None:
+        return best
+    return NO_ROOM if over_budget else NO_MATCH
