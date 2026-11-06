@@ -10,6 +10,9 @@
     <div class="spacer"></div>
     {# per-tab buttons rendered by JS into these slots #}
     <span id="tab-buttons"></span>
+    <button class="btn btn-secondary" id="rebuild-all-btn" onclick="rebuildAll()"
+            title="Start over on everything: rebuild both batting orders (vs RHP and vs LHP), then the rotation, then auto-assign the bullpen. Nothing is saved until you save."
+            style="margin-left:8px;">Rebuild All</button>
     <button class="btn btn-secondary" id="save-all-btn" onclick="saveAll()"
             style="margin-left:8px;">Save All Lineups</button>
     <a id="schedule-btn" href="/leagues/{{ league_id }}/{% if is_playoffs %}playoffs{% else %}schedule{% endif %}"
@@ -532,6 +535,7 @@ window.showPitchCol    = showPitchCol;
 window.saveBatting     = saveBatting;
 window.saveRotation    = saveRotation;
 window.saveAll         = saveAll;
+window.rebuildAll      = rebuildAll;
 window.saveBullpen     = saveBullpen;
 window.autoFill        = autoFill;
 window.rebuildLineup   = rebuildLineup;
@@ -1767,6 +1771,23 @@ async function saveAll() {
   await saveBatting();
   await saveRotation();
   await saveBullpen();
+}
+
+/* ── Rebuild all ──────────────────────────────────────────────────────────────── */
+// Batting orders (both hands), then the rotation, then the bullpen roles for
+// whoever is left. Like each Rebuild on its own, nothing is saved: the unsaved
+// bars show what changed.
+async function rebuildAll() {
+  const btn = document.getElementById('rebuild-all-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Rebuilding…'; }
+  try {
+    await rebuildLineup();
+    rebuildRotation();
+    autoAssignBullpen();
+    updateScheduleBtn();
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Rebuild All'; }
+  }
 }
 
 /* ── Go to schedule ──────────────────────────────────────────────────────────── */
