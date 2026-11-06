@@ -149,6 +149,7 @@
             <th>ERA</th><th>WHIP</th>
             <th title="Fielding-independent pitching: an ERA from only strikeouts, walks, hit batters and home runs">FIP</th>
             <th title="League ERA over his ERA; 100 is average">ERA+</th>
+            <th title="Wins above replacement (regular season)">WAR</th>
           </tr></thead>
           <tbody>
             {% for s in p.pitching_seasons %}
@@ -160,6 +161,7 @@
               <td class="stat-hi">{{ "%.2f"|format(s.WHIP) }}</td>
               <td>{{ "%.2f"|format(s.FIP) if s.FIP is not none else "—" }}</td>
               <td>{{ s['ERA+'] if s['ERA+'] is not none else "—" }}</td>
+              <td>{{ "%.1f"|format(s.WAR) if s.WAR is not none else "—" }}</td>
             </tr>
             {% endfor %}
             {% if p.pitching_playoff_totals %}{% set t = p.pitching_playoff_totals %}
@@ -171,6 +173,7 @@
               <td>{{ "%.2f"|format(t.WHIP) }}</td>
               <td>{{ "%.2f"|format(t.FIP) if t.FIP is not none else "—" }}</td>
               <td>{{ t['ERA+'] if t['ERA+'] is not none else "—" }}</td>
+              <td>{{ "%.1f"|format(t.WAR) if t.WAR is not none else "—" }}</td>
             </tr>
             {% endif %}
             {% if p.pitching_totals %}{% set t = p.pitching_totals %}
@@ -182,6 +185,7 @@
               <td class="stat-hi">{{ "%.2f"|format(t.WHIP) }}</td>
               <td>{{ "%.2f"|format(t.FIP) if t.FIP is not none else "—" }}</td>
               <td>{{ t['ERA+'] if t['ERA+'] is not none else "—" }}</td>
+              <td>{{ "%.1f"|format(t.WAR) if t.WAR is not none else "—" }}</td>
             </tr>
             {% endif %}
           </tbody>
@@ -201,6 +205,7 @@
             <th>AVG</th><th>OBP</th><th>SLG</th><th>OPS</th>
             <th title="Runs created per plate appearance against the league; 100 is average">wRC+</th>
             <th title="OBP and SLG against the league; 100 is average">OPS+</th>
+            <th title="Wins above replacement, defense included (regular season)">WAR</th>
           </tr></thead>
           <tbody>
             {% for s in p.batting_seasons %}
@@ -214,6 +219,7 @@
               <td class="stat-hi">{{ "%.3f"|format(s.OPS) }}</td>
               <td>{{ s['wRC+'] if s['wRC+'] is not none else "—" }}</td>
               <td>{{ s['OPS+'] if s['OPS+'] is not none else "—" }}</td>
+              <td>{{ "%.1f"|format(s.WAR) if s.WAR is not none else "—" }}</td>
             </tr>
             {% endfor %}
             {% if p.batting_playoff_totals %}{% set t = p.batting_playoff_totals %}
@@ -227,6 +233,7 @@
               <td>{{ "%.3f"|format(t.OPS) }}</td>
               <td>{{ t['wRC+'] if t['wRC+'] is not none else "—" }}</td>
               <td>{{ t['OPS+'] if t['OPS+'] is not none else "—" }}</td>
+              <td>{{ "%.1f"|format(t.WAR) if t.WAR is not none else "—" }}</td>
             </tr>
             {% endif %}
             {% if p.batting_totals %}{% set t = p.batting_totals %}
@@ -240,6 +247,7 @@
               <td class="stat-hi">{{ "%.3f"|format(t.OPS) }}</td>
               <td>{{ t['wRC+'] if t['wRC+'] is not none else "—" }}</td>
               <td>{{ t['OPS+'] if t['OPS+'] is not none else "—" }}</td>
+              <td>{{ "%.1f"|format(t.WAR) if t.WAR is not none else "—" }}</td>
             </tr>
             {% endif %}
           </tbody>

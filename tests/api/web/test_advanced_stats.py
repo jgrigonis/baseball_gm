@@ -121,3 +121,27 @@ def test_career_page_has_plus_stats(client, league):
     assert ">wRC+</th>" in r.text and ">OPS+</th>" in r.text
     r = client.get(f"/leagues/{lid}/players/{league['ace']}/career")
     assert ">FIP</th>" in r.text and ">ERA+</th>" in r.text
+
+
+def test_war_shows_on_the_stats_tab_and_leaders(client, league):
+    lid, sid = league["league"].id, league["season"].id
+    r = client.get(
+        f"/leagues/{lid}/stats?season_id={sid}", headers={"HX-Request": "true"}
+    )
+    assert "label:'WAR'" in r.text and "label:'Def'" in r.text
+    assert '"WAR": ' in r.text and '"WAR": null' not in r.text.split("PITCHERS")[0]
+    r = client.get(
+        f"/leagues/{lid}/leaders?season={sid}", headers={"HX-Request": "true"}
+    )
+    assert ">WAR</span>" in r.text
+
+
+def test_season_values_split_hitters_and_pitchers(db_conn, league):
+    from src.api.services import season_value
+
+    values = season_value.season_values(db_conn, league["season"].id)
+    star, ace = values[league["star"]], values[league["ace"]]
+    assert star["hitter"] and star["WAR"] > 0
+    assert not ace["hitter"] and ace["WAR"] > 0 and ace["Def"] is None
+    assert season_value.pit_war(values, league["star"]) is None
+    assert season_value.bat_war(values, league["ace"]) is None

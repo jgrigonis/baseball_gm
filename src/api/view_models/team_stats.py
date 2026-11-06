@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+from src.api.services import season_value as sval
 from src.api.view_models.player_cards import attach_injuries
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.player_games import PlayerGameRepository
@@ -12,7 +13,7 @@ from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsReposi
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_game_repo import TeamGameRepository
 from src.db.repositories.team_repo import TeamRepository
-from src.stats import advanced, formulas, qualifiers as q
+from src.stats import advanced, formulas, glossary, qualifiers as q
 
 
 def team_stats_context(
@@ -74,7 +75,9 @@ def team_stats_context(
         )
 
         lg = advanced.LeagueRates.of(pss_repo.get_season_totals(selected_season_id))
-        batters, pitchers = stat_lines(rows, qual_games, lg)
+        # WAR is a regular season number.
+        values = {} if is_postseason else sval.season_values(db, selected_season_id)
+        batters, pitchers = stat_lines(rows, qual_games, lg, values)
         fielders = fielding_lines(
             PlayerGameRepository(db).get_team_fielding_lines(
                 selected_season_id, selected_team_id
@@ -110,17 +113,27 @@ def team_stats_context(
         "batters": batters,
         "pitchers": pitchers,
         "fielders": fielders,
+        "stat_tips": {
+            "bat": glossary.BAT,
+            "pit": glossary.PIT,
+            "field": glossary.FIELD,
+        },
     }
 
 
 def stat_lines(
-    rows: list, team_games: int, lg: advanced.LeagueRates | None = None
+    rows: list,
+    team_games: int,
+    lg: advanced.LeagueRates | None = None,
+    values: dict[str, dict] | None = None,
 ) -> tuple[list, list]:
     """Batting and pitching lines from a team's player_season_stats rows,
     each flagged qualified when he's played enough for his rate stats to
     count: 3.1 PA a team game; an inning a team game for a starter, half
     that for a reliever (fewer than half his games started). `lg`, the
-    league's regular season rates, fills in the "+" stats and FIP."""
+    league's regular season rates, fills in the "+" stats and FIP;
+    `values` (season_value.season_values) fills in WAR and Def."""
+    values = values or {}
     min_pa = q.min_pa(team_games)
     batters = []
     pitchers = []
@@ -169,6 +182,8 @@ def stat_lines(
                     "AB_K": ab_k,
                     "HR_AB": hr_ab,
                     **advanced.batting(s, lg),
+                    "Def": sval.defense(values, s["player_id"]),
+                    "WAR": sval.bat_war(values, s["player_id"]),
                     "qualified": qualifies_bat,
                 }
             )
@@ -220,6 +235,7 @@ def stat_lines(
                     "HR9": hr9,
                     "K9": k9,
                     **advanced.pitching(s, lg),
+                    "WAR": sval.pit_war(values, s["player_id"]),
                     "qualified": qualifies_pit,
                 }
             )

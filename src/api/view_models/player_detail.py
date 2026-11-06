@@ -35,6 +35,7 @@ from src.api.services import hr_derby, rookie_game
 from src.api.services import awards as awards_service
 from src.league import all_star
 from src.league import awards as awards_mod
+from src.api.services import season_value as sv
 from src.stats import advanced, formulas
 from src.web.utils import _current_league_date
 
@@ -172,6 +173,7 @@ def player_panel_data(
         if stats_row:
             s = stats_row
             lg = advanced.LeagueRates.of(pss_repo.get_season_totals(current_season_id))
+            values = sv.season_values(db, current_season_id)
             if s.get("pitch_games_played", 0) > 0:
                 outs = s.get("pitch_outs", 0) or 0
                 er = s.get("pitch_earned_runs", 0) or 0
@@ -199,6 +201,8 @@ def player_panel_data(
                     adv = advanced.pitching(s, lg)
                     pitch_stats["FIP"] = adv["FIP"]
                     pitch_stats["ERA+"] = adv["ERA_PLUS"]
+                if sv.pit_war(values, pid) is not None:
+                    pitch_stats["WAR"] = sv.pit_war(values, pid)
                 if s.get("pitch_no_hitters"):
                     pitch_stats["NH"] = s["pitch_no_hitters"]
             if s.get("bat_games_played", 0) > 0:
@@ -235,6 +239,8 @@ def player_panel_data(
                 }
                 if lg:
                     bat_stats["wRC+"] = advanced.batting(s, lg)["wRC_PLUS"]
+                if sv.bat_war(values, pid) is not None:
+                    bat_stats["WAR"] = sv.bat_war(values, pid)
 
     overall_grade = player_overall_grade(status, grades, ratings)
     overall_value = player_overall_value(status, grades, ratings)
@@ -440,7 +446,26 @@ def player_career_data(db, league_id: str, pid: str) -> dict | None:
         total, w = d.pop(f"_{key}_sum", 0), d.pop(f"_{key}_w", 0)
         return round(total / w, ndigits) if w else None
 
-    for r in [dict(x) for x in stat_rows]:
+    stat_rows = [dict(x) for x in stat_rows]
+    # A season's WAR goes on one row: the team he played the most for.
+    war_row: dict[str, int] = {}
+    for i, r in enumerate(stat_rows):
+        if r.get("is_postseason"):
+            continue
+        played = (r.get("bat_games_played") or 0) + (r.get("pitch_games_played") or 0)
+        best = war_row.get(r["season_id"])
+        if best is None or played > (
+            (stat_rows[best].get("bat_games_played") or 0)
+            + (stat_rows[best].get("pitch_games_played") or 0)
+        ):
+            war_row[r["season_id"]] = i
+
+    def _war(i: int, r: dict, side) -> float | None:
+        if war_row.get(r["season_id"]) != i:
+            return None
+        return side(sv.season_values(db, r["season_id"]), pid)
+
+    for i, r in enumerate(stat_rows):
         yr = r["year"]
         is_post = bool(r.get("is_postseason"))
         team = f"{r['team_city']} {r['team_mascot']}"
@@ -476,6 +501,7 @@ def player_career_data(db, league_id: str, pid: str) -> dict | None:
             adv = advanced.pitching(r, _lg(r["season_id"]))
             prow["FIP"] = adv["FIP"]
             prow["ERA+"] = adv["ERA_PLUS"]
+            prow["WAR"] = _war(i, r, sv.pit_war)
             pitching_seasons.append(prow)
             t = p_totals if not is_post else pp_totals
             for k in (
@@ -497,6 +523,8 @@ def player_career_data(db, league_id: str, pid: str) -> dict | None:
             t["_outs"] = t.get("_outs", 0) + outs
             _weigh(t, "FIP", prow["FIP"], outs)
             _weigh(t, "ERA+", prow["ERA+"], outs)
+            if prow["WAR"] is not None:
+                t["_war"] = t.get("_war", 0.0) + prow["WAR"]
 
         if (r.get("bat_games_played") or 0) > 0:
             ab = r.get("bat_ab", 0) or 0
@@ -533,6 +561,7 @@ def player_career_data(db, league_id: str, pid: str) -> dict | None:
             adv = advanced.batting(r, _lg(r["season_id"]))
             brow["wRC+"] = adv["wRC_PLUS"]
             brow["OPS+"] = adv["OPS_PLUS"]
+            brow["WAR"] = _war(i, r, sv.bat_war)
             batting_seasons.append(brow)
             t = b_totals if not is_post else pb_totals
             for k in (
@@ -557,6 +586,8 @@ def player_career_data(db, league_id: str, pid: str) -> dict | None:
             t["_slg_num"] = t.get("_slg_num", 0) + slg_num
             _weigh(t, "wRC+", brow["wRC+"], advanced.pa(r))
             _weigh(t, "OPS+", brow["OPS+"], advanced.pa(r))
+            if brow["WAR"] is not None:
+                t["_war"] = t.get("_war", 0.0) + brow["WAR"]
 
     def _pitch_totals(d: dict) -> dict | None:
         if not d:
@@ -564,7 +595,9 @@ def player_career_data(db, league_id: str, pid: str) -> dict | None:
         outs = d.pop("_outs", 0)
         fip = _weighted(d, "FIP", 2)
         era_plus = _weighted(d, "ERA+", 0)
+        war = d.pop("_war", None)
         return {
+            "WAR": round(war, 1) if war is not None else None,
             **d,
             "FIP": fip,
             "ERA+": int(era_plus) if era_plus is not None else None,
@@ -586,7 +619,9 @@ def player_career_data(db, league_id: str, pid: str) -> dict | None:
         slg = formulas.slugging_pct(slg_num, ab)
         wrc_plus = _weighted(d, "wRC+", 0)
         ops_plus = _weighted(d, "OPS+", 0)
+        war = d.pop("_war", None)
         return {
+            "WAR": round(war, 1) if war is not None else None,
             **d,
             "wRC+": int(wrc_plus) if wrc_plus is not None else None,
             "OPS+": int(ops_plus) if ops_plus is not None else None,

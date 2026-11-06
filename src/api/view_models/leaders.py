@@ -5,10 +5,11 @@
 
 from __future__ import annotations
 
+from src.api.services import season_value as sv
 from src.db.repositories.player_games import PlayerGameRepository
 from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
 from src.db.repositories.season_repo import SeasonRepository
-from src.stats import advanced, formulas, qualifiers as q
+from src.stats import advanced, formulas, glossary, qualifiers as q
 
 # The rookie cards: (pane, label) from the full batting and pitching cards.
 ROOKIE_CATS = [
@@ -50,6 +51,7 @@ def leaders_context(
         bat = pss_repo.get_batting_for_league(league_id, season_id)
         pit = pss_repo.get_pitching_for_league(league_id, season_id)
         lg = advanced.LeagueRates.of(pss_repo.get_season_totals(season_id))
+        attach_values(bat, pit, sv.season_values(db, season_id))
 
         bat_cats = batting_leaders(bat, my_team_id, q.min_pa(team_games), lg)
         pit_cats = pitching_leaders(pit, my_team_id, q.min_outs(team_games), lg)
@@ -64,6 +66,9 @@ def leaders_context(
             team_games,
             {r["player_id"]: r["pitch_outs"] or 0 for r in pit},
         )
+        def_card = defense_runs_card(bat, my_team_id)
+        if def_card:
+            def_cats.insert(0, def_card)
 
     return {
         "leaders_season_id": season_id,
@@ -75,6 +80,39 @@ def leaders_context(
         "rookie_cats": rookie_cats,
         "def_cats": def_cats,
         "rookie_ids": rookie_ids,
+    }
+
+
+def attach_values(bat: list, pit: list, values: dict[str, dict]) -> None:
+    """Each row's WAR (and a hitter's Def) from season_value, as "_war" and
+    "_def", for the cards to pick up."""
+    for r in bat:
+        r["_war"] = sv.bat_war(values, r["player_id"])
+        r["_def"] = sv.defense(values, r["player_id"])
+    for r in pit:
+        r["_war"] = sv.pit_war(values, r["player_id"])
+
+
+def defense_runs_card(bat_rows: list, my_team_id: str | None) -> dict | None:
+    """The top ten in defensive runs, any position."""
+    pool = [r for r in bat_rows if r.get("_def") is not None]
+    if not pool:
+        return None
+    top = sorted(pool, key=lambda r: (-r["_def"], r["player_id"]))[:10]
+    return {
+        "label": "Def runs",
+        "tip": glossary.FIELD["Def runs"],
+        "rows": [
+            {
+                "rank": i,
+                "name": f"{r['first_name']} {r['last_name']}",
+                "team": f"{r['city']} {r['mascot']}",
+                "player_id": r["player_id"],
+                "is_mine": r["team_id"] == my_team_id,
+                "val": f"{r['_def']:+.1f}",
+            }
+            for i, r in enumerate(top, 1)
+        ],
     }
 
 
@@ -200,6 +238,7 @@ def batting_leaders(
                 "wRC+": adv["wRC_PLUS"],
                 "OPS+": adv["OPS_PLUS"],
                 "ISO": adv["ISO"] or 0.0,
+                "WAR": r.get("_war"),
             }
         )
 
@@ -239,7 +278,13 @@ def batting_leaders(
     def bat_card_q(label, key, pool=None, asc=False, fmt=None):
         return bat_card(label, key, pool=pool or qualified, asc=asc, fmt=fmt)
 
+    with_war = [b for b in batters if b["WAR"] is not None]
     bat_cats = [
+        *(
+            [bat_card("WAR", "WAR", pool=with_war, fmt=lambda v: f"{v:.1f}")]
+            if with_war
+            else []
+        ),
         bat_card_q("AVG", "AVG", fmt=lambda v: f"{v:.3f}".lstrip("0")),
         bat_card("HR", "HR", pool=all_bat),
         bat_card("RBI", "RBI", pool=all_bat),
@@ -282,7 +327,7 @@ def batting_leaders(
             fmt=lambda v: f"{v:.2f}",
         ),
     ]
-    return bat_cats
+    return glossary.tag(bat_cats, "bat")
 
 
 def _pitchers(
@@ -327,6 +372,7 @@ def _pitchers(
                 # A 0.00 ERA has no ERA+; it ranks first.
                 "ERA+": adv["ERA_PLUS"] if adv["ERA_PLUS"] is not None else 9999,
                 "K%": adv["K_PCT"] or 0.0,
+                "WAR": r.get("_war"),
             }
         )
     return pitchers
@@ -360,6 +406,10 @@ def _pit_card(pitchers, label, key, pool=None, asc=False, fmt=None):
     return {"label": label, "rows": rows}
 
 
+def _f1(v):
+    return f"{v:.1f}"
+
+
 def _f2(v):
     return f"{v:.2f}"
 
@@ -382,32 +432,37 @@ def pitching_leaders(
     game for starters and relievers alike. FIP and ERA+ need `lg`."""
     pitchers = _pitchers(pit_rows, my_team_id, min_outs, lg)
     q_pit = [p for p in pitchers if p["qualifies"]]
+    with_war = [p for p in pitchers if p["WAR"] is not None]
 
     def card(label, key, pool=None, asc=False, fmt=None):
         return _pit_card(pitchers, label, key, pool, asc, fmt)
 
-    return [
-        card("ERA", "ERA", pool=q_pit, asc=True, fmt=_f2),
-        card("WHIP", "WHIP", pool=q_pit, asc=True, fmt=_f2),
-        *(
-            [
-                card("FIP", "FIP", pool=q_pit, asc=True, fmt=_f2),
-                card("ERA+", "ERA+", pool=q_pit, fmt=_plus),
-            ]
-            if lg
-            else []
-        ),
-        card("W", "W"),
-        card("K", "K"),
-        card("SV", "SV"),
-        card("CG", "CG", pool=[p for p in pitchers if p["CG"]]),
-        card("SHO", "SHO", pool=[p for p in pitchers if p["SHO"]]),
-        card("IP", "IP", pool=q_pit),
-        card("BB/9", "BB/9", pool=q_pit, asc=True, fmt=_f2),
-        card("HR/9", "HR/9", pool=q_pit, asc=True, fmt=_f2),
-        card("K/9", "K/9", pool=q_pit, fmt=_f2),
-        card("K%", "K%", pool=q_pit, fmt=_pct),
-    ]
+    return glossary.tag(
+        [
+            *([card("WAR", "WAR", pool=with_war, fmt=_f1)] if with_war else []),
+            card("ERA", "ERA", pool=q_pit, asc=True, fmt=_f2),
+            card("WHIP", "WHIP", pool=q_pit, asc=True, fmt=_f2),
+            *(
+                [
+                    card("FIP", "FIP", pool=q_pit, asc=True, fmt=_f2),
+                    card("ERA+", "ERA+", pool=q_pit, fmt=_plus),
+                ]
+                if lg
+                else []
+            ),
+            card("W", "W"),
+            card("K", "K"),
+            card("SV", "SV"),
+            card("CG", "CG", pool=[p for p in pitchers if p["CG"]]),
+            card("SHO", "SHO", pool=[p for p in pitchers if p["SHO"]]),
+            card("IP", "IP", pool=q_pit),
+            card("BB/9", "BB/9", pool=q_pit, asc=True, fmt=_f2),
+            card("HR/9", "HR/9", pool=q_pit, asc=True, fmt=_f2),
+            card("K/9", "K/9", pool=q_pit, fmt=_f2),
+            card("K%", "K%", pool=q_pit, fmt=_pct),
+        ],
+        "pit",
+    )
 
 
 def relief_leaders(
@@ -426,15 +481,18 @@ def relief_leaders(
     def card(label, key, pool=None, asc=False, fmt=None):
         return _pit_card(pitchers, label, key, pool, asc, fmt)
 
-    return [
-        card("SV", "SV", pool=[p for p in pitchers if p["SV"]]),
-        card("HLD", "HLD", pool=[p for p in pitchers if p["HLD"]]),
-        card("ERA", "ERA", pool=q_rel, asc=True, fmt=_f2),
-        card("WHIP", "WHIP", pool=q_rel, asc=True, fmt=_f2),
-        *([card("FIP", "FIP", pool=q_rel, asc=True, fmt=_f2)] if lg else []),
-        card("K/9", "K/9", pool=q_rel, fmt=_f2),
-        card("BB/9", "BB/9", pool=q_rel, asc=True, fmt=_f2),
-    ]
+    return glossary.tag(
+        [
+            card("SV", "SV", pool=[p for p in pitchers if p["SV"]]),
+            card("HLD", "HLD", pool=[p for p in pitchers if p["HLD"]]),
+            card("ERA", "ERA", pool=q_rel, asc=True, fmt=_f2),
+            card("WHIP", "WHIP", pool=q_rel, asc=True, fmt=_f2),
+            *([card("FIP", "FIP", pool=q_rel, asc=True, fmt=_f2)] if lg else []),
+            card("K/9", "K/9", pool=q_rel, fmt=_f2),
+            card("BB/9", "BB/9", pool=q_rel, asc=True, fmt=_f2),
+        ],
+        "pit",
+    )
 
 
 def defense_leaders(
@@ -541,4 +599,4 @@ def defense_leaders(
         def_cats.append(
             def_card("P FPCT", "FPCT", p_pool or pitchers, fmt=lambda v: f"{v:.3f}")
         )
-    return def_cats
+    return glossary.tag(def_cats, "field")

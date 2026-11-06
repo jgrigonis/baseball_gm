@@ -13,7 +13,8 @@ The "voters" go by value, a simple wins-above-replacement:
 
   hitters   batting runs above average (wOBA), base stealing, a position
             adjustment (a catcher's or shortstop's bat is worth more than a
-            DH's), and replacement level by plate appearances
+            DH's), defensive runs at his position (the Platinum Glove's,
+            season_defense()), and replacement level by plate appearances
   pitchers  runs saved against a replacement pitcher, half by FIP and half
             by ERA, by innings pitched
 
@@ -188,7 +189,8 @@ def hitter_war(c: dict, lg: League) -> float:
     pos = (c.get("position") or "").lower()
     pos_runs = POS_RUNS.get(pos, 0.0) * _n(c, "pos_starts") / FULL_SEASON
     repl = REPLACEMENT_RUNS_PER_PA * pa(c)
-    return (batting_runs(c, lg) + pos_runs + repl) / RUNS_PER_WIN
+    defense = float(c.get("def_runs") or 0.0)  # from season_defense()
+    return (batting_runs(c, lg) + pos_runs + defense + repl) / RUNS_PER_WIN
 
 
 def pitcher_war(c: dict, lg: League) -> float:
@@ -281,7 +283,9 @@ def regular_awards(
     percentage. Returns one row per award won: award, scope, player_id,
     team_id, value and line."""
     lg = League.of(cands, games)
+    defense = season_defense(cands, games)
     for c in cands:
+        c["def_runs"] = defense.get(c["player_id"], 0.0)
         c["_war"] = war(c, lg)
     out: list[dict] = []
     scopes = sorted({c["scope"] for c in cands})
@@ -590,6 +594,29 @@ def defensive_runs(c: dict, group: list[dict], pos: str, games: int) -> float:
         if lg_tries:
             runs += (cs - (cs + sb) * lg_cs / lg_tries) * PLAT_CS_RUNS
     return runs
+
+
+def season_defense(cands: list[dict], games: int) -> dict[str, float]:
+    """Defensive runs (defensive_runs()) for every hitter at the position
+    he started at most, measured against the league's regulars there (a
+    third of the team's starts, as for the Gold Glove; everyone there when
+    fewer than two qualify). Pitchers aren't scored."""
+    games = max(1, games)
+    by_pos: dict[str, list[dict]] = {}
+    for c in cands:
+        pos = (c.get("position") or "").lower()
+        if pos in FIELD_POSITIONS and is_hitter(c) and _n(c, "pos_starts"):
+            by_pos.setdefault(pos, []).append(c)
+    out = {}
+    for pos, players in by_pos.items():
+        group = [
+            c for c in players if _n(c, "pos_starts") >= GLOVE_STARTS_SHARE * games
+        ]
+        if len(group) < 2:
+            group = players
+        for c in players:
+            out[c["player_id"]] = defensive_runs(c, group, pos, games)
+    return out
 
 
 def gold_gloves(cands: list[dict], games: int) -> list[dict]:
