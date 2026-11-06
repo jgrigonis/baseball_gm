@@ -4,10 +4,10 @@ WAR and defensive runs (Def) for every player in a regular season, for the
 Stats and Leaders tabs, the player panel and the career page.
 
 WAR is the awards voters' wins above replacement (src/league/awards.py:
-batting runs by wOBA, base stealing, a position adjustment and replacement
+batting runs by wOBA, base stealing, a position adjustment, the Platinum
+Glove's defensive runs at the position he started at most and replacement
 level for hitters; a FIP/ERA blend against a replacement pitcher for
-pitchers), plus, for hitters, the Platinum Glove's defensive runs at the
-position he started at most. Def leans on his defense rating there, then
+pitchers). Def leans on his defense rating there, then
 the plays he made, the errors he didn't and (catchers) the runners he
 threw out, against the league's regulars at the position.
 
@@ -62,14 +62,15 @@ def _compute(conn, season_id: str) -> dict[str, dict]:
     games = PlayerSeasonStatsRepository(conn).get_max_games_played(season_id)
     lg = awards.League.of(cands, games)
     defense = awards.season_defense(cands, games)
+    for c in cands:
+        c["def_runs"] = defense.get(c["player_id"], 0.0)
     out = {}
     for c in cands:
         pid = c["player_id"]
         if awards.is_hitter(c):
             d = defense.get(pid)
-            war = awards.hitter_war(c, lg) + (d or 0.0) / awards.RUNS_PER_WIN
             out[pid] = {
-                "WAR": round(war, 1),
+                "WAR": round(awards.hitter_war(c, lg), 1),
                 "Def": round(d, 1) if d is not None else None,
                 "hitter": True,
             }

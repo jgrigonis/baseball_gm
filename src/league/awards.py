@@ -13,7 +13,8 @@ The "voters" go by value, a simple wins-above-replacement:
 
   hitters   batting runs above average (wOBA), base stealing, a position
             adjustment (a catcher's or shortstop's bat is worth more than a
-            DH's), and replacement level by plate appearances
+            DH's), defensive runs at his position (the Platinum Glove's,
+            season_defense()), and replacement level by plate appearances
   pitchers  runs saved against a replacement pitcher, half by FIP and half
             by ERA, by innings pitched
 
@@ -188,7 +189,8 @@ def hitter_war(c: dict, lg: League) -> float:
     pos = (c.get("position") or "").lower()
     pos_runs = POS_RUNS.get(pos, 0.0) * _n(c, "pos_starts") / FULL_SEASON
     repl = REPLACEMENT_RUNS_PER_PA * pa(c)
-    return (batting_runs(c, lg) + pos_runs + repl) / RUNS_PER_WIN
+    defense = float(c.get("def_runs") or 0.0)  # from season_defense()
+    return (batting_runs(c, lg) + pos_runs + defense + repl) / RUNS_PER_WIN
 
 
 def pitcher_war(c: dict, lg: League) -> float:
@@ -281,7 +283,9 @@ def regular_awards(
     percentage. Returns one row per award won: award, scope, player_id,
     team_id, value and line."""
     lg = League.of(cands, games)
+    defense = season_defense(cands, games)
     for c in cands:
+        c["def_runs"] = defense.get(c["player_id"], 0.0)
         c["_war"] = war(c, lg)
     out: list[dict] = []
     scopes = sorted({c["scope"] for c in cands})
