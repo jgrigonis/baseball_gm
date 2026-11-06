@@ -22,6 +22,7 @@ from datetime import date, timedelta
 
 from psycopg.types.json import Jsonb
 
+from src.league import budget as bg
 from src.league import team_pool
 from src.player import contracts as ct
 from src.player import happiness as hp
@@ -137,6 +138,7 @@ class HappinessRepository:
 
         pers = self.personalities(ids)
         contracts = self._contracts(ids, year)
+        first_cap_year = self._first_cap_year()
         records = self._records(season_id, team_ids)
         states = self._states(season_id)
         usage = self._usage(season_id, team_ids, players, as_of)
@@ -179,6 +181,10 @@ class HappinessRepository:
             rank, size = ranks[pid]
             c = contracts.get(pid)
             worth = ct.prime_salary(p["rating"], p["kind"]) * ct.age_factor(p["age"])
+            if c and first_cap_year is not None:
+                # Judged at prices from when he signed: a deal doesn't sour
+                # just because the league's prices grew with the cap.
+                worth *= bg.salary_scale(c["start_year"] - first_cap_year)
             wins, losses = records.get(p["team_id"], (0, 0))
             hist = history.get(p["team_id"])
             sats = {
@@ -367,6 +373,11 @@ class HappinessRepository:
             "SELECT year FROM seasons WHERE id = %s", (season_id,)
         ).fetchone()
         return row["year"] if row else None
+
+    def _first_cap_year(self) -> int | None:
+        from src.db.repositories.budget_repo import BudgetRepository
+
+        return BudgetRepository(self.conn).first_year(self.league_id)
 
     def _contracts(self, ids: list[str], year: int | None) -> dict[str, dict]:
         if year is None:

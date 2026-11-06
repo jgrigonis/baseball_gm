@@ -17,7 +17,8 @@ A light money model, just enough for owners to set budgets and judge profit:
 - The revenue base is scaled so an owner who spends an average share of
   revenue (from about 45% for a miser to 75% for a spender) would spend
   about the cap.
-- **Profit** = revenue minus payroll, luxury tax and fixed costs. Nothing
+- **Profit** = revenue plus any share of the league's luxury tax (teams
+  under the cap split it), minus payroll, luxury tax and fixed costs. Nothing
   carries over between seasons; owners only read it.
 
 Speed Blitz has no budgets, so none of this runs there.
@@ -138,5 +139,7 @@ def fixed_costs(average_revenue: int) -> int:
     return _round(average_revenue * FIXED_COSTS)
 
 
-def profit(revenue: int, payroll: int, luxury_tax: int, costs: int) -> int:
-    return revenue - payroll - luxury_tax - costs
+def profit(
+    revenue: int, payroll: int, luxury_tax: int, costs: int, tax_share: int = 0
+) -> int:
+    return revenue + tax_share - payroll - luxury_tax - costs

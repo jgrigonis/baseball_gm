@@ -3,6 +3,7 @@
 (src/league/budget.py, src/db/repositories/budget_repo.py), and the
 warnings."""
 
+import random
 from types import SimpleNamespace
 
 import pytest
@@ -14,7 +15,10 @@ from src.api.main import app
 from src.api.services import free_agents
 from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.contract_repo import ContractRepository
+from src.db.repositories.player_repo import PlayerRepository
 from src.league import budget as bg
+from src.player import contracts as ct
+from src.player.player_value import role_rating
 
 M = 1_000_000
 
@@ -257,3 +261,59 @@ def test_the_season_end_records_fans_and_profit(lg):
     assert x.budgets.cap(x.league.id, 2027) == bg.grown(
         x.budgets.cap(x.league.id, 2026)
     )
+
+
+# ── Prices follow the cap, the tax is shared (plans/budget.md Q2, Q6) ─────────
+
+
+def test_prices_grow_in_step_with_the_cap():
+    assert bg.salary_scale(0) == 1.0
+    assert bg.salary_scale(-2) == 1.0
+    assert bg.salary_scale(2) == pytest.approx(1.1025)
+
+
+def test_the_tax_is_split_among_teams_under_the_cap():
+    pays = {"rich": 180 * M, "mid": 165 * M, "cheap": 150 * M, "frugal": 140 * M}
+    # Tax: 10M + 2.5M = 12.5M, split between the two under the cap.
+    assert bg.tax_shares(pays, 160 * M) == {"cheap": 6_200_000, "frugal": 6_200_000}
+    assert bg.tax_shares({"a": 150 * M}, 160 * M) == {}
+    assert bg.tax_shares({"a": 170 * M}, 160 * M) == {}
+
+
+def test_salary_scale_counts_from_the_leagues_first_cap(lg):
+    x = lg()
+    assert x.budgets.salary_scale(x.league.id, 2026) == 1.0  # no cap yet
+    x.budgets.for_league(x.league.id, 2026)
+    assert x.budgets.salary_scale(x.league.id, 2026) == 1.0
+    assert x.budgets.salary_scale(x.league.id, 2028) == pytest.approx(1.1025)
+    blitz = lg(mode="speed_blitz")
+    assert blitz.budgets.salary_scale(blitz.league.id, 2030) == 1.0
+
+
+def test_new_deals_later_in_a_league_cost_more(lg):
+    x = lg()
+    x.budgets.for_league(x.league.id, 2026)
+    pid = x.factory.rated_player(x.mine, x.league, level=75).id
+    x.contracts.sign_unsigned(x.league.id, 2029)
+    record = PlayerRepository(x.db).look_up(pid)
+    kind = "pitcher" if record.is_pitcher() else "hitter"
+    flat = ct.standard_deal(
+        record.age, role_rating(record), kind, random.Random(f"contract:{pid}:2029")
+    )
+    later = x.contracts.active(pid, 2029)["salary"]
+    assert abs(later - flat.salary * 1.05**3) <= 60_000
+
+
+def test_teams_under_the_cap_get_a_share_of_the_tax(lg):
+    x = lg()
+    x.budgets.for_league(x.league.id, 2026)
+    mine = x.contracts.payroll(x.mine.id, 2026)
+    theirs = x.contracts.payroll(x.theirs.id, 2026)
+    assert mine > theirs
+    cap = (mine + theirs) // 2
+    x.db.execute("UPDATE team_budgets SET cap = %s", (cap,))
+    taxes = x.budgets.assess(x.league.id, 2026)
+    money = x.budgets.finances(x.league.id, 2026)
+    assert taxes[x.mine.id] > 0 and money[x.mine.id]["tax_share"] == 0
+    share = money[x.theirs.id]["tax_share"]
+    assert abs(share - taxes[x.mine.id]) <= bg.CAP_ROUNDING // 2

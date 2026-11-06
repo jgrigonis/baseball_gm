@@ -45,12 +45,18 @@ class FreeAgentError(Exception):
     """A release or signing that can't happen, with the reason to show."""
 
 
-def asking_deal(player, year: int) -> ct.Deal:
+def asking_deal(player, year: int, scale: float = 1.0) -> ct.Deal:
     """What a free agent asks for: a standard deal at his value. The same
-    all season, so the price doesn't change each time you look."""
+    all season, so the price doesn't change each time you look. scale is
+    the league's price_scale for the season."""
     kind = "pitcher" if player.is_pitcher() else "hitter"
     rng = random.Random(f"ask:{player.id}:{year}")
-    return ct.standard_deal(player.age, role_rating(player), kind, rng)
+    return ct.standard_deal(player.age, role_rating(player), kind, rng, scale)
+
+
+def price_scale(conn, league_id: str, year: int) -> float:
+    """How far contract prices have grown with the league's cap."""
+    return BudgetRepository(conn).salary_scale(league_id, year)
 
 
 def _context(conn, league_id: str) -> tuple[str, int]:
@@ -112,7 +118,7 @@ def sign_preview(conn, league_id: str, team_id: str, player_id: str) -> dict:
         or PlayerStatusRepository(conn).get_status(player_id) != "free_agent"
     ):
         raise FreeAgentError("He isn't a free agent.")
-    deal = asking_deal(player, year)
+    deal = asking_deal(player, year, price_scale(conn, league_id, year))
     return {
         "salary_text": ct.format_salary(deal.salary),
         "years": deal.years,
@@ -147,7 +153,7 @@ def sign(conn, league_id: str, team_id: str, player_id: str) -> dict:
             raise FreeAgentError(
                 f"Your minors are full ({MINORS_LIMIT}). Release someone first."
             )
-        deal = asking_deal(player, year)
+        deal = asking_deal(player, year, price_scale(conn, league_id, year))
         team_repo = TeamRepository(conn)
         team_repo.add_player(team_id, player_id)
         status_repo.set_status(player_id, "minors")

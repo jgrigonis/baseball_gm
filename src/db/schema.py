@@ -1491,7 +1491,8 @@ CREATE TABLE IF NOT EXISTS team_budgets (     -- migration 074 (src/league/budge
     revenue     BIGINT,                       -- regular-season revenue the owner set the budget from (migration 076)
     playoff_revenue BIGINT,                   -- home playoff gate, set when the season ends
     payroll     BIGINT,                       -- final payroll, set when the season ends
-    profit      BIGINT,                       -- revenue + gate - payroll - tax - fixed costs
+    profit      BIGINT,                       -- revenue + gate + tax share - payroll - tax - fixed costs
+    tax_share   BIGINT,                       -- its cut of the league's luxury tax, if under the cap (migration 081)
     fans_before INTEGER,                      -- fan interest coming into the season (0-100)
     fans_after  INTEGER,                      -- and after it
     PRIMARY KEY (league_id, team_id, year)
