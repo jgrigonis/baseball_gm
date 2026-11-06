@@ -1,0 +1,243 @@
+# tests/api/test_offseason_fa.py
+"""Offseason free agency: the re-sign window, bids during the draft, and
+players picking a bid (src/api/services/offseason_fa.py)."""
+
+from types import SimpleNamespace
+
+import pytest
+
+from src.api.services import ai_free_agents, free_agents, offseason_fa
+from src.api.services.free_agents import FreeAgentError
+from src.api.services.offseason_fa import OffseasonFAError
+from src.db.repositories.budget_repo import BudgetRepository
+from src.db.repositories.contract_repo import ContractRepository
+from src.db.repositories.player_repo import PlayerRepository
+from src.db.repositories.player_status_repo import PlayerStatusRepository
+from src.player import contracts as ct
+
+
+@pytest.fixture
+def lg(db_conn, factory):
+    league = factory.league(state="offseason", mode="blitz")
+    season = factory.season(year=2026)
+    factory.league_season(league, season)
+    mine = factory.team(city="My", mascot="Team")
+    ai = factory.team(city="Ai", mascot="Club")
+    other = factory.team(city="Other", mascot="Club")
+    for t in (mine, ai, other):
+        factory.league_season_team(league, season, t)
+    factory.gm(team=mine, league=league, is_ai=False)
+    factory.gm(team=ai, league=league, is_ai=True)
+    factory.gm(team=other, league=league, is_ai=True)
+    BudgetRepository(db_conn).for_league(league.id, 2026)
+    return SimpleNamespace(
+        db=db_conn,
+        factory=factory,
+        league=league,
+        season=season,
+        mine=mine,
+        ai=ai,
+        other=other,
+        contracts=ContractRepository(db_conn),
+        status=PlayerStatusRepository(db_conn),
+    )
+
+
+@pytest.fixture(autouse=True)
+def roomy_owners(monkeypatch):
+    monkeypatch.setattr(BudgetRepository, "refusal", lambda *a, **k: None)
+    monkeypatch.setattr(ai_free_agents, "_budget_room", lambda *a: float("inf"))
+
+
+def _expiring(lg, team, start, years, level=60, status="40man"):
+    """A player whose deal (start..start+years-1) ends with 2026."""
+    pid = lg.factory.rated_player(team, lg.league, level=level, status=status).id
+    lg.contracts.insert_deal(
+        pid, lg.league.id, team.id, ct.Deal(5_000_000, years, "standard"), start
+    )
+    return pid
+
+
+def _on(lg, team):
+    return PlayerRepository(lg.db).get_player_ids_from_team_players(team.id)
+
+
+def _set_state(lg, state):
+    lg.db.execute("UPDATE leagues SET state = %s WHERE id = %s", (state, lg.league.id))
+
+
+# ── The re-sign window ────────────────────────────────────────────────────────
+
+
+def test_veterans_go_to_market_and_others_dont(lg):
+    vet = _expiring(lg, lg.mine, 2021, 6)  # 6 seasons
+    young = _expiring(lg, lg.mine, 2024, 3)  # 3 seasons
+    rows = {r["player_id"]: r for r in offseason_fa.expiring(lg.db, lg.league.id, 2026)}
+    assert rows[vet]["market"] == "veteran"
+    assert rows[young]["market"] is None
+    # His new deal is priced from next season.
+    assert rows[vet]["deal"].salary > 0
+
+
+def test_a_deal_that_runs_on_isnt_expiring(lg):
+    _expiring(lg, lg.mine, 2026, 3)
+    assert offseason_fa.expiring(lg.db, lg.league.id, 2026) == []
+
+
+def test_closing_the_window_follows_the_gms_calls(lg):
+    vet = _expiring(lg, lg.mine, 2020, 7)
+    kept_vet = _expiring(lg, lg.mine, 2020, 7)
+    young = _expiring(lg, lg.mine, 2024, 3)
+    cut = _expiring(lg, lg.mine, 2024, 3)
+    offseason_fa.choose(lg.db, lg.league.id, lg.mine.id, kept_vet, "resign")
+    offseason_fa.choose(lg.db, lg.league.id, lg.mine.id, cut, "let_go")
+
+    out = offseason_fa.close_window(lg.db, lg.league.id)
+
+    assert out == {"resigned": 1, "to_market": 2}
+    assert lg.status.get_status(vet) == "free_agent" and vet not in _on(lg, lg.mine)
+    assert lg.status.get_status(cut) == "free_agent"
+    new = lg.contracts.active(kept_vet, 2027)
+    assert new["start_year"] == 2027 and new["guaranteed"]
+    # The rest re-sign after the draft as before: nothing yet.
+    assert young in _on(lg, lg.mine) and lg.contracts.active(young, 2027) is None
+
+
+def test_ai_teams_keep_their_40_man_vets_they_can_afford(lg, monkeypatch):
+    kept = _expiring(lg, lg.ai, 2020, 7)
+    prospect = _expiring(lg, lg.ai, 2020, 7, status="minors")
+    offseason_fa.close_window(lg.db, lg.league.id)
+    assert lg.contracts.active(kept, 2027) is not None
+    assert lg.status.get_status(prospect) == "free_agent"
+
+
+def test_ai_teams_let_vets_go_without_budget_room(lg, monkeypatch):
+    monkeypatch.setattr(ai_free_agents, "_budget_room", lambda *a: 0)
+    pid = _expiring(lg, lg.ai, 2020, 7, level=70)
+    offseason_fa.close_window(lg.db, lg.league.id)
+    assert lg.status.get_status(pid) == "free_agent"
+
+
+def test_choices_only_in_the_offseason(lg):
+    pid = _expiring(lg, lg.mine, 2024, 3)
+    _set_state(lg, "draft")
+    with pytest.raises(OffseasonFAError):
+        offseason_fa.choose(lg.db, lg.league.id, lg.mine.id, pid, "resign")
+
+
+def test_you_cant_decide_for_another_teams_player(lg):
+    pid = _expiring(lg, lg.ai, 2024, 3)
+    with pytest.raises(OffseasonFAError):
+        offseason_fa.choose(lg.db, lg.league.id, lg.mine.id, pid, "let_go")
+
+
+# ── Bidding ───────────────────────────────────────────────────────────────────
+
+
+def _free_agent(lg, level=60, **kw):
+    pid = lg.factory.rated_player(
+        lg.mine, lg.league, level=level, status="free_agent", **kw
+    ).id
+    lg.db.execute("DELETE FROM team_players WHERE player_id = %s", (pid,))
+    return pid
+
+
+def _ask(lg, pid):
+    p = PlayerRepository(lg.db).look_up(pid)
+    return offseason_fa.asking(lg.db, lg.league.id, p, 2026)
+
+
+def test_free_agents_take_bids_during_the_draft(lg):
+    _set_state(lg, "draft")
+    pid = _free_agent(lg)
+    with pytest.raises(FreeAgentError, match="bids"):
+        free_agents.sign(lg.db, lg.league.id, lg.mine.id, pid)
+    offseason_fa.place_bid(lg.db, lg.league.id, lg.mine.id, pid, 3_000_000, 2)
+    preview = offseason_fa.bid_preview(lg.db, lg.league.id, lg.mine.id, pid)
+    assert preview["bid"] == {"salary": 3_000_000, "years": 2}
+    assert preview["bids"] == 1
+    offseason_fa.withdraw_bid(lg.db, lg.league.id, lg.mine.id, pid)
+    assert offseason_fa.bid_counts(lg.db, lg.league.id, 2026) == {}
+
+
+def test_bids_need_the_draft_and_sane_terms(lg):
+    pid = _free_agent(lg)
+    with pytest.raises(OffseasonFAError, match="draft"):
+        offseason_fa.place_bid(lg.db, lg.league.id, lg.mine.id, pid, 3_000_000, 2)
+    _set_state(lg, "draft")
+    with pytest.raises(OffseasonFAError, match="seasons"):
+        offseason_fa.place_bid(lg.db, lg.league.id, lg.mine.id, pid, 3_000_000, 9)
+    with pytest.raises(OffseasonFAError, match="at least"):
+        offseason_fa.place_bid(lg.db, lg.league.id, lg.mine.id, pid, 1000, 2)
+
+
+def test_he_takes_the_better_money_when_fit_is_even(lg, monkeypatch):
+    monkeypatch.setattr(offseason_fa, "_ai_bids", lambda *a: 0)
+    monkeypatch.setattr(offseason_fa, "team_fit_for", lambda *a: (0.0, 0.5))
+    _set_state(lg, "draft")
+    pid = _free_agent(lg)
+    ask = _ask(lg, pid).salary
+    offseason_fa.place_bid(lg.db, lg.league.id, lg.mine.id, pid, ask, 2)
+    offseason_fa.place_bid(lg.db, lg.league.id, lg.ai.id, pid, int(ask * 1.2), 2)
+
+    signed = offseason_fa.settle(lg.db, lg.league.id)
+
+    assert [(s["player_id"], s["team_id"]) for s in signed] == [(pid, lg.ai.id)]
+    deal = lg.contracts.active(pid, 2026)
+    assert (deal["team_id"], deal["salary"], deal["years"]) == (
+        lg.ai.id,
+        int(ask * 1.2),
+        2,
+    )
+    assert deal["guaranteed"] and lg.status.get_status(pid) == "minors"
+    assert offseason_fa.bid_counts(lg.db, lg.league.id, 2026) == {}
+
+
+def test_a_good_fit_beats_a_little_more_money(lg, monkeypatch):
+    monkeypatch.setattr(offseason_fa, "_ai_bids", lambda *a: 0)
+    _set_state(lg, "draft")
+    pid = _free_agent(lg)
+    fit = {lg.mine.id: (1.0, 1.0), lg.ai.id: (-0.5, 1.0)}
+    monkeypatch.setattr(
+        offseason_fa, "team_fit_for", lambda person, p, home, team: team["fit"]
+    )
+    real = offseason_fa._fits
+
+    def fits(conn, league_id, season_id, year, team_ids):
+        out = real(conn, league_id, season_id, year, team_ids)
+        for t in out:
+            out[t]["fit"] = fit[t]
+        return out
+
+    monkeypatch.setattr(offseason_fa, "_fits", fits)
+    ask = _ask(lg, pid).salary
+    offseason_fa.place_bid(lg.db, lg.league.id, lg.mine.id, pid, ask, 2)
+    offseason_fa.place_bid(lg.db, lg.league.id, lg.ai.id, pid, int(ask * 1.1), 2)
+    signed = offseason_fa.settle(lg.db, lg.league.id)
+    assert signed[0]["team_id"] == lg.mine.id
+
+
+def test_a_lowball_bid_is_turned_down(lg, monkeypatch):
+    monkeypatch.setattr(offseason_fa, "_ai_bids", lambda *a: 0)
+    _set_state(lg, "draft")
+    pid = _free_agent(lg, level=70)
+    ask = _ask(lg, pid).salary
+    offseason_fa.place_bid(lg.db, lg.league.id, lg.mine.id, pid, int(ask * 0.5), 3)
+    assert offseason_fa.settle(lg.db, lg.league.id) == []
+    assert lg.status.get_status(pid) == "free_agent"
+
+
+def test_ai_teams_bid_on_free_agents_who_fill_holes(lg):
+    _set_state(lg, "draft")
+    lg.factory.rated_player(lg.ai, lg.league, level=40)
+    pid = _free_agent(lg, level=75, pitcher=True)
+    signed = offseason_fa.settle(lg.db, lg.league.id)
+    assert pid in {s["player_id"] for s in signed}
+    assert lg.contracts.active(pid, 2026)["team_id"] in (lg.ai.id, lg.other.id)
+
+
+def test_older_players_value_years_more():
+    ask = ct.Deal(10_000_000, 2, "standard")
+    young = offseason_fa.bid_value(10_000_000, 5, ask, 26, 0, 0) - 1
+    old = offseason_fa.bid_value(10_000_000, 5, ask, 33, 0, 0) - 1
+    assert old > young > 0

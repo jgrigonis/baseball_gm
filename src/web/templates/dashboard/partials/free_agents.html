@@ -39,6 +39,21 @@
 </div>
 
 <div class="tab-body">
+  {% if expiring %}
+  <div class="fa-section-title">Your expiring deals</div>
+  <div class="fa-note">
+    These deals end with this season. Veterans ({{ market_seasons }}+ seasons) and unhappy
+    players go to free agency unless you re-sign them now. The rest re-sign after the
+    draft unless you let them go. Either way the price is the one shown.
+  </div>
+  <div class="fa-list card" id="fa-expiring" style="margin-bottom:16px;"></div>
+  {% endif %}
+  {% if bidding %}
+  <div class="fa-note fa-open">
+    Free agency is open. Bid a salary and a number of seasons; each player picks one bid
+    when the preseason starts, weighing the money and how well the team suits him.
+  </div>
+  {% endif %}
   {% if not players %}
   <div class="fa-empty">
     No free agents yet. Players land here when a team releases them, when
@@ -78,11 +93,27 @@
 .fa-claim { font-size: 10px; padding: 4px 10px; border-color: var(--amber); color: var(--amber); }
 .fa-claimed { font-size: 10px; padding: 4px 10px; border-color: var(--green); color: var(--green); background: var(--green-dim); }
 .fa-waiver { color: var(--amber); }
+.fa-section-title { font-family: var(--font-sans); font-weight: 700; font-size: 14px; color: var(--text-hi); margin: 2px 0 4px; }
+.fa-note { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); line-height: 1.5; margin: 0 0 8px; max-width: 640px; }
+.fa-open { color: var(--amber); }
+.fa-fate { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); text-align: right; }
+.fa-fate.go { color: var(--red); }
+.fa-fate.resign { color: var(--green); }
+.fa-choice { display: flex; border: 1px solid var(--border); }
+.fa-choice button { font-family: var(--font-mono); font-size: 10px; padding: 4px 9px; background: var(--bg-2); border: none; border-right: 1px solid var(--border); color: var(--text-dim); cursor: pointer; }
+.fa-choice button:last-child { border-right: none; }
+.fa-choice button.on.resign { color: var(--green); background: var(--green-dim); }
+.fa-choice button.on.go { color: var(--red); background: var(--red-dim); }
+.fa-bids { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); }
 .fa-empty { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); padding: 12px 0; max-width: 520px; line-height: 1.5; }
 @media (max-width: 700px) {
   .fa-row { grid-template-columns: 26px 34px minmax(0, 1fr) auto; padding: 8px; }
   .fa-right { flex-direction: column; align-items: flex-end; gap: 4px; }
   .fa-sign, .fa-claim, .fa-claimed { font-size: 11px; padding: 6px 11px; }
+  .fa-choice button { font-size: 11px; padding: 6px 10px; }
+  .fa-exp .fa-right { grid-column: 1 / -1; flex-direction: row; justify-content: space-between; align-items: center; margin-top: 6px; }
+  .fa-exp .fa-ask { text-align: left; }
+  .fa-exp .fa-fate { text-align: left; }
   #fa-q { width: 100% !important; }
 }
 </style>
@@ -91,6 +122,8 @@
 (function () {
 const FA = {{ players | tojson }};
 const CAN_SIGN = {{ 'true' if can_sign else 'false' }};
+const BIDDING = {{ 'true' if bidding else 'false' }};
+const EXPIRING = {{ expiring | tojson }};
 let faTypeVal = '';
 
 function shown() {
@@ -117,6 +150,12 @@ function row(p) {
   const years = p.ask_years ? `${p.ask_years} yr${p.ask_years === 1 ? '' : 's'}${w ? ' left' : ''}` : '';
   let sign = CAN_SIGN && p.salary_text
     ? `<button class="btn btn-secondary fa-sign" title="Sign him at his asking price">Sign</button>` : '';
+  if (BIDDING && CAN_SIGN && p.salary_text && !w) {
+    sign = p.my_bid
+      ? `<button class="btn btn-secondary fa-claimed fa-bid" title="Your bid. Click to change it.">Bid ${p.my_bid.salary_text} · ${p.my_bid.years}y</button>`
+      : `<button class="btn btn-secondary fa-sign fa-bid" title="Make him an offer">Bid</button>`;
+  }
+  if (BIDDING && p.bids) trail.push(`<span class="fa-bids" title="Teams that have bid for him">${p.bids} bid${p.bids === 1 ? '' : 's'}</span>`);
   if (w) {
     trail.unshift(`<span class="fa-waiver" title="Another team can claim him and take over his deal">On waivers · ${w.clears_text.replace('Clears', 'clears')}</span>`);
     sign = !CAN_SIGN || w.mine ? ''
@@ -137,6 +176,7 @@ function row(p) {
   el.addEventListener('click', e => {
     if (e.target.closest('.fa-claim')) { claimWaiver(p.player_id, `${p.first_name} ${p.last_name}`); return; }
     if (e.target.closest('.fa-claimed')) { withdrawClaim(p.player_id); return; }
+    if (e.target.closest('.fa-bid')) { bidFreeAgent(p.player_id, `${p.first_name} ${p.last_name}`); return; }
     if (e.target.closest('.fa-sign')) {
       signFreeAgent(p.player_id, `${p.first_name} ${p.last_name}`, p.salary_text, p.ask_years);
       return;
@@ -145,6 +185,49 @@ function row(p) {
   });
   return el;
 }
+
+const FATE = {
+  resign: 'Re-signing',
+  go: 'Going to free agency',
+  auto: 'Re-signs after the draft',
+};
+function expiringRow(p) {
+  const el = document.createElement('div');
+  el.className = 'fa-row fa-exp';
+  const isPitcher = p.player_type === 'pitcher';
+  const trail = [p.position || '?', `Age ${p.age}`, `${p.seasons} season${p.seasons === 1 ? '' : 's'}`];
+  if (p.market === 'veteran') trail.push(`<span class="fa-waiver" title="${p.seasons} seasons under contract: he can test free agency">Free agent if not re-signed</span>`);
+  if (p.market === 'unhappy') trail.push(`<span class="fa-waiver" title="He's unhappy here and will test free agency">Unhappy · free agent if not re-signed</span>`);
+  const on = c => (p.fate === c ? ` on ${c}` : '');
+  el.innerHTML = `
+    <span class="${gradeClass(p.overall)} lu-grade">${p.overall}</span>
+    ${faceImgHtml(p, false)}
+    <div style="min-width:0;">
+      <div class="lu-name">${p.first_name} ${p.last_name}${nameTrailHtml(p, trail, '')}</div>
+      ${isPitcher ? `<div class="lu-skills">${pitcherGradesHtml(p)}</div>` : hitterGradesHtml(p, null)}
+    </div>
+    <div class="fa-right">
+      <div class="fa-ask" title="His new deal from next season (now ${p.old_salary_text})">${p.salary_text}<small>${p.years} yr${p.years === 1 ? '' : 's'}</small>
+        <div class="fa-fate ${p.fate}">${FATE[p.fate]}</div></div>
+      <div class="fa-choice">
+        <button class="resign${on('resign')}" data-c="resign" title="Re-sign him now at this price">Re-sign</button>
+        <button class="go${on('go')}" data-c="let_go" title="Let him go to free agency">Let go</button>
+      </div>
+    </div>`;
+  el.addEventListener('click', e => {
+    const b = e.target.closest('.fa-choice button');
+    if (b) {
+      // Pressing the call already made takes it back.
+      const c = b.dataset.c;
+      expiringChoice(p.player_id, p.choice === c ? null : c);
+      return;
+    }
+    openPlayerPanel(p.player_id);
+  });
+  return el;
+}
+const exBox = document.getElementById('fa-expiring');
+if (exBox) exBox.replaceChildren(...EXPIRING.map(expiringRow));
 
 function faRender() {
   const box = document.getElementById('fa-list');

@@ -7,13 +7,15 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse
+from pydantic import BaseModel
 
 from src.api.dependencies import DB, GM, ActiveLeague, GMOrViewer, IsHTMX, User
-from src.api.services import free_agents, waivers
+from src.api.services import free_agents, offseason_fa, waivers
 from src.api.view_models.player_cards import roster_card
 from src.db.locks import league_lock
 from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.contract_repo import ContractRepository
+from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.team_repo import TeamRepository
@@ -90,9 +92,39 @@ def free_agents_tab(
         card["last_team"] = names.get(last) if last else None
         players.append(card)
 
+    # Offseason free agency (src/api/services/offseason_fa.py): bids during
+    # the draft, and the GM's expiring deals in the offseason.
+    state = ctx.get("league_state")
+    ctx["bidding"] = state == "draft"
+    if ctx["bidding"] and year is not None:
+        counts = offseason_fa.bid_counts(db, league_id, year)
+        mine = offseason_fa.bids_by(db, league_id, team_id, year) if team_id else {}
+        for card in players:
+            pid = card["player_id"]
+            card["bids"] = counts.get(pid, 0)
+            b = mine.get(pid)
+            if b:
+                card["my_bid"] = {
+                    "salary_text": format_salary(b["salary"]),
+                    "years": b["years"],
+                }
+    ctx["expiring"] = []
+    if state == "offseason" and team_id and not ctx.get("is_viewer"):
+        for e in offseason_fa.expiring_view(db, league_id, team_id):
+            row = player_repo.get_with_skills(e["player_id"])
+            if not row:
+                continue
+            row["status"] = e["status"]
+            card = roster_card(row)
+            card["face_url"] = face_url(row["id"], card.get("age"), None, None)
+            card.update(e)
+            ctx["expiring"].append(card)
+        ctx["expiring"].sort(key=lambda c: -c.get("overall_score", -1.0))
+
     ctx["players"] = players
     ctx["pool_size"] = len(rows)
     ctx["max_shown"] = MAX_SHOWN
+    ctx["market_seasons"] = offseason_fa.MARKET_SEASONS
     ctx["minors_limit"] = MINORS_LIMIT
     ctx["waiver_count"] = len(on_waivers)
     ctx["can_sign"] = bool(team_id) and not ctx.get("is_viewer")
@@ -107,7 +139,14 @@ def free_agents_tab(
 
 @router.get("/leagues/{league_id}/free-agents/{player_id}/sign")
 def sign_preview(league_id: str, player_id: str, db: DB, gm: GM):
-    """His asking deal and any over-budget warning, for the confirm."""
+    """His asking deal and any over-budget warning, for the confirm. During
+    the draft, what a bid needs instead (offseason_fa.py)."""
+    if (LeagueRepository(db).get_by_id(league_id) or {}).get("state") == "draft":
+        try:
+            result = offseason_fa.bid_preview(db, league_id, gm["team_id"], player_id)
+        except offseason_fa.OffseasonFAError as e:
+            return JSONResponse({"detail": str(e)}, status_code=422)
+        return JSONResponse({"bidding": True, **result})
     try:
         result = free_agents.sign_preview(db, league_id, gm["team_id"], player_id)
     except free_agents.FreeAgentError as e:
@@ -185,5 +224,55 @@ def release_player(
     try:
         result = free_agents.release(db, league_id, gm["team_id"], player_id)
     except free_agents.FreeAgentError as e:
+        return JSONResponse({"detail": str(e)}, status_code=422)
+    return JSONResponse(result)
+
+
+# ── Offseason free agency (src/api/services/offseason_fa.py) ─────────────────
+
+
+class BidBody(BaseModel):
+    salary: int
+    years: int
+
+
+@router.post("/leagues/{league_id}/free-agents/{player_id}/bid")
+def place_bid(
+    league_id: str, player_id: str, body: BidBody, db: DB, gm: GM, _active: ActiveLeague
+):
+    try:
+        result = offseason_fa.place_bid(
+            db, league_id, gm["team_id"], player_id, body.salary, body.years
+        )
+    except offseason_fa.OffseasonFAError as e:
+        return JSONResponse({"detail": str(e)}, status_code=422)
+    return JSONResponse(result)
+
+
+@router.post("/leagues/{league_id}/free-agents/{player_id}/bid/withdraw")
+def withdraw_bid(league_id: str, player_id: str, db: DB, gm: GM, _active: ActiveLeague):
+    offseason_fa.withdraw_bid(db, league_id, gm["team_id"], player_id)
+    return JSONResponse({"ok": True})
+
+
+class ChoiceBody(BaseModel):
+    choice: str | None = None
+
+
+@router.post("/leagues/{league_id}/players/{player_id}/expiring")
+def expiring_choice(
+    league_id: str,
+    player_id: str,
+    body: ChoiceBody,
+    db: DB,
+    gm: GM,
+    _active: ActiveLeague,
+):
+    """Re-sign an expiring player now, let him go, or undo the call."""
+    try:
+        result = offseason_fa.choose(
+            db, league_id, gm["team_id"], player_id, body.choice
+        )
+    except offseason_fa.OffseasonFAError as e:
         return JSONResponse({"detail": str(e)}, status_code=422)
     return JSONResponse(result)

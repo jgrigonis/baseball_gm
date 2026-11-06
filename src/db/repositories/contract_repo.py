@@ -393,15 +393,13 @@ class ContractRepository:
             p = records.get(pid)
             if p is None:
                 continue
-            kind = "pitcher" if p.is_pitcher() else "hitter"
-            deal = ct.standard_deal(p.age, role_rating(p), kind, rng, scale(year))
             start = year
             if not r["signed_before"]:
+                kind = "pitcher" if p.is_pitcher() else "hitter"
+                deal = ct.standard_deal(p.age, role_rating(p), kind, rng, scale(year))
                 start -= ct.years_already_served(deal.years, rng)
             else:
-                deal, wants_out = self._mood_terms(
-                    happy, pid, r["team_id"], deal, scale(year)
-                )
+                deal, wants_out = self.renewal(p, year, happy, scale(year))
                 if wants_out:
                     unhappy_out.append((pid, r["team_id"]))
             self._insert(pid, league_id, r["team_id"], deal, start)
@@ -410,6 +408,37 @@ class ContractRepository:
         # Those already on a 40-man have guaranteed deals.
         self.guarantee([r["player_id"] for r in rows])
         return signed
+
+    def renewal(self, p, year: int, happy, scale: float = 1.0) -> tuple[ct.Deal, bool]:
+        """The new deal a player whose last one ran out signs from `year`,
+        his mood worked in, and whether he wants a trade. The same price in
+        the offseason's re-sign window as when he re-signs after the draft
+        (src/api/services/offseason_fa.py). `happy` is a HappinessRepository
+        that has had prepare_resign for him."""
+        rng = random.Random(f"contract:{p.id}:{year}")
+        kind = "pitcher" if p.is_pitcher() else "hitter"
+        deal = ct.standard_deal(p.age, role_rating(p), kind, rng, scale)
+        return self._mood_terms(happy, p.id, None, deal, scale)
+
+    def seasons_signed(self, player_ids, year: int) -> dict[str, int]:
+        """Seasons each player has played under a deal in this league,
+        through `year`: from the start of his first one."""
+        ids = list(player_ids)
+        if not ids:
+            return {}
+        rows = self.conn.execute(
+            """SELECT player_id, MIN(start_year) AS first FROM player_contracts
+               WHERE player_id = ANY(%s) GROUP BY player_id""",
+            (ids,),
+        ).fetchall()
+        return {r["player_id"]: year - r["first"] + 1 for r in rows}
+
+    def insert_deal(
+        self, player_id, league_id, team_id, deal: ct.Deal, start_year, guaranteed=False
+    ) -> None:
+        self._insert(
+            player_id, league_id, team_id, deal, start_year, guaranteed=guaranteed
+        )
 
     @staticmethod
     def _mood_terms(happy, pid: str, team_id: str, deal: ct.Deal, scale: float = 1.0):

@@ -170,6 +170,11 @@ def sign(conn, league_id: str, team_id: str, player_id: str) -> dict:
     """Sign a free agent at his asking price."""
     with league_lock(conn, league_id):
         _, year = _context(conn, league_id)
+        if LeagueRepository(conn).get_by_id(league_id)["state"] == "draft":
+            # Offseason free agency (src/api/services/offseason_fa.py).
+            raise FreeAgentError(
+                "During the draft, free agents take bids. Make him an offer."
+            )
         player = PlayerRepository(conn).look_up(player_id)
         status_repo = PlayerStatusRepository(conn)
         if (
