@@ -1781,7 +1781,6 @@ async function saveAll() {
 async function rebuildAll() {
   const btn = document.getElementById('rebuild-all-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Rebuilding…'; }
-  try { localStorage.setItem(REBUILD_ALL_KEY, '1'); } catch (e) {}
   try {
     await rebuildLineup();
     rebuildRotation();
@@ -1802,15 +1801,27 @@ function updateScheduleBtn() {
 
 /* ── Header glow ─────────────────────────────────────────────────────────────── */
 // Same green as Go to Schedule. Save All Lineups glows while any unsaved bar
-// is up; Rebuild All glows until it's been used once in this league.
-const REBUILD_ALL_KEY = `rebuild_all_used_${LEAGUE_ID}`;
-function rebuildAllUsed() {
-  try { return localStorage.getItem(REBUILD_ALL_KEY) === '1'; } catch (e) { return false; }
+// is up; Rebuild All glows while something has a hole Rebuild All would fill.
+function needsRebuild() {
+  const ok = p => p && !p.injured;
+  // Either batting order: an empty spot, or a player who's hurt or gone
+  for (const h of ['R', 'L']) {
+    const slots = lineups[h].slice(0, 9);
+    if (slots.some(s => !s || !ok(findPlayer(s.player_id)))) return true;
+  }
+  // Rotation: short of the Strategy tab's size, or a starter who's hurt or gone
+  const rot = rotation.filter(Boolean);
+  const healthyArms = ALL_PITCHERS.filter(p => !p.injured).length;
+  if (rot.length < Math.min(ROTATION_SIZE, healthyArms)) return true;
+  if (rot.some(pid => !ok(findPitcher(pid)))) return true;
+  // Bullpen: a healthy reliever with no role
+  const inRot = new Set(rot);
+  return ALL_PITCHERS.some(p => !p.injured && !inRot.has(p.player_id) && !bullpen[p.player_id]);
 }
 function updateHeaderGlow() {
   const anyBar = unsavedHands().length > 0 || !pitchingSaved || !bullpenSaved;
   document.getElementById('save-all-btn')?.classList.toggle('lu-glow', anyBar);
-  document.getElementById('rebuild-all-btn')?.classList.toggle('lu-glow', !rebuildAllUsed());
+  document.getElementById('rebuild-all-btn')?.classList.toggle('lu-glow', needsRebuild());
 }
 
 /* ── Pitching: revert ─────────────────────────────────────────────────────────── */
