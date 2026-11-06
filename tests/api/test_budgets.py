@@ -419,7 +419,7 @@ def test_the_budget_tab_keeps_cap_spending_and_bank_apart(lg, client_for):
     assert "Total spending" in html
     assert f"{pay} payroll + {fo} front office" in html
     spend_at = html.index("Spending and your owner")
-    assert html.index("League cap") < spend_at < html.index("Owner's budget")
+    assert html.index("League cap") < spend_at < html.index("Owner's ideal budget")
     if "Owner's bank" in html:
         assert html.index("Owner's limit") < html.index("Owner's bank")
 
