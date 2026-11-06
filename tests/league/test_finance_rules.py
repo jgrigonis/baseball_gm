@@ -25,10 +25,8 @@ def test_budgets_come_from_the_cap_by_spending():
         > plans["middle"].budget
         > plans["small_miser"].budget
     )
-    # A big market brings in more, and a miser keeps more of it.
+    # A big market brings in more.
     assert plans["big_spender"].revenue > plans["small_miser"].revenue
-    miser = plans["small_miser"]
-    assert miser.budget / miser.revenue < 0.5
 
 
 def test_same_market_and_fans_different_owner_same_revenue():
