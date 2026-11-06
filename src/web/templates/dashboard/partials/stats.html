@@ -103,6 +103,7 @@ var MIN_OUTS        = 3 * TEAM_GAMES;
 var BATTERS   = {{ batters  | tojson }};
 var PITCHERS  = {{ pitchers | tojson }};
 var FIELDERS  = {{ fielders | tojson }};
+var STAT_TIPS = {{ stat_tips | tojson }};
 
 var category    = 'batting';
 var sortKey     = 'AVG';
@@ -128,13 +129,15 @@ var BAT_COLS = [
   {key:'OPS',   label:'OPS',     fmt:'avg',   rate:true},
   {key:'AB_K',  label:'AB/K',    fmt:'era',   rate:true, asc:false},
   {key:'HR_AB', label:'HR/AB',   fmt:'avg',   rate:true, asc:false},
-  {key:'wOBA',     label:'wOBA',  fmt:'avg', rate:true, tip:'Weighted on-base average: every way of reaching base, weighted by how many runs it is worth'},
-  {key:'wRC_PLUS', label:'wRC+',  fmt:null,  rate:true, tip:'Runs created per plate appearance against the league; 100 is average, 120 is 20% better'},
-  {key:'OPS_PLUS', label:'OPS+',  fmt:null,  rate:true, tip:'OBP and SLG against the league; 100 is average'},
-  {key:'ISO',      label:'ISO',   fmt:'avg', rate:true, tip:'Isolated power: SLG minus AVG, extra bases per at-bat'},
-  {key:'BABIP',    label:'BABIP', fmt:'avg', rate:true, tip:'Batting average on balls in play (not counting home runs and strikeouts)'},
-  {key:'K_PCT',    label:'K%',    fmt:'pct', rate:true, asc:true, tip:'Strikeouts per plate appearance'},
-  {key:'BB_PCT',   label:'BB%',   fmt:'pct', rate:true, tip:'Walks per plate appearance'},
+  {key:'wOBA',     label:'wOBA',  fmt:'avg', rate:true},
+  {key:'wRC_PLUS', label:'wRC+',  fmt:null,  rate:true},
+  {key:'OPS_PLUS', label:'OPS+',  fmt:null,  rate:true},
+  {key:'ISO',      label:'ISO',   fmt:'avg', rate:true},
+  {key:'BABIP',    label:'BABIP', fmt:'avg', rate:true},
+  {key:'K_PCT',    label:'K%',    fmt:'pct', rate:true, asc:true},
+  {key:'BB_PCT',   label:'BB%',   fmt:'pct', rate:true},
+  {key:'Def',      label:'Def',   fmt:'one', rate:false},
+  {key:'WAR',      label:'WAR',   fmt:'one', rate:false},
 ];
 
 var PIT_COLS = [
@@ -158,10 +161,11 @@ var PIT_COLS = [
   {key:'BB9',   label:'BB/9',    fmt:'era',   rate:true},
   {key:'HR9',   label:'HR/9',    fmt:'era',   rate:true},
   {key:'K9',    label:'K/9',     fmt:'era',   rate:true},
-  {key:'FIP',      label:'FIP',   fmt:'era', rate:true, asc:true, tip:'Fielding-independent pitching: an ERA from only strikeouts, walks, hit batters and home runs, the things a pitcher controls'},
-  {key:'ERA_PLUS', label:'ERA+',  fmt:null,  rate:true, tip:'League ERA over his ERA; 100 is average, 150 is 50% better'},
-  {key:'K_PCT',    label:'K%',    fmt:'pct', rate:true, tip:'Strikeouts per batter faced'},
-  {key:'BB_PCT',   label:'BB%',   fmt:'pct', rate:true, asc:true, tip:'Walks per batter faced'},
+  {key:'FIP',      label:'FIP',   fmt:'era', rate:true, asc:true},
+  {key:'ERA_PLUS', label:'ERA+',  fmt:null,  rate:true},
+  {key:'K_PCT',    label:'K%',    fmt:'pct', rate:true},
+  {key:'BB_PCT',   label:'BB%',   fmt:'pct', rate:true, asc:true},
+  {key:'WAR',      label:'WAR',   fmt:'one', rate:false},
 ];
 
 var DEF_COLS = [
@@ -183,6 +187,7 @@ function fmtVal(val, fmt) {
   if (fmt === 'era') return val.toFixed(2);
   if (fmt === 'ip')  return val;
   if (fmt === 'pct') return val.toFixed(1) + '%';
+  if (fmt === 'one') return val.toFixed(1);
   return String(val);
 }
 
@@ -195,6 +200,16 @@ function sortVal(row, key) {
   if (key === 'ERA_PLUS' && row.ERA_PLUS == null) return row.IP_val > 0 ? 9999 : -999;
   var v = row[key];
   return (v === null || v === undefined) ? -999 : v;
+}
+
+// A column's label, with its explanation on hover (or tap). Tips on the
+// right-hand columns open leftward so they stay on screen.
+function headLabel(col, i, n) {
+  var kind = category === 'batting' ? 'bat' : category === 'pitching' ? 'pit' : 'field';
+  var tip = (STAT_TIPS[kind] || {})[col.label];
+  if (!tip) return col.label;
+  var cls = 'setting-tip' + (i >= n - 6 ? ' tip-end' : '');
+  return '<span class="' + cls + '" tabindex="0" data-tip="' + tip.replace(/"/g, '&quot;') + '">' + col.label + '</span>';
 }
 
 function colsFor(cat) {
@@ -297,14 +312,13 @@ function renderTable() {
 
   // Header
   var headHtml = '<tr>';
-  cols.forEach(function(col) {
+  cols.forEach(function(col, i) {
     var arrow = sortKey === col.key ? (sortAsc ? ' ↑' : ' ↓') : '';
     var defaultAsc = col.asc !== undefined ? col.asc : (col.key === 'ERA' || col.key === 'BB9' || col.key === 'HR9' || col.key === 'WHIP');
     headHtml += '<th style="cursor:pointer;user-select:none;text-align:'
       + (col.key==='name'||col.key==='pos'?'left':'right') + ';white-space:nowrap;position:sticky;top:0;z-index:3;background:var(--bg-2);box-shadow:0 1px 0 var(--border);"'
-      + (col.tip ? ' title="' + col.tip + '"' : '')
-      + ' onclick="setSort(\'' + col.key + '\',' + defaultAsc + ')">' 
-      + col.label + arrow + '</th>';
+      + ' onclick="setSort(\'' + col.key + '\',' + defaultAsc + ')">'
+      + headLabel(col, i, cols.length) + arrow + '</th>';
   });
   headHtml += '</tr>';
   document.getElementById('stats-head').innerHTML = headHtml;

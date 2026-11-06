@@ -592,6 +592,29 @@ def defensive_runs(c: dict, group: list[dict], pos: str, games: int) -> float:
     return runs
 
 
+def season_defense(cands: list[dict], games: int) -> dict[str, float]:
+    """Defensive runs (defensive_runs()) for every hitter at the position
+    he started at most, measured against the league's regulars there (a
+    third of the team's starts, as for the Gold Glove; everyone there when
+    fewer than two qualify). Pitchers aren't scored."""
+    games = max(1, games)
+    by_pos: dict[str, list[dict]] = {}
+    for c in cands:
+        pos = (c.get("position") or "").lower()
+        if pos in FIELD_POSITIONS and is_hitter(c) and _n(c, "pos_starts"):
+            by_pos.setdefault(pos, []).append(c)
+    out = {}
+    for pos, players in by_pos.items():
+        group = [
+            c for c in players if _n(c, "pos_starts") >= GLOVE_STARTS_SHARE * games
+        ]
+        if len(group) < 2:
+            group = players
+        for c in players:
+            out[c["player_id"]] = defensive_runs(c, group, pos, games)
+    return out
+
+
 def gold_gloves(cands: list[dict], games: int) -> list[dict]:
     """A Gold Glove at each position in each league, and a Platinum Glove
     for the winner who saved the most runs (defensive_runs()). Candidates as for regular_awards(),
