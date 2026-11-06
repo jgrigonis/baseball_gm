@@ -638,7 +638,11 @@ window.refreshNextMove = function(path) {
       var box = document.createElement('div');
       box.innerHTML = html.trim();
       var fresh = box.querySelector('#next-move');
-      if (!fresh || fresh.dataset.sig === cur.dataset.sig) return;
+      if (!fresh) return;
+      // A GM joined (or left) since this page loaded: the ready toggle or
+      // solo sim script isn't on the page, so its button would do nothing.
+      if (fresh.dataset.mp !== cur.dataset.mp) { window.location.reload(); return; }
+      if (fresh.dataset.sig === cur.dataset.sig) return;
       cur.replaceWith(fresh);
       if (window.schedSyncBoxes) window.schedSyncBoxes();
     })
