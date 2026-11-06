@@ -166,3 +166,10 @@ def test_without_pick_trades_there_are_no_picks(client_for):
     assert "1st round" not in html
     data = client.get(f"/leagues/{league.id}/trades/team/{theirs.id}").json()
     assert all(p["roster_status"] != "pick" for p in data["players"])
+
+
+def test_shop_offers_and_the_builder_have_compare_buttons(client_for):
+    client, league, _, _ = client_for("blitz", players=2)
+    html = client.get(f"/leagues/{league.id}/trades").text
+    assert 'onclick="trShopCompare(' in html
+    assert 'id="tr-compare"' in html
