@@ -250,7 +250,7 @@ def catch_up(conn, league_id: str, today: str | None = None) -> int:
         weights = owners.clean_weights(owner["weights"])
         if (
             budget
-            and weights["budget"] >= 40
+            and weights["profit"] >= 40
             and contracts.payroll(team_id, year) > budget
             and not _has(conn, league_id, team_id, f"over:{sid}")
         ):

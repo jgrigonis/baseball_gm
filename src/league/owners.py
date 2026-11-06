@@ -25,13 +25,13 @@ from src.name_generator.names import NameGenerator
 
 # ── What owners judge a GM by ────────────────────────────────────────────────
 # (key, label, how it's measured). Each owner weighs every one from 0 (doesn't
-# care) to 100 (what they care about most). Profit, attendance and fans wait
-# on revenue and fan interest.
+# care) to 100 (what they care about most). Money is judged by profit alone
+# (Josh, 2026-11-06): payroll past the budget costs the owner, and past their
+# hard limit they refuse it (src/league/budget.py).
 DIMENSIONS: tuple[tuple[str, str, str], ...] = (
     ("wins", "Winning", "Regular-season win % against the target"),
     ("postseason", "October", "Playoff appearances, rounds won and titles"),
     ("profit", "Profit", "Revenue minus payroll, luxury tax and costs"),
-    ("budget", "Budget discipline", "Payroll against the owner's budget"),
     ("attendance", "Attendance", "How full the ballpark is"),
     ("fans", "Fan interest", "Fan interest rising over the season"),
     ("future", "Future health", "The farm and the team's strength two years out"),
@@ -111,21 +111,21 @@ class Archetype:
 
 
 ARCHETYPES = (
-    #                 wins post prof budg att fans fut home star icon stab riv
+    #                 wins post prof att fans fut home star icon stab riv
     #                 pat amb hor med tem chat spend
     Archetype(
         "The Tycoon",
         "Money's no object. Rings are.",
         "Tycoon owners want titles and stars, and will pay for them.",
-        (80, 95, 5, 5, 30, 30, 20, 10, 60, 20, 20, 30),
+        (80, 95, 5, 30, 30, 20, 10, 60, 20, 20, 30),
         (20, 95, 85, 60, 70, 65, 95),
         1.0,
     ),
     Archetype(
         "The Penny-Pincher",
         "Every dollar counts, and they count them all.",
-        "Penny-Pinchers want a profit and a payroll under budget.",
-        (35, 20, 95, 90, 40, 20, 30, 30, 10, 20, 50, 10),
+        "Penny-Pinchers want a profit, every season.",
+        (35, 20, 95, 40, 20, 30, 30, 10, 20, 50, 10),
         (50, 30, 50, 70, 50, 60, 5),
         -1.0,
     ),
@@ -133,7 +133,7 @@ ARCHETYPES = (
         "The Hometown Owner",
         "Grew up in the bleachers. Loves the club's own.",
         "Hometown Owners want homegrown players and the club's icons kept.",
-        (45, 40, 30, 30, 50, 75, 40, 80, 30, 90, 60, 60),
+        (45, 40, 30, 50, 75, 40, 80, 30, 90, 60, 60),
         (70, 50, 40, 40, 40, 45, 50),
         -0.3,
     ),
@@ -141,7 +141,7 @@ ARCHETYPES = (
         "The Showman",
         "Wants a full park and names on the marquee.",
         "Showmen want stars and a full ballpark.",
-        (50, 50, 40, 20, 90, 80, 15, 15, 95, 30, 10, 30),
+        (50, 50, 40, 90, 80, 15, 15, 95, 30, 10, 30),
         (40, 60, 80, 50, 70, 75, 80),
         0.8,
     ),
@@ -149,15 +149,15 @@ ARCHETYPES = (
         "The Long-Gamer",
         "Thinks in decades, not seasons.",
         "Long-Gamers want a deep farm and a team built to last.",
-        (30, 50, 30, 40, 20, 30, 95, 80, 20, 40, 60, 10),
+        (30, 50, 30, 20, 30, 95, 80, 20, 40, 60, 10),
         (90, 50, 10, 20, 20, 25, 45),
         -0.6,
     ),
     Archetype(
         "The Corporate Board",
         "Wants steady returns and no headlines.",
-        "Corporate Boards want steady profits, a payroll on budget and no drama.",
-        (50, 30, 80, 75, 50, 40, 40, 30, 20, 30, 85, 10),
+        "Corporate Boards want steady profits and no drama.",
+        (50, 30, 80, 50, 40, 40, 30, 20, 30, 85, 10),
         (55, 45, 50, 30, 20, 30, 35),
         0.4,
     ),
@@ -165,28 +165,28 @@ ARCHETYPES = (
         "The Grudge Holder",
         "Lose to anyone you like, except them.",
         "Grudge Holders want to beat one team above all others.",
-        (60, 40, 30, 30, 30, 50, 30, 30, 30, 40, 40, 95),
+        (60, 40, 30, 30, 50, 30, 30, 30, 40, 40, 95),
         (45, 55, 70, 50, 80, 70, 70),
     ),
     Archetype(
         "The People's Owner",
         "Fans first, last and always.",
         "People's Owners want the fans happy and the park full.",
-        (50, 40, 15, 20, 85, 95, 30, 50, 50, 70, 40, 50),
+        (50, 40, 15, 85, 95, 30, 50, 50, 70, 40, 50),
         (60, 50, 50, 30, 40, 55, 55),
     ),
     Archetype(
         "The Absentee",
         "Rarely calls. When they do, it's bad news.",
         "Absentee owners mostly leave the GM alone, as long as the money's right.",
-        (40, 30, 50, 50, 30, 30, 30, 20, 20, 20, 50, 20),
+        (40, 30, 50, 30, 30, 30, 20, 20, 20, 50, 20),
         (85, 40, 50, 5, 20, 5, 40),
     ),
     Archetype(
         "The Meddler",
         "Has an opinion on every move.",
         "Meddlers want a say in everything, and a winner.",
-        (60, 50, 50, 50, 50, 50, 50, 50, 50, 50, 30, 40),
+        (60, 50, 50, 50, 50, 50, 50, 50, 50, 30, 40),
         (25, 60, 70, 95, 80, 95, 60),
     ),
 )

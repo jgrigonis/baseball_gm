@@ -12,7 +12,8 @@ Releasing players and signing free agents.
   from his grade and age (src/player/contracts.py). It starts this season,
   is guaranteed, and he joins the organization (minors) like a traded player.
   The minors can hold MINORS_LIMIT players, so a full team releases first.
-  Going over the cap or the owner's budget is allowed; the confirm warns
+  Going over the cap or the owner's budget is allowed (past the owner's
+  hard limit it isn't: src/league/budget.py refusal); the confirm warns
   about the luxury tax and the owner.
 
 Both wait for any sim in the league to finish (the league lock), and neither
@@ -123,6 +124,9 @@ def sign_preview(conn, league_id: str, team_id: str, player_id: str) -> dict:
         "salary_text": ct.format_salary(deal.salary),
         "years": deal.years,
         "warning": budget_warning(conn, league_id, team_id, year, deal.salary),
+        "blocked": BudgetRepository(conn).refusal(
+            league_id, team_id, year, deal.salary
+        ),
     }
 
 
@@ -154,6 +158,9 @@ def sign(conn, league_id: str, team_id: str, player_id: str) -> dict:
                 f"Your minors are full ({MINORS_LIMIT}). Release someone first."
             )
         deal = asking_deal(player, year, price_scale(conn, league_id, year))
+        refusal = BudgetRepository(conn).refusal(league_id, team_id, year, deal.salary)
+        if refusal:
+            raise FreeAgentError(refusal)
         team_repo = TeamRepository(conn)
         team_repo.add_player(team_id, player_id)
         status_repo.set_status(player_id, "minors")

@@ -135,6 +135,8 @@ window.signFreeAgent = async function(pid, name, salary, years) {
     ask = await r.json();
     if (!r.ok) throw new Error(ask.detail || 'Something went wrong.');
   } catch (e) { gmAlert(e.message); return; }
+  // Past the owner's hard limit: they won't allow it (src/league/budget.py).
+  if (ask.blocked) { gmAlert(ask.blocked); return; }
   salary = ask.salary_text; years = ask.years;
   const term = `${salary} a season for ${years} season${years === 1 ? '' : 's'}`;
   const ok = await gmConfirm({

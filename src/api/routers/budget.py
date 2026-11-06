@@ -1,0 +1,89 @@
+# src/api/routers/budget.py
+#
+# The Budget tab (plans/budget.md, Q7): the GM's money this season (the
+# league's cap, the owner's budget and hard limit, payroll and the luxury
+# tax), the owner's bank, and the team's money season by season. Only
+# money: the owner's traits stay hidden. Not in Speed Blitz (no budgets).
+
+from __future__ import annotations
+
+from fastapi import APIRouter, Request
+from fastapi.responses import HTMLResponse
+
+from src.api.dependencies import DB, GM, IsHTMX, User
+from src.db.repositories.budget_repo import BudgetRepository
+from src.db.repositories.contract_repo import ContractRepository
+from src.league import budget as bg
+from src.player.contracts import format_salary
+from src.web.utils import _shell_ctx, tab_response
+
+router = APIRouter(tags=["web"])
+
+
+def _money(amount) -> str | None:
+    if amount is None:
+        return None
+    text = format_salary(abs(int(amount)))
+    return f"-{text}" if amount < 0 else text
+
+
+@router.get("/leagues/{league_id}/budget", response_class=HTMLResponse)
+def budget_tab(
+    request: Request,
+    htmx: IsHTMX,
+    league_id: str,
+    db: DB,
+    user: User,
+    gm: GM,
+):
+    ctx = _shell_ctx(request, db, gm, league_id, "budget", user)
+    team_id = gm.get("team_id")
+    budgets = BudgetRepository(db)
+    year = ContractRepository(db).current_year(league_id)
+    standing = (
+        budgets.standing(league_id, team_id, year)
+        if team_id and year is not None
+        else None
+    )
+    ctx["year"] = year
+    ctx["money"] = standing
+    bank = budgets.banks(league_id).get(team_id) if standing else None
+    if bank:
+        ctx["bank"] = {
+            "balance_text": _money(bank["balance"]),
+            "change_text": _money(bank["change"]),
+            "start_text": _money(bank["start"]),
+            "since": bank["since"],
+            "up": bank["change"] >= 0,
+            "empty": bank["balance"] <= 0,
+        }
+    ctx["rules"] = {
+        "tax_pct": round(bg.LUXURY_TAX_RATE * 100),
+        "growth_pct": round(bg.CAP_GROWTH * 100),
+        "pull_pct": round(bg.BANK_PULL * 100),
+        "swing_pct": round(bg.BANK_SWING * 100),
+        "margin_pct": round(bg.HARD_MARGIN * 100),
+    }
+    ctx["history"] = [
+        {
+            "year": r["year"],
+            "cap": _money(r["cap"]),
+            "budget": _money(r["budget"]),
+            "payroll": _money(r["payroll"]),
+            "revenue": _money(
+                None
+                if r["revenue"] is None or r["profit"] is None
+                else r["revenue"] + (r["playoff_revenue"] or 0)
+            ),
+            "tax": _money(r["luxury_tax"]) if r["luxury_tax"] else None,
+            "share": _money(r["tax_share"]) if r["tax_share"] else None,
+            "profit": _money(r["profit"]),
+            "loss": r["profit"] is not None and r["profit"] < 0,
+            "fans": r["fans_after"],
+            "bank": _money(r["bank_after"]),
+        }
+        for r in (budgets.history(league_id, team_id) if standing else [])
+        if r["profit"] is not None
+    ]
+    db.commit()  # banks open on first look
+    return tab_response(request, htmx, "dashboard/partials/budget.html", ctx)

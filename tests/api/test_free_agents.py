@@ -35,6 +35,14 @@ def lg(db_conn, factory):
            VALUES (%s, '2026-04-02', %s, %s, %s, 0)""",
         (factory._id(), season.id, mine.id, theirs.id),
     )
+    # A roomy cap, so the owner's hard limit (tests/api/test_budgets.py)
+    # doesn't stop these signings.
+    for t in (mine, theirs):
+        db_conn.execute(
+            """INSERT INTO team_budgets (league_id, team_id, year, cap, budget)
+               VALUES (%s, %s, 2026, 900000000, 900000000)""",
+            (league.id, t.id),
+        )
     return SimpleNamespace(
         db=db_conn,
         factory=factory,

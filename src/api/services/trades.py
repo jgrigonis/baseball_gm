@@ -47,6 +47,7 @@ from datetime import date
 
 from src.api.services import front_office, owners, personas, team_states
 from src.db.locks import LeagueBusy, league_lock
+from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.gm_repo import GMRepository
@@ -144,6 +145,9 @@ def _propose(
     names = _check_assets(
         conn, league, season_id, my_team_id, to_team_id, give_ids, get_ids
     )
+    refusal = owner_refusal(conn, league_id, my_team_id, get_ids, give_ids)
+    if refusal:
+        raise TradeError(refusal)
     today = _league_date(conn, season_id)
     items = [(pid, my_team_id) for pid in give_ids] + [
         (pid, to_team_id) for pid in get_ids
@@ -430,6 +434,16 @@ def _respond(conn, league_id, gm, offer_id, action) -> dict:
     if action != "accept":
         raise TradeError("Accept, reject or withdraw.")
 
+    # Past my owner's hard limit: say so, and leave the offer standing.
+    refusal = owner_refusal(
+        conn,
+        league_id,
+        mine,
+        [p["player_id"] for p in offer["sent"]],
+        [p["player_id"] for p in offer["received"]],
+    )
+    if refusal:
+        raise TradeError(refusal)
     league = dict(LeagueRepository(conn).get_by_id(league_id))
     problem = _problem(conn, league, offer)
     if problem:
@@ -679,7 +693,36 @@ def _problem(conn, league: dict, offer: dict) -> str | None:
         )
     except TradeError as e:
         return str(e)
+    sent = [p["player_id"] for p in offer["sent"]]
+    received = [p["player_id"] for p in offer["received"]]
+    for team_id, name, gets, gives in (
+        (offer["from_team_id"], offer["from_name"], received, sent),
+        (offer["to_team_id"], offer["to_name"], sent, received),
+    ):
+        if owner_refusal(conn, league["id"], team_id, gets, gives):
+            return f"the {name}' owner won't allow the payroll."
     return None
+
+
+def owner_refusal(
+    conn, league_id: str, team_id: str, gets: list, gives: list
+) -> str | None:
+    """Why this team's owner refuses a trade that brings in these players
+    and sends out those (past their hard limit, src/league/budget.py), or
+    None. Only guaranteed deals count, as in payroll; picks cost nothing."""
+    budgets = BudgetRepository(conn)
+    year = ContractRepository(conn).current_year(league_id)
+    if year is None or not budgets.enabled(league_id):
+        return None
+    ids = [i for i in list(gets) + list(gives) if i]
+    deals = ContractRepository(conn).active_for(ids, year)
+
+    def pay(items) -> int:
+        return sum(
+            deals[i]["salary"] for i in items if i in deals and deals[i]["guaranteed"]
+        )
+
+    return budgets.refusal(league_id, team_id, year, pay(gets) - pay(gives))
 
 
 def _complete(conn, league_id: str, offer: dict, by_vote: bool = False) -> None:

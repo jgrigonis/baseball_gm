@@ -103,6 +103,8 @@ class TeamMoney:
     market: int
     fans: float
     spending: int
+    # How far the owner's bank is up (or down) since it started.
+    bank_change: int = 0
 
 
 @dataclass(frozen=True)
@@ -125,7 +127,7 @@ def plan(cap: int, teams: dict[str, TeamMoney]) -> dict[str, Plan]:
     return {
         t: Plan(
             revenue=_round(base * pull[t]),
-            budget=bg.owner_budget(cap, m.spending),
+            budget=bg.owner_budget(cap, m.spending, m.bank_change),
         )
         for t, m in teams.items()
     }
