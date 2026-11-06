@@ -6,6 +6,7 @@ import random
 import statistics
 
 from src.db.connection import get_connection
+from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.injury_repo import InjuryRepository
@@ -21,6 +22,7 @@ from src.db.repositories.series_repo import SeriesRepository
 from src.db.repositories.talent_cap_repo import TalentCapRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
+from src.league import budget as bg
 from src.league.league_constants import LEAGUE_START_YEAR, SEASON_LENGTH
 from src.league.offseason.draft_generator import DraftGenerator
 from src.league.offseason.retirement import (
@@ -188,6 +190,7 @@ class OffseasonPipeline:
             players = self.player_repo.get_all_players()
         player_ids = [p.id for p in players]
         all_caps = cap_repo.get_many(player_ids)
+        coaching_levels = self._coaching_levels(season_id)
         all_fractions = self.player_repo.get_skill_fractions_many(player_ids)
 
         for player in players:
@@ -214,6 +217,11 @@ class OffseasonPipeline:
                 if energy_state.current_energy < 0.20:
                     coaching = min(coaching, 0.80)
 
+            # The team's Coaching department: young players grow toward
+            # their ceilings faster or slower (src/league/budget.py).
+            team_level = coaching_levels.get(player.id)
+            if team_level is not None:
+                coaching *= bg.coaching_growth(team_level, player.age)
             new_skills = skills.age_to(
                 player.age + 1,
                 from_age=player.age,
@@ -225,6 +233,30 @@ class OffseasonPipeline:
         self.conn.commit()
 
         log.info("Aged %s players", len(players))
+
+    def _coaching_levels(self, season_id) -> dict[str, int]:
+        """Each player's team's Coaching level for the season that just
+        ended, by player id. Empty without a league or without budgets."""
+        if not self.league_id:
+            return {}
+        row = self.conn.execute(
+            "SELECT year FROM seasons WHERE id = %s", (season_id,)
+        ).fetchone()
+        if not row:
+            return {}
+        teams = {
+            r["player_id"]: r["team_id"]
+            for r in self.conn.execute(
+                """SELECT tp.player_id, tp.team_id FROM team_players tp
+                   JOIN league_season_teams lst ON lst.team_id = tp.team_id
+                   WHERE lst.league_id = %s AND lst.season_id = %s""",
+                (self.league_id, season_id),
+            ).fetchall()
+        }
+        levels = BudgetRepository(self.conn).department(
+            self.league_id, row["year"], "coaching", set(teams.values())
+        )
+        return {pid: levels[t] for pid, t in teams.items() if t in levels}
 
     def _retire(self, rng: random.Random) -> None:
         """Evaluate all players for retirement.
