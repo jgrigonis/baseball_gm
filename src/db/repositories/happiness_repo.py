@@ -10,7 +10,8 @@ update_if_due runs from the game loop: once a league week, it works out
 every rostered player's satisfaction on each drive from what the league
 already stores (contracts, the standings, team states, lineups, rotations,
 bullpen roles, past seasons, trades, All-Stars, the team pool's market and
-climate) and moves his mood a step toward where that points.
+climate) and moves his mood a step toward where that points. An unhappy
+morale ruiner drags his teammates' targets down too.
 """
 
 from __future__ import annotations
@@ -157,6 +158,19 @@ class HappinessRepository:
             for i, pid in enumerate(group):
                 ranks[pid] = (i, len(group))
 
+        # Morale ruiners on each active roster, by last week's mood. The
+        # clubhouse is the 26 men: the 40-man and the minors are elsewhere.
+        ruiners: dict[str, list[tuple[float, str]]] = defaultdict(list)
+        for pid, p in players.items():
+            now = current.get(pid)
+            if (
+                pers[pid].ruiner
+                and p["status"] == "26man"
+                and now is not None
+                and now["team_id"] == p["team_id"]
+            ):
+                ruiners[p["team_id"]].append((now["mood"], pid))
+
         rows = []
         for pid, p in players.items():
             team = teams[p["team_id"]]
@@ -198,6 +212,15 @@ class HappinessRepository:
                 "fame": hp.fame(team["market"], pid in all_stars),
             }
             goal = hp.target(person, p["age"], sats)
+            # The clubhouse: unhappy morale ruiners (other than him) pull
+            # down an active teammate, if he's the touchy sort.
+            pull = 0.0
+            others = [r for r in ruiners.get(p["team_id"], []) if r[1] != pid]
+            if others and p["status"] == "26man":
+                pull = hp.clubhouse_drag([m for m, _ in others]) * hp.susceptibility(
+                    person
+                )
+                goal = max(-1.0, goal - pull)
             now = current.get(pid)
             before = previous.get(pid)
             request = None
@@ -235,10 +258,20 @@ class HappinessRepository:
             lines = hp.on_his_mind(
                 person, p["age"], sats, p["affinity"], p["home_region"]
             )
+            worst = min(others)[1] if others else None
+            if pull >= hp.CLUBHOUSE_LINE and worst:
+                from src.api.services.news.names import pretty
+
+                name = pretty(players[worst]["name"])
+                lines = [hp.CLUBHOUSE_LINE_TEXT.format(name=name)] + lines[:1]
+            if person.ruiner and mood < hp.UNHAPPY and p["status"] == "26man":
+                lines = lines + [hp.RUINER_LINE_TEXT]
             detail = {
                 "drives": {d: [round(s, 3), why] for d, (s, why) in sats.items()},
                 "lines": lines,
             }
+            if pull:
+                detail["clubhouse"] = [round(pull, 3), worst]
             rows.append(
                 (
                     pid,
@@ -325,6 +358,7 @@ class HappinessRepository:
                 "age": rec.age,
                 "rating": role_rating(rec),
                 "home_region": r.get("home_region"),
+                "name": rec.last_name,
             }
         return out
 

@@ -35,14 +35,14 @@
    {% endif %}
    {% if player.happiness %}{% set h = player.happiness %}
    <div class="pd-mood">
-     <span class="pd-mood-type setting-tip" tabindex="0" data-tip="{{ h.type }}: {{ h.blurb }}{% if h.cares %} Cares most about {{ h.cares }}.{% endif %}">{{ h.type }}</span>{% if h.mood %} · <span class="pd-mood-word mood-{{ h.mood }}"
+     <span class="pd-mood-type setting-tip" tabindex="0" data-tip="{{ h.type }}: {{ h.blurb }}{% if h.cares %} Cares most about {{ h.cares }}.{% endif %}">{{ h.type }}</span>{% if h.ruiner %} · <span class="pd-mood-ruiner setting-tip" tabindex="0" data-tip="Morale ruiner: when he's unhappy, he drags his teammates down with him.">morale ruiner</span>{% endif %}{% if h.mood %} · <span class="pd-mood-word mood-{{ h.mood }}"
        {% if is_admin %}title="mood {{ h.admin.mood }} → target {{ h.admin.target }} (as of {{ h.admin.updated_on }})"{% endif %}>{{ h.mood }}</span>{% endif %}
      {% if h.refusing %}<div class="pd-mood-alert">Refusing to play for a few days.</div>
      {% elif h.wants_trade %}<div class="pd-mood-alert">Has asked to be traded.</div>{% endif %}
      {% if h.lines %}<div class="pd-mood-lines">{{ h.lines | join(' ') }}</div>{% endif %}
      {% if is_admin %}
      <details class="pd-mood-admin"><summary>Happiness (admin)</summary>
-       <div>ego {{ h.admin.traits.ego }} · temper {{ h.admin.traits.temper }} · loyalty {{ h.admin.traits.loyalty }}{% if h.admin.climate %} · likes {{ h.admin.climate }}{% endif %}</div>
+       <div>ego {{ h.admin.traits.ego }} · temper {{ h.admin.traits.temper }} · loyalty {{ h.admin.traits.loyalty }}{% if h.admin.climate %} · likes {{ h.admin.climate }}{% endif %}{% if h.admin.clubhouse %} · clubhouse −{{ h.admin.clubhouse[0] }}{% endif %}</div>
        <table>
          <tr><th>Drive</th><th>Weight</th><th>Sat</th><th>Why</th></tr>
          {% for d in h.admin.drives %}

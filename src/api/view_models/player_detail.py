@@ -93,6 +93,7 @@ def _happiness(db, league_id: str, pid: str) -> dict | None:
         "type": pers.type,
         "blurb": hp.TYPES.get(pers.type, {}).get("blurb", ""),
         "cares": hp.type_cares(pers.type),
+        "ruiner": pers.ruiner,
         "mood": hp.mood_word(row["mood"]) if row else None,
         "lines": detail.get("lines") or [],
         "admin": {
@@ -101,6 +102,7 @@ def _happiness(db, league_id: str, pid: str) -> dict | None:
             "updated_on": row["updated_on"] if row else None,
             "traits": pers.traits,
             "climate": pers.climate,
+            "clubhouse": detail.get("clubhouse"),
             "drives": [
                 {
                     "drive": d,

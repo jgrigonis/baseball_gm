@@ -16,7 +16,12 @@ gathers each team's numbers, calls these, and stores the moods.
   player, and is shown as a word ("restless") and a line or two on what's on
   his mind. GMs never see a number; admins see all of it.
 
-Coaching and teammates are planned drives that aren't built yet.
+- A few players are morale ruiners: when one of them is unhappy, his
+  teammates' moods sink with him, more for the touchy ones.
+
+Coaching is a planned drive that isn't built yet. There's no web of friends
+and rivals: morale ruiners are the whole of the teammates side (Josh,
+2026-11-06).
 """
 
 from __future__ import annotations
@@ -134,6 +139,7 @@ class Personality:
     drives: dict[str, int]
     traits: dict[str, int]
     climate: str | None = None
+    ruiner: bool = False  # a morale ruiner (not stored: seeded by his id)
 
     def as_row(self) -> dict:
         return {
@@ -147,7 +153,9 @@ class Personality:
     def from_row(cls, row: dict) -> Personality:
         drives = {d: int((row.get("drives") or {}).get(d, 20)) for d in DRIVES}
         traits = {t: int((row.get("traits") or {}).get(t, 50)) for t in TRAITS}
-        return cls(row["type"], drives, traits, row.get("climate"))
+        pid = row.get("player_id")
+        ruiner = bool(pid) and is_morale_ruiner(pid, traits)
+        return cls(row["type"], drives, traits, row.get("climate"), ruiner)
 
 
 def _clamp(x: float, lo: float = -1.0, hi: float = 1.0) -> float:
@@ -180,7 +188,57 @@ def random_personality(rng: random.Random) -> Personality:
 def personality_for(player_id: str) -> Personality:
     """The player's personality, seeded by his id so it's the same whether
     it's made at creation or backfilled."""
-    return random_personality(random.Random(f"personality:{player_id}"))
+    p = random_personality(random.Random(f"personality:{player_id}"))
+    return Personality(
+        p.type, p.drives, p.traits, p.climate, is_morale_ruiner(player_id, p.traits)
+    )
+
+
+# ── Morale ruiners ──────────────────────────────────────────────────────────
+# A few players drag the clubhouse down with them when they're unhappy.
+# They're drawn from their own seed, so adding them didn't change anyone's
+# type or traits. A big ego and a short fuse make one likelier.
+RUINER_BASE = 0.02
+RUINER_EGO_TEMPER = 0.12
+
+
+def is_morale_ruiner(player_id: str, traits: dict[str, int]) -> bool:
+    chance = RUINER_BASE + RUINER_EGO_TEMPER * traits["ego"] / 100 * (
+        traits["temper"] / 100
+    )
+    return random.Random(f"ruiner:{player_id}").random() < chance
+
+
+# How hard one unhappy ruiner pulls on a teammate's target mood: from this
+# at "unhappy" up to RUINER_PULL_MAX at rock bottom. A team's total is capped.
+RUINER_PULL = 0.1
+RUINER_PULL_MAX = 0.25
+CLUBHOUSE_CAP = 0.3
+# A teammate this calm (temper) or calmer shrugs it off.
+CALM_TEMPER = 40
+
+
+def clubhouse_drag(ruiner_moods: list[float]) -> float:
+    """How much a team's morale ruiners pull its clubhouse down, from their
+    moods: only an unhappy (or worse) ruiner does any harm."""
+    total = 0.0
+    for m in ruiner_moods:
+        if m < UNHAPPY:
+            depth = min(1.0, (UNHAPPY - m) / (1 + UNHAPPY))
+            total += RUINER_PULL + (RUINER_PULL_MAX - RUINER_PULL) * depth
+    return min(CLUBHOUSE_CAP, total)
+
+
+def susceptibility(personality: Personality) -> float:
+    """How much clubhouse gloom gets to him, 0 to 1: a calm player not at
+    all, a hothead fully."""
+    return _clamp((personality.traits["temper"] - CALM_TEMPER) / 40, 0, 1)
+
+
+# A pull this big comes up first in what's on his mind.
+CLUBHOUSE_LINE = 0.08
+CLUBHOUSE_LINE_TEXT = "Fed up with {name} souring the clubhouse."
+RUINER_LINE_TEXT = "His moods are souring the clubhouse."
 
 
 # ── Drive satisfaction ──────────────────────────────────────────────────────

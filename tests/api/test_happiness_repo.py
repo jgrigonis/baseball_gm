@@ -132,3 +132,43 @@ def test_re_signing_terms_follow_his_mood(lg):
     assert mult > 1 and years == 1 and out
     repo.request_trades([(sad_pid, lg.a.id)], 2025)
     assert sad_pid in repo.trade_requests([sad_pid])
+
+
+def test_an_unhappy_morale_ruiner_drags_his_teammates_down(lg):
+    ruiner = lg.players[lg.a.id][0]
+    mate = lg.players[lg.a.id][1]
+    rival = lg.players[lg.b.id][0]
+    # The clubhouse is the active roster.
+    lg.db.execute(
+        "UPDATE player_status SET status = '26man' WHERE player_id = ANY(%s)",
+        ([ruiner.id, mate.id, rival.id],),
+    )
+    repo = _repo(lg)
+    repo.update(lg.season.id, date(2025, 4, 4))
+    before = {
+        pid: repo.mood(pid, lg.season.id)["target"] for pid in (mate.id, rival.id)
+    }
+    lg.db.execute(
+        "UPDATE player_moods SET mood = -0.9 WHERE player_id = %s", (ruiner.id,)
+    )
+    real = hp.personality_for
+
+    def fake(pid):
+        p = real(pid)
+        traits = {**p.traits, "temper": 90} if pid == mate.id else p.traits
+        return hp.Personality(p.type, p.drives, traits, p.climate, pid == ruiner.id)
+
+    lg.db.execute("DELETE FROM player_personality")
+    with (
+        patch.object(hp, "personality_for", side_effect=fake),
+        patch.object(
+            hp.Personality, "from_row", side_effect=lambda row: fake(row["player_id"])
+        ),
+    ):
+        _repo(lg).update(lg.season.id, date(2025, 4, 11))
+    after = _repo(lg).mood(mate.id, lg.season.id)
+    assert after["target"] < before[mate.id] - 0.15
+    assert after["detail"]["clubhouse"][1] == ruiner.id
+    assert any("souring the clubhouse" in line for line in after["detail"]["lines"])
+    # The other team's clubhouse is fine.
+    assert "clubhouse" not in _repo(lg).mood(rival.id, lg.season.id)["detail"]
