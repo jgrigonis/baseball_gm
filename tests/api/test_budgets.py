@@ -182,12 +182,14 @@ def test_the_roster_shows_payroll_against_cap_and_budget(lg, client_for):
     budget = x.budgets.budget(x.league.id, x.mine.id, 2026)
     cap = x.budgets.cap(x.league.id, 2026)
     html = client.get(f"/leagues/{x.league.id}/roster").text
-    assert f"cap {bg.format_salary(cap)}" in html
-    assert f"owner {bg.format_salary(budget)}" in html
+    assert f"Cap {bg.format_salary(cap)}" in html
+    assert f"Owner's number {bg.format_salary(budget)}" in html
     x.db.execute("UPDATE team_budgets SET budget = 1000000, cap = 1000000")
     html = client.get(f"/leagues/{x.league.id}/roster").text
-    assert "over cap · " in html and " tax</span>" in html
-    assert "past owner</span>" in html
+    assert " over cap</span>" in html and "past it." in html
+    x.db.execute("UPDATE team_budgets SET cap = 900000000")
+    html = client.get(f"/leagues/{x.league.id}/roster").text
+    assert " past owner</span>" in html
 
 
 def test_the_owner_tab_explains_the_cap_and_leash(lg, client_for):
