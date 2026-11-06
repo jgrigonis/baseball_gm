@@ -304,7 +304,9 @@ def _shell_ctx(
                 # A viewer of a public league that takes late joiners can
                 # join between seasons: the top bar's Join button and the
                 # banner over the tabs. A private league needs its join code.
-                if league["is_public"] and not takeover.closed_reason(db, league):
+                if (league["is_public"] or gm.get("has_code")) and not (
+                    takeover.closed_reason(db, league)
+                ):
                     ctx["can_take_over"] = True
                     ctx["open_team_count"] = len(takeover.open_teams(db, league_id))
             elif "headlines" in tabs and gm.get("id"):

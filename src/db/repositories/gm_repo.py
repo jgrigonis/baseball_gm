@@ -167,9 +167,10 @@ class GMRepository:
         return [dict(row) for row in rows]
 
     def get_public_leagues(self, user_id: str) -> list[dict]:
-        """Public leagues the user isn't in. Leagues still in the lobby come
-        first, since those can be joined, and finished ones last. Tutorial
-        leagues never show here, even if an admin made one public."""
+        """Public leagues the user isn't in, and private ones they entered the
+        join code of (league_watchers). Leagues still in the lobby come first,
+        since those can be joined, and finished ones last. Tutorial leagues
+        never show here, even if an admin made one public."""
         rows = self.conn.execute(
             """SELECT l.id, l.name, l.state, l.mode, l.created_at,
                       l.last_played_at, l.late_joins, l.is_practice,
@@ -181,14 +182,17 @@ class GMRepository:
             FROM leagues l
             LEFT JOIN league_seasons ls ON ls.league_id = l.id
             LEFT JOIN seasons s ON s.id = ls.season_id
-            WHERE l.is_public AND NOT l.is_practice
+            WHERE (l.is_public
+                   OR EXISTS (SELECT 1 FROM league_watchers w
+                              WHERE w.league_id = l.id AND w.user_id = %s))
+              AND NOT l.is_practice
               AND NOT EXISTS (SELECT 1 FROM gms m
                               WHERE m.league_id = l.id AND m.user_id = %s)
             GROUP BY l.id, l.name, l.state, l.mode, l.created_at, l.last_played_at,
                      l.late_joins, l.is_practice
             ORDER BY (l.state = 'lobby') DESC, (l.state = 'complete'),
                      l.created_at DESC""",
-            (user_id,),
+            (user_id, user_id),
         ).fetchall()
         return [dict(row) for row in rows]
 

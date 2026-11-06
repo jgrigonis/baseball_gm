@@ -856,6 +856,11 @@ def test_the_rookie_game_is_played_on_the_break(client, lg):
     # Three All-Stars, so there are rookies enough for two sides.
     stars = {lg.players[("mine", f"p{i}")] for i in range(3)}
     repo, rookies = _count_rookies(lg, stars)
+    # The day's real game could hurt a rookie and leave a side short of nine
+    # hitters for the game played below.
+    lg.db.execute(
+        "UPDATE leagues SET injuries_enabled = FALSE WHERE id = %s", (lg.league.id,)
+    )
     # The sim plays it with the derby and the All-Star Game.
     with (
         patch.object(rookie_game, "play", return_value=None) as play,

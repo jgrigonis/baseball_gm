@@ -68,6 +68,25 @@ class LeagueRepository:
         ).fetchone()
         return dict(row) if row else None
 
+    def add_watcher(self, league_id: str, user_id: str) -> None:
+        """Let someone who entered a private league's join code watch it."""
+        self.conn.execute(
+            "INSERT INTO league_watchers (league_id, user_id) VALUES (%s, %s)"
+            " ON CONFLICT DO NOTHING",
+            (league_id, user_id),
+        )
+
+    def is_watcher(self, league_id: str, user_id: str | None) -> bool:
+        """Has this person entered the league's join code?"""
+        if not user_id:
+            return False
+        return bool(
+            self.conn.execute(
+                "SELECT 1 FROM league_watchers WHERE league_id = %s AND user_id = %s",
+                (league_id, user_id),
+            ).fetchone()
+        )
+
     def get_by_id(self, league_id: str) -> dict | None:
         row = self.conn.execute(
             "SELECT * FROM leagues WHERE id = %s", (league_id,)
