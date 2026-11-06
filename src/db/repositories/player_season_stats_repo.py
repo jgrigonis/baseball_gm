@@ -19,6 +19,23 @@ class PlayerSeasonStatsRepository:
         ).fetchone()
         return row["tg"] or 1
 
+    def get_season_totals(self, season_id: str) -> dict:
+        """The whole league's regular season totals, the bat_* and pitch_*
+        columns advanced.LeagueRates needs, summed into one dict."""
+        cols = [
+            "bat_ab", "bat_hits", "bat_doubles", "bat_triples", "bat_home_runs",
+            "bat_walks", "bat_hbp", "bat_sac_flys", "bat_runs",
+            "pitch_outs", "pitch_earned_runs", "pitch_home_runs", "pitch_walks",
+            "pitch_hit_batters", "pitch_strike_outs",
+        ]  # fmt: skip
+        sums = ", ".join(f"COALESCE(SUM({c}), 0) AS {c}" for c in cols)
+        row = self.conn.execute(
+            f"""SELECT {sums} FROM player_season_stats
+                WHERE season_id = %s AND NOT is_postseason""",
+            (season_id,),
+        ).fetchone()
+        return {c: int(row[c]) for c in cols} if row else {}
+
     def get_batting_for_league(self, league_id: str, season_id: str) -> list[dict]:
         """Return batting stats for all players in a league (regular season, at
         least 1 AB). A player traded during the season gets one row, his
@@ -272,6 +289,7 @@ class PlayerSeasonStatsRepository:
                 "pitch_home_runs",
                 "pitch_complete_games",
                 "pitch_shutouts",
+                "pitch_hit_batters",
             ],
             "SUM(pitch_outs) >= 9",
         )
