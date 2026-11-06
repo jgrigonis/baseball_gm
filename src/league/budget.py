@@ -121,14 +121,15 @@ def hard_limit(cap: int, budget: int, bank: int | None) -> int:
     return budget + margin
 
 
-def refusal(payroll: int, limit: int, added: int) -> str | None:
-    """Why the owner refuses a move that adds this much payroll, or None
+def refusal(spend: int, limit: int, added: int) -> str | None:
+    """Why the owner refuses a move that adds this much spending, or None
     when it stays inside their hard limit (or takes payroll off)."""
-    if added <= 0 or payroll + added <= limit:
+    # spend: payroll plus the front office.
+    if added <= 0 or spend + added <= limit:
         return None
     return (
-        f"Your owner won't allow it: that takes payroll to "
-        f"{format_salary(payroll + added)}, past their "
+        f"Your owner won't allow it: that takes spending (payroll and front "
+        f"office) to {format_salary(spend + added)}, past their "
         f"{format_salary(limit)} limit."
     )
 
@@ -150,6 +151,59 @@ def tax_shares(payrolls: dict[str, int], cap: int) -> dict[str, int]:
     return {t: share for t in under}
 
 
+# ── The front office (plans/budget.md, section 7) ───────────────────────────
+# Three departments the GM funds out of the owner's budget, each at one of
+# five levels, set once each offseason (draft and preseason) and locked for
+# the season. Scouting waits for grade fog. Department levels are private.
+DEPARTMENTS = (
+    ("coaching", "Coaching", "How fast players grow toward their ceilings"),
+    ("facilities", "Facilities", "Injuries, time on the IL and wear over a season"),
+    ("analytics", "Analytics", "How well your strategy settings are carried out"),
+)
+DEPARTMENT_KEYS = tuple(d[0] for d in DEPARTMENTS)
+LEVELS = ("Bare bones", "Thin", "Standard", "Strong", "Elite")
+STANDARD = 2
+# Each level's cost a season, as a share of the cap: about $2M, $4M, $6M,
+# $9M and $12M at a $160M cap.
+LEVEL_SHARE = (0.0125, 0.025, 0.0375, 0.05625, 0.075)
+DEPARTMENT_ROUNDING = 100_000
+
+
+def clean_level(level) -> int:
+    try:
+        return max(0, min(len(LEVELS) - 1, int(level)))
+    except TypeError, ValueError:
+        return STANDARD
+
+
+def level_cost(cap: int, level: int) -> int:
+    """What a department at this level costs a season under this cap."""
+    value = cap * LEVEL_SHARE[clean_level(level)]
+    return round(value / DEPARTMENT_ROUNDING) * DEPARTMENT_ROUNDING
+
+
+def front_office_cost(cap: int, levels: dict) -> int:
+    """The whole front office's cost a season; a missing level is Standard."""
+    return sum(level_cost(cap, levels.get(k, STANDARD)) for k in DEPARTMENT_KEYS)
+
+
+def standard_front_office(cap: int) -> int:
+    """A front office at Standard everywhere. Owners' budgets include it,
+    and the league's fixed costs are that much lower (src/league/
+    finances.py), so a Standard front office leaves the money as it was."""
+    return front_office_cost(cap, {})
+
+
+def ai_levels(spending: int, seed: str) -> dict[str, int]:
+    """An AI team's levels: a miser owner squeezes the front office, a
+    spender funds it, with a little variety per department."""
+    import random
+
+    rng = random.Random(seed)
+    base = STANDARD + (1 if spending >= 70 else -1 if spending < 30 else 0)
+    return {k: clean_level(base + rng.choice((-1, 0, 0, 1))) for k in DEPARTMENT_KEYS}
+
+
 def _leash_text(cap: int, budget: int) -> str:
     if budget > cap:
         return f"{format_salary(budget - cap)} over the cap"
@@ -158,13 +212,23 @@ def _leash_text(cap: int, budget: int) -> str:
     return "right at the cap"
 
 
-def standing(payroll: int, cap: int, budget: int, limit: int | None = None) -> dict:
-    """A team's payroll against the league's cap, its owner's budget and
-    the owner's hard limit, for the views."""
+def standing(
+    payroll: int,
+    cap: int,
+    budget: int,
+    limit: int | None = None,
+    front_office: int = 0,
+) -> dict:
+    """A team's payroll against the league's cap, and its spending (payroll
+    plus the front office) against its owner's budget and hard limit, for
+    the views."""
     limit = hard_limit(cap, budget, None) if limit is None else limit
+    spend = payroll + front_office
+    # What's left of the budget for payroll once the front office is paid.
+    payroll_budget = budget - front_office
     over = max(0, payroll - cap)
     tax = luxury_tax(payroll, cap)
-    over_budget = max(0, payroll - budget)
+    over_budget = max(0, spend - budget)
     return {
         "payroll": payroll,
         "cap": cap,
@@ -175,7 +239,9 @@ def standing(payroll: int, cap: int, budget: int, limit: int | None = None) -> d
         "payroll_text": format_salary(payroll),
         "cap_text": format_salary(cap),
         "budget_text": format_salary(budget),
-        "leash_text": _leash_text(cap, budget),
+        "payroll_budget": payroll_budget,
+        "payroll_budget_text": format_salary(payroll_budget),
+        "leash_text": _leash_text(cap, payroll_budget),
         "room_text": format_salary(cap - payroll) if payroll < cap else None,
         "over_text": format_salary(over) if over else None,
         "over_budget_text": format_salary(over_budget) if over_budget else None,
@@ -183,15 +249,22 @@ def standing(payroll: int, cap: int, budget: int, limit: int | None = None) -> d
         "tax_rate": LUXURY_TAX_RATE,
         "limit": limit,
         "limit_text": format_salary(limit),
-        "limit_room_text": format_salary(limit - payroll) if payroll < limit else None,
-        "at_limit": payroll >= limit,
+        "limit_room_text": format_salary(limit - spend) if spend < limit else None,
+        "at_limit": spend >= limit,
+        "front_office": front_office,
+        "front_office_text": format_salary(front_office),
+        "spend": spend,
+        "spend_text": format_salary(spend),
     }
 
 
-def warning(payroll: int, cap: int, budget: int, added: int) -> str | None:
+def warning(
+    payroll: int, cap: int, budget: int, added: int, front_office: int = 0
+) -> str | None:
     """What to warn a GM about a move that adds this much payroll: luxury
-    tax past the league's cap, and the owner's budget. None when it leaves
-    him under both (or takes payroll off)."""
+    tax past the league's cap, and the owner's budget (which pays the front
+    office too). None when it leaves him under both (or takes payroll
+    off)."""
     if added <= 0:
         return None
     after = payroll + added
@@ -209,8 +282,8 @@ def warning(payroll: int, cap: int, budget: int, added: int) -> str | None:
                 f"{format_salary(cap)} cap: {format_salary(extra)} in "
                 "luxury tax."
             )
-    if after > budget:
-        if payroll > budget:
+    if after + front_office > budget:
+        if payroll + front_office > budget:
             parts.append("You're already past what your owner will spend.")
         else:
             parts.append(

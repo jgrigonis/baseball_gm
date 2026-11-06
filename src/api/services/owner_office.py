@@ -25,6 +25,7 @@ from src.api.services import owner_review
 from src.api.services import owners as owner_service
 from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.contract_repo import ContractRepository
+from src.league import budget as bg
 from src.league import owner_messages as om
 from src.league import owner_scoring as sc
 from src.league import owners
@@ -141,6 +142,20 @@ def _set_mood(conn, league_id: str, team_id: str, season_id: str, mood: float, o
     )
 
 
+def _payroll_budgets(conn, league_id: str, year: int) -> dict[str, int]:
+    """Each owner's budget less what the team's front office costs: the
+    money they're giving the GM for payroll (src/league/budget.py)."""
+    repo = BudgetRepository(conn)
+    budgets = repo.for_league(league_id, year)
+    if not budgets:
+        return {}
+    cap = repo.cap(league_id, year)
+    levels = repo.league_levels(league_id, year)
+    return {
+        t: b - bg.front_office_cost(cap, levels.get(t, {})) for t, b in budgets.items()
+    }
+
+
 def _fields(owner: dict, gm: dict, names: dict, budget: int | None) -> dict:
     rival = owner.get("rival_team_id")
     return {
@@ -185,7 +200,7 @@ def catch_up(conn, league_id: str, today: str | None = None) -> int:
     gms = _gms(conn, league_id)
     names = _team_names(conn, by_team)
     year = season["year"]
-    budgets = BudgetRepository(conn).for_league(league_id, year) if money else {}
+    budgets = _payroll_budgets(conn, league_id, year) if money else {}
     written = 0
     in_season = league["state"] in ("season", "playoffs")
     played = _played(conn, season["id"]) if in_season else {}
