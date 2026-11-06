@@ -99,6 +99,7 @@ def standing(payroll: int, cap: int, budget: int) -> dict:
         "cap_text": format_salary(cap),
         "budget_text": format_salary(budget),
         "leash_text": _leash_text(cap, budget),
+        "room_text": format_salary(cap - payroll) if payroll < cap else None,
         "over_text": format_salary(over) if over else None,
         "over_budget_text": format_salary(over_budget) if over_budget else None,
         "tax_text": format_salary(tax) if tax else None,

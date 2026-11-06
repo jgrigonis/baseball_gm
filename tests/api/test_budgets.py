@@ -198,6 +198,8 @@ def test_the_owner_tab_explains_the_cap_and_leash(lg, client_for):
     assert f"payroll cap is <strong>{bg.format_salary(cap)}</strong>" in html
     assert "the same for every team" in html
     assert "over the cap" in html
+    pay = x.contracts.payroll(x.mine.id, 2026)
+    assert f"Your payroll now: <strong>{bg.format_salary(pay)}</strong>" in html
 
 
 def test_speed_blitz_roster_shows_just_payroll(lg, client_for):
