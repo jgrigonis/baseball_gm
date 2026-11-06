@@ -329,6 +329,9 @@
 .r-action-btn.add-btn:hover  { background: var(--green-dim); border-color: var(--green); }
 .r-action-btn.rem-btn  { color: var(--red); }
 .r-action-btn.rem-btn:hover  { background: rgba(255,80,80,.08); border-color: var(--red); }
+/* Desktop: → toward the Organization column beside it; phones (one list at a
+   time): − like the Lineup tab's send-to-minors button. */
+.rem-arrow { font-size: 1.25em; line-height: .8; }
 
 /* ── Phones: one list at a time, bigger buttons, Save pinned to the bottom ──── */
 .roster-seg { display: none; }
@@ -560,8 +563,9 @@ function makeCard(p, isIn40) {
   if (p.injured) el.style.borderLeft = p.returning ? '3px solid #a07800' : '3px solid var(--red)';
 
   const btnHtml = isIn40
-    ? `<button class="r-action-btn rem-btn" title="Remove from 40-man"
-               onclick="event.stopPropagation();removeFromRoster('${p.player_id}')">×</button>`
+    ? `<button class="r-action-btn rem-btn" title="Move to Organization"
+               aria-label="Move ${p.first_name} ${p.last_name} to the Organization"
+               onclick="event.stopPropagation();removeFromRoster('${p.player_id}')"><span class="phone-hide rem-arrow">→</span><span class="phone-only">−</span></button>`
     : `<span class="r-org-btns"><button class="r-action-btn rel-btn" title="Release him"
                onclick="event.stopPropagation();releasePlayer('${p.player_id}', '${(p.first_name + ' ' + p.last_name).replace(/'/g, "\\'")}')">×</button><button class="r-action-btn add-btn" title="Add to 40-man"
                onclick="event.stopPropagation();addToRoster('${p.player_id}')">+</button></span>`;
