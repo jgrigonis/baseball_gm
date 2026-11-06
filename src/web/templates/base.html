@@ -23,6 +23,14 @@
 <div class="app-shell">
 
   <header class="topbar">
+    {% if visible_tabs %}
+    {# Phones: opens the league sidebar as a drawer (_league_side.html), which
+       also holds the site links, so there's no separate menu here. #}
+    <button type="button" class="nav-menu-btn side-open-btn" onclick="openLeagueSide()"
+            title="Menu" aria-label="Menu">
+      <span class="nav-menu-bars" aria-hidden="true"><span></span><span></span><span></span></span>
+    </button>
+    {% endif %}
     <span class="topbar-logo">
       <a href="/leagues/" style="color:inherit;text-decoration:none;">⚾<span class="topbar-logo-word{% if league_name %} in-league{% endif %}"> Baseball GM</span></a>
       {% if league_name %}
@@ -131,7 +139,9 @@
     {% endif %}
     {% set nav_user = user or (request.state.user if request is defined else none) %}
     {# Site links live in a hamburger menu at every screen size, grouped:
-       this league's pages, then the whole site, then your own account. #}
+       this league's pages, then the whole site, then your own account.
+       Inside a league with tabs, the league sidebar has them instead. #}
+    {% if not visible_tabs %}
     <details class="nav-menu" id="nav-menu">
       <summary class="nav-menu-btn" title="Menu" aria-label="Menu">
         <span class="nav-menu-bars" aria-hidden="true"><span></span><span></span><span></span></span>
@@ -171,6 +181,7 @@
       if (e.key === 'Escape' && d && d.open) { d.open = false; d.querySelector('summary').focus(); }
     });
     </script>
+    {% endif %}
   </header>
 
   <main id="main-content">

@@ -1,0 +1,144 @@
+{# templates/dashboard/partials/_league_side.html
+   The league's pages, in a sidebar grouped by what they're for. On desktop it
+   collapses to an icon rail (html.side-mini, remembered per browser); on
+   phones it's a drawer the top bar's ☰ opens (html.side-open). The site
+   links (Leagues, Profile, Account, Sign Out) live in its footer menu.
+   Tab links keep class .tab-link and their badge ids, so setActiveTab,
+   goToTab, the badges and the sim's greying work on them as before. #}
+{% set icons = {'draft':'📋','standings':'🏆','power':'⚡','leaders':'📊','roster':'👥','lineup':'✏️','schedule':'📅','stats':'📈','playoffs':'🥇','strategy':'🎛','trades':'🔁','allstar':'★','headlines':'📰','free-agents':'✍️','owner':'🎩'} %}
+{% set labels = {'draft':'Draft','standings':'Standings','power':'Power','leaders':'Leaders','roster':'Roster','lineup':'Lineup','schedule':'Schedule','stats':'Stats','playoffs':'Playoffs','strategy':'Strategy','trades':'Trades','allstar':'All-Stars','headlines':'News','free-agents':'Free Agents','owner':'Owner'} %}
+{% set groups = [
+  ('My team', ['roster', 'lineup', 'strategy', 'owner']),
+  ('Moves', ['trades', 'free-agents', 'draft']),
+  ('League', ['headlines', 'schedule', 'standings', 'power', 'allstar', 'playoffs']),
+  ('Numbers', ['leaders', 'stats']),
+] %}
+{% set grouped = groups | map(attribute=1) | sum(start=[]) %}
+{% set path = request.url.path.rstrip('/') if request is defined else '' %}
+{% set nav_user = user or (request.state.user if request is defined else none) %}
+<nav class="league-side" id="tab-bar" aria-label="League pages">
+  <div class="side-top">
+    <span class="side-title">This league</span>
+    <button type="button" class="side-btn side-collapse" onclick="toggleLeagueSide()"
+            title="Collapse sidebar" aria-label="Collapse sidebar">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5"/><line x1="6" y1="2.5" x2="6" y2="13.5"/></svg>
+    </button>
+    <button type="button" class="side-btn side-close" onclick="closeLeagueSide()" aria-label="Close menu">✕</button>
+  </div>
+
+  <div class="side-scroll">
+  {% for gname, gtabs in groups %}
+    {% set shown = gtabs | select('in', visible_tabs) | list %}
+    {% if gname == 'Numbers' %}{% set shown = shown + (visible_tabs | reject('in', grouped) | list) %}{% endif %}
+    {% if shown or gname == 'League' %}
+    <div class="side-group">
+      <div class="side-head">{{ gname }}</div>
+      {% for tab in shown %}
+        {% set url = '/leagues/' ~ league_id ~ ('/draft/results' if tab == 'draft' and draft_complete else '/' ~ tab) %}
+        <a href="{{ url }}"
+           class="tab-link {% if active_tab == tab %}active{% endif %}"
+           hx-get="{{ url }}"
+           hx-target="#tab-content" hx-swap="innerHTML" hx-push-url="true"
+           title="{{ 'Draft results' if tab == 'draft' and draft_complete else labels.get(tab, tab) }}"
+           onclick="setActiveTab(this)">
+          <span class="tab-icon" aria-hidden="true">{{ icons.get(tab, '•') }}</span><span class="tab-label">{{ labels.get(tab, tab) }}</span>
+          {% if tab == 'trades' and not is_viewer %}<span class="tab-badge" id="trade-badge"
+            title="Offers and votes waiting on you"
+            {% if not trade_inbox %}style="display:none;"{% endif %}>{{ trade_inbox or 0 }}</span>{% endif %}
+          {% if tab == 'headlines' and not is_viewer %}<span class="tab-badge unread" id="news-badge"
+            title="New stories since you last looked"
+            {% if not news_unseen %}style="display:none;"{% endif %}>{{ news_unseen or 0 }}</span>{% endif %}
+          {% if tab == 'owner' and not is_viewer %}<span class="tab-badge" id="owner-badge"
+            title="New messages from your owner"
+            {% if not owner_unseen %}style="display:none;"{% endif %}>{{ owner_unseen or 0 }}</span>{% endif %}
+          {% if tab == 'allstar' and all_star_ballot_due %}<span class="tab-badge"
+            title="Your All-Star ballot isn't saved yet">Vote</span>{% endif %}
+          {% if tab == 'allstar' and all_star_pick_due %}<span class="tab-badge"
+            title="Your pick in the All-Star draft">Pick</span>{% endif %}
+        </a>
+      {% endfor %}
+      {% if gname == 'League' %}
+        {# Whole pages, not tabs: they load in full. #}
+        {% if league_info %}
+        <a href="/leagues/{{ league_id }}/league" title="League info"
+           class="side-link{% if path.endswith('/league') %} active{% endif %}">
+          <span class="tab-icon" aria-hidden="true">ℹ️</span><span class="tab-label">League info</span></a>
+        {% endif %}
+        <a href="/leagues/{{ league_id }}/history" title="History"
+           class="side-link{% if '/history' in path %} active{% endif %}">
+          <span class="tab-icon" aria-hidden="true">📜</span><span class="tab-label">History</span></a>
+      {% endif %}
+    </div>
+    {% endif %}
+  {% endfor %}
+  </div>
+
+  <details class="side-account" id="side-account">
+    <summary title="Leagues, profile and account">
+      <span class="tab-icon" aria-hidden="true">👤</span>
+      <span class="tab-label">{{ nav_user.username if nav_user and nav_user.username else 'Account' }}</span>
+      <span class="side-caret" aria-hidden="true">▴</span>
+    </summary>
+    <div class="side-account-panel topbar-nav">
+      <a href="/leagues/">All leagues</a>
+      {% if nav_user and nav_user.is_admin %}<a href="/admin/">Admin</a>{% endif %}
+      {% if discord_url %}<a href="{{ discord_url }}" target="_blank" rel="noopener">Discord ↗</a>{% endif %}
+      {% if nav_user and nav_user.username %}<a href="/gms/{{ nav_user.username|urlencode }}">Profile</a>{% endif %}
+      {% if nav_user and nav_user.has_password %}<a href="/account" class="topbar-account">Account</a>{% endif %}
+      <form method="POST" action="/auth/logout">
+        <button type="submit" class="topbar-signout">Sign Out</button>
+      </form>
+    </div>
+  </details>
+</nav>
+<div class="side-scrim" onclick="closeLeagueSide()"></div>
+<script>
+(function() {
+  var root = document.documentElement;
+  var phone = window.matchMedia('(max-width: 600px)');
+  // Desktop: collapse to the icon rail and back, remembered per browser.
+  window.toggleLeagueSide = function() {
+    var mini = root.classList.toggle('side-mini');
+    try { localStorage.setItem('league-side', mini ? 'mini' : 'open'); } catch (e) {}
+    syncCollapseLabel();
+  };
+  function syncCollapseLabel() {
+    var b = document.querySelector('.side-collapse');
+    if (!b) return;
+    var t = root.classList.contains('side-mini') ? 'Expand sidebar' : 'Collapse sidebar';
+    b.title = t; b.setAttribute('aria-label', t);
+  }
+  syncCollapseLabel();
+  // Phones: a drawer.
+  window.openLeagueSide = function() {
+    root.classList.add('side-open');
+    var a = document.querySelector('.league-side .tab-link.active, .league-side .side-link.active, .league-side .tab-link');
+    if (a) a.focus({preventScroll: true});
+  };
+  window.closeLeagueSide = function() {
+    if (!root.classList.contains('side-open')) return;
+    root.classList.remove('side-open');
+    var acct = document.getElementById('side-account');
+    if (acct) acct.open = false;
+    var b = document.querySelector('.side-open-btn');
+    if (b && phone.matches) b.focus({preventScroll: true});
+  };
+  var side = document.getElementById('tab-bar');
+  // Picking a page closes the drawer.
+  side.addEventListener('click', function(e) {
+    if (e.target.closest('.tab-link, .side-link')) closeLeagueSide();
+  });
+  // The account menu closes on a click outside it; Escape closes it, then the drawer.
+  document.addEventListener('click', function(e) {
+    var acct = document.getElementById('side-account');
+    if (acct && acct.open && !acct.contains(e.target)) acct.open = false;
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Escape') return;
+    var acct = document.getElementById('side-account');
+    if (acct && acct.open) { acct.open = false; acct.querySelector('summary').focus(); return; }
+    closeLeagueSide();
+  });
+  phone.addEventListener('change', function() { root.classList.remove('side-open'); });
+})();
+</script>
