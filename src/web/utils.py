@@ -24,7 +24,11 @@ from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsReposi
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.league.league_modes import get_mode, injuries_allowed
-from src.league.trade_deadline import deadline_date, trades_enabled_for
+from src.league.trade_deadline import (
+    OFFSEASON_STATES,
+    deadline_date,
+    trades_enabled_for,
+)
 from src.player.face import player_face
 from src.team.colors import team_badge
 
@@ -297,7 +301,13 @@ def _shell_ctx(
             tabs = _compute_visible_tabs(league["state"], draft_complete)
             # Leagues that trade get a Trades tab once the draft is done, after
             # the lineup. It stays for the trade history once trades close.
-            if draft_complete and "lineup" in tabs and trades_enabled_for(league):
+            # The offseason window is open through the draft too, so it's
+            # there before the draft is done in the offseason states.
+            if (
+                (draft_complete or league["state"] in OFFSEASON_STATES)
+                and "lineup" in tabs
+                and trades_enabled_for(league)
+            ):
                 tabs.insert(tabs.index("lineup") + 1, "trades")
                 if not ctx["is_viewer"]:
                     # Offers and votes waiting on this GM: the tab's badge.

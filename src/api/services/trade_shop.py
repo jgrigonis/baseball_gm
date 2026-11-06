@@ -32,9 +32,10 @@ from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.trade_repo import TradeRepository
+from src.league import trade_deadline
 from src.league.personas import Leanings
 from src.league.trades import ai_evaluator
-from src.league.trades.ai_proposer import ShopOffer, Side, shop_offer
+from src.league.trades.ai_proposer import ShopOffer, Side, shop_offer_or_why
 
 
 class _Ctx:
@@ -96,10 +97,16 @@ class _Ctx:
 
     def offer_from(self, team_id: str) -> ShopOffer | None:
         """This AI team's best offer, as its answer to the offer would be."""
+        offer = self.offer_or_why(team_id)
+        return offer if isinstance(offer, ShopOffer) else None
+
+    def offer_or_why(self, team_id: str) -> ShopOffer | str:
+        """This AI team's best offer, or why it has none (TRADED_HIM, or
+        ai_proposer.shop_offer_or_why)."""
         # A player can't go back to a team that traded him away this season.
         former = self.trade_repo.former_teams(self.season_id, [self.player_id])
         if team_id in former.get(self.player_id, ()):
-            return None
+            return TRADED_HIM
         roster = self._roster(team_id)
         statuses = _statuses(self.conn, team_id)
         tradeable = {a.id for a in roster if statuses.get(a.id) in trades.TRADEABLE}
@@ -122,7 +129,11 @@ class _Ctx:
             horizon=lean.horizon,
             pay_room=self._rooms.get(team_id),
         )
-        return shop_offer(ai, self.seller, self.target, self.days_left, blocked)
+        return shop_offer_or_why(ai, self.seller, self.target, self.days_left, blocked)
+
+
+# A team that traded him away this season can't take him back.
+TRADED_HIM = "traded"
 
 
 def _statuses(conn, team_id: str) -> dict[str, str]:
@@ -138,14 +149,16 @@ def _statuses(conn, team_id: str) -> dict[str, str]:
 def shop(conn, league_id: str, gm: dict, player_id: str) -> dict:
     """Every AI team's best offer for the GM's player:
     {"player", "offers": [{team_id, team_name, give: [ids], score}], best
-    for the GM first, "no_interest": [team names]}."""
+    for the GM first, "no_interest": [team names], "why": {reason: [team
+    names]}} (reasons: ai_proposer.NO_HELP/NO_ROOM/NO_MATCH, TRADED_HIM)."""
     ctx = _Ctx(conn, league_id, gm, player_id)
-    offers, none = [], []
+    offers, none, why = [], [], {}
     for t in ctx.ai_teams():
         name = f"{t['city']} {t['mascot']}"
-        offer = ctx.offer_from(t["id"])
-        if offer is None:
+        offer = ctx.offer_or_why(t["id"])
+        if not isinstance(offer, ShopOffer):
             none.append(name)
+            why.setdefault(offer, []).append(name)
             continue
         offers.append(
             {
@@ -162,6 +175,8 @@ def shop(conn, league_id: str, gm: dict, player_id: str) -> dict:
         "player": ctx.target.name,
         "offers": offers,
         "no_interest": sorted(none),
+        "why": {k: sorted(v) for k, v in why.items()},
+        "offseason": ctx.league["state"] in trade_deadline.OFFSEASON_STATES,
     }
 
 

@@ -96,7 +96,13 @@ def test_it_skips_a_deal_it_was_told_to_avoid():
 
 # ── Shopping a player (shop_offer) ─────────────────────────────────────────
 
-from src.league.trades.ai_proposer import shop_offer  # noqa: E402
+from src.league.trades.ai_proposer import (  # noqa: E402
+    NO_HELP,
+    NO_MATCH,
+    NO_ROOM,
+    shop_offer,
+    shop_offer_or_why,
+)
 
 
 def test_a_contender_offers_for_a_shopped_veteran():
@@ -147,3 +153,41 @@ def test_blocked_players_arent_offered():
     buyer = _side("contending", [prospect])
     offer = shop_offer(buyer, seller, veteran, 60, blocked={prospect.id})
     assert offer is None or prospect not in offer.give
+
+
+def _priced(rating, salary, age=27):
+    from dataclasses import replace
+
+    return replace(_p(rating, age=age), salary=salary)
+
+
+def test_salary_sent_back_counts_toward_the_budget():
+    """A team that can't add his whole salary can still offer players whose
+    pay makes room for it."""
+    veteran = _priced(70, 10_000_000, age=31)
+    seller = _side("rebuilding", [veteran], margin=0.0)
+    prospects = [_priced(64, 9_000_000, age=22), _priced(62, 9_500_000, age=23)]
+    buyer = _side("contending", prospects)
+    buyer.pay_room = 2_000_000
+    offer = shop_offer(buyer, seller, veteran, days_left=60)
+    assert offer is not None
+    added = veteran.salary - sum(a.salary for a in offer.give)
+    assert added <= buyer.pay_room
+
+
+def test_why_there_is_no_offer():
+    scrub = _p(50)
+    seller = _side("retooling", [scrub], margin=0.0)
+    assert shop_offer_or_why(_side("contending"), seller, scrub, 60) == NO_HELP
+
+    veteran = _priced(70, 10_000_000, age=31)
+    seller = _side("rebuilding", [veteran], margin=0.0)
+    cheap = [_p(64, age=22), _p(62, age=23)]
+    buyer = _side("contending", cheap)
+    buyer.pay_room = 1_000_000
+    assert shop_offer_or_why(buyer, seller, veteran, 60) == NO_ROOM
+
+    # Wants him, but has nothing the seller would want for him.
+    buyer = _side("contending", untradeable=())
+    buyer.tradeable = set()
+    assert shop_offer_or_why(buyer, seller, veteran, 60) == NO_MATCH

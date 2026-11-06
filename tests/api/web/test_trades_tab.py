@@ -173,3 +173,16 @@ def test_shop_offers_and_the_builder_have_compare_buttons(client_for):
     html = client.get(f"/leagues/{league.id}/trades").text
     assert 'onclick="trShopCompare(' in html
     assert 'id="tr-compare"' in html
+
+
+def test_the_trades_tab_is_there_during_the_draft(client_for, db_conn):
+    """The offseason trade window is open through the draft, so the tab (and
+    the player panel's Shop him, which opens it) works before the draft is
+    done."""
+    client, league, _, _ = client_for("blitz")
+    db_conn.execute("UPDATE leagues SET state = 'draft' WHERE id = %s", (league.id,))
+    db_conn.execute(
+        "UPDATE drafts SET state = 'pending' WHERE league_id = %s", (league.id,)
+    )
+    html = client.get(f"/leagues/{league.id}/roster").text
+    assert f'href="/leagues/{league.id}/trades"' in html
