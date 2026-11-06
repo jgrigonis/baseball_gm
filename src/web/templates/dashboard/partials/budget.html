@@ -54,7 +54,7 @@
       <div class="bud-stat">
         <div class="bud-label">Total spending</div>
         <div class="bud-value {% if money.at_limit %}bud-bad{% endif %}">{{ money.spend_text }}</div>
-        <div class="bud-note">{{ money.payroll_text }} payroll + {{ money.front_office_text }} front office</div>
+        <div class="bud-note">{{ money.payroll_text }} payroll + {{ money.front_office_text }} front office + {{ money.minors_text }} minor leagues</div>
       </div>
       <div class="bud-stat">
         <div class="bud-label">Owner's ideal budget</div>
@@ -68,7 +68,7 @@
       </div>
     </div>
     <div class="bud-line">
-      Payroll plus the front office. The budget is what your owner is happy to spend; going past it is allowed, but it comes out of their profit.
+      Payroll plus the front office and the minor leagues: each minor leaguer who's never been on the 40-man costs {{ rules.minor_pay_text }} a season instead of his salary, so letting go of ones you don't need saves money. The budget is what your owner is happy to spend; going past it is allowed, but it comes out of their profit.
       Past their limit ({{ rules.margin_pct }}% of the cap above the budget) they won't sign off on any move that adds money{% if bank %}, and if their bank runs dry the limit drops to the budget{% endif %}.
     </div>
   </div>
@@ -114,7 +114,7 @@
   <div class="card-body" style="overflow-x:auto;">
     {% if history %}
     <table class="data-table bud-table">
-      <thead><tr><th>Year</th><th class="num">Revenue</th><th class="num">Payroll</th><th class="num">Tax</th><th class="num">Tax share</th><th class="num">Front office</th><th class="num">Profit</th><th class="num">Fans</th><th class="num">Bank after</th></tr></thead>
+      <thead><tr><th>Year</th><th class="num">Revenue</th><th class="num">Payroll</th><th class="num">Tax</th><th class="num">Tax share</th><th class="num">Front office</th><th class="num">Minor leagues</th><th class="num">Profit</th><th class="num">Fans</th><th class="num">Bank after</th></tr></thead>
       <tbody>
         {% for r in history %}
         <tr>
@@ -124,6 +124,7 @@
           <td class="num {% if r.tax %}bud-bad{% endif %}">{{ r.tax or '—' }}</td>
           <td class="num">{{ r.share or '—' }}</td>
           <td class="num">{{ r.front_office or '—' }}</td>
+          <td class="num">{{ r.minor_league or '—' }}</td>
           <td class="num {% if r.loss %}bud-bad{% endif %}">{{ r.profit }}</td>
           <td class="num" title="Fan interest after the season, 0 to 100">{{ r.fans if r.fans is not none else '—' }}</td>
           <td class="num">{{ r.bank or '—' }}</td>

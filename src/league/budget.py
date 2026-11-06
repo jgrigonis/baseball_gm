@@ -124,12 +124,12 @@ def hard_limit(cap: int, budget: int, bank: int | None) -> int:
 def refusal(spend: int, limit: int, added: int) -> str | None:
     """Why the owner refuses a move that adds this much spending, or None
     when it stays inside their hard limit (or takes payroll off)."""
-    # spend: payroll plus the front office.
+    # spend: payroll plus the front office and the minor leagues.
     if added <= 0 or spend + added <= limit:
         return None
     return (
-        f"Your owner won't allow it: that takes spending (payroll and front "
-        f"office) to {format_salary(spend + added)}, past their "
+        f"Your owner won't allow it: that takes spending (payroll, front "
+        f"office and minor leagues) to {format_salary(spend + added)}, past their "
         f"{format_salary(limit)} limit."
     )
 
@@ -250,6 +250,34 @@ def analytics_aim(level: int, quality: float) -> float:
     return min(SPOT_MAX, max(SPOT_MIN, quality)) ** power
 
 
+# ── The minor leagues ───────────────────────────────────────────────────────
+# Minor leaguers who've never been on the 40-man aren't payroll (their deals
+# aren't guaranteed, and they don't count toward the cap or the tax), but the
+# farm still costs the owner money (Josh, 2026-11-06). Each one costs a flat
+# minor league wage a season, not his contract, so a full farm is about one
+# Elite department. Owners' budgets include the league's average farm, and
+# the league's fixed costs are that much lower (src/league/finances.py), so
+# an average farm leaves the money as it was and a big one costs.
+MINOR_LEAGUE_PAY = 100_000
+MINOR_LEAGUE_ROUNDING = 10_000
+
+
+def minor_league_cost(players: int, scale: float = 1.0) -> int:
+    """What this many minor leaguers cost a season, with salaries grown
+    this much since the league's first cap (salary_scale)."""
+    value = max(0, players) * MINOR_LEAGUE_PAY * scale
+    return round(value / MINOR_LEAGUE_ROUNDING) * MINOR_LEAGUE_ROUNDING
+
+
+def average_farm(costs) -> int:
+    """The league's average minor league cost, rounded like one."""
+    costs = list(costs)
+    if not costs:
+        return 0
+    value = sum(costs) / len(costs)
+    return round(value / MINOR_LEAGUE_ROUNDING) * MINOR_LEAGUE_ROUNDING
+
+
 def ai_levels(spending: int, seed: str) -> dict[str, int]:
     """An AI team's levels: a miser owner squeezes the front office, a
     spender funds it, with a little variety per department."""
@@ -274,14 +302,16 @@ def standing(
     budget: int,
     limit: int | None = None,
     front_office: int = 0,
+    minors: int = 0,
 ) -> dict:
     """A team's payroll against the league's cap, and its spending (payroll
-    plus the front office) against its owner's budget and hard limit, for
-    the views."""
+    plus the front office and the minor leagues) against its owner's budget
+    and hard limit, for the views."""
     limit = hard_limit(cap, budget, None) if limit is None else limit
-    spend = payroll + front_office
-    # What's left of the budget for payroll once the front office is paid.
-    payroll_budget = budget - front_office
+    spend = payroll + front_office + minors
+    # What's left of the budget for payroll once the front office and the
+    # farm are paid.
+    payroll_budget = budget - front_office - minors
     over = max(0, payroll - cap)
     tax = luxury_tax(payroll, cap)
     over_budget = max(0, spend - budget)
@@ -310,18 +340,26 @@ def standing(
         "at_limit": spend >= limit,
         "front_office": front_office,
         "front_office_text": format_salary(front_office),
+        "minors": minors,
+        "minors_text": format_salary(minors),
         "spend": spend,
         "spend_text": format_salary(spend),
     }
 
 
 def warning(
-    payroll: int, cap: int, budget: int, added: int, front_office: int = 0
+    payroll: int,
+    cap: int,
+    budget: int,
+    added: int,
+    front_office: int = 0,
+    minors: int = 0,
 ) -> str | None:
     """What to warn a GM about a move that adds this much payroll: luxury
     tax past the league's cap, and the owner's budget (which pays the front
-    office too). None when it leaves him under both (or takes payroll
-    off)."""
+    office and the minor leagues too). None when it leaves him under both
+    (or takes payroll off)."""
+    front_office += minors
     if added <= 0:
         return None
     after = payroll + added

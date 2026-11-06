@@ -115,6 +115,35 @@ class ContractRepository:
         ).fetchone()
         return int(row["total"]) + self.dead_money(team_id, year)
 
+    def minor_leaguers(self, team_ids, year: int) -> dict[str, int]:
+        """How many minor leaguers each team holds who aren't on its payroll
+        this season (no guaranteed deal: never on the 40-man), by team id.
+        They cost the owner a flat minor league wage instead
+        (src/league/budget.py minor_league_cost)."""
+        ids = list(team_ids)
+        out = dict.fromkeys(ids, 0)
+        if not ids:
+            return out
+        rows = self.conn.execute(
+            f"""
+            SELECT tp.team_id, COUNT(*) AS n
+            FROM team_players tp
+            JOIN player_status ps ON ps.player_id = tp.player_id
+            WHERE tp.team_id = ANY(%s) AND ps.status = 'minors'
+              AND NOT EXISTS (
+                  SELECT 1 FROM player_contracts c
+                  WHERE c.player_id = tp.player_id AND c.guaranteed
+                    AND c.start_year <= %s AND c.start_year + c.years > %s
+                    AND {IN_FORCE}
+              )
+            GROUP BY tp.team_id
+            """,
+            (ids, year, year, year),
+        ).fetchall()
+        for r in rows:
+            out[r["team_id"]] = int(r["n"])
+        return out
+
     def dead_money(self, team_id: str, year: int) -> int:
         """This season's salary of the guaranteed deals the team released."""
         return sum(r["salary"] for r in self.dead_money_rows(team_id, year))

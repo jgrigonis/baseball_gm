@@ -571,3 +571,109 @@ def test_analytics_levels_are_read_for_games(db_conn):
         "a": bg.STANDARD,
         "b": bg.STANDARD,
     }
+
+
+# ── The minor leagues count against spending (Josh, 2026-11-06) ─────────────
+
+
+def test_minor_leaguers_cost_a_flat_wage():
+    assert bg.minor_league_cost(0) == 0
+    assert bg.minor_league_cost(120) == 12 * M
+    assert bg.minor_league_cost(10, 1.05) == 1_050_000
+    assert bg.average_farm([2 * M, 3 * M]) == 2_500_000
+    assert bg.average_farm([]) == 0
+
+
+def test_the_farm_counts_against_spending_not_the_cap(lg):
+    x = lg()
+    x.budgets.for_league(x.league.id, 2026)
+    before = x.budgets.standing(x.league.id, x.mine.id, 2026)
+    assert before["minors"] == 0
+    # Ten never-guaranteed minor leaguers, and one who's been on the 40-man.
+    farm = [
+        x.factory.rated_player(x.mine, x.league, level=40, status="minors")
+        for _ in range(10)
+    ]
+    x.contracts.sign_unsigned(x.league.id, 2026)
+    vet = x.factory.rated_player(x.mine, x.league, level=40)
+    x.contracts.sign_unsigned(x.league.id, 2026)
+    x.contracts.guarantee([vet.id])
+    x.db.execute(
+        "UPDATE player_status SET status = 'minors' WHERE player_id = %s", (vet.id,)
+    )
+    assert x.contracts.minor_leaguers([x.mine.id], 2026) == {x.mine.id: 10}
+
+    after = x.budgets.standing(x.league.id, x.mine.id, 2026)
+    assert after["minors"] == bg.minor_league_cost(10) == 1 * M
+    # The vet is payroll; the farm isn't, and pays no tax.
+    vet_pay = x.contracts.active(vet.id, 2026)["salary"]
+    assert after["payroll"] == before["payroll"] + vet_pay
+    assert after["tax"] == bg.luxury_tax(after["payroll"], after["cap"])
+    assert after["spend"] == after["payroll"] + after["front_office"] + 1 * M
+    assert after["payroll_budget"] == (
+        after["budget"] - after["front_office"] - after["minors"]
+    )
+    # Letting one go saves his wage.
+    x.contracts.release(farm[0].id, x.mine.id, 2026)
+    x.db.execute("DELETE FROM team_players WHERE player_id = %s", (farm[0].id,))
+    assert x.budgets.standing(x.league.id, x.mine.id, 2026)["minors"] == 900_000
+
+
+def test_budgets_include_the_leagues_average_farm(lg):
+    x = lg()
+    for _ in range(20):
+        x.factory.rated_player(x.mine, x.league, level=40, status="minors")
+    x.contracts.sign_unsigned(x.league.id, 2026)
+    budgets = x.budgets.for_league(x.league.id, 2026)
+    cap = x.budgets.cap(x.league.id, 2026)
+    # Mine has a $2M farm, theirs none: each owner budgets the $1M average.
+    base = bg.owner_budget(cap, 50) + bg.standard_front_office(cap)
+    assert budgets[x.mine.id] == budgets[x.theirs.id] == base + 1 * M
+
+
+def test_the_farm_comes_out_of_profit(lg):
+    x = lg()
+    for _ in range(20):
+        x.factory.rated_player(x.mine, x.league, level=40, status="minors")
+    x.contracts.sign_unsigned(x.league.id, 2026)
+    x.budgets.for_league(x.league.id, 2026)
+    x.budgets.assess(x.league.id, 2026)
+    rows = {
+        r["team_id"]: r
+        for r in x.db.execute(
+            "SELECT team_id, minor_league, profit, revenue, payroll, luxury_tax,"
+            " tax_share FROM team_budgets WHERE league_id = %s AND year = 2026",
+            (x.league.id,),
+        ).fetchall()
+    }
+    assert rows[x.mine.id]["minor_league"] == 2 * M
+    assert rows[x.theirs.id]["minor_league"] == 0
+    history = x.budgets.history(x.league.id, x.mine.id)
+    assert history[0]["minor_league"] == 2 * M
+
+
+def test_ai_budget_room_leaves_out_the_farm(lg):
+    from src.api.services import ai_free_agents, owners
+
+    x = lg()
+    x.budgets.for_league(x.league.id, 2026)
+    room = ai_free_agents._budget_room(x.db, x.league.id, x.theirs.id, 2026)
+    for _ in range(10):
+        x.factory.rated_player(x.theirs, x.league, level=40, status="minors")
+    x.contracts.sign_unsigned(x.league.id, 2026)
+    assert ai_free_agents._budget_room(x.db, x.league.id, x.theirs.id, 2026) == (
+        room - 1 * M
+    )
+    rooms = owners.pay_rooms(x.db, x.league.id, x.season.id, [x.theirs.id])
+    assert rooms[x.theirs.id] == room - 1 * M
+
+
+def test_the_budget_tab_shows_the_minor_leagues(lg, client_for):
+    x = lg()
+    for _ in range(10):
+        x.factory.rated_player(x.mine, x.league, level=40, status="minors")
+    x.contracts.sign_unsigned(x.league.id, 2026)
+    x.budgets.for_league(x.league.id, 2026)
+    html = client_for(x).get(f"/leagues/{x.league.id}/budget").text
+    assert "front office + $1M minor leagues" in html
+    assert "costs $100K a season instead of his salary" in html

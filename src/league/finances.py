@@ -19,7 +19,9 @@ A light money model, just enough for owners to set budgets and judge profit:
   revenue (from about 45% for a miser to 75% for a spender) would spend
   about the cap.
 - **Profit** = revenue plus any share of the league's luxury tax (teams
-  under the cap split it), minus payroll, luxury tax and fixed costs. Nothing
+  under the cap split it), minus payroll, luxury tax, fixed costs, the
+  front office and the minor leagues (src/league/budget.py
+  minor_league_cost). Nothing
   carries over between seasons; owners only read it.
 
 Speed Blitz has no budgets, so none of this runs there.
@@ -150,5 +152,8 @@ def profit(
     costs: int,
     tax_share: int = 0,
     front_office: int = 0,
+    minor_league: int = 0,
 ) -> int:
-    return revenue + tax_share - payroll - luxury_tax - costs - front_office
+    return (
+        revenue + tax_share - payroll - luxury_tax - costs - front_office - minor_league
+    )

@@ -132,6 +132,11 @@ def _render(request, htmx, league_id, db, user, gm, error=None, saved=False):
         "pull_pct": round(bg.BANK_PULL * 100),
         "swing_pct": round(bg.BANK_SWING * 100),
         "margin_pct": round(bg.HARD_MARGIN * 100),
+        "minor_pay_text": format_salary(
+            round(bg.MINOR_LEAGUE_PAY * budgets.salary_scale(league_id, year))
+            if year is not None
+            else bg.MINOR_LEAGUE_PAY
+        ),
     }
     ctx["history"] = [
         {
@@ -146,6 +151,7 @@ def _render(request, htmx, league_id, db, user, gm, error=None, saved=False):
             ),
             "tax": _money(r["luxury_tax"]) if r["luxury_tax"] else None,
             "front_office": _money(r["front_office"]),
+            "minor_league": _money(r["minor_league"]),
             "share": _money(r["tax_share"]) if r["tax_share"] else None,
             "profit": _money(r["profit"]),
             "loss": r["profit"] is not None and r["profit"] < 0,
