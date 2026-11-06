@@ -159,6 +159,7 @@
 
   <div class="trade-bar" id="tr-bar">
     <div id="tr-summary" class="tr-summary">Pick up to {{ max_per_side }} {{ 'players or picks' if pick_trades else 'players' }} a side.</div>
+    <button class="btn btn-secondary" id="tr-compare" onclick="trCompare()" style="display:none;" title="Compare the players side by side">Compare ↔</button>
     <button class="btn btn-secondary" id="tr-cancel-counter" onclick="trCancelCounter()" style="display:none;">Cancel counter</button>
     <button class="btn btn-primary" id="tr-send" onclick="trSend()" disabled>Propose trade</button>
   </div>
@@ -360,8 +361,24 @@ function summarize() {
   }
   btn.disabled = !give.length || !get.length || !SIDES.theirs.team;
   btn.textContent = COUNTER ? 'Send counter' : 'Propose trade';
+  // Compare the picked players (not picks) once there are two; the compare
+  // view holds MAX_COMPARE (shell.html) at a time.
+  var n = pickedIds('mine').length + pickedIds('theirs').length;
+  var cmp = document.getElementById('tr-compare');
+  cmp.style.display = n > 1 ? '' : 'none';
+  cmp.disabled = n > window.MAX_COMPARE;
+  cmp.textContent = n > window.MAX_COMPARE ? 'Compare (' + window.MAX_COMPARE + ' max)' : 'Compare ↔';
   document.getElementById('tr-cancel-counter').style.display = COUNTER ? '' : 'none';
 }
+
+// Picked players on one side, in list order, leaving out draft picks.
+function pickedIds(key) {
+  var side = SIDES[key];
+  return side.players.filter(function(p) { return side.picked.has(p.player_id) && !isPick(p); })
+    .map(function(p) { return p.player_id; });
+}
+
+window.trCompare = function() { compareTrade(pickedIds('theirs'), pickedIds('mine')); };
 
 window.trFilter = function(key, f) { SIDES[key].filter = f; render(key); };
 
@@ -541,6 +558,7 @@ function renderShop() {
         o.players.map(shopRow).join('') +
       '</div>' +
       '<div class="tr-offer-btns">' +
+        '<button class="btn btn-secondary" title="Compare the players side by side" onclick="trShopCompare(' + i + ')">Compare ↔</button>' +
         '<button class="btn btn-secondary" title="Open it in the builder to change it" onclick="trShopTweak(' + i + ')">Tweak</button>' +
         '<button class="btn btn-primary" onclick="trShopTake(' + i + ')">Make this trade</button>' +
       '</div>' +
@@ -592,6 +610,13 @@ window.trShopTake = function(i) {
       reloadWith(arrivedMsg(d.arrived, d.playing_count), 'good', 'roster');
     }).catch(function() { showResult('✗ Couldn\'t reach the server.', 'bad'); });
   });
+};
+
+// What they'd give first, then the player you're shopping.
+window.trShopCompare = function(i) {
+  var o = SHOP && SHOP.offers[i];
+  if (!o) return;
+  compareTrade(o.players.map(function(p) { return p.player_id; }), [SHOP.pid]);
 };
 
 // Open a shop offer in the builder, to change it before sending.
@@ -677,7 +702,7 @@ if (done) { showResult(done.msg, done.kind, done.dest); window._tradeResult = nu
 #trades-page .tr-offer:last-child { border-bottom: none; }
 #trades-page .tr-offer-text { flex: 1; min-width: 0; line-height: 1.6; }
 #trades-page .tr-offer-text a { color: var(--sky); text-decoration: none; }
-#trades-page .tr-offer-btns { display: flex; gap: 6px; flex: none; }
+#trades-page .tr-offer-btns { display: flex; flex-wrap: wrap; gap: 6px; flex: none; }
 #trades-page .tr-offer-btns .btn { font-size: 11px; padding: 4px 10px; }
 #trades-page .tr-tag { font-family: var(--font-mono); font-size: 10px; color: var(--amber); border: 1px solid var(--amber-dim);
   padding: 0 4px; margin-right: 6px; text-transform: uppercase; }
