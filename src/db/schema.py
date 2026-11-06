@@ -1445,6 +1445,32 @@ CREATE INDEX IF NOT EXISTS idx_season_awards_player ON season_awards(player_id);
 CREATE INDEX IF NOT EXISTS idx_season_awards_gm ON season_awards(gm_id);
 CREATE INDEX IF NOT EXISTS idx_season_awards_team ON season_awards(team_id);
 
+-- The Hall of Fame (migration 088, src/league/hall_of_fame.py): one row per
+-- played season that held an election, and one per player on its ballot.
+CREATE TABLE IF NOT EXISTS hall_elections (
+    season_id  TEXT PRIMARY KEY REFERENCES seasons(id) ON DELETE CASCADE,
+    league_id  TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    year       INTEGER NOT NULL,
+    ballots    INTEGER NOT NULL DEFAULT 0,
+    decided_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_hall_elections_league ON hall_elections(league_id, year);
+CREATE TABLE IF NOT EXISTS hall_ballot (
+    season_id      TEXT NOT NULL REFERENCES hall_elections(season_id) ON DELETE CASCADE,
+    player_id      TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    league_id      TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    votes          INTEGER NOT NULL DEFAULT 0,
+    share          REAL NOT NULL DEFAULT 0,
+    year_on_ballot INTEGER NOT NULL DEFAULT 1,
+    outcome        TEXT NOT NULL,              -- elected / returning / dropped / final
+    team_id        TEXT REFERENCES teams(id) ON DELETE SET NULL,  -- the team he gave the most to
+    summary        JSONB NOT NULL DEFAULT '{{}}', -- the career numbers the writers saw
+    PRIMARY KEY (season_id, player_id)
+);
+CREATE INDEX IF NOT EXISTS idx_hall_ballot_player ON hall_ballot(player_id);
+CREATE INDEX IF NOT EXISTS idx_hall_ballot_team ON hall_ballot(team_id);
+CREATE INDEX IF NOT EXISTS idx_hall_ballot_league ON hall_ballot(league_id, outcome);
+
 -- Player contracts (src/player/contracts.py, src/db/repositories/contract_repo.py):
 --   one row per deal. It covers seasons start_year .. start_year + years - 1
 --   at salary dollars a season. team_id is the team he signed with; a

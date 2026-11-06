@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from src.api.services import all_star as all_star_service
 from src.api.services import awards as awards_service
+from src.api.services import hall_of_fame as hof_service
 from src.api.services.career import ROUND_OF_SERIES, _finishes
 from src.api.services.news.names import Names, and_list, is_deadline_deal, possessive
 from src.db.repositories.news_repo import NewsRepository
@@ -888,6 +889,96 @@ def retirements(conn, names: Names, league_id: str, season_id: str, on: str) -> 
             weight=2, team_ids=[team] if team else [], player_ids=[pid],
             gm_ids=names.gm_ids(team) if team else [],
         )  # fmt: skip
+
+
+def hall_of_fame(conn, names: Names, league_id: str, season_id: str, year: int) -> None:
+    """The Hall of Fame vote held as the season ended: a story for each
+    player voted in, and one for the rest of the ballot (who came close,
+    who fell off)."""
+    news = NewsRepository(conn)
+    rows = hof_service.for_season(conn, season_id)
+    if not rows:
+        return
+    on = _now(conn, season_id)
+    names.load_players(r["player_id"] for r in rows)
+    for r in rows:
+        if r["outcome"] != "elected":
+            continue
+        pid, team = r["player_id"], r["team_id"]
+        who = names.player(pid)
+        when = (
+            "on his first ballot"
+            if r["year_on_ballot"] == 1
+            else f"in his {hof_service.ordinal(r['year_on_ballot'])} year on the ballot"
+        )
+        body = (
+            f"{who} is a Hall of Famer, named on {r['votes']} of {r['ballots']}"
+            f" ballots ({r['pct']}) {when}."
+        )
+        s = r["summary"]
+        body += (
+            f" {s.get('seasons')} seasons, {s.get('first_year')}–{s.get('last_year')}"
+        )
+        if team:
+            body += f", his best years with the {names.full_team(team)}"
+        body += f": {r['line']}."
+        if r["honors"]:
+            body += f" {r['honors']}."
+        news.add(
+            league_id, season_id, on, "hall_of_fame", f"hof:{pid}",
+            f"{who} elected to the Hall of Fame", body,
+            weight=3, team_ids=[team] if team else [], player_ids=[pid],
+            gm_ids=names.gm_ids(team) if team else [],
+        )  # fmt: skip
+
+    story = f"hof:ballot:{season_id}"
+    rest = [r for r in rows if r["outcome"] != "elected"]
+    elected = [r for r in rows if r["outcome"] == "elected"]
+    if news.has(league_id, story):
+        return
+    lines = []
+    if not elected:
+        lines.append(
+            f"Nobody reached 75% in the {year} Hall of Fame vote"
+            f" ({rows[0]['ballots']} ballots)."
+        )
+    close = [r for r in rest if r["share"] >= 0.5][:3]
+    if close:
+        lines.append(
+            "Close: "
+            + ", ".join(f"{names.player(r['player_id'])} {r['pct']}" for r in close)
+            + "."
+        )
+    gone = [r for r in rest if r["outcome"] == "final" and r["share"] >= 0.2]
+    for r in gone:
+        lines.append(
+            f"{names.player(r['player_id'])} runs out of time: {r['pct']} in his"
+            " 10th and last year on the ballot."
+        )
+    first = [
+        r
+        for r in rest
+        if r["year_on_ballot"] == 1 and r["share"] >= 0.3 and r not in close
+    ]
+    if first:
+        lines.append(
+            "Strong debuts: "
+            + ", ".join(f"{names.player(r['player_id'])} {r['pct']}" for r in first[:3])
+            + "."
+        )
+    if elected and not (close or gone or first):
+        return  # the inductees' own stories cover it
+    headline = (
+        f"No one elected to the Hall of Fame in {year}"
+        if not elected
+        else f"The rest of the {year} Hall of Fame ballot"
+    )
+    shown = close + gone + first[:3]
+    news.add(
+        league_id, season_id, on, "hall_of_fame", story, headline, "\n".join(lines),
+        weight=1, player_ids=list(dict.fromkeys(r["player_id"] for r in shown)),
+        team_ids=list(dict.fromkeys(r["team_id"] for r in shown if r["team_id"])),
+    )  # fmt: skip
 
 
 def _now(conn, season_id: str) -> str:

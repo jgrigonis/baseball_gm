@@ -99,6 +99,7 @@
         <div class="cs-name-block">
           <div class="cs-name">{{ p.first_name }} {{ p.last_name }}{{ rk(p.player_id) }}</div>
           <div class="cs-meta">{{ p.position or '?' }} · {{ p.bats }}/{{ p.throws }} · Age {{ p.age }}</div>
+          {% if p.hall_of_fame %}<div class="cs-meta cs-all-star" title="{{ p.hall_of_fame.title }}">🏛️ {{ p.hall_of_fame.text }}</div>{% endif %}
           {% if p.all_star_years %}<div class="cs-meta cs-all-star">★ All-Star {{ p.all_star_years | join(', ') }}</div>{% endif %}
           {% for a in p.awards %}<div class="cs-meta cs-all-star">{{ a.icon }} {{ a.name }} {{ a.years | join(', ') }}</div>{% endfor %}
         </div>

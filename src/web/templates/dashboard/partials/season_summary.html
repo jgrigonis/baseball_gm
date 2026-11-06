@@ -176,6 +176,34 @@
   </div>
   {% endif %}
 
+  {# The Hall of Fame vote held as the season ended (services/hall_of_fame.py) #}
+  {% if hof_class or hof_close %}
+  <div class="card" id="hall-of-fame" style="margin-bottom:24px;padding:20px 24px;">
+    <div class="ss-kicker" style="margin-bottom:12px;">
+      🏛️ Hall of Fame
+      <a href="/leagues/{{ league_id }}/hall-of-fame?year={{ season_year }}#ballot" class="ss-link" style="margin-left:8px;">Full ballot →</a>
+    </div>
+    <div class="ss-awards">
+      {% for r in hof_class %}
+      <div class="ss-award-winner ss-clickable" onclick="openPlayerPanel('{{ r.player_id }}')">
+        <div class="ss-award-name">Elected · {{ r.pct }}</div>
+        <span class="ss-award-who" style="color:{% if r.is_mine %}var(--green){% else %}var(--text){% endif %};">{{ r.name }}</span>
+        <div class="ss-award-detail">{{ r.position }} · {{ r.team }} · {{ r.line }}</div>
+      </div>
+      {% endfor %}
+      {% if not hof_class %}
+      <div class="ss-award-detail" style="font-size:12px;">Nobody reached 75% this year.</div>
+      {% endif %}
+    </div>
+    {% if hof_close %}
+    <div class="ss-award-detail" style="margin-top:12px;font-size:11px;">
+      Fell short:
+      {% for r in hof_close %}<span class="ss-clickable" onclick="openPlayerPanel('{{ r.player_id }}')" style="color:var(--text);">{{ r.name }}</span> {{ r.pct }}{% if r.outcome == 'final' %} (last year){% endif %}{% if not loop.last %} · {% endif %}{% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
   {# All-Star break: each game's MVP and score, then every All-Star by position #}
   {% if all_stars or all_star_games %}
   <div class="card" id="all-stars" style="margin-bottom:24px;padding:20px 24px;">

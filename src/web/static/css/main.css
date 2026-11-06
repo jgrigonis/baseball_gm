@@ -1099,6 +1099,8 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
 .badge-minors  { background: var(--bg-3);       border-color: var(--muted);     color: var(--muted); }
 .badge-human   { background: var(--sky-dim);    border-color: var(--sky);       color: var(--sky); }
 .badge-all-star { background: var(--amber-lo);  border-color: var(--amber);     color: var(--amber); }
+.badge-hof       { background: var(--amber);     border-color: var(--amber);     color: var(--bg); font-weight: 700; }
+.badge-hof-ballot { background: transparent;     border-color: var(--amber-dim); color: var(--text-dim); }
 /* A status tag that sits beside buttons (the lobby's AI / Human): a rounded,
    borderless pill so it can't be mistaken for a square, outlined button. */
 .badge-pill    { border-radius: 999px; border-color: transparent; padding: 2px 9px; cursor: default; }
