@@ -138,6 +138,8 @@ var BAT_COLS = [
   {key:'BB_PCT',   label:'BB%',   fmt:'pct', rate:true},
   {key:'Def',      label:'Def',   fmt:'one', rate:false},
   {key:'WAR',      label:'WAR',   fmt:'one', rate:false},
+  {key:'WPA',      label:'WPA',   fmt:'wpa', rate:false},
+  {key:'RE24',     label:'RE24',  fmt:'one', rate:false},
 ];
 
 var PIT_COLS = [
@@ -166,6 +168,8 @@ var PIT_COLS = [
   {key:'K_PCT',    label:'K%',    fmt:'pct', rate:true},
   {key:'BB_PCT',   label:'BB%',   fmt:'pct', rate:true, asc:true},
   {key:'WAR',      label:'WAR',   fmt:'one', rate:false},
+  {key:'WPA',      label:'WPA',   fmt:'wpa', rate:false},
+  {key:'RE24',     label:'RE24',  fmt:'one', rate:false},
 ];
 
 var DEF_COLS = [
@@ -188,6 +192,7 @@ function fmtVal(val, fmt) {
   if (fmt === 'ip')  return val;
   if (fmt === 'pct') return val.toFixed(1) + '%';
   if (fmt === 'one') return val.toFixed(1);
+  if (fmt === 'wpa') return (val > 0 ? '+' : '') + val.toFixed(2);
   return String(val);
 }
 

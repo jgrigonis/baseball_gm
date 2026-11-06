@@ -184,6 +184,7 @@ def stat_lines(
                     **advanced.batting(s, lg),
                     "Def": sval.defense(values, s["player_id"]),
                     "WAR": sval.bat_war(values, s["player_id"]),
+                    **advanced.win_values(s, "bat"),
                     "qualified": qualifies_bat,
                 }
             )
@@ -236,6 +237,7 @@ def stat_lines(
                     "K9": k9,
                     **advanced.pitching(s, lg),
                     "WAR": sval.pit_war(values, s["player_id"]),
+                    **advanced.win_values(s, "pitch"),
                     "qualified": qualifies_pit,
                 }
             )

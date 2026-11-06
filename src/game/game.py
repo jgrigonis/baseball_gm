@@ -55,6 +55,7 @@ from src.game.probabilities import (
 from src.game.resolver import Resolver
 from src.game.score import Score
 from src.game.strategy import GameStrategy
+from src.game.win_expectancy import home_win_prob, run_expectancy
 from src.team.manager_profile import profile_of
 from src.player.fatigue import FatigueLevel
 from src.player.injury_types import choose_injury_type, injury_label
@@ -251,6 +252,10 @@ class Game:
         # Plate appearance tracking
         self._plate_appearance_complete = False
         self._pa_end_reason: str | None = None
+        # The state when the current batter came up, for WPA and RE24
+        # (_close_segment): inning, top, outs, bases mask, home minus away,
+        # batting team's runs.
+        self._seg: tuple | None = None
 
         # Pitcher appearance and lead change tracking
         self.pitcher_appearances: list[PitcherAppearance] = []
@@ -313,6 +318,8 @@ class Game:
                 inpt = input("Press Enter to continue... ")
                 self.handle_input(inpt)
             self.step()
+        if self._seg is not None:
+            self._close_segment()
 
         for team_id in set(a.team_id for a in self.pitcher_appearances):
             last = next(
@@ -406,6 +413,11 @@ class Game:
             # Post-event housekeeping
             self._post_event()
             return
+
+        # A new batter (or the same one, to start an inning): note the state
+        # for WPA and RE24.
+        if self._seg is None:
+            self._seg = self._seg_state()
 
         # No queued events → check for pre-pitch plays, then generate pitch intent
         self.situation = GameStrategy.plan_pre_pitch(self, self.rng)
@@ -619,6 +631,15 @@ class Game:
         """
         self.logger.trace("Entering _post_event")
 
+        # Credit WPA and RE24 for the plate appearance (or the play that
+        # ended the half-inning or the game) before anyone is replaced.
+        if self._seg is not None and (
+            self._plate_appearance_complete
+            or self._half_inning_over()
+            or self.is_over()
+        ):
+            self._close_segment()
+
         # Check for pitching change after plate appearance completes
         if (
             self._plate_appearance_complete
@@ -803,6 +824,47 @@ class Game:
         self._pa_end_reason = None
 
         self.logger.trace(f"Next batter: {self.current_batter.player.name}")
+
+    def _seg_state(self) -> tuple:
+        mask = sum(1 << (b - 1) for b in self.bases.occupied_map())
+        bat_runs = self.score.away if self.inning.top else self.score.home
+        return (
+            self.inning.number,
+            self.inning.top,
+            self.inning.outs,
+            mask,
+            self.score.home - self.score.away,
+            bat_runs,
+        )
+
+    def _close_segment(self) -> None:
+        """Credit the batter and pitcher with how much the plate appearance
+        (steals and wild pitches during it included) moved the batting
+        team's chance of winning (WPA) and its expected runs (RE24). The
+        pitcher gets the opposite: what he saved."""
+        inning, top, outs0, bases0, diff0, runs0 = self._seg
+        _, _, outs1, bases1, diff1, runs1 = self._seg_state()
+        self._seg = None
+        slot, pitcher = self.current_batter, self.current_pitcher
+        if slot is None or pitcher is None:
+            return
+        batter = slot.player
+        ghost = bool(self.ghost_runner)
+        home0 = home_win_prob(inning, top, outs0, bases0, diff0, ghost)
+        if self.is_over():
+            home1 = 1.0 if diff1 > 0 else 0.0 if diff1 < 0 else 0.5
+        else:
+            home1 = home_win_prob(inning, top, min(outs1, 3), bases1, diff1, ghost)
+        wpa = (home0 - home1) if top else (home1 - home0)
+        re24 = (
+            run_expectancy(bases1, outs1)
+            - run_expectancy(bases0, outs0)
+            + (runs1 - runs0)
+        )
+        batter.game_stats.batting.wpa += wpa
+        batter.game_stats.batting.re24 += re24
+        pitcher.game_stats.pitching.wpa -= wpa
+        pitcher.game_stats.pitching.re24 -= re24
 
     def _end_half_inning(self) -> None:
         """End the current half-inning and transition to next."""

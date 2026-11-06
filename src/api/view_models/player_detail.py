@@ -203,6 +203,8 @@ def player_panel_data(
                     pitch_stats["ERA+"] = adv["ERA_PLUS"]
                 if sv.pit_war(values, pid) is not None:
                     pitch_stats["WAR"] = sv.pit_war(values, pid)
+                if advanced.win_values(s, "pitch")["WPA"] is not None:
+                    pitch_stats["WPA"] = advanced.win_values(s, "pitch")["WPA"]
                 if s.get("pitch_no_hitters"):
                     pitch_stats["NH"] = s["pitch_no_hitters"]
             if s.get("bat_games_played", 0) > 0:
@@ -241,6 +243,8 @@ def player_panel_data(
                     bat_stats["wRC+"] = advanced.batting(s, lg)["wRC_PLUS"]
                 if sv.bat_war(values, pid) is not None:
                     bat_stats["WAR"] = sv.bat_war(values, pid)
+                if advanced.win_values(s, "bat")["WPA"] is not None:
+                    bat_stats["WPA"] = advanced.win_values(s, "bat")["WPA"]
 
     overall_grade = player_overall_grade(status, grades, ratings)
     overall_value = player_overall_value(status, grades, ratings)
@@ -502,6 +506,7 @@ def player_career_data(db, league_id: str, pid: str) -> dict | None:
             prow["FIP"] = adv["FIP"]
             prow["ERA+"] = adv["ERA_PLUS"]
             prow["WAR"] = _war(i, r, sv.pit_war)
+            prow["WPA"] = advanced.win_values(r, "pitch")["WPA"]
             pitching_seasons.append(prow)
             t = p_totals if not is_post else pp_totals
             for k in (
@@ -525,6 +530,8 @@ def player_career_data(db, league_id: str, pid: str) -> dict | None:
             _weigh(t, "ERA+", prow["ERA+"], outs)
             if prow["WAR"] is not None:
                 t["_war"] = t.get("_war", 0.0) + prow["WAR"]
+            if prow["WPA"] is not None:
+                t["_wpa"] = t.get("_wpa", 0.0) + prow["WPA"]
 
         if (r.get("bat_games_played") or 0) > 0:
             ab = r.get("bat_ab", 0) or 0
@@ -562,6 +569,7 @@ def player_career_data(db, league_id: str, pid: str) -> dict | None:
             brow["wRC+"] = adv["wRC_PLUS"]
             brow["OPS+"] = adv["OPS_PLUS"]
             brow["WAR"] = _war(i, r, sv.bat_war)
+            brow["WPA"] = advanced.win_values(r, "bat")["WPA"]
             batting_seasons.append(brow)
             t = b_totals if not is_post else pb_totals
             for k in (
@@ -588,6 +596,8 @@ def player_career_data(db, league_id: str, pid: str) -> dict | None:
             _weigh(t, "OPS+", brow["OPS+"], advanced.pa(r))
             if brow["WAR"] is not None:
                 t["_war"] = t.get("_war", 0.0) + brow["WAR"]
+            if brow["WPA"] is not None:
+                t["_wpa"] = t.get("_wpa", 0.0) + brow["WPA"]
 
     def _pitch_totals(d: dict) -> dict | None:
         if not d:
@@ -596,8 +606,10 @@ def player_career_data(db, league_id: str, pid: str) -> dict | None:
         fip = _weighted(d, "FIP", 2)
         era_plus = _weighted(d, "ERA+", 0)
         war = d.pop("_war", None)
+        wpa = d.pop("_wpa", None)
         return {
             "WAR": round(war, 1) if war is not None else None,
+            "WPA": round(wpa, 2) if wpa is not None else None,
             **d,
             "FIP": fip,
             "ERA+": int(era_plus) if era_plus is not None else None,
@@ -620,8 +632,10 @@ def player_career_data(db, league_id: str, pid: str) -> dict | None:
         wrc_plus = _weighted(d, "wRC+", 0)
         ops_plus = _weighted(d, "OPS+", 0)
         war = d.pop("_war", None)
+        wpa = d.pop("_wpa", None)
         return {
             "WAR": round(war, 1) if war is not None else None,
+            "WPA": round(wpa, 2) if wpa is not None else None,
             **d,
             "wRC+": int(wrc_plus) if wrc_plus is not None else None,
             "OPS+": int(ops_plus) if ops_plus is not None else None,

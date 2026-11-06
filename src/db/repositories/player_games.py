@@ -73,9 +73,11 @@ class PlayerGameRepository:
 
                 field_putouts, field_assists, field_errors, passed_balls, 
                 catcher_interferences, catcher_cs, catcher_sb,
-                field_double_plays, field_triple_plays
+                field_double_plays, field_triple_plays,
+                bat_wpa, bat_re24, pitch_wpa, pitch_re24
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s)
             ON CONFLICT (game_id, player_id) DO UPDATE SET
                 team_id = EXCLUDED.team_id, opponent_team_id = EXCLUDED.opponent_team_id,
                 bat_game_played = EXCLUDED.bat_game_played, bat_game_started = EXCLUDED.bat_game_started,
@@ -107,7 +109,9 @@ class PlayerGameRepository:
                 catcher_interferences = EXCLUDED.catcher_interferences,
                 catcher_cs = EXCLUDED.catcher_cs, catcher_sb = EXCLUDED.catcher_sb,
                 field_double_plays = EXCLUDED.field_double_plays,
-                field_triple_plays = EXCLUDED.field_triple_plays
+                field_triple_plays = EXCLUDED.field_triple_plays,
+                bat_wpa = EXCLUDED.bat_wpa, bat_re24 = EXCLUDED.bat_re24,
+                pitch_wpa = EXCLUDED.pitch_wpa, pitch_re24 = EXCLUDED.pitch_re24
             """,
             (
                 game_id,
@@ -166,6 +170,10 @@ class PlayerGameRepository:
                 f.catcher_sb,
                 f.double_plays,
                 f.triple_plays,
+                b.wpa,
+                b.re24,
+                p.wpa,
+                p.re24,
             ),
         )
 

@@ -239,6 +239,7 @@ def batting_leaders(
                 "OPS+": adv["OPS_PLUS"],
                 "ISO": adv["ISO"] or 0.0,
                 "WAR": r.get("_war"),
+                "WPA": r.get("bat_wpa") or None,
             }
         )
 
@@ -283,6 +284,11 @@ def batting_leaders(
         *(
             [bat_card("WAR", "WAR", pool=with_war, fmt=lambda v: f"{v:.1f}")]
             if with_war
+            else []
+        ),
+        *(
+            [bat_card("WPA", "WPA", pool=with_wpa, fmt=_wpa)]
+            if (with_wpa := [b for b in batters if b["WPA"] is not None])
             else []
         ),
         bat_card_q("AVG", "AVG", fmt=lambda v: f"{v:.3f}".lstrip("0")),
@@ -373,6 +379,7 @@ def _pitchers(
                 "ERA+": adv["ERA_PLUS"] if adv["ERA_PLUS"] is not None else 9999,
                 "K%": adv["K_PCT"] or 0.0,
                 "WAR": r.get("_war"),
+                "WPA": r.get("pitch_wpa") or None,
             }
         )
     return pitchers
@@ -404,6 +411,10 @@ def _pit_card(pitchers, label, key, pool=None, asc=False, fmt=None):
             }
         )
     return {"label": label, "rows": rows}
+
+
+def _wpa(v):
+    return f"{v:+.2f}"
 
 
 def _f1(v):
@@ -440,6 +451,11 @@ def pitching_leaders(
     return glossary.tag(
         [
             *([card("WAR", "WAR", pool=with_war, fmt=_f1)] if with_war else []),
+            *(
+                [card("WPA", "WPA", pool=with_wpa, fmt=_wpa)]
+                if (with_wpa := [p for p in pitchers if p["WPA"] is not None])
+                else []
+            ),
             card("ERA", "ERA", pool=q_pit, asc=True, fmt=_f2),
             card("WHIP", "WHIP", pool=q_pit, asc=True, fmt=_f2),
             *(
@@ -485,6 +501,11 @@ def relief_leaders(
         [
             card("SV", "SV", pool=[p for p in pitchers if p["SV"]]),
             card("HLD", "HLD", pool=[p for p in pitchers if p["HLD"]]),
+            *(
+                [card("WPA", "WPA", pool=with_wpa, fmt=_wpa)]
+                if (with_wpa := [p for p in pitchers if p["WPA"] is not None])
+                else []
+            ),
             card("ERA", "ERA", pool=q_rel, asc=True, fmt=_f2),
             card("WHIP", "WHIP", pool=q_rel, asc=True, fmt=_f2),
             *([card("FIP", "FIP", pool=q_rel, asc=True, fmt=_f2)] if lg else []),
