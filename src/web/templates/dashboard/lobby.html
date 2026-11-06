@@ -16,17 +16,6 @@
     {% include "dashboard/partials/_lobby_gms.html" %}
 
     <div style="display:flex;flex-direction:column;gap:16px;">
-      <div class="card">
-        <div class="card-header"><span class="card-title"><span class="setting-tip" tabindex="0" data-tip="How this league runs. Hover or tap any setting's name to see what it does. Only an admin can change them once the league exists.">League Settings</span></span></div>
-        <div class="card-body">
-          <table class="data-table">
-            <tbody>
-              {% include "dashboard/partials/_league_settings_rows.html" %}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
       {% if is_commissioner %}
       <div class="card">
         <div class="card-header"><span class="card-title"><span class="setting-tip" tabindex="0" data-tip="The commissioner is whoever created the league. Only they can start it.">Commissioner Controls</span></span></div>
@@ -50,6 +39,17 @@
         </div>
       </div>
       {% endif %}
+
+      <div class="card">
+        <div class="card-header"><span class="card-title"><span class="setting-tip" tabindex="0" data-tip="How this league runs. Hover or tap any setting's name to see what it does. Only an admin can change them once the league exists.">League Settings</span></span></div>
+        <div class="card-body">
+          <table class="data-table">
+            <tbody>
+              {% include "dashboard/partials/_league_settings_rows.html" %}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
   </div>
