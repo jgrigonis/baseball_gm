@@ -10,8 +10,19 @@
       <input name="join_code" value="{{ join_code or '' }}" placeholder="ABC123" maxlength="6" style="text-transform:uppercase;letter-spacing:.2em;font-size:18px;" required>
     </div>
     {% if error %}<div role="alert" style="font-family:var(--font-mono);font-size:12px;color:var(--red);">{{ error }}</div>{% endif %}
+    {% if watch_url %}
+    {# A good code for a league that can't take them now: they can still
+       follow it, and it stays on their Watch tab. #}
+    <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim);">
+      You can still watch it. It stays on the Watch tab of your Leagues page.
+    </div>
+    {% endif %}
     <div style="display:flex;gap:8px;">
+      {% if watch_url %}
+      <a href="{{ watch_url }}" class="btn btn-primary">Watch league →</a>
+      {% else %}
       <button type="submit" class="btn btn-primary">Join →</button>
+      {% endif %}
       <a href="/leagues/" class="btn btn-secondary">Cancel</a>
     </div>
   </form>

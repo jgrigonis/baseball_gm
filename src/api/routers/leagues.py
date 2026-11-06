@@ -351,16 +351,21 @@ def join_league(
         return RedirectResponse(f"/leagues/{league['id']}/", status_code=302)
 
     # A running league takes new GMs between seasons: they pick a team an
-    # AI GM runs.
+    # AI GM runs. Whether or not they can join now, the code lets them watch
+    # it, even when it's private.
     if league["state"] != "lobby":
-        reason = takeover.closed_reason(
-            db, LeagueRepository(db).get_by_id(league["id"])
-        )
+        league_repo.add_watcher(league["id"], user["id"])
+        db.commit()
+        reason = takeover.closed_reason(db, league_repo.get_by_id(league["id"]))
         if reason:
             return templates.TemplateResponse(
                 request,
                 "leagues/join.html",
-                {"error": reason, "join_code": join_code},
+                {
+                    "error": reason,
+                    "join_code": join_code,
+                    "watch_url": f"/leagues/{league['id']}/",
+                },
             )
         return RedirectResponse(
             f"/leagues/{league['id']}/take-over?code={join_code}", status_code=302
@@ -390,7 +395,10 @@ def join_public_league(
     if league and gm_repo.get_by_user_and_league(user["id"], league_id):
         return RedirectResponse(f"/leagues/{league_id}/", status_code=302)
     # The Join tab may be stale: the league went private or closed since.
-    if not league or not league["is_public"]:
+    # Someone who entered a private league's code can still join from it.
+    if not league or not (
+        league["is_public"] or LeagueRepository(db).is_watcher(league_id, user["id"])
+    ):
         return _cant_join(league_id)
     if league["state"] != "lobby":
         if takeover.closed_reason(db, league):
@@ -410,13 +418,18 @@ def join_public_league(
 # ── Taking over a team in a running league (services/takeover.py) ─────────────
 
 
-def _takeover_league(db, league_id: str, code: str) -> dict | None:
+def _takeover_league(db, league_id: str, code: str, user_id: str) -> dict | None:
     """The league, if the person may see its open teams: it's public, or they
-    have its join code."""
-    league = LeagueRepository(db).get_by_id(league_id)
+    have its join code (in the link, or entered before: league_watchers)."""
+    repo = LeagueRepository(db)
+    league = repo.get_by_id(league_id)
     if not league or league["state"] == "lobby":
         return None
-    if league["is_public"] or (code and code.strip().upper() == league["join_code"]):
+    if (
+        league["is_public"]
+        or (code and code.strip().upper() == league["join_code"])
+        or repo.is_watcher(league_id, user_id)
+    ):
         return league
     return None
 
@@ -441,7 +454,7 @@ def take_over_page(
     request: Request, league_id: str, db: DB, user: User, code: str = ""
 ):
     """Pick a team an AI GM runs, to join a league that has started."""
-    league = _takeover_league(db, league_id, code)
+    league = _takeover_league(db, league_id, code, user["id"])
     if not league:
         return _cant_join(league_id)
     if GMRepository(db).get_by_user_and_league(user["id"], league_id):
@@ -458,7 +471,7 @@ def take_over_team(
     team_id: str = Form(...),
     code: str = Form(""),
 ):
-    league = _takeover_league(db, league_id, code)
+    league = _takeover_league(db, league_id, code, user["id"])
     if not league:
         return _cant_join(league_id)
     try:

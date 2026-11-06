@@ -570,3 +570,58 @@ def test_admin_viewing_private_league_gets_no_join_button(
 
     assert "Join league →" not in html
     assert _join_link(league) not in html
+
+
+# ── Watching a private league with its join code ─────────────────────────────
+
+
+def _enter_code(client, db_conn, league):
+    code = uuid.uuid4().hex[:6].upper()
+    db_conn.execute(
+        "UPDATE leagues SET join_code = %s WHERE id = %s", (code, league.id)
+    )
+    return client.post("/leagues/join", data={"join_code": code})
+
+
+def test_join_code_mid_season_offers_to_watch_a_private_league(
+    client, db_conn, factory
+):
+    league, _ = _league(db_conn, factory, is_public=False)
+
+    r = _enter_code(client, db_conn, league)
+
+    assert "in the middle of a season" in r.text
+    assert f'href="/leagues/{league.id}/"' in r.text
+    assert "Watch league →" in r.text
+    standings = client.get(f"/leagues/{league.id}/standings")
+    assert standings.status_code == 200
+    assert "Viewing" in standings.text
+
+
+def test_private_league_stays_closed_without_the_code(client, db_conn, factory):
+    league, _ = _league(db_conn, factory, is_public=False)
+
+    r = client.get(f"/leagues/{league.id}/standings", headers={"accept": "text/html"})
+
+    assert r.status_code == 303
+
+
+def test_watched_private_league_is_on_the_watch_tab(client, db_conn, factory):
+    league, _ = _league(db_conn, factory, is_public=False)
+    _enter_code(client, db_conn, league)
+
+    html = client.get("/leagues/?tab=watch").text
+
+    assert f"/leagues/{league.id}/" in html
+
+
+def test_code_holder_gets_join_button_between_seasons(client, db_conn, factory):
+    league = _joinable(db_conn, factory, is_public=False)
+    r = _enter_code(client, db_conn, league)
+    assert r.headers["location"].startswith(f"/leagues/{league.id}/take-over")
+
+    html = client.get(f"/leagues/{league.id}/standings").text
+    page = client.get(f"/leagues/{league.id}/take-over")
+
+    assert "Join league →" in html
+    assert page.status_code == 200

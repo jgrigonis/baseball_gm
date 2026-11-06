@@ -1549,6 +1549,15 @@ CREATE TABLE IF NOT EXISTS owner_moods (
     as_of     TEXT,                       -- league date of the last update
     PRIMARY KEY (league_id, team_id, season_id)
 );
+-- league_watchers: people who entered a private league's join code while it
+--   couldn't take them, so they can follow it as viewers (get_gm_or_viewer).
+CREATE TABLE IF NOT EXISTS league_watchers (
+    league_id  TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (league_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_league_watchers_user ON league_watchers(user_id);
 CREATE INDEX IF NOT EXISTS idx_owner_messages_team ON owner_messages(team_id);
 CREATE INDEX IF NOT EXISTS idx_owner_messages_gm ON owner_messages(gm_id);
 CREATE INDEX IF NOT EXISTS idx_owner_messages_season ON owner_messages(season_id);
