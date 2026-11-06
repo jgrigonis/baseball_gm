@@ -5,11 +5,12 @@
 #}
 {% macro payroll_line(budget, payroll_text, dead_money_text=None) %}
 <span class="page-subtitle payroll-line" style="margin-left:12px;"
-      title="This season's guaranteed salaries: every deal of a player who's been on the 40-man, plus dead money for players you released. Minors players who've never been up aren't guaranteed.{% if budget %} The league's payroll cap is {{ budget.cap_text }}, the same for every team. Going over is allowed, but when the season ends you pay a luxury tax of {{ (budget.tax_rate * 100) | round | int }}% on what's over. Your owner's budget is {{ budget.budget_text }}, {{ budget.leash_text }}.{% endif %}">
-  Payroll {{ budget.payroll_text if budget else payroll_text }}{% if budget %}<span class="pl-dim"> · cap {{ budget.cap_text }} · owner {{ budget.budget_text }}</span>{% endif %}
+      title="{% if budget %}Cap {{ budget.cap_text }}, {{ (budget.tax_rate * 100) | round | int }}% tax over it{% if budget.tax_text %}: {{ budget.tax_text }}{% endif %}.&#10;Owner's number {{ budget.budget_text }}{% if budget.over_budget_text %}: {{ budget.over_budget_text }} past it{% endif %}.&#10;{% endif %}Guaranteed salaries plus dead money.">
+  Payroll {{ budget.payroll_text if budget else payroll_text }}
   {%- if dead_money_text %} <span style="color:var(--red);">({{ dead_money_text }} dead)</span>{% endif %}
-  {%- if budget and budget.over %} <span class="pl-over">{{ budget.over_text }} over cap · {{ budget.tax_text }} tax</span>{% endif %}
-  {%- if budget and budget.over_budget %} <span class="pl-over">{{ budget.over_budget_text }} past owner</span>{% endif %}
+  {%- if budget %}{% if budget.over %} <span class="pl-over">· {{ budget.over_text }} over cap</span>
+  {%- elif budget.over_budget %} <span class="pl-over">· {{ budget.over_budget_text }} past owner</span>
+  {%- elif budget.room_text %} <span class="pl-dim">· {{ budget.room_text }} under cap</span>{% endif %}{% endif %}
 </span>
 <style>
 .payroll-line .pl-dim { color: var(--text-dim); }
