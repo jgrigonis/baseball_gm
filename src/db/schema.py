@@ -92,7 +92,9 @@ CREATE TABLE IF NOT EXISTS users (
     must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
     dismissed_tips TEXT[] NOT NULL DEFAULT '{{}}', -- first-visit tab tips closed
     turn_emails   BOOLEAN NOT NULL DEFAULT TRUE, -- email when a league waits on them (migration 062)
-    created_at    TEXT NOT NULL DEFAULT (NOW())
+    created_at    TEXT NOT NULL DEFAULT (NOW()),
+    last_login_at TIMESTAMPTZ,                   -- last sign-in (migration 086)
+    last_seen_at  TIMESTAMPTZ                    -- last page load, every few minutes at most; shown on /admin/users (migration 086)
 );
 
 -- password_resets: one row per emailed reset link. Only a SHA-256 hash of the

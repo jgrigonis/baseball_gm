@@ -52,6 +52,30 @@ class UserRepository:
         ).fetchone()
         return dict(row) if row else None
 
+    def record_login(self, user_id: str) -> None:
+        """Note that the user just signed in (and so was seen)."""
+        self.db.execute(
+            "UPDATE users SET last_login_at = NOW(), last_seen_at = NOW() WHERE id = %s",
+            (user_id,),
+        )
+
+    # How stale last_seen_at gets before a page load writes it again.
+    SEEN_EVERY = "5 minutes"
+
+    def record_seen(self, user_id: str) -> None:
+        """Note that the user just loaded a page (shown on /admin/users).
+        Written at most every SEEN_EVERY, and skipped if another request of
+        theirs holds the row, so a long sim never makes a page wait."""
+        self.db.execute(
+            f"""UPDATE users SET last_seen_at = NOW()
+                WHERE id = (SELECT id FROM users
+                            WHERE id = %s
+                              AND (last_seen_at IS NULL
+                                   OR last_seen_at < NOW() - INTERVAL '{self.SEEN_EVERY}')
+                            FOR UPDATE SKIP LOCKED)""",
+            (user_id,),
+        )
+
     def username_taken(self, username: str, other_than: str | None = None) -> bool:
         row = self.db.execute(
             """SELECT 1 FROM users
@@ -159,7 +183,7 @@ class UserRepository:
     def get_by_id(self, user_id: str) -> dict | None:
         row = self.db.execute(
             """SELECT id, display_name, username, email, is_verified, is_admin,
-                      is_contributor, must_change_password, created_at,
+                      is_contributor, must_change_password, created_at, last_login_at, last_seen_at,
                       password_hash IS NOT NULL AS has_password
                FROM users WHERE id = %s""",
             (user_id,),
@@ -177,7 +201,7 @@ class UserRepository:
         """Every user, with how many leagues they're a GM in."""
         rows = self.db.execute(
             """SELECT u.id, u.display_name, u.username, u.email, u.is_verified, u.is_admin,
-                      u.must_change_password, u.created_at,
+                      u.must_change_password, u.created_at, u.last_seen_at,
                       u.password_hash IS NOT NULL AS has_password,
                       (SELECT COUNT(*) FROM gms g WHERE g.user_id = u.id) AS leagues
                FROM users u
