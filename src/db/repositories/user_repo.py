@@ -54,7 +54,9 @@ class UserRepository:
 
     def record_login(self, user_id: str) -> None:
         """Note that the user just signed in (shown on /admin/users)."""
-        self.db.execute("UPDATE users SET last_login_at = NOW() WHERE id = %s", (user_id,))
+        self.db.execute(
+            "UPDATE users SET last_login_at = NOW() WHERE id = %s", (user_id,)
+        )
 
     def username_taken(self, username: str, other_than: str | None = None) -> bool:
         row = self.db.execute(

@@ -399,9 +399,7 @@ def reset(
         return _reset_page(request, 400, expired=True)
     session = _new_token()
     user_repo = UserRepository(db)
-    user_repo.set_password(
-        user_id, hash_password(password), session, must_change=False
-    )
+    user_repo.set_password(user_id, hash_password(password), session, must_change=False)
     user_repo.record_login(user_id)
     db.commit()
     return _signed_in(session)
