@@ -397,3 +397,60 @@ def test_power_rankings_lean_on_paper_early(client, db_conn, factory, league):
     assert "Run diff" in html
     # Run diff, the three areas, L10 and the rank sort on click
     assert html.count('onclick="prSort(this)"') >= 6
+
+
+def test_the_sidebar_links_to_it_until_the_draft_is_done(client, db_conn, league):
+    lg, _, _ = league
+    # The top bar's team chip links there with an href too.
+    link = f'hx-get="/leagues/{lg.id}/welcome"'
+
+    html = client.get(f"/leagues/{lg.id}/league").text
+    assert link in html and '<span class="tab-label">Meet your team</span>' in html
+
+    db_conn.execute(
+        "UPDATE drafts SET state = 'complete' WHERE league_id = %s", (lg.id,)
+    )
+    assert link not in client.get(f"/leagues/{lg.id}/league").text
+
+
+def test_welcome_page_shows_the_budget(client, db_conn, factory, league):
+    from src.db.repositories.budget_repo import BudgetRepository
+    from src.db.repositories.contract_repo import ContractRepository
+
+    lg, _, team = league
+    season_id = db_conn.execute(
+        "SELECT season_id FROM drafts WHERE league_id = %s", (lg.id,)
+    ).fetchone()["season_id"]
+    db_conn.execute("UPDATE leagues SET mode = 'blitz' WHERE id = %s", (lg.id,))
+    season = SimpleNamespace(id=season_id)
+    factory.league_season(lg, season)
+    for row in db_conn.execute(
+        "SELECT DISTINCT team_id FROM gms WHERE league_id = %s", (lg.id,)
+    ).fetchall():
+        factory.league_season_team(lg, season, SimpleNamespace(id=row["team_id"]))
+    contracts = ContractRepository(db_conn)
+    contracts.sign_unsigned(lg.id, 2025)
+    ids = [
+        r["player_id"]
+        for r in db_conn.execute(
+            "SELECT player_id FROM team_players WHERE team_id = %s", (team.id,)
+        ).fetchall()
+    ]
+    contracts.guarantee(ids)
+    budgets = BudgetRepository(db_conn)
+    assert budgets.for_league(lg.id, 2025)
+
+    html = client.get(f"/leagues/{lg.id}/welcome").text
+
+    assert "Your budget" in html
+    assert "Payroll and the league cap" in html
+    assert "Spending and your owner" in html
+    assert "payroll of 2 teams" in html
+    assert "Biggest contracts" in html and html.count("through 20") >= 3
+    assert "Coaching <b" in html and "Standard" in html
+    assert f'href="/leagues/{lg.id}/budget"' in html
+
+
+def test_no_budget_card_without_budgets(client, league):
+    lg, _, _ = league
+    assert "Your budget" not in client.get(f"/leagues/{lg.id}/welcome").text

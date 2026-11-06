@@ -33,6 +33,15 @@
     {% if shown or gname == 'League' %}
     <div class="side-group">
       <div class="side-head">{{ gname }}</div>
+      {% if gname == 'My team' and team_page_label and not draft_complete and not is_viewer %}
+        {# Meet your team / Season preview: until the draft is done. #}
+        <a href="/leagues/{{ league_id }}/welcome" title="{{ team_page_label }}"
+           class="tab-link{% if path.endswith('/welcome') %} active{% endif %}"
+           hx-get="/leagues/{{ league_id }}/welcome"
+           hx-target="#tab-content" hx-swap="innerHTML" hx-push-url="true"
+           onclick="setActiveTab(this)">
+          <span class="tab-icon" aria-hidden="true">🧢</span><span class="tab-label">{{ team_page_label }}</span></a>
+      {% endif %}
       {% for tab in shown %}
         {% set url = '/leagues/' ~ league_id ~ ('/draft/results' if tab == 'draft' and draft_complete else '/' ~ tab) %}
         <a href="{{ url }}"
