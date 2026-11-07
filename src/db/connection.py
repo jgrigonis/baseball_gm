@@ -26,7 +26,10 @@ def get_connection(url: str | None = None) -> psycopg.Connection:
             "DATABASE_URL environment variable is not set. "
             "Example: postgresql://user@localhost/baseball_manager"
         )
-    conn = psycopg.connect(url, row_factory=dict_row)
+    # Timestamps come back in the session's time zone, which otherwise follows
+    # the server's setting (a Homebrew Postgres uses the Mac's zone). Pin it to
+    # UTC so pages render the same everywhere.
+    conn = psycopg.connect(url, row_factory=dict_row, options="-c TimeZone=UTC")
     return conn
 
 

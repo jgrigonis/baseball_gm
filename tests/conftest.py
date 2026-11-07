@@ -5,6 +5,14 @@ import os
 # for it (src/api/services/sim_jobs.py). Set before src.config is imported.
 os.environ["SIM_WORKER"] = "inline"
 
+# Settings also read the project's .env, which on a dev machine may hold real
+# deployment values (PUBLIC_BASE_URL, ADMIN_INITIAL_PASSWORD, ...). Tests
+# expect the defaults, so reload settings without it.
+from src.config import Settings, settings  # noqa: E402
+
+for _name, _value in Settings(_env_file=None).model_dump().items():
+    setattr(settings, _name, _value)
+
 import pytest
 import psycopg
 from psycopg.pq import TransactionStatus
@@ -44,7 +52,7 @@ def _session_conn(request):
         raise RuntimeError(
             "No test database URL found. Set DATABASE_TEST_URL or pass --db-url."
         )
-    conn = psycopg.connect(db_url, row_factory=dict_row)
+    conn = psycopg.connect(db_url, row_factory=dict_row, options="-c TimeZone=UTC")
     # Drop every table (schema_migrations included) so the test DB is rebuilt
     # from the current schema each session.  The schema uses CREATE TABLE IF
     # NOT EXISTS, so any table left over from an older run would keep its old
