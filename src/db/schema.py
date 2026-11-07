@@ -1577,13 +1577,14 @@ CREATE TABLE IF NOT EXISTS team_budgets (     -- migration 074 (src/league/budge
     revenue     BIGINT,                       -- regular-season revenue the owner set the budget from (migration 076)
     playoff_revenue BIGINT,                   -- home playoff gate, set when the season ends
     payroll     BIGINT,                       -- final payroll, set when the season ends
-    profit      BIGINT,                       -- revenue + gate + tax share - payroll - tax - fixed costs - front office - minor leagues
+    profit      BIGINT,                       -- revenue at ticket prices + gate + tax share - payroll - tax - fixed costs - front office - minor leagues
     tax_share   BIGINT,                       -- its cut of the league's luxury tax, if under the cap (migration 081)
     coaching    SMALLINT,                     -- front office levels, 0 Bare bones to 4 Elite, NULL Standard (migration 083)
     facilities  SMALLINT,
     analytics   SMALLINT,
     front_office BIGINT,                      -- what the front office cost, set when the season ends
     minor_league BIGINT,                      -- what its never-guaranteed minor leaguers cost, set when the season ends (migration 089)
+    ticket_price SMALLINT,                    -- ticket prices 1 to 10, NULL the default 5; revenue is before them (migration 090)
     fans_before INTEGER,                      -- fan interest coming into the season (0-100)
     fans_after  INTEGER,                      -- and after it
     PRIMARY KEY (league_id, team_id, year)

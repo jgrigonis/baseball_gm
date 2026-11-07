@@ -766,3 +766,65 @@ def test_the_books_count_the_farm_and_still_match_the_closed_profit(lg):
     (closed,) = x.budgets.books(x.league.id, x.mine.id, 2026)
     assert closed["other"] == 0 and closed["profit"] == projected["profit"]
     assert closed["minor_league"] == pay
+
+
+# ── Ticket prices (Josh, 2026-11-07) ─────────────────────────────────────────
+
+
+def test_ticket_prices_trade_revenue_now_for_fans_later():
+    from src.league import finances as fn
+
+    assert len(fn.TICKET_LEVELS) == 10 and fn.ticket_level(None) == 5
+    assert fn.ticket_mult(5) == 1.0 and fn.ticket_fans(5) == 0
+    mults = [fn.ticket_mult(level) for level in fn.TICKET_LEVELS]
+    fans = [fn.ticket_fans(level) for level in fn.TICKET_LEVELS]
+    assert mults == sorted(mults) and fans == sorted(fans, reverse=True)
+    # Each step up earns no more than the one before it.
+    steps = [b - a for a, b in zip(mults, mults[1:])]
+    assert all(b <= a + 1e-9 for a, b in zip(steps, steps[1:]))
+    assert fn.ticket_level(0) == 1 and fn.ticket_level(99) == 10
+    base = fn.fans_after(50, 0.5, False, False, 0)
+    assert fn.fans_after(50, 0.5, False, False, 0, 10) < base
+    assert fn.fans_after(50, 0.5, False, False, 0, 1) > base
+
+
+def test_ticket_prices_change_profit_fans_and_the_books(lg):
+    x = lg()
+    x.budgets.for_league(x.league.id, 2026)
+    assert x.budgets.ticket_price(x.league.id, x.mine.id, 2026) == 5
+    (normal,) = x.budgets.books(x.league.id, x.mine.id, 2026)
+    assert normal["tickets"] == 0
+    x.budgets.set_ticket_price(x.league.id, x.mine.id, 2026, 9)
+    assert x.budgets.ticket_price(x.league.id, x.mine.id, 2026) == 9
+    (high,) = x.budgets.books(x.league.id, x.mine.id, 2026)
+    assert high["tickets"] > 0
+    assert high["profit"] == normal["profit"] + high["tickets"]
+    x.budgets.assess(x.league.id, 2026)
+    (closed,) = x.budgets.books(x.league.id, x.mine.id, 2026)
+    assert closed["other"] == 0 and closed["profit"] == high["profit"]
+    rows = {
+        r["team_id"]: r["fans_after"]
+        for r in x.db.execute(
+            "SELECT team_id, fans_after FROM team_budgets WHERE league_id = %s",
+            (x.league.id,),
+        ).fetchall()
+    }
+    # Same record (no games), but pricier tickets cooled my fans.
+    assert rows[x.mine.id] < rows[x.theirs.id]
+
+
+def test_ticket_prices_are_set_between_seasons_on_the_budget_tab(lg, client_for):
+    x = lg()
+    x.budgets.for_league(x.league.id, 2026)
+    client = client_for(x)
+    html = client.get(f"/leagues/{x.league.id}/budget").text
+    assert "Ticket prices" in html and 'type="range"' in html
+    url = f"/leagues/{x.league.id}/budget/tickets"
+    html = client.post(url, data={"level": 8}).text
+    assert "between seasons" in html
+    assert x.budgets.ticket_price(x.league.id, x.mine.id, 2026) == 5
+    x.db.execute("UPDATE leagues SET state = 'preseason' WHERE id = %s", (x.league.id,))
+    client.post(url, data={"level": 8})
+    assert x.budgets.ticket_price(x.league.id, x.mine.id, 2026) == 8
+    html = client.get(f"/leagues/{x.league.id}/budget").text
+    assert "Premium (8 of 10)" in html
