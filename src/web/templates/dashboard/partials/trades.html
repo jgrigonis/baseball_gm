@@ -46,13 +46,6 @@
      offers and votes, and scrolled to when it changes. #}
   <div id="tr-result" class="tr-result" style="display:none;"></div>
 
-  {% if trade_window.open and solo %}
-  <label class="tr-toggle">
-    <input type="checkbox" {% if stop_for_trade_offers %}checked{% endif %} onchange="trStopForOffers(this.checked)">
-    Stop the sim when a team offers me a trade
-  </label>
-  {% endif %}
-
   {% if offers_to_me %}
   <div class="card tr-inbox">
     <div class="card-header"><span class="card-title">📨 Offers to you</span>
@@ -521,13 +514,6 @@ window.trVote = function(offerId, yes) {
   }).catch(function() { showResult('✗ Couldn\'t reach the server.', 'bad'); });
 };
 
-window.trStopForOffers = function(on) {
-  fetch('/leagues/{{ league_id }}/trade-settings', {
-    method: 'POST', headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({stop_for_offers: on}),
-  }).catch(function() {});
-};
-
 function showResult(html, kind, dest) {
   var el = document.getElementById('tr-result');
   if (!el) return;
@@ -779,9 +765,6 @@ if (done) { showResult(done.msg, done.kind, done.dest); window._tradeResult = nu
 #trades-page .tr-accepted { color: var(--green); }
 #trades-page .tr-rejected, #trades-page .tr-voted_down, #trades-page .tr-void { color: var(--red); }
 #trades-page .tr-pending, #trades-page .tr-pending_vote { color: var(--amber); }
-#trades-page .tr-toggle { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 12px;
-  color: var(--text-dim); cursor: pointer; }
-#trades-page .tr-toggle input { width: auto; margin: 0; accent-color: var(--amber); }
 #trades-page .tr-inbox { margin-bottom: 14px; border-color: var(--amber-dim); }
 #trades-page .tr-hint { margin-left: auto; font-size: 11px; color: var(--text-dim); }
 #trades-page .tr-offer { display: flex; align-items: center; gap: 12px; padding: 8px 4px;

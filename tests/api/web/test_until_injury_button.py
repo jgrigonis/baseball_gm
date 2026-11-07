@@ -63,14 +63,17 @@ def test_sim_rejects_an_until_injury_count():
         SimRequest(count="injury")
 
 
-def test_blitz_has_ignore_trades_box(db_conn, factory):
+def test_blitz_has_trade_stop_boxes(db_conn, factory):
     # Blitz trades, so a Full Season run can be told to play through offers
-    # and the deadline.
+    # or the deadline.
     html = _schedule_html(db_conn, factory, "blitz")
-    assert 'id="sched-ignore-trades-box"' in html
+    assert 'id="sched-stop-offers-box"' in html
+    assert 'id="sched-stop-deadline-box"' in html
+    assert "sched-ignore-trades-box" not in html
 
 
-def test_speed_blitz_has_no_ignore_trades_box(db_conn, factory):
-    # No trades, nothing to ignore.
+def test_speed_blitz_has_no_trade_stop_boxes(db_conn, factory):
+    # No trades, nothing to stop for.
     html = _schedule_html(db_conn, factory, "speed_blitz")
-    assert 'id="sched-ignore-trades-box"' not in html
+    assert 'id="sched-stop-offers-box"' not in html
+    assert 'id="sched-stop-deadline-box"' not in html

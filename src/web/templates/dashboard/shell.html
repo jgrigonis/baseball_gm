@@ -626,7 +626,7 @@ function showInjuryNews(d) {
   // completed trade leads to the Roster tab, where the players who arrived
   // wait in the organization; other trade news to the Trades tab.
   if (d.trades && d.trades.length > 0) {
-    // A sim set to ignore trades doesn't stop for offers or votes, so
+    // A sim set not to stop for trade offers doesn't stop for offers or votes, so
     // they go in the news bar like answers rather than popping up.
     var quiet = !!window._simIgnoringTrades;
     if (quiet) {

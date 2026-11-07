@@ -13,7 +13,6 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from src.api.dependencies import DB, GM, ActiveLeague, IsHTMX, Unpaused, User
 from src.api.schemas import (
     TradeOfferRequest,
-    TradeSettingsRequest,
     TradeShopTakeRequest,
     TradeVoteRequest,
 )
@@ -214,9 +213,8 @@ def trades_tab(
             if gm.get("id")
             else [],
             "league_trades": trade_repo.history(league_id),
-            # Single player: whether sims stop when an offer arrives.
+            # Single player: AI offers stand for a few days.
             "solo": not is_multiplayer(db, league_id),
-            "stop_for_trade_offers": bool(league["stop_for_trade_offers"]),
         }
     )
     return tab_response(request, htmx, "dashboard/partials/trades.html", ctx)
@@ -357,18 +355,3 @@ def answer_trade(
         return JSONResponse(trades.respond(db, league_id, gm, offer_id, action))
     except trades.TradeError as e:
         return JSONResponse({"detail": str(e)}, status_code=422)
-
-
-@router.post("/leagues/{league_id}/trade-settings")
-def trade_settings(
-    league_id: str, body: TradeSettingsRequest, db: DB, gm: GM, _active: ActiveLeague
-):
-    """Single player: whether sims stop when a trade offer arrives."""
-    if is_multiplayer(db, league_id):
-        return JSONResponse(
-            {"detail": "Only single-player leagues stop for offers."},
-            status_code=422,
-        )
-    LeagueRepository(db).set_stop_for_trade_offers(league_id, body.stop_for_offers)
-    db.commit()
-    return JSONResponse({"stop_for_offers": body.stop_for_offers})

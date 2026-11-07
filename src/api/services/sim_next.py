@@ -277,9 +277,9 @@ def sim_days(league_id: str, conn, count: int | str) -> dict:
     when count is "season". When the season ends, sets up the playoffs.
     Stops early after the games of trade deadline day, in leagues that
     trade, so every GM gets a last look, the day All-Star voting opens and
-    the day the All-Stars are picked, after the All-Star Game, and, in a single-player league that
-    asks for it (stop_for_trade_offers), when a trade offer arrives for the
-    GM. Between days, AI teams make offers and trades (ai_trades). Playing past the deadline expires every open offer first. Returns a
+    the day the All-Stars are picked, after the All-Star Game, and, in a
+    single-player league, when a trade offer arrives for the GM (the
+    browser's "Stop for trade offers" box decides whether a run heeds it). Between days, AI teams make offers and trades (ai_trades). Playing past the deadline expires every open offer first. Returns a
     summary of what was played.
     """
     season_repo = SeasonRepository(conn)
@@ -301,9 +301,7 @@ def sim_days(league_id: str, conn, count: int | str) -> dict:
         trades.close_at_deadline(conn, league_id)
         conn.commit()
     watch_offers = bool(
-        deadline
-        and league["stop_for_trade_offers"]
-        and ReadyCheckRepository(conn).human_gm_count(league_id) <= 1
+        deadline and ReadyCheckRepository(conn).human_gm_count(league_id) <= 1
     )
     offers_before = trades.offers_to_humans(conn, league_id) if watch_offers else set()
     new_offer = False

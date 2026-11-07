@@ -96,17 +96,11 @@ def test_a_team_with_fewer_than_25_players_can_still_save(client_for):
     assert r.status_code == 200
 
 
-def test_single_player_gets_the_stop_for_offers_toggle(client_for, db_conn):
+def test_the_trades_tab_has_no_stop_for_offers_toggle(client_for):
+    # It moved to the sim menu (Stop for trade offers).
     client, league, _, _ = client_for("blitz")
     html = client.get(f"/leagues/{league.id}/trades").text
-    assert "Stop the sim when a team offers me a trade" in html
-    r = client.post(
-        f"/leagues/{league.id}/trade-settings", json={"stop_for_offers": False}
-    )
-    assert r.status_code == 200
-    assert not db_conn.execute(
-        "SELECT stop_for_trade_offers FROM leagues WHERE id = %s", (league.id,)
-    ).fetchone()["stop_for_trade_offers"]
+    assert "Stop the sim when a team offers me a trade" not in html
 
 
 def test_an_offer_to_you_shows_with_its_answers_and_a_badge(

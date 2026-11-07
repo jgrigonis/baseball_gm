@@ -250,10 +250,6 @@ class TradeVoteRequest(BaseModel):
     yes: bool
 
 
-class TradeSettingsRequest(BaseModel):
-    stop_for_offers: bool
-
-
 class DraftStrategyRequest(BaseModel):
     """Need chips (chip key → level 0-2: Low, Med, High), age preference
     (-1 upside … 1 ready sooner) and pinned player ids. Checked by

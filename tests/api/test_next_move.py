@@ -30,13 +30,13 @@ def test_season_plays_a_day_on_every_page():
         move = pick(_ctx(), page)
         assert move["label"] == "▶ Play Day" and move["fn"] == "schedSim"
         assert move["arg"] == "1" and move["id"] == "sched-play-btn"
-        assert move["stop"] and move["ignore_trades"]
+        assert move["stop"] and move["trade_stops"]
     assert _menu(pick(_ctx(), "roster")) == ["▶ Until Injury", "▶▶ Full Season"]
 
 
-def test_no_until_injury_or_ignore_trades_when_the_league_has_neither():
+def test_no_until_injury_or_trade_stops_when_the_league_has_neither():
     move = pick(_ctx(injuries_enabled=False, trades_enabled=False), "roster")
-    assert _menu(move) == ["▶▶ Full Season"] and not move["ignore_trades"]
+    assert _menu(move) == ["▶▶ Full Season"] and not move["trade_stops"]
 
 
 def test_preseason_plays_opening_day():

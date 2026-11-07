@@ -372,12 +372,6 @@ class LeagueRepository:
             [*(settings[c] for c in cols), league_id],
         )
 
-    def set_stop_for_trade_offers(self, league_id: str, on: bool) -> None:
-        self.conn.execute(
-            "UPDATE leagues SET stop_for_trade_offers = %s WHERE id = %s",
-            (on, league_id),
-        )
-
     def set_paused(self, league_id: str, paused: bool) -> None:
         self.conn.execute(
             "UPDATE leagues SET is_paused = %s WHERE id = %s", (paused, league_id)
