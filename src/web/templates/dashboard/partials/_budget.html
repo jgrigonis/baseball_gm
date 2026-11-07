@@ -5,7 +5,7 @@
 #}
 {% macro payroll_line(budget, payroll_text, dead_money_text=None) %}
 <span class="page-subtitle payroll-line" style="margin-left:12px;"
-      title="{% if budget %}Cap {{ budget.cap_text }}, {{ (budget.tax_rate * 100) | round | int }}% tax over it{% if budget.tax_text %}: {{ budget.tax_text }}{% endif %}.&#10;Owner's number {{ budget.payroll_budget_text }} after the front office and minor leagues{% if budget.over_budget_text %}: {{ budget.over_budget_text }} past it{% endif %}.&#10;{% endif %}Guaranteed salaries plus dead money.">
+      title="{% if budget %}Cap {{ budget.cap_text }}, {{ (budget.tax_rate * 100) | round | int }}% tax over it{% if budget.tax_text %}: {{ budget.tax_text }}{% endif %}.&#10;Owner's number {{ budget.payroll_budget_text }} after the front office and minor leagues{% if budget.over_budget_text %}: {{ budget.over_budget_text }} over{% endif %}.&#10;{% endif %}Guaranteed salaries plus dead money.">
   Payroll {{ budget.payroll_text if budget else payroll_text }}
   {%- if dead_money_text %} <span style="color:var(--red);">({{ dead_money_text }} dead)</span>{% endif %}
   {%- if budget %}{% if budget.over %} <span class="pl-over">· {{ budget.over_text }} over cap</span>

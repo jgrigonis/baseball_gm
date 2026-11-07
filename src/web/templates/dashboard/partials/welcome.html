@@ -285,7 +285,7 @@
         <i style="left:{{ b.budget_pct }}%;"></i>
       </div>
       <div class="wl-money-row">
-        <span class="wl-meta" style="margin-left:0;">Budget {{ m.budget_text }}: {% if m.over_budget %}<span class="wl-down">{{ m.over_budget_text }} past it</span>{% else %}{{ m.budget_room_text }} left{% endif %}</span>
+        <span class="wl-meta" style="margin-left:0;">Budget {{ m.budget_text }}: {% if m.over_budget %}<span class="wl-down">{{ m.over_budget_text }} over</span>{% else %}{{ m.budget_room_text }} left{% endif %}</span>
         <span class="wl-meta">{% if m.at_limit %}<span class="wl-down">At the {{ m.limit_text }} limit</span>{% else %}Limit {{ m.limit_text }}{% endif %}</span>
       </div>
       {% if b.bank_text or b.last %}

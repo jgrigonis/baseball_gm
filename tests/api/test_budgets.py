@@ -194,7 +194,7 @@ def test_the_roster_shows_payroll_against_cap_and_budget(lg, client_for):
     assert f"Owner's number {bg.format_salary(budget - fo)}" in html
     x.db.execute("UPDATE team_budgets SET budget = 1000000, cap = 1000000")
     html = client.get(f"/leagues/{x.league.id}/roster").text
-    assert " over cap</span>" in html and "past it." in html
+    assert " over cap</span>" in html and "over." in html
     x.db.execute("UPDATE team_budgets SET cap = 900000000")
     html = client.get(f"/leagues/{x.league.id}/roster").text
     assert " past owner</span>" in html
