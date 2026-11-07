@@ -27,10 +27,10 @@
      <span {% if is_admin and player.team_id %}title="team_id: {{ player.team_id }}"{% endif %}>{{ player.team_city }} {{ player.team_mascot }}</span>
    </div>
    {% if player.contract %}{% set c = player.contract %}
-   <div class="pd-contract" title="{% if c.kind == 'rookie' %}Rookie deal{% if c.pick_number %}, pick #{{ c.pick_number }}{% endif %}{% else %}Contract{% endif %}: {{ c.salary_text }} a season, {{ c.years }} season{{ 's' if c.years != 1 }} through {{ c.through }}">
+   <div class="pd-contract" title="{% if c.kind == 'rookie' %}Rookie deal{% if c.pick_number %}, pick #{{ c.pick_number }}{% endif %}{% elif c.kind == 'arbitration' %}Arbitration: one season at part of his market price, more each season until he reaches the market{% else %}Contract{% endif %}: {{ c.salary_text }} a season, {{ c.years }} season{{ 's' if c.years != 1 }} through {{ c.through }}">
      {{ c.salary_text }}/yr ·
      {% if c.years_left == 1 %}final year{% else %}year {{ c.year_of }} of {{ c.years }}{% endif %}
-     · thru {{ c.through }}{% if c.kind == 'rookie' %} · <span class="pd-contract-rookie">rookie deal</span>{% endif %}
+     · thru {{ c.through }}{% if c.kind == 'rookie' %} · <span class="pd-contract-rookie">rookie deal</span>{% elif c.kind == 'arbitration' %} · <span class="pd-contract-rookie">arbitration</span>{% endif %}
    </div>
    {% endif %}
    {% if player.happiness %}{% set h = player.happiness %}

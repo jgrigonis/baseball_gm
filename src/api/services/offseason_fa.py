@@ -137,13 +137,14 @@ def expiring(conn, league_id: str, year: int, team_ids=None) -> list[dict]:
     happy.prepare_resign(ids)
     moods = happy.latest_moods(ids)
     scale = BudgetRepository(conn).salary_scale(league_id, year + 1)
+    arb = contracts.arbitration_seasons(ids, year + 1)
     repo = PlayerRepository(conn)
     out = []
     for r in rows:
         p = repo.look_up(r["player_id"])
         if p is None:
             continue
-        deal, wants_out = contracts.renewal(p, year + 1, happy, scale)
+        deal, wants_out = contracts.renewal(p, year + 1, happy, scale, arb.get(p.id))
         mood = moods.get(p.id)
         if seasons.get(p.id, 0) >= MARKET_SEASONS:
             market = "veteran"
@@ -332,6 +333,7 @@ def expiring_view(conn, league_id: str, team_id: str) -> list[dict]:
                 "salary": d.salary,
                 "salary_text": ct.format_salary(d.salary),
                 "years": d.years,
+                "kind": d.kind,
                 "old_salary_text": ct.format_salary(r["old_salary"]),
                 "market": r["market"],
                 "seasons": r["seasons"],

@@ -1507,7 +1507,7 @@ CREATE TABLE IF NOT EXISTS player_contracts (
     player_id   TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
     league_id   TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
     team_id     TEXT REFERENCES teams(id) ON DELETE SET NULL,
-    kind        TEXT NOT NULL CHECK (kind IN ('rookie', 'standard')),
+    kind        TEXT NOT NULL CHECK (kind IN ('rookie', 'arbitration', 'standard')),  -- arbitration: migration 093
     salary      INTEGER NOT NULL CHECK (salary > 0),
     start_year  INTEGER NOT NULL,
     years       INTEGER NOT NULL CHECK (years >= 1),

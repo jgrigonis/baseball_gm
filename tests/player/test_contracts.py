@@ -7,13 +7,29 @@ from src.api.grade_curves import OVERALL_CUTOFFS
 from src.player import contracts as ct
 
 
-def test_rookie_deals_pay_early_picks_more_and_run_three_years():
+def test_rookie_deals_pay_early_picks_more_and_run_two_to_four_years():
     pays = [ct.rookie_salary(n) for n in (1, 5, 10, 30, 90)]
     assert pays == sorted(pays, reverse=True)
     assert pays[0] > 3_000_000
     assert pays[-1] == ct.MIN_SALARY
     deal = ct.rookie_deal(7)
     assert deal.years == ct.ROOKIE_YEARS == 3 and deal.kind == "rookie"
+    lengths = [ct.rookie_years(f"p{i}") for i in range(300)]
+    assert set(lengths) == {2, 3, 4}
+    assert ct.rookie_years("p1") == ct.rookie_years("p1")
+    assert ct.rookie_deal(7, years=4).years == 4
+
+
+def test_arbitration_pays_a_growing_share_of_market_for_one_season():
+    market = ct.Deal(10_000_000, 5, "standard")
+    deals = [ct.arbitration_deal(market, s) for s in (3, 4, 5, 6)]
+    assert [d.salary for d in deals] == [4_000_000, 5_500_000, 7_000_000, 8_500_000]
+    assert all(d.years == 1 and d.kind == "arbitration" for d in deals)
+    assert ct.arbitration_deal(market, 7) is None
+    assert ct.arbitration_deal(market, 2) is None
+    # Never below the minimum.
+    cheap = ct.Deal(ct.MIN_SALARY, 1, "standard")
+    assert ct.arbitration_deal(cheap, 3).salary == ct.MIN_SALARY
 
 
 def test_grade_position_follows_the_curve():

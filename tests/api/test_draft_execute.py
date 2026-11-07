@@ -147,7 +147,7 @@ class TestExecuteBlitzDraftStateTransitions:
             (draft.id,),
         ).fetchall()
         assert rows
-        assert all(r["kind"] == "rookie" and r["years"] == 3 for r in rows)
+        assert all(r["kind"] == "rookie" and 2 <= r["years"] <= 4 for r in rows)
         assert all(r["c_pick"] == r["pick_number"] for r in rows)
 
     def test_returns_correct_keys(self, setup):

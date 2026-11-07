@@ -397,7 +397,9 @@ class ContractRepository:
         def scale(at: int) -> float:
             return 1.0 if first is None else bg.salary_scale(at - first)
 
-        happy.prepare_resign([r["player_id"] for r in rows if r["signed_before"]])
+        renewing = [r["player_id"] for r in rows if r["signed_before"]]
+        happy.prepare_resign(renewing)
+        arb = self.arbitration_seasons(renewing, year)
         unhappy_out: list[tuple[str, str]] = []
 
         signed = 0
@@ -408,9 +410,11 @@ class ContractRepository:
             if (
                 not r["signed_before"]
                 and draft_year is not None
-                and draft_year <= year < draft_year + ct.ROOKIE_YEARS
+                and draft_year <= year < draft_year + ct.rookie_years(pid)
             ):
-                deal = ct.rookie_deal(r["pick_number"], scale(draft_year))
+                deal = ct.rookie_deal(
+                    r["pick_number"], scale(draft_year), ct.rookie_years(pid)
+                )
                 self._insert(
                     pid, league_id, r["team_id"], deal, draft_year, r["pick_number"]
                 )
@@ -426,7 +430,9 @@ class ContractRepository:
                 deal = ct.standard_deal(p.age, role_rating(p), kind, rng, scale(year))
                 start -= ct.years_already_served(deal.years, rng)
             else:
-                deal, wants_out = self.renewal(p, year, happy, scale(year))
+                deal, wants_out = self.renewal(
+                    p, year, happy, scale(year), arb.get(pid)
+                )
                 if wants_out:
                     unhappy_out.append((pid, r["team_id"]))
             self._insert(pid, league_id, r["team_id"], deal, start)
@@ -436,16 +442,43 @@ class ContractRepository:
         self.guarantee([r["player_id"] for r in rows])
         return signed
 
-    def renewal(self, p, year: int, happy, scale: float = 1.0) -> tuple[ct.Deal, bool]:
+    def renewal(
+        self, p, year: int, happy, scale: float = 1.0, arb_season: int | None = None
+    ) -> tuple[ct.Deal, bool]:
         """The new deal a player whose last one ran out signs from `year`,
         his mood worked in, and whether he wants a trade. The same price in
         the offseason's re-sign window as when he re-signs after the draft
         (src/api/services/offseason_fa.py). `happy` is a HappinessRepository
-        that has had prepare_resign for him."""
+        that has had prepare_resign for him. arb_season: which season in the
+        league the deal is for, when he came up on a rookie deal
+        (arbitration_seasons); an arbitration season prices it as a share
+        of his market price (src/player/contracts.py arbitration_deal)."""
         rng = random.Random(f"contract:{p.id}:{year}")
         kind = "pitcher" if p.is_pitcher() else "hitter"
         deal = ct.standard_deal(p.age, role_rating(p), kind, rng, scale)
+        if arb_season is not None:
+            deal = ct.arbitration_deal(deal, arb_season, scale) or deal
         return self._mood_terms(happy, p.id, None, deal, scale)
+
+    def arbitration_seasons(self, player_ids, year: int) -> dict[str, int]:
+        """For players who came up on a rookie deal in this league: which
+        season in the league a new deal from `year` would be (his rookie
+        deal's first season is 1). Others are left out: a league's starting
+        players never go to arbitration."""
+        ids = list(player_ids)
+        if not ids:
+            return {}
+        rows = self.conn.execute(
+            """SELECT DISTINCT ON (player_id) player_id, kind, start_year
+               FROM player_contracts WHERE player_id = ANY(%s)
+               ORDER BY player_id, start_year, created_at""",
+            (ids,),
+        ).fetchall()
+        return {
+            r["player_id"]: year - r["start_year"] + 1
+            for r in rows
+            if r["kind"] == "rookie"
+        }
 
     def seasons_signed(self, player_ids, year: int) -> dict[str, int]:
         """Seasons each player has played under a deal in this league,
