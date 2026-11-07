@@ -230,3 +230,12 @@ def test_coaching_lifts_young_players_most_and_standard_does_nothing():
     assert hp.coaching_line(hp.coaching_lift(0, 22)) == hp.COACHING_BAD_TEXT
     assert hp.coaching_line(hp.coaching_lift(3, 22)) is None
     assert hp.coaching_line(hp.coaching_lift(4, 33)) is None
+
+
+def test_a_loyal_player_takes_back_his_request_a_week_sooner():
+    loyal = {"ego": 50, "temper": 50, "loyalty": 80}
+    other = {"ego": 50, "temper": 50, "loyalty": 40}
+    assert not hp.withdraws_request(hp.WITHDRAW_WEEKS - 2, loyal)
+    assert hp.withdraws_request(hp.WITHDRAW_WEEKS - 1, loyal)
+    assert not hp.withdraws_request(hp.WITHDRAW_WEEKS - 1, other)
+    assert hp.withdraws_request(hp.WITHDRAW_WEEKS, other)

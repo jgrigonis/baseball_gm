@@ -3,7 +3,7 @@
 who bench themselves, and what re-signing does
 (src/db/repositories/happiness_repo.py)."""
 
-from datetime import date
+from datetime import date, timedelta
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -219,3 +219,23 @@ def test_an_elite_coaching_staff_lifts_moods_and_bare_bones_sours_them(lg):
             assert lift == pytest.approx(hp.coaching_lift(level, 27), abs=1e-3)
             goal = before[p.id]["target"] + lift
             assert after["target"] == pytest.approx(max(-1, min(1, goal)), abs=1e-3)
+
+
+def test_a_player_happy_again_takes_back_his_trade_request(lg):
+    pid = lg.players[lg.a.id][0].id
+    with (
+        patch.object(hp, "target", return_value=-1.0),
+        patch.object(hp, "asks_for_trade", side_effect=lambda m, w, t, r: True),
+    ):
+        _repo(lg).update(lg.season.id, date(2025, 4, 11))
+    assert pid in _repo(lg).trade_requests([pid])
+    with patch.object(hp, "target", return_value=0.9):
+        _repo(lg).update(lg.season.id, date(2025, 4, 18))
+        # One better week isn't enough.
+        assert pid in _repo(lg).trade_requests([pid])
+        for week in range(2, 10):
+            _repo(lg).update(lg.season.id, date(2025, 4, 11) + timedelta(weeks=week))
+    assert pid not in _repo(lg).trade_requests([pid])
+    assert _repo(lg).mood(pid, lg.season.id)["content_weeks"] == 0
+    feed = NewsRepository(lg.db).feed(lg.league.id)
+    assert any("happy to stay" in s["headline"] for s in feed)

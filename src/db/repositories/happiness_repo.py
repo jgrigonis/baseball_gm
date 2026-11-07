@@ -236,6 +236,7 @@ class HappinessRepository:
             before = previous.get(pid)
             request = None
             weeks = 0
+            content = 0
             refusing = None
             if now is None:
                 mood = goal if before is None else 0.5 * before["mood"] + 0.5 * goal
@@ -246,11 +247,19 @@ class HappinessRepository:
             else:
                 request = now["trade_request_on"]
                 weeks = now["unhappy_weeks"]
+                content = now.get("content_weeks") or 0
                 refusing = now["refusing_until"]
                 if request and (as_of - _day(request)).days >= 7 * hp.IGNORED_WEEKS:
                     goal = max(-1.0, goal - hp.IGNORED_PENALTY)  # still waiting
                 mood = hp.step(now["mood"], goal, person.traits["temper"])
             weeks = weeks + 1 if mood < hp.UNHAPPY else 0
+            # Happy again for long enough with a request open: he takes it
+            # back.
+            content = content + 1 if request and mood >= hp.CONTENT else 0
+            if request and hp.withdraws_request(content, person.traits):
+                request = None
+                content = 0
+                events.append(("withdraw", pid, p["team_id"], None))
             if refusing and _day(refusing) <= as_of:
                 refusing = None
 
@@ -301,6 +310,7 @@ class HappinessRepository:
                     weeks,
                     request,
                     refusing,
+                    content,
                 )
             )
         with self.conn.cursor() as cur:
@@ -309,15 +319,16 @@ class HappinessRepository:
                 INSERT INTO player_moods (
                     player_id, season_id, league_id, team_id, mood, target,
                     detail, updated_on, unhappy_weeks, trade_request_on,
-                    refusing_until
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    refusing_until, content_weeks
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (player_id, season_id) DO UPDATE SET
                     league_id = EXCLUDED.league_id, team_id = EXCLUDED.team_id,
                     mood = EXCLUDED.mood, target = EXCLUDED.target,
                     detail = EXCLUDED.detail, updated_on = EXCLUDED.updated_on,
                     unhappy_weeks = EXCLUDED.unhappy_weeks,
                     trade_request_on = EXCLUDED.trade_request_on,
-                    refusing_until = EXCLUDED.refusing_until
+                    refusing_until = EXCLUDED.refusing_until,
+                    content_weeks = EXCLUDED.content_weeks
                 """,
                 rows,
             )
@@ -596,6 +607,15 @@ class HappinessRepository:
                     f"{who} asks the {names.team(team_id)} for a trade",
                     hp.TYPES.get(extra.type, {}).get("blurb", ""),
                     weight=2, team_ids=[team_id], player_ids=[pid],
+                    gm_ids=names.gm_ids(team_id),
+                )  # fmt: skip
+            elif kind == "withdraw":
+                news.add(
+                    self.league_id, season_id, on, "clubhouse",
+                    f"trade-withdrawn:{pid}:{on}",
+                    f"{who} is happy to stay with the {names.team(team_id)}",
+                    "He's taken back his trade request.",
+                    weight=1, team_ids=[team_id], player_ids=[pid],
                     gm_ids=names.gm_ids(team_id),
                 )  # fmt: skip
             elif kind == "resign":
