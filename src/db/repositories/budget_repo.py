@@ -708,6 +708,55 @@ class BudgetRepository:
         ).fetchall()
         return {r["team_id"]: dict(r) for r in rows}
 
+    def league_payrolls(self, league_id: str, year: int) -> list[dict]:
+        """Every team's payroll, luxury tax and tax share season by season,
+        newest first, for the Budget tab's league table. Each season is
+        {"year", "cap", "projected", "teams": {team_id: {payroll, tax,
+        share}}}. This season, until its books close, is projected from
+        today's payrolls; finished seasons are as recorded. Empty without
+        budgets."""
+        if not self.for_league(league_id, year):
+            return []
+        rows = self.conn.execute(
+            """SELECT team_id, year, cap, payroll, luxury_tax, tax_share, profit
+               FROM team_budgets WHERE league_id = %s AND year <= %s""",
+            (league_id, year),
+        ).fetchall()
+        seasons: dict[int, dict] = {}
+        for r in rows:
+            seasons.setdefault(r["year"], {})[r["team_id"]] = r
+        out = []
+        for y in sorted(seasons, reverse=True):
+            league_rows = seasons[y]
+            done = all(r["profit"] is not None for r in league_rows.values())
+            if not done and y != year:
+                continue
+            cap = next(
+                (int(r["cap"]) for r in league_rows.values() if r["cap"]), None
+            ) or self.cap(league_id, y)
+            if done:
+                teams = {
+                    t: {
+                        "payroll": int(r["payroll"] or 0),
+                        "tax": int(r["luxury_tax"] or 0),
+                        "share": int(r["tax_share"] or 0),
+                    }
+                    for t, r in league_rows.items()
+                }
+            else:
+                payrolls = {t: self.contracts.payroll(t, y) for t in league_rows}
+                shares = bg.tax_shares(payrolls, cap)
+                teams = {
+                    t: {
+                        "payroll": p,
+                        "tax": bg.luxury_tax(p, cap),
+                        "share": shares.get(t, 0),
+                    }
+                    for t, p in payrolls.items()
+                }
+            out.append({"year": y, "cap": cap, "projected": not done, "teams": teams})
+        return out
+
     def tax_paid(self, league_id: str, team_id: str) -> list[dict]:
         """Seasons the team paid luxury tax, newest first."""
         rows = self.conn.execute(

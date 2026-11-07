@@ -9,55 +9,64 @@
 // A table that also has data-sort-url keeps its sort in the page URL
 // (?sort=<column>&dir=asc|desc), so a refresh or a shared link shows the same
 // order. Use it on at most one table per page.
-document.addEventListener('DOMContentLoaded', function() {
+//
+// Tables that arrive in an htmx swap (league tabs) are set up too.
+(function() {
   var slug = function(th) {
     return th.textContent.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   };
 
-  document.querySelectorAll('table[data-sortable]').forEach(function(table) {
-    var headers = table.querySelectorAll('th[data-sort]');
-    var persist = table.hasAttribute('data-sort-url');
+  var setUp = function(root) {
+    root.querySelectorAll('table[data-sortable]').forEach(function(table) {
+      if (table.dataset.sortReady) return;
+      table.dataset.sortReady = '1';
+      var headers = table.querySelectorAll('th[data-sort]');
+      var persist = table.hasAttribute('data-sort-url');
 
-    var sortBy = function(th, asc) {
-      var col = th.cellIndex;
-      var num = th.dataset.sort === 'num';
-      headers.forEach(function(h) { delete h.dataset.dir; });
-      th.dataset.dir = asc ? 'asc' : 'desc';
-      var body = table.tBodies[0];
-      var rows = Array.from(body.rows);
-      var key = function(row) {
-        var cell = row.cells[col];
-        var v = cell.dataset.sortValue != null ? cell.dataset.sortValue : cell.textContent.trim();
-        return num ? (parseFloat(v) || 0) : v.toLowerCase();
+      var sortBy = function(th, asc) {
+        var col = th.cellIndex;
+        var num = th.dataset.sort === 'num';
+        headers.forEach(function(h) { delete h.dataset.dir; });
+        th.dataset.dir = asc ? 'asc' : 'desc';
+        var body = table.tBodies[0];
+        var rows = Array.from(body.rows);
+        var key = function(row) {
+          var cell = row.cells[col];
+          var v = cell.dataset.sortValue != null ? cell.dataset.sortValue : cell.textContent.trim();
+          return num ? (parseFloat(v) || 0) : v.toLowerCase();
+        };
+        rows.sort(function(a, b) {
+          var x = key(a), y = key(b);
+          var c = num ? x - y : x.localeCompare(y);
+          return asc ? c : -c;
+        });
+        rows.forEach(function(r) { body.appendChild(r); });
       };
-      rows.sort(function(a, b) {
-        var x = key(a), y = key(b);
-        var c = num ? x - y : x.localeCompare(y);
-        return asc ? c : -c;
-      });
-      rows.forEach(function(r) { body.appendChild(r); });
-    };
 
-    headers.forEach(function(th) {
-      th.addEventListener('click', function() {
-        var asc = th.dataset.dir ? th.dataset.dir !== 'asc' : th.dataset.sortFirst !== 'desc';
-        sortBy(th, asc);
-        if (persist) {
-          var url = new URL(window.location.href);
-          url.searchParams.set('sort', slug(th));
-          url.searchParams.set('dir', asc ? 'asc' : 'desc');
-          history.replaceState(history.state, '', url);
+      headers.forEach(function(th) {
+        th.addEventListener('click', function() {
+          var asc = th.dataset.dir ? th.dataset.dir !== 'asc' : th.dataset.sortFirst !== 'desc';
+          sortBy(th, asc);
+          if (persist) {
+            var url = new URL(window.location.href);
+            url.searchParams.set('sort', slug(th));
+            url.searchParams.set('dir', asc ? 'asc' : 'desc');
+            history.replaceState(history.state, '', url);
+          }
+        });
+      });
+
+      if (persist) {
+        var params = new URLSearchParams(window.location.search);
+        var want = params.get('sort');
+        if (want) {
+          var match = Array.from(headers).find(function(th) { return slug(th) === want; });
+          if (match) sortBy(match, params.get('dir') !== 'desc');
         }
-      });
-    });
-
-    if (persist) {
-      var params = new URLSearchParams(window.location.search);
-      var want = params.get('sort');
-      if (want) {
-        var match = Array.from(headers).find(function(th) { return slug(th) === want; });
-        if (match) sortBy(match, params.get('dir') !== 'desc');
       }
-    }
-  });
-});
+    });
+  };
+
+  document.addEventListener('DOMContentLoaded', function() { setUp(document); });
+  document.addEventListener('htmx:afterSettle', function(e) { setUp(e.target || document); });
+})();
