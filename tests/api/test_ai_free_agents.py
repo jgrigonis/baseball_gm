@@ -114,6 +114,22 @@ def test_no_hole_no_signing(lg):
     )
 
 
+def test_a_bargain_is_worth_a_smaller_upgrade(lg, monkeypatch):
+    for _ in range(14):
+        lg.factory.rated_player(lg.ai, lg.league, level=60)
+    pid = _free_agent(lg, 63)  # a little better: not a hole
+    at_full = ai_free_agents.sign_free_agents(
+        lg.db, lg.league.id, lg.season.id, [lg.ai.id], 2026, GAME_DAYS[0]
+    )
+    assert at_full == []
+    # Half price, late in the season: now he's worth it.
+    monkeypatch.setattr(free_agents, "market_discount", lambda *a: 0.5)
+    signed = ai_free_agents.sign_free_agents(
+        lg.db, lg.league.id, lg.season.id, [lg.ai.id], 2026, GAME_DAYS[0]
+    )
+    assert signed == [(lg.ai.id, pid)]
+
+
 def test_an_ai_team_stays_inside_its_budget(lg, monkeypatch):
     lg.factory.rated_player(lg.ai, lg.league, level=40)
     _free_agent(lg, 75)

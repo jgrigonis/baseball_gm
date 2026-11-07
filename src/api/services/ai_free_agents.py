@@ -36,11 +36,16 @@ from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.waiver_repo import WaiverRepository
 from src.league.offseason.roster_trimmer import MINORS_LIMIT
+from src.player import contracts as ct
 from src.player.player_evaluator import PlayerEvaluator
 from src.team.roster_assigner import BULLPEN, LINEUP_POSITIONS, STARTERS
 
 # How much better (rating points) a free agent must be to fill a hole.
 HOLE_MARGIN = 5
+# A bargain (asking at most BARGAIN_SHARE of his full price, or the
+# minimum) is worth signing when he's this much better.
+BARGAIN_MARGIN = 2
+BARGAIN_SHARE = 0.6
 # AI teams shop for free agents every this many game days.
 SIGN_EVERY_DAYS = 7
 # Injured this long or more, he doesn't count when looking for holes.
@@ -75,13 +80,15 @@ def candidate_value(r: dict, role: str) -> float:
     return _position_score(r, role)
 
 
-def best_fit(team: dict[str, float], r: dict) -> tuple[str | None, float]:
+def best_fit(
+    team: dict[str, float], r: dict, margin: float = HOLE_MARGIN
+) -> tuple[str | None, float]:
     """The role a player would fill best, and by how much he beats what the
-    team has there (only holes: at least HOLE_MARGIN)."""
+    team has there (only holes: at least margin)."""
     best, gain = None, 0.0
     for role, have in team.items():
         g = candidate_value(r, role) - have
-        if g >= HOLE_MARGIN and g > gain:
+        if g >= margin and g > gain:
             best, gain = role, g
     return best, gain
 
@@ -195,7 +202,8 @@ def claim_waivers(conn, league_id: str, ai_teams: list[str], year: int) -> int:
 def sign_free_agents(
     conn, league_id: str, season_id: str, ai_teams: list[str], year: int, today: str
 ) -> list[tuple[str, str]]:
-    """Each AI team signs at most one free agent who fills a hole. Returns
+    """Each AI team signs at most one free agent who fills a hole, or who
+    beats what it has by a little when he's a bargain. Returns
     [(team_id, player_id)]."""
     on_waivers = {w["player_id"] for w in WaiverRepository(conn).open_for(league_id)}
     repo = PlayerRepository(conn)
@@ -208,7 +216,9 @@ def sign_free_agents(
     if not pool:
         return []
     scale = free_agents.price_scale(conn, league_id, year)
-    asks = {}
+    discount = free_agents.market_discount(conn, league_id)
+    minimum = ct.round_salary(ct.MIN_SALARY * scale, scale)
+    asks, bargain = {}, {}
     signed = []
     outlooks = front_office.outlooks(conn, league_id, season_id, today)
     effective = (date.fromisoformat(today) + timedelta(days=1)).isoformat()
@@ -220,11 +230,17 @@ def sign_free_agents(
         for rec, r in pool:
             if rec.id in taken:
                 continue
-            role, gain = best_fit(team, r)
+            if rec.id not in asks:
+                ask = free_agents.asking_deal(rec, year, scale, discount)
+                full = free_agents.asking_deal(rec, year, scale)
+                asks[rec.id] = ask
+                bargain[rec.id] = (
+                    ask.salary <= minimum or ask.salary <= BARGAIN_SHARE * full.salary
+                )
+            margin = BARGAIN_MARGIN if bargain[rec.id] else HOLE_MARGIN
+            role, gain = best_fit(team, r, margin)
             if not role or (best and gain <= best[1]):
                 continue
-            if rec.id not in asks:
-                asks[rec.id] = free_agents.asking_deal(rec, year, scale)
             if asks[rec.id].salary > room:
                 continue
             best = (rec, gain)

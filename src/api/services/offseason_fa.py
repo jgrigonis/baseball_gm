@@ -210,12 +210,6 @@ def choose(
     return {"choice": choice}
 
 
-def _is_fringe(player) -> bool:
-    """C- or worse: the kind of player free agency has plenty of."""
-    kind = "pitcher" if player.is_pitcher() else "hitter"
-    return ct.grade_position(role_rating(player), kind) >= ct.GRADES.index("C-")
-
-
 def _room(conn, league_id: str, team_id: str, year: int, human: bool) -> float:
     """What a team can add before its owner balks: up to the hard limit for
     a person, the budget for an AI GM. Unlimited without budgets."""
@@ -270,7 +264,7 @@ def _keeps(
         if r["market"] and r["status"] not in FORTY_MAN_STATUSES:
             continue
         minimum = ct.round_salary(ct.MIN_SALARY * r["scale"], r["scale"])
-        if _is_fringe(r["player"]) and r["deal"].salary > minimum:
+        if free_agents.is_fringe(r["player"]) and r["deal"].salary > minimum:
             continue
         if fits(r):
             keep.add(r["player_id"])

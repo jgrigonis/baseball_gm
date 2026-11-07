@@ -62,6 +62,11 @@
     prospects go undrafted.
   </div>
   {% else %}
+  <div class="fa-note">
+    C- and worse ask the minimum for one season. Anyone still unsigned after the
+    offseason's bidding asks {{ market_step_pct }}% less when the preseason starts and
+    another {{ market_step_pct }}% each week of the season, down to {{ market_floor_pct }}% of his price.
+  </div>
   <div class="fa-list card" id="fa-list"></div>
   <div class="fa-empty" id="fa-none" style="display:none;">No one matches.</div>
   {% endif %}

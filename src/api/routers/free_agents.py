@@ -66,6 +66,7 @@ def free_agents_tab(
     names = TeamRepository(db).get_names(list(set(last_team.values())))
     players = []
     scale = free_agents.price_scale(db, league_id, year) if year is not None else 1.0
+    discount = free_agents.market_discount(db, league_id)
     for card, row in shown:
         record = player_repo.record_from_row(row)
         card["face_url"] = face_url(row["id"], card.get("age"), None, None)
@@ -84,7 +85,7 @@ def free_agents_tab(
                 "mine": w["from_team_id"] == team_id,
             }
         elif year is not None:
-            deal = free_agents.asking_deal(record, year, scale)
+            deal = free_agents.asking_deal(record, year, scale, discount)
             card["salary"] = deal.salary
             card["salary_text"] = format_salary(deal.salary)
             card["ask_years"] = deal.years
@@ -122,6 +123,8 @@ def free_agents_tab(
         ctx["expiring"].sort(key=lambda c: -c.get("overall_score", -1.0))
 
     ctx["players"] = players
+    ctx["market_step_pct"] = round(free_agents.MARKET_STEP * 100)
+    ctx["market_floor_pct"] = round(free_agents.MARKET_FLOOR * 100)
     ctx["pool_size"] = len(rows)
     ctx["max_shown"] = MAX_SHOWN
     ctx["market_seasons"] = offseason_fa.MARKET_SEASONS

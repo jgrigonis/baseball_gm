@@ -25,6 +25,7 @@ agents are later phases.
 from __future__ import annotations
 
 import random
+from datetime import date
 from src.api.services import trades, waivers
 from src.db.locks import league_lock
 from src.db.repositories.budget_repo import BudgetRepository
@@ -47,13 +48,74 @@ class FreeAgentError(Exception):
     """A release or signing that can't happen, with the reason to show."""
 
 
-def asking_deal(player, year: int, scale: float = 1.0) -> ct.Deal:
-    """What a free agent asks for: a standard deal at his value. The same
-    all season, so the price doesn't change each time you look. scale is
-    the league's price_scale for the season."""
+# Free agency bargains (Josh, 2026-11-07: "people should be getting picked
+# up off there for cheap"). A free agent still unsigned once offseason
+# bidding is over asks MARKET_STEP less as the preseason starts, and another
+# MARKET_STEP each MARKET_STEP_DAYS of the season, down to MARKET_FLOOR of
+# his price. A fringe player (FRINGE_GRADE or worse) asks the minimum, for
+# one season, any time.
+MARKET_STEP = 0.10
+MARKET_STEP_DAYS = 7
+MARKET_FLOOR = 0.50
+FRINGE_GRADE = "C-"
+
+
+def is_fringe(player) -> bool:
+    """C- or worse: the kind of player free agency has plenty of."""
+    kind = "pitcher" if player.is_pitcher() else "hitter"
+    return ct.grade_position(role_rating(player), kind) >= ct.GRADES.index(FRINGE_GRADE)
+
+
+def asking_deal(
+    player, year: int, scale: float = 1.0, discount: float = 1.0
+) -> ct.Deal:
+    """What a free agent asks for: a standard deal at his value, times how
+    far his price has fallen (market_discount), or the minimum for one
+    season when he's a fringe player. The same for a whole step, so the
+    price doesn't change each time you look. scale is the league's
+    price_scale for the season."""
+    if is_fringe(player):
+        return ct.Deal(ct.round_salary(ct.MIN_SALARY * scale, scale), 1, "standard")
     kind = "pitcher" if player.is_pitcher() else "hitter"
     rng = random.Random(f"ask:{player.id}:{year}")
-    return ct.standard_deal(player.age, role_rating(player), kind, rng, scale)
+    deal = ct.standard_deal(player.age, role_rating(player), kind, rng, scale)
+    if discount >= 1.0:
+        return deal
+    return ct.Deal(
+        ct.round_salary(deal.salary * discount, scale), deal.years, deal.kind
+    )
+
+
+def discount_for(state: str | None, days_played: int) -> float:
+    """How far free agents' prices have fallen: full price through the
+    offseason and its bidding, a step off in the preseason, then another
+    step every MARKET_STEP_DAYS of the season, to the floor."""
+    if state not in ("preseason", "season", "playoffs"):
+        return 1.0
+    steps = 1 + (max(0, days_played) // MARKET_STEP_DAYS if state != "preseason" else 0)
+    return max(MARKET_FLOOR, 1.0 - MARKET_STEP * steps)
+
+
+def market_discount(conn, league_id: str) -> float:
+    """discount_for the league as it stands: its state, and how many days
+    of the regular season have been played."""
+    league = LeagueRepository(conn).get_by_id(league_id)
+    state = league["state"] if league else None
+    if state not in ("season", "playoffs"):
+        return discount_for(state, 0)
+    season_id = SeasonRepository(conn).get_current_id_for_league(league_id)
+    row = conn.execute(
+        """SELECT MIN(game_date) AS first,
+                  MAX(game_date) FILTER (WHERE completed = 1) AS last
+           FROM games WHERE season_id = %s AND series_id IS NULL""",
+        (season_id,),
+    ).fetchone()
+    if not row or not row["first"] or not row["last"]:
+        return discount_for(state, 0)
+    days = (
+        date.fromisoformat(str(row["last"])) - date.fromisoformat(str(row["first"]))
+    ).days
+    return discount_for(state, days)
 
 
 def price_scale(conn, league_id: str, year: int) -> float:
@@ -139,7 +201,12 @@ def sign_preview(conn, league_id: str, team_id: str, player_id: str) -> dict:
     ):
         raise FreeAgentError("He isn't a free agent.")
     _not_on_waivers(conn, player_id)
-    deal = asking_deal(player, year, price_scale(conn, league_id, year))
+    deal = asking_deal(
+        player,
+        year,
+        price_scale(conn, league_id, year),
+        market_discount(conn, league_id),
+    )
     return {
         "salary_text": ct.format_salary(deal.salary),
         "years": deal.years,
@@ -190,7 +257,12 @@ def sign(conn, league_id: str, team_id: str, player_id: str) -> dict:
             raise FreeAgentError(
                 f"Your minors are full ({MINORS_LIMIT}). Release someone first."
             )
-        deal = asking_deal(player, year, price_scale(conn, league_id, year))
+        deal = asking_deal(
+            player,
+            year,
+            price_scale(conn, league_id, year),
+            market_discount(conn, league_id),
+        )
         refusal = BudgetRepository(conn).refusal(league_id, team_id, year, deal.salary)
         if refusal:
             raise FreeAgentError(refusal)
