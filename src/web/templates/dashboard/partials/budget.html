@@ -106,7 +106,7 @@
   <div class="card-body">
     {% if fo_error %}<div class="bud-line bud-bad" style="margin-top:0;margin-bottom:10px;">{{ fo_error }}</div>{% endif %}
     {% for d in front_office %}
-    <form class="bud-dept" hx-post="/leagues/{{ league_id }}/budget/front-office"
+    <form class="bud-dept" data-quiet-swap hx-post="/leagues/{{ league_id }}/budget/front-office"
           hx-target="#tab-content" hx-swap="innerHTML" hx-trigger="change">
       <input type="hidden" name="department" value="{{ d.key }}">
       <div class="bud-dept-name"><strong>{{ d.label }}</strong><div class="bud-note">{{ d.what }}</div></div>
@@ -127,7 +127,7 @@
     <span class="admin-dim" style="margin-left:auto;font-size:11px;">{% if not fo_open %}locked until the offseason{% endif %}</span></div>
   <div class="card-body">
     {% if ticket_error %}<div class="bud-line bud-bad" style="margin-top:0;margin-bottom:10px;">{{ ticket_error }}</div>{% endif %}
-    <form hx-post="/leagues/{{ league_id }}/budget/tickets" hx-target="#tab-content" hx-swap="innerHTML" hx-trigger="change">
+    <form hx-post="/leagues/{{ league_id }}/budget/tickets" hx-target="#tab-content" hx-swap="innerHTML" hx-trigger="change" data-quiet-swap>
       <div class="bud-tix-top">
         <div class="bud-value" style="margin-top:0;" id="bud-tix-name">{{ tickets.options[tickets.level - 1].name }}</div>
         <div class="bud-label" id="bud-tix-level">{{ tickets.level }} of 10</div>
