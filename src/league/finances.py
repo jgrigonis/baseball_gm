@@ -145,11 +145,14 @@ def fans_after(
     champion: bool,
     all_stars: int,
     ticket_price=None,
+    marketing=None,
 ) -> int:
-    """Fan interest after a season."""
-    target = fan_target(
-        win_pct, made_playoffs, champion, all_stars, ticket_fans(ticket_price)
+    """Fan interest after a season, with this season's ticket prices and
+    marketing department level (None: the defaults)."""
+    nudge = ticket_fans(ticket_price) + (
+        0 if marketing is None else bg.marketing_fans(marketing)
     )
+    target = fan_target(win_pct, made_playoffs, champion, all_stars, nudge)
     after = fans + FAN_STEP * (target - fans)
     return int(round(max(FAN_MIN, min(FAN_MAX, after))))
 

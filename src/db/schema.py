@@ -1498,7 +1498,7 @@ CREATE TABLE IF NOT EXISTS player_moods (
     unhappy_weeks   INTEGER NOT NULL DEFAULT 0, -- weekly updates in a row unhappy or worse (migration 067)
     trade_request_on TEXT,         -- league date he asked to be traded, while still on team_id
     refusing_until  TEXT,          -- league date he plays again after benching himself
-    content_weeks   INTEGER NOT NULL DEFAULT 0, -- weekly updates in a row content or better with a request open (migration 091)
+    content_weeks   INTEGER NOT NULL DEFAULT 0, -- weekly updates in a row content or better with a request open (migration 092)
     PRIMARY KEY (player_id, season_id)
 );
 
@@ -1583,6 +1583,7 @@ CREATE TABLE IF NOT EXISTS team_budgets (     -- migration 074 (src/league/budge
     coaching    SMALLINT,                     -- front office levels, 0 Bare bones to 4 Elite, NULL Standard (migration 083)
     facilities  SMALLINT,
     analytics   SMALLINT,
+    marketing   SMALLINT,                     -- fourth department, fan interest (migration 092)
     front_office BIGINT,                      -- what the front office cost, set when the season ends
     minor_league BIGINT,                      -- what its never-guaranteed minor leaguers cost, set when the season ends (migration 089)
     ticket_price SMALLINT,                    -- ticket prices 1 to 10, NULL the default 5; revenue is before them (migration 090)
