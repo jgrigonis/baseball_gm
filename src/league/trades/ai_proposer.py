@@ -246,3 +246,77 @@ def shop_offer_or_why(
     if closest is not None:
         return ShopOffer(closest, for_seller(closest), short=True, near=near)
     return NO_MATCH
+
+
+# Dumping salary: the shopping GM wants a player's salary off their books
+# more than they want anything back. Each AI team with room says what it
+# would take him for: it sends back one of its own cheapest, least-missed
+# players (a trade needs a player or pick each way), and if he alone isn't
+# worth it to them, the GM adds a sweetener of their own.
+MAX_THROW_INS = 4
+MAX_SWEETENERS = 8
+
+
+@dataclass
+class DumpOffer:
+    give: list[Asset]  # the throw-in from the AI team
+    add: list[Asset]  # the sweetener the seller adds (empty: none needed)
+    saved: int  # payroll it takes off the seller's books this season
+    cost: float  # what the sweetener is worth to the seller (0: none)
+
+
+def dump_offer_or_why(
+    ai: Side,
+    seller: Side,
+    target: Asset,
+    days_left: int,
+    blocked: set[str] = frozenset(),
+) -> DumpOffer | str:
+    """The cheapest way this AI team would take `target`'s salary: him
+    alone for a throw-in if it can, otherwise with the least costly
+    sweetener of the seller's that does it. Or why not: NO_ROOM when every
+    deal it would take adds more salary than its owner allows, NO_MATCH
+    when nothing the seller adds is enough."""
+    ai_base = ai_evaluator.strengths(ai.see(ai.roster), days_left)
+    seller_base = ai_evaluator.strengths(seller.see(seller.roster), days_left)
+    free = replace(ai, pay_room=None, _seen=ai._seen)
+
+    def cost_to_ai(a):
+        return -_verdict(free, [a], [], days_left, 0.0, ai_base).score
+
+    def cost_to_seller(a):
+        return -_verdict(seller, [a], [], days_left, 0.0, seller_base).score
+
+    theirs = [
+        a
+        for a in ai.roster
+        if a.id in ai.tradeable and not a.injured_days and a.id not in blocked
+    ]
+    # The players it would miss least, the cheapest of those first.
+    throw_ins = sorted(theirs, key=lambda a: (round(cost_to_ai(a), 1), a.salary))
+    throw_ins = sorted(throw_ins[:MAX_THROW_INS], key=lambda a: a.salary)
+    if not throw_ins:
+        return NO_MATCH
+
+    mine = [
+        a
+        for a in seller.roster
+        if a.id in seller.tradeable and a.id != target.id and not a.injured_days
+    ]
+    sweeteners = sorted(((cost_to_seller(a), a) for a in mine), key=lambda x: x[0])[
+        :MAX_SWEETENERS
+    ]
+
+    over_budget = False
+    for cost, sweet in [(0.0, None)] + sweeteners:
+        getting = [target] + ([sweet] if sweet else [])
+        for throw in throw_ins:
+            v = _verdict(ai, [throw], getting, days_left, ai.margin, ai_base)
+            if v.accept:
+                saved = sum(a.salary for a in getting) - throw.salary
+                return DumpOffer(
+                    [throw], [sweet] if sweet else [], saved, max(cost, 0.0)
+                )
+            if v.reason == ai_evaluator.OVER_BUDGET_REASON:
+                over_budget = True
+    return NO_ROOM if over_budget else NO_MATCH

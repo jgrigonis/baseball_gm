@@ -109,6 +109,31 @@ def offer_pay_change(db, league_id: str, offer: dict) -> int:
     return pay(offer["sent"]) - pay(offer["received"])
 
 
+def cap_rooms(db, league_id: str) -> dict[str, int]:
+    """Each team's room under the league's cap this season (negative: over
+    it), by team id. Payrolls and the cap are public (the Budget tab's
+    League payrolls). Empty without budgets."""
+    contracts = ContractRepository(db)
+    year = contracts.current_year(league_id)
+    if year is None:
+        return {}
+    repo = BudgetRepository(db)
+    teams = repo.for_league(league_id, year)
+    if not teams:
+        return {}
+    cap = repo.cap(league_id, year)
+    return {t: cap - contracts.payroll(t, year) for t in teams}
+
+
+def room_text(room: int | None) -> str | None:
+    """ "$12M under the cap", "$4.5M over the cap", or None without budgets."""
+    if room is None:
+        return None
+    if room >= 0:
+        return f"{format_salary(room)} under the cap"
+    return f"{format_salary(-room)} over the cap"
+
+
 @router.get("/leagues/{league_id}/trades", response_class=HTMLResponse)
 def trades_tab(
     request: Request,
@@ -124,12 +149,14 @@ def trades_tab(
     team_id = gm["team_id"]
 
     human_teams = GMRepository(db).get_human_team_ids(league_id)
+    rooms = cap_rooms(db, league_id)
     teams = (
         [
             {
                 "id": t["id"],
                 "name": f"{t['city']} {t['mascot']}",
                 "human": t["id"] in human_teams,
+                "room_text": room_text(rooms.get(t["id"])),
             }
             for t in TeamRepository(db).get_teams_in_league_season(league_id, season_id)
             if t["id"] != team_id
@@ -290,12 +317,14 @@ def shop_player(
         return JSONResponse({"detail": str(e)}, status_code=422)
     season_id = SeasonRepository(db).get_current_id_for_league(league_id)
     ai_gms = PersonaRepository(db).by_team(league_id)
+    rooms = cap_rooms(db, league_id)
     for o in result["offers"] + result["close"]:
         cards = {
             c["player_id"]: c
             for c in team_cards(db, league_id, season_id, o["team_id"])
         }
         o["players"] = [cards[pid] for pid in o["give"] if pid in cards]
+        o["room_text"] = room_text(rooms.get(o["team_id"]))
         g = ai_gms.get(o["team_id"])
         o["gm_name"] = g["name"] if g else None
     return JSONResponse(result)
@@ -315,6 +344,61 @@ def take_shop_offer(
     Answers like an offer to an AI team."""
     try:
         result = trade_shop.take(db, league_id, gm, player_id, body.team_id)
+    except trades.TradeError as e:
+        return JSONResponse({"detail": str(e)}, status_code=422)
+    return JSONResponse(result)
+
+
+@router.post("/leagues/{league_id}/trades/shop/{player_id}/dump")
+def dump_player(
+    league_id: str,
+    player_id: str,
+    db: DB,
+    gm: GM,
+    _active: ActiveLeague,
+    _unpaused: Unpaused,
+):
+    """What every AI team would take one of your players' salary for: the
+    throw-in it sends back and any sweetener you'd add, as roster cards."""
+    try:
+        result = trade_shop.dump(db, league_id, gm, player_id)
+    except trades.TradeError as e:
+        return JSONResponse({"detail": str(e)}, status_code=422)
+    season_id = SeasonRepository(db).get_current_id_for_league(league_id)
+    ai_gms = PersonaRepository(db).by_team(league_id)
+    mine = {
+        c["player_id"]: c for c in team_cards(db, league_id, season_id, gm["team_id"])
+    }
+    rooms = cap_rooms(db, league_id)
+    for o in result["offers"]:
+        cards = {
+            c["player_id"]: c
+            for c in team_cards(db, league_id, season_id, o["team_id"])
+        }
+        o["players"] = [cards[pid] for pid in o["give"] if pid in cards]
+        o["adds"] = [mine[pid] for pid in o["add"] if pid in mine]
+        o["saved_text"] = format_salary(o["saved"])
+        o["room_text"] = room_text(rooms.get(o["team_id"]))
+        g = ai_gms.get(o["team_id"])
+        o["gm_name"] = g["name"] if g else None
+    result["salary_text"] = format_salary(result["salary"])
+    return JSONResponse(result)
+
+
+@router.post("/leagues/{league_id}/trades/shop/{player_id}/dump/take")
+def take_dump_offer(
+    league_id: str,
+    player_id: str,
+    body: TradeShopTakeRequest,
+    db: DB,
+    gm: GM,
+    _active: ActiveLeague,
+    _unpaused: Unpaused,
+):
+    """Trade your player (and any sweetener) for an AI team's dump offer,
+    worked out again now. Answers like an offer to an AI team."""
+    try:
+        result = trade_shop.dump_take(db, league_id, gm, player_id, body.team_id)
     except trades.TradeError as e:
         return JSONResponse({"detail": str(e)}, status_code=422)
     return JSONResponse(result)
