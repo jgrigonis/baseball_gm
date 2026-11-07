@@ -3,12 +3,19 @@
 Player contracts.
 
 Everyone on a team (26-man, 40-man or minors) plays under a contract: a
-salary paid each season for a run of seasons. There are two kinds.
+salary paid each season for a run of seasons. There are three kinds.
 
-- Rookie deals. A drafted player signs one the season he's drafted: three
-  seasons at a salary set by where he was picked. Early picks get more, as
-  they do with real signing bonuses, which are folded into the salary here.
-  It runs its three years whether or not he keeps his rookie (r).
+- Rookie deals. A drafted player signs one the season he's drafted: two to
+  four seasons (rookie_years, set per player so a draft class doesn't all
+  come due the same winter; Josh, 2026-11-07) at a salary set by where he
+  was picked. Early picks get more, as they do with real signing bonuses,
+  which are folded into the salary here. It runs its years whether or not
+  he keeps his rookie (r).
+- Arbitration deals. A player whose rookie deal has run out, until he's
+  been in the league long enough to reach the market, signs one season at
+  a time for a share of his market price that grows each season
+  (ARBITRATION_SHARE), so a good young player gets dearer step by step
+  instead of all at once.
 - Standard deals. Everyone else, priced from how good he is (his overall
   grade on the pro curve) and how old he is. Stars get longer deals, old
   players and fringe players short ones.
@@ -33,7 +40,15 @@ MIN_SALARY = 780_000
 # Nobody is paid more than this a season.
 MAX_SALARY = 40_000_000
 
+# How long a rookie deal runs: 2 to 4 seasons, set per player. A rookie's
+# salary spreads his signing bonus over ROOKIE_YEARS, the typical length.
 ROOKIE_YEARS = 3
+ROOKIE_YEARS_MIN, ROOKIE_YEARS_MAX = 2, 4
+# An arbitration deal's share of the player's market price, by which season
+# in the league it's for (his first deal's season is 1). From his 7th
+# season he's a veteran who goes to market instead
+# (src/api/services/offseason_fa.py MARKET_SEASONS).
+ARBITRATION_SHARE = {3: 0.40, 4: 0.55, 5: 0.70, 6: 0.85}
 
 # What a player in his prime is paid each season at each grade, A+ to F.
 # Shaped like MLB free agent pay: a handful of $30M stars, a B a solid
@@ -68,7 +83,7 @@ SALARY_NOISE = 0.10
 class Deal:
     salary: int
     years: int
-    kind: str  # 'rookie' or 'standard'
+    kind: str  # 'rookie', 'arbitration' or 'standard'
 
 
 def round_salary(amount: float, scale: float = 1.0) -> int:
@@ -158,8 +173,27 @@ def rookie_salary(pick_number: int, scale: float = 1.0) -> int:
     return round_salary((MIN_SALARY + bonus / ROOKIE_YEARS) * scale, scale)
 
 
-def rookie_deal(pick_number: int, scale: float = 1.0) -> Deal:
-    return Deal(rookie_salary(pick_number, scale), ROOKIE_YEARS, "rookie")
+def rookie_years(player_id: str) -> int:
+    """How many seasons this player's rookie deal runs, the same every time
+    it's asked."""
+    rng = random.Random(f"rookie-years:{player_id}")
+    return rng.randint(ROOKIE_YEARS_MIN, ROOKIE_YEARS_MAX)
+
+
+def rookie_deal(
+    pick_number: int, scale: float = 1.0, years: int = ROOKIE_YEARS
+) -> Deal:
+    return Deal(rookie_salary(pick_number, scale), years, "rookie")
+
+
+def arbitration_deal(market: Deal, season: int, scale: float = 1.0) -> Deal | None:
+    """A one-season arbitration deal at a share of his market price, for
+    a deal in this season of his time in the league; None when that season
+    isn't an arbitration season."""
+    share = ARBITRATION_SHARE.get(season)
+    if share is None:
+        return None
+    return Deal(round_salary(market.salary * share, scale), 1, "arbitration")
 
 
 def years_already_served(years: int, rng: random.Random) -> int:

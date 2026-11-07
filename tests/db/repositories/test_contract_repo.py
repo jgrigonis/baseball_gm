@@ -51,10 +51,15 @@ def test_drafted_player_gets_a_rookie_deal_from_his_draft_year(env):
     repo.sign_unsigned(league.id, 2026)
     deal = repo.active(pid, 2026)
     assert deal["kind"] == "rookie" and deal["start_year"] == 2025
-    assert deal["years"] == 3 and deal["pick_number"] == 1
+    years = ct.rookie_years(pid)
+    assert deal["years"] == years and deal["pick_number"] == 1
     assert deal["salary"] == ct.rookie_salary(1)
     v = contract_repo.view(deal, 2026)
-    assert (v["year_of"], v["years_left"], v["through"]) == (2, 2, 2027)
+    assert (v["year_of"], v["years_left"], v["through"]) == (
+        2,
+        years - 1,
+        2024 + years,
+    )
 
 
 def test_an_old_draft_pick_signs_a_standard_deal(env):
@@ -66,18 +71,39 @@ def test_an_old_draft_pick_signs_a_standard_deal(env):
     assert repo.active(pid, 2026)["kind"] == "standard"
 
 
-def test_a_deal_that_runs_out_is_renewed_from_the_new_season(env):
+def test_a_rookie_deal_that_runs_out_goes_to_arbitration(env):
     db, factory, league, _, team = env
-    pid = factory.rated_player(team, league, status="minors", age=19).id
+    pid = factory.rated_player(team, league, status="minors", age=19, level=70).id
     _draft(env, pid, pick=3, year=2026)
     repo = ContractRepository(db)
     repo.sign_unsigned(league.id, 2026)
-    assert repo.active(pid, 2028)["kind"] == "rookie"
-    assert repo.active(pid, 2029) is None
-    assert repo.sign_unsigned(league.id, 2029) == 1
-    new = repo.active(pid, 2029)
-    assert new["kind"] == "standard" and new["start_year"] == 2029
+    end = 2026 + ct.rookie_years(pid)  # first season after his rookie deal
+    assert repo.active(pid, end - 1)["kind"] == "rookie"
+    assert repo.active(pid, end) is None
+    assert repo.sign_unsigned(league.id, end) == 1
+    new = repo.active(pid, end)
+    assert new["kind"] == "arbitration" and new["start_year"] == end
+    assert new["years"] == 1
     assert len(repo.history(pid)) == 2
+    # Each arbitration season pays a bigger share, then he's on the market.
+    year = end
+    while year - 2026 + 1 < 6:
+        year += 1
+        repo.sign_unsigned(league.id, year)
+        assert repo.active(pid, year)["kind"] == "arbitration"
+    repo.sign_unsigned(league.id, year + 1)
+    assert repo.active(pid, year + 1)["kind"] == "standard"
+
+
+def test_a_starting_player_never_goes_to_arbitration(env):
+    db, factory, league, _, team = env
+    pid = factory.rated_player(team, league).id
+    repo = ContractRepository(db)
+    repo.sign_unsigned(league.id, 2026)
+    first = repo.active(pid, 2026)
+    after = first["start_year"] + first["years"]
+    repo.sign_unsigned(league.id, after)
+    assert repo.active(pid, after)["kind"] == "standard"
 
 
 def test_free_agents_go_unsigned_and_payroll_counts_the_roster(env):
