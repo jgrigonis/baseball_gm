@@ -325,6 +325,10 @@ def sim_playoff(
                 log.warning("build_season failed, will retry next day", exc_info=True)
         return count
 
+    # The round under way before this sim: the page plays Sim Round and Full
+    # Playoffs a day at a time, and stops a Sim Round once it changes.
+    played_round = _current_round_name()
+
     if mode == "game":
         # "Sim 1 Day" — play all games scheduled for the next playoff day
         games_played += _play_day()
@@ -380,6 +384,7 @@ def sim_playoff(
     return {
         "games_played": games_played,
         "results": results,
+        "played_round": played_round,
         "current_round": current_round,
         "champion": champion,
         "current_date": current_date,

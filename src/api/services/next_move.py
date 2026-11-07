@@ -222,7 +222,7 @@ def pick(
 
     if state == "playoffs":
         if page == "playoffs":
-            return _act(
+            move = _act(
                 "sim-playoffs",
                 "▶ Sim Playoff Day",
                 "▶ Sim Day",
@@ -234,6 +234,9 @@ def pick(
                     _item("▶▶ Full Playoffs", "simPlayoffs", "all", "po-all-btn"),
                 ],
             )
+            # Sim Round and Full Playoffs play a day at a time; Stop ends them.
+            move["stop"] = True
+            return move
         return _go(
             "go-playoffs", "🥇 Go to Playoffs →", "Playoffs →", f"{base}/playoffs"
         )

@@ -32,7 +32,7 @@ function setSimMode(simming) {
   if (!simming) window._simIgnoringTrades = false;
 
   // Grey out tabs that don't update live during sim
-  var liveTabs = ['standings', 'schedule', 'leaders', 'headlines', 'stats', 'power'];
+  var liveTabs = ['standings', 'schedule', 'leaders', 'headlines', 'stats', 'power', 'playoffs'];
   document.querySelectorAll('.tab-link').forEach(function(link) {
     var href = link.getAttribute('href') || '';
     var isLive = liveTabs.some(function(t) { return href.indexOf('/' + t) !== -1; });
@@ -45,6 +45,9 @@ function setSimMode(simming) {
     }
   });
 }
+
+// The playoffs' Sim Round and Full Playoffs (playoffs.html) use it too.
+window.schedSetSimMode = setSimMode;
 
 // _simStop lives on window so it survives IIFE re-execution on tab refresh
 if (typeof window._simStop === 'undefined') window._simStop = false;
