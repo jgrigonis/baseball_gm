@@ -33,20 +33,20 @@
         <input type="checkbox" name="is_public" id="is-public" value="true">
         <span>List it under Public Leagues so anyone can join while it's in the lobby</span>
       </label>
-      <span class="mode-note">Off: only people with the join code can find it.</span>
-    </div>
-    <div class="field">
-      <label for="late-joins">Late Joiners</label>
-      <input type="hidden" name="late_joins" value="false">
-      <label class="toggle-row">
-        <input type="checkbox" name="late_joins" id="late-joins" value="true" checked>
-        <span>Once it starts, let new people join between seasons by taking over a team an AI GM runs</span>
-      </label>
-      <span class="mode-note">You can change this, and Public League, later on the League page.</span>
+      <span class="mode-note">Off: only people with the join code can find it. You can change this later on the League page.</span>
     </div>
     <details class="advanced-settings">
       <summary>Advanced settings</summary>
       <div class="advanced-body">
+        <div class="field">
+          <label for="late-joins">Late Joiners</label>
+          <input type="hidden" name="late_joins" value="false">
+          <label class="toggle-row">
+            <input type="checkbox" name="late_joins" id="late-joins" value="true" checked>
+            <span>Once it starts, let new people join between seasons by taking over a team an AI GM runs</span>
+          </label>
+          <span class="mode-note">You can change this later on the League page.</span>
+        </div>
         {% call slider("backstory_years", "backstory-years", "Years of History", default_backstory_years, 0, max_backstory_years) %}
           <span class="mode-note">Past seasons simulated when the league starts, so it opens with standings, champions and player stats already on the books. 0 starts fresh, with a random first draft order. Each year adds a little to the start time.</span>
         {% endcall %}
