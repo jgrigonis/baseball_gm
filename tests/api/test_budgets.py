@@ -206,8 +206,8 @@ def test_the_owner_tab_explains_the_cap_and_leash(lg, client_for):
     cap = x.budgets.cap(x.league.id, 2026)
     html = client_for(x).get(f"/leagues/{x.league.id}/owner").text
     assert f"payroll cap is <strong>{bg.format_salary(cap)}</strong>" in html
-    assert "the same for every team" in html
-    assert "over the cap" in html
+    assert "the same for every team" not in html
+    assert "for total spending" in html and "for player payroll" in html
     pay = x.contracts.payroll(x.mine.id, 2026)
     assert f"Your payroll now: <strong>{bg.format_salary(pay)}</strong>" in html
 

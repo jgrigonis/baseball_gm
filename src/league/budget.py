@@ -295,14 +295,6 @@ def ai_levels(spending: int, seed: str) -> dict[str, int]:
     return {k: clean_level(base + rng.choice((-1, 0, 0, 1))) for k in DEPARTMENT_KEYS}
 
 
-def _leash_text(cap: int, budget: int) -> str:
-    if budget > cap:
-        return f"{format_salary(budget - cap)} over the cap"
-    if budget < cap:
-        return f"{format_salary(cap - budget)} under the cap"
-    return "right at the cap"
-
-
 def standing(
     payroll: int,
     cap: int,
@@ -335,7 +327,6 @@ def standing(
         "budget_text": format_salary(budget),
         "payroll_budget": payroll_budget,
         "payroll_budget_text": format_salary(payroll_budget),
-        "leash_text": _leash_text(cap, payroll_budget),
         "room_text": format_salary(cap - payroll) if payroll < cap else None,
         "over_text": format_salary(over) if over else None,
         "over_budget_text": format_salary(over_budget) if over_budget else None,
