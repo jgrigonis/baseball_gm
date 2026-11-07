@@ -26,6 +26,14 @@ MOD_INJURY_TIRED = 1.40
 MOD_INJURY_EXHAUSTED = 2.00
 MOD_INJURY_ZERO = 3.00
 
+# Pitcher fatigue injury mod: a gentler climb than position players, since
+# pitchers already carry a high per-batter base rate.
+PITCH_INJURY_FRESH = 1.0
+PITCH_INJURY_GOOD = 1.05
+PITCH_INJURY_TIRED = 1.15
+PITCH_INJURY_EXHAUSTED = 1.30
+PITCH_INJURY_ZERO = 1.50
+
 # BATTING and Fielding mods
 BAT_FRESH = 1.03  # Small bonus when fresh
 BAT_GOOD = 1.0
