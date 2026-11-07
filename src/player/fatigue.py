@@ -15,6 +15,11 @@ from src.player.player_constants import (
     FASTBALL_DRAIN,
     CAP_DMG_LOW,
     CAP_DMG_HIGH,
+    PITCH_INJURY_FRESH,
+    PITCH_INJURY_GOOD,
+    PITCH_INJURY_TIRED,
+    PITCH_INJURY_EXHAUSTED,
+    PITCH_INJURY_ZERO,
 )
 
 
@@ -93,6 +98,21 @@ class PitcherFatigue:
             FatigueLevel.ZERO: MOD_ZERO,
         }
         return modifiers[self.get_level()]
+
+    def get_injury_risk_multiplier(self) -> float:
+        """Injury chance multiplier for this pitcher's current fatigue.
+
+        Climbs slightly as he tires during an outing (or starts tired on
+        short rest). 1.0 = fresh.
+        """
+        multipliers = {
+            FatigueLevel.FRESH: PITCH_INJURY_FRESH,
+            FatigueLevel.GOOD: PITCH_INJURY_GOOD,
+            FatigueLevel.TIRED: PITCH_INJURY_TIRED,
+            FatigueLevel.EXHAUSTED: PITCH_INJURY_EXHAUSTED,
+            FatigueLevel.ZERO: PITCH_INJURY_ZERO,
+        }
+        return multipliers[self.get_level()]
 
     def set_energy(self, level: float, max_level: float) -> None:
         self.energy = max(0.0, min(max_level, level))

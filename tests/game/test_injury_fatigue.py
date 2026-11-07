@@ -63,3 +63,21 @@ def test_pitcher_risk_ignores_position_fatigue(game):
     expected = INJURY_BASE_PROB * INJURY_ACTIVITY_WEIGHT["pitching"]
     assert game._injury_probability(pitcher, "pitching") == pytest.approx(expected)
     assert game._live_energy(pitcher) is None
+
+
+@pytest.mark.parametrize(
+    "energy, mult",
+    [(1.0, 1.0), (0.7, 1.05), (0.5, 1.15), (0.2, 1.30), (0.0, 1.50)],
+)
+def test_pitcher_risk_rises_slightly_with_pitcher_fatigue(game, energy, mult):
+    pitcher = _pitcher()
+    pitcher.pitcher_fatigue.energy = energy
+    expected = INJURY_BASE_PROB * INJURY_ACTIVITY_WEIGHT["pitching"] * mult
+    assert game._injury_probability(pitcher, "pitching") == pytest.approx(expected)
+
+
+def test_pitcher_fatigue_only_counts_while_pitching(game):
+    pitcher = _pitcher()
+    pitcher.pitcher_fatigue.energy = 0.0
+    expected = INJURY_BASE_PROB * INJURY_ACTIVITY_WEIGHT["running"]
+    assert game._injury_probability(pitcher, "running") == pytest.approx(expected)

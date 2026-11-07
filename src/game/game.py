@@ -945,6 +945,11 @@ class Game:
         if energy is not None:
             activity_mult *= player.player_energy.get_injury_risk_multiplier(energy)
 
+        # A tired pitcher is a little more likely to get hurt pitching.
+        fatigue = getattr(player, "pitcher_fatigue", None)
+        if activity == "pitching" and fatigue is not None:
+            activity_mult *= fatigue.get_injury_risk_multiplier()
+
         return INJURY_BASE_PROB * activity_mult
 
     def _check_injuries(self, reason: str = None) -> None:

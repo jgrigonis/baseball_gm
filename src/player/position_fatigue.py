@@ -173,7 +173,7 @@ class PositionPlayerFatigue:
         1.0 = baseline risk, higher = more likely to get hurt.
 
         Used by Game._check_injuries for position players. Pitchers have no
-        PositionPlayerFatigue, so they never get this multiplier.
+        PositionPlayerFatigue; they use PitcherFatigue.get_injury_risk_multiplier.
 
         Args:
             energy: Live in-game energy; defaults to the pre-game energy.
