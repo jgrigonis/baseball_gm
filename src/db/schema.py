@@ -1577,8 +1577,9 @@ CREATE TABLE IF NOT EXISTS team_budgets (     -- migration 074 (src/league/budge
     luxury_tax  BIGINT,                       -- tax on payroll over the cap, set when the season ends
     revenue     BIGINT,                       -- regular-season revenue the owner set the budget from (migration 076)
     playoff_revenue BIGINT,                   -- home playoff gate, set when the season ends
+    popularity_revenue BIGINT,                -- popularity money from fan interest, set when the season ends (migration 094)
     payroll     BIGINT,                       -- final payroll, set when the season ends
-    profit      BIGINT,                       -- revenue at ticket prices + gate + tax share - payroll - tax - fixed costs - front office - minor leagues
+    profit      BIGINT,                       -- revenue at ticket prices + gate + popularity + tax share - payroll - tax - fixed costs - front office - minor leagues
     tax_share   BIGINT,                       -- its cut of the league's luxury tax, if under the cap (migration 081)
     coaching    SMALLINT,                     -- front office levels, 0 Bare bones to 4 Elite, NULL Standard (migration 083)
     facilities  SMALLINT,

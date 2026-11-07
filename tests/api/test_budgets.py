@@ -284,6 +284,13 @@ def test_the_season_end_records_fans_and_profit(lg):
     x.budgets.assess(x.league.id, 2026)
     money = x.budgets.finances(x.league.id, 2026)[x.mine.id]
     assert money["fans_after"] is not None and money["profit"] is not None
+    stored = x.db.execute(
+        "SELECT popularity_revenue, fans_before FROM team_budgets"
+        " WHERE league_id = %s AND team_id = %s AND year = 2026",
+        (x.league.id, x.mine.id),
+    ).fetchone()
+    assert stored["popularity_revenue"] is not None
+    assert (stored["popularity_revenue"] > 0) == (stored["fans_before"] > 55)
     assert money["payroll"] == x.contracts.payroll(x.mine.id, 2026)
     # Next season's cap follows the season's final payrolls.
     pays = [x.contracts.payroll(t.id, 2026) for t in (x.mine, x.theirs)]
