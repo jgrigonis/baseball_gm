@@ -5,8 +5,8 @@ The league's payroll cap and each owner's budget (Josh's decisions,
 
 The league sets one payroll cap a season, the same for every team: the
 league's average payroll the first season budgets are needed, then each
-season after, last season's average payroll (Josh, 2026-11-07: the cap
-follows the league), never lower than last season's cap. With no finished
+season after, last season's average payroll plus CAP_GROWTH (Josh,
+2026-11-07: the cap follows the league), never lower than last season's cap. With no finished
 season to go by, it grows CAP_GROWTH a season. It's a soft cap: a team can go over
 it, and pays a luxury tax on what's over when the season ends. Nothing is
 blocked; the game warns before a move that takes a team over.
@@ -74,10 +74,12 @@ def first_cap(payrolls: list[int]) -> int:
 
 def next_cap(cap: int, payrolls: list[int]) -> int:
     """Next season's cap after a season with these final payrolls: their
-    average, but never below this season's cap."""
+    average grown CAP_GROWTH (payrolls keep climbing, and a cap at last
+    season's average left most teams over it in a sim check), but never
+    below this season's cap."""
     if not payrolls:
         return grown(cap)
-    avg = sum(payrolls) / len(payrolls)
+    avg = sum(payrolls) / len(payrolls) * (1 + CAP_GROWTH)
     return max(cap, round(avg / CAP_ROUNDING) * CAP_ROUNDING)
 
 

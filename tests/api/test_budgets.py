@@ -316,7 +316,7 @@ def test_with_nobody_under_the_cap_every_team_shares_the_tax():
 
 
 def test_next_cap_follows_the_average_payroll_but_never_drops():
-    assert bg.next_cap(160 * M, [200 * M, 240 * M]) == 220 * M
+    assert bg.next_cap(160 * M, [200 * M, 240 * M]) == 231 * M
     assert bg.next_cap(160 * M, [100 * M, 150 * M]) == 160 * M
     assert bg.next_cap(160 * M, []) == bg.grown(160 * M)
 
