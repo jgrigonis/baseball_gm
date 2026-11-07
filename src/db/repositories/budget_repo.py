@@ -319,11 +319,42 @@ class BudgetRepository:
             )
             out[team_id] = fn.TeamMoney(
                 market=pool.market if pool else 3,
-                fans=fans.get(team_id, fn.FAN_START),
+                fans=fans[team_id]
+                if team_id in fans
+                else self._backstory_fans(league_id).get(team_id, fn.FAN_START),
                 spending=int(spending.get(team_id, 50)),
                 bank_change=banks[team_id]["change"] if team_id in banks else 0,
             )
         return out
+
+    def _backstory_fans(self, league_id: str) -> dict[str, int]:
+        """Each team's fan interest coming out of the league's backstory
+        (Josh, 2026-11-07): from FAN_START, every past season moves it the
+        way a real one would (src/league/finances.py fans_after), so a team
+        with a winning past starts with keener fans. Empty without a
+        backstory. Seeds a team's first budgeted season only."""
+        cache = self.__dict__.setdefault("_backstory_cache", {})
+        if league_id in cache:
+            return cache[league_id]
+        seasons = self.conn.execute(
+            """SELECT s.id FROM seasons s JOIN league_seasons ls ON ls.season_id = s.id
+               WHERE ls.league_id = %s AND s.is_backstory ORDER BY s.year""",
+            (league_id,),
+        ).fetchall()
+        fans: dict[str, int] = {}
+        for season in seasons:
+            for team_id, r in self._results(league_id, season["id"]).items():
+                if "win_pct" not in r:
+                    continue
+                fans[team_id] = fn.fans_after(
+                    fans.get(team_id, fn.FAN_START),
+                    r["win_pct"],
+                    r.get("playoffs", False),
+                    r.get("champion", False),
+                    r.get("all_stars", 0),
+                )
+        cache[league_id] = fans
+        return fans
 
     def _spending(self, league_id: str) -> dict[str, int]:
         """Each owned team's owner's Spending trait."""

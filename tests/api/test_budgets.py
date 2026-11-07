@@ -876,3 +876,54 @@ def test_budget_tab_forms_keep_the_scroll(lg, client_for):
     html = client_for(x).get(f"/leagues/{x.league.id}/budget").text
     forms = [f for f in html.split("<form")[1:] if "/budget/" in f.split(">")[0]]
     assert forms and all("data-quiet-swap" in f.split(">")[0] for f in forms)
+
+
+# ── Fan interest from the backstory (Josh, 2026-11-07) ──────────────────────
+
+
+def test_fans_start_from_the_backstory(lg):
+    import uuid
+
+    x = lg()
+    for year in (2024, 2025):
+        past = x.factory.season(year=year)
+        x.db.execute("UPDATE seasons SET is_backstory = TRUE WHERE id = %s", (past.id,))
+        x.factory.league_season(x.league, past)
+        for _ in range(10):
+            g = uuid.uuid4().hex
+            x.db.execute(
+                """INSERT INTO games (id, game_date, season_id, home_team_id,
+                       away_team_id, winner_id, completed)
+                   VALUES (%s, %s, %s, %s, %s, %s, 1)""",
+                (g, f"{year}-05-01", past.id, x.mine.id, x.theirs.id, x.mine.id),
+            )
+            for team, won in ((x.mine, 1), (x.theirs, 0)):
+                x.db.execute(
+                    "INSERT INTO team_game_stats (game_id, team_id, runs, win, loss)"
+                    " VALUES (%s, %s, 1, %s, %s)",
+                    (g, team.id, won, 1 - won),
+                )
+    x.budgets.for_league(x.league.id, 2026)
+    fans = {
+        r["team_id"]: r["fans_before"]
+        for r in x.db.execute(
+            "SELECT team_id, fans_before FROM team_budgets WHERE league_id = %s",
+            (x.league.id,),
+        ).fetchall()
+    }
+    # Two perfect seasons, then two winless ones, from 50.
+    from src.league import finances as fn
+
+    good = fn.fans_after(fn.fans_after(50, 1.0, False, False, 0), 1.0, False, False, 0)
+    bad = fn.fans_after(fn.fans_after(50, 0.0, False, False, 0), 0.0, False, False, 0)
+    assert fans == {x.mine.id: good, x.theirs.id: bad}
+    assert good > 50 > bad
+
+
+def test_fans_start_at_50_without_a_backstory(lg):
+    x = lg()
+    x.budgets.for_league(x.league.id, 2026)
+    rows = x.db.execute(
+        "SELECT fans_before FROM team_budgets WHERE league_id = %s", (x.league.id,)
+    ).fetchall()
+    assert {r["fans_before"] for r in rows} == {50}

@@ -4,7 +4,8 @@ Fan interest, revenue and owner-set budgets (plans/owners.md, D1 to D3).
 
 A light money model, just enough for owners to set budgets and judge profit:
 
-- **Fan interest** per team, 0 to 100, starts at FAN_START. At each season's
+- **Fan interest** per team, 0 to 100, starts at FAN_START, moved by the
+  league's backstory seasons as if they were real ones. At each season's
   end it moves part of the way toward a target set by the record, the
   playoffs, a title and the team's All-Stars.
 - **Revenue** per season: a league-wide base, times the team's market size
