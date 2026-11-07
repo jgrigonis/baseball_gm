@@ -9,6 +9,7 @@ from datetime import date
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
+from src.api.services import icons
 from src.api.dependencies import DB, GM, ActiveLeague, IsHTMX, User
 from src.api.schemas import RosterSaveRequest
 from src.api.services import coach
@@ -69,6 +70,7 @@ def roster(
     # Unhappy players, trade requests and players sitting out
     # (src/player/happiness.py).
     attach_moods(db, league_id, players)
+    icons.attach(db, team_id, players)
 
     # Season stats for display on roster cards
     season_id = ctx.get("season_id")

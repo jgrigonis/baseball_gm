@@ -18,7 +18,8 @@ from src.api.schemas import (
     TradeVoteRequest,
 )
 from src.api.services.ready_check import is_multiplayer
-from src.api.services import trade_shop, trades
+from src.api.services import icons, trade_shop, trades
+from src.api.services import owners as owner_service
 from src.api.view_models.player_cards import (
     attach_injuries,
     attach_roster_stats,
@@ -37,7 +38,7 @@ from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.trade_repo import TradeRepository
 from src.league import budget as bg
-from src.league import trade_deadline
+from src.league import owners, trade_deadline
 from src.league.trades import draft_picks
 from src.team.roster_limits import (
     MAX_PLAYING_ROSTER,
@@ -163,6 +164,12 @@ def trades_tab(
         if team_id
         else []
     )
+    # Franchise icons, so the builder can warn before one goes.
+    icons.attach(db, team_id, my_players)
+    owner = owner_service.ensure(db, league_id).get(team_id) if team_id else None
+    owner_icons = bool(
+        owner and owners.clean_weights(owner["weights"])["icons"] >= owners.STRONG
+    )
     # Who's asked out: first in the Shop a player list, and flagged.
     asks = HappinessRepository(db, league_id).trade_requests(
         p["player_id"] for p in my_players if p.get("roster_status") != "pick"
@@ -200,6 +207,7 @@ def trades_tab(
             else [],
             "offers_to_me": offers_to_me,
             "budget": standing,
+            "owner_icons": owner_icons,
             "my_votes": trade_repo.votes_for_gm(league_id, gm["id"])
             if gm.get("id")
             else [],
