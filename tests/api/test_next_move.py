@@ -71,6 +71,7 @@ def test_playoffs_go_there_then_sim_there():
     move = pick(_ctx(league_state="playoffs"), "playoffs")
     assert move["label"] == "▶ Sim Playoff Day" and move["fn"] == "simPlayoffs"
     assert move["arg"] == "game" and _menu(move) == ["▶ Sim Round", "▶▶ Full Playoffs"]
+    assert move["stop"]
 
 
 def test_after_the_champion_the_summary_then_begin_offseason():

@@ -201,39 +201,81 @@
 (function(){
 var LEAGUE_ID = "{{ league_id }}";
 
-// The sim buttons are the top bar's next move (_next_move.html).
-function _poSetDisabled(disabled) {
-  if (disabled) window.nextMoveBusy('po-day-btn', 'Simming…');
-  else window.nextMoveIdle('po-day-btn');
+// The sim buttons are the top bar's next move (_next_move.html). Sim Round
+// and Full Playoffs play one day at a time, redrawing the bracket after each
+// so its dots fill in as the games are played; the top bar's Stop ends them
+// after the day under way.
+function _status(msg, color) { if (window.nextMoveStatus) window.nextMoveStatus(msg, color); }
+
+function _playDay(fb) {
+  return runLeagueJob('/leagues/' + LEAGUE_ID + '/playoffs/sim?mode=game', {method:'POST'},
+                      function(job){ if (fb) fb.textContent = leagueJobWaitingText(job) || ''; });
 }
 
-function simPlayoffs(mode) {
+async function _simPlayoffsRun(mode) {
   var fb = document.getElementById('po-feedback');
-  _poSetDisabled(true);
-  if (fb) fb.textContent = '';
-
-  runLeagueJob('/leagues/' + LEAGUE_ID + '/playoffs/sim?mode=' + mode, {method:'POST'},
-               function(job){ if (fb) fb.textContent = leagueJobWaitingText(job) || ''; })
-    .then(function(d){
-      _poSetDisabled(false);
+  var multi = mode !== 'game';
+  window._simStop = false;
+  if (multi && window.schedSetSimMode) window.schedSetSimMode(true);
+  else window.nextMoveBusy('po-day-btn', 'Simming…');
+  var days = 0, games = 0, startRound = null, champion = null, stopped = false;
+  try {
+    while (true) {
+      if (multi) _status('Simming playoff day ' + (days + 1) + '…' + (games ? '  (' + games + ' games played)' : ''));
+      var d = await _playDay(fb);
       if (fb) fb.textContent = '';
-      if (d.detail) { gmToast('✗ ' + d.detail, 'err'); return; }
-      // No success line: the bracket reloads right away and shows the results.
+      if (d.detail) { gmToast('✗ ' + d.detail, 'err'); break; }
+      if (!d.games_played) break;
+      days++;
+      games += d.games_played;
+      if (startRound === null) startRound = d.played_round;
+      champion = d.champion;
 
       if (d.current_date) {
         var dateEl = document.querySelector('.topbar-date');
         if (dateEl) dateEl.textContent = d.current_date;
       }
-
       showInjuryNews(d);
 
-      htmx.ajax('GET', '/leagues/' + LEAGUE_ID + '/playoffs', {target:'#tab-content', swap:'innerHTML'});
-    })
-    .catch(function(){
-      _poSetDisabled(false);
-      if (fb) fb.textContent = '';
-      gmToast('✗ Network error. Try again.', 'err');
-    });
+      // Redraw the open tab (the bracket, or whichever live tab the GM went
+      // to) in place, so the day's dots appear.
+      if (document.querySelector('.tab-link.active') && window.liveRefreshTab) {
+        try { await window.liveRefreshTab(); } catch (e) {}
+      } else {
+        htmx.ajax('GET', '/leagues/' + LEAGUE_ID + '/playoffs', {target:'#tab-content', swap:'innerHTML'});
+      }
+
+      if (!multi || champion) break;
+      // Sim Round ends once the round it started in is over.
+      if (mode === 'round' && d.current_round !== startRound) break;
+      if (window._simStop) { stopped = true; break; }
+      if (window.schedSetSimMode) window.schedSetSimMode(true);
+    }
+  } catch (e) {
+    if (fb) fb.textContent = '';
+    gmToast('✗ Network error. Try again.', 'err');
+  }
+  if (multi && window.schedSetSimMode) window.schedSetSimMode(false);
+  else window.nextMoveIdle('po-day-btn');
+  window._simStop = false;
+  if (multi) {
+    if (champion) _status('🏆 Playoffs over · ' + games + ' games in ' + days + ' days');
+    else if (stopped) _status('■ Stopped · ' + games + ' games in ' + days + ' days');
+    else _status(days ? '✓ ' + games + ' games in ' + days + ' days' : '');
+  }
+}
+
+// The sim owns the next-move button while it runs (refreshNextMove waits),
+// then the button reloads: the champion may be crowned.
+async function simPlayoffs(mode) {
+  if (window._nmBusy) return;
+  window._nmBusy = true;
+  try {
+    await _simPlayoffsRun(mode);
+  } finally {
+    window._nmBusy = false;
+    if (window.refreshNextMove) window.refreshNextMove();
+  }
 }
 
 window.simPlayoffs = simPlayoffs;
