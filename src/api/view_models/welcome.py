@@ -38,6 +38,7 @@ from src.league.power_rankings import (
     team_strength,
 )
 from src.league import budget as bg
+from src.league import team_facts
 from src.player.contracts import format_salary
 from src.player.player_record import PlayerRecord
 from src.player.player_skills import PlayerSkills
@@ -631,6 +632,7 @@ def welcome(db, league: dict, gm: dict) -> dict | None:
         "mascot": team["mascot"],
         "colors": colors,
         "uniforms": uniforms(team["city"]),
+        "city_facts": team_facts.team_card(db, league["id"], team_id),
         "report": scouting_report(team_id, scores) if team_id in scores else None,
         "stars": [star_card(p, r) for p, r in stars],
         "weak": weak,

@@ -27,6 +27,7 @@ from src.api.services import lobby_teams, personas, sim_jobs, takeover
 from src.api.services.coach import coach_ctx
 from src.api.services.leave_league import leave_league
 from src.api.view_models.league_info import league_info
+from src.league import team_facts
 from src.api.view_models.welcome import welcome
 from src.config import settings
 from src.db.locks import LeagueBusy
@@ -673,6 +674,10 @@ def league_page(
     )
     ctx["settings_next"] = f"/leagues/{league_id}/league"
     ctx["late_joins"] = bool(league["late_joins"])
+    # Every team's market size and climate: the Teams card.
+    ctx["league_teams"] = team_facts.league_teams(
+        db, league_id, None if ctx["is_viewer"] else gm.get("team_id")
+    )
     if not ctx["is_viewer"]:
         # The Leave League button warns the last person out that the league
         # goes with them.

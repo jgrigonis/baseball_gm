@@ -53,7 +53,7 @@
               <option value="{{ t.city }}|{{ t.mascot }}"
                       {% if mine %}selected{% endif %}
                       {% if t.holder_id and not t.is_ai and not mine %}disabled{% endif %}>
-                {{ t.city }} {{ t.mascot }}{% if t.holder_id and not mine %} ({% if t.is_ai %}AI{% else %}{{ t.holder }}{% endif %}){% endif %}{% if not in_league and t.region %} · {{ t.region }}{% endif %}
+                {{ t.city }} {{ t.mascot }}{% if t.holder_id and not mine %} ({% if t.is_ai %}AI{% else %}{{ t.holder }}{% endif %}){% endif %}{% if not in_league and t.region %} · {{ t.region }}{% endif %}{% if t.facts %} · {{ t.facts }}{% endif %}
               </option>
               {% endfor %}
               </optgroup>

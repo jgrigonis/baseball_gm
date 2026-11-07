@@ -1517,6 +1517,17 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
   .setting-tip::after, .setting-tip.tip-end::after { position: fixed; left: 16px; right: 16px; top: auto; bottom: 16px; width: auto; }
 }
 
+/* ── Team market and climate (League page Teams card) ─────────────────────── */
+.mkt-pips { display: inline-flex; gap: 2px; vertical-align: -1px; margin-right: 8px; }
+.mkt-pips i { width: 6px; height: 12px; border-radius: 1px; background: var(--tile); border: 1px solid var(--border-hi); }
+.mkt-pips i.on { background: var(--amber); border-color: var(--amber); }
+.climate-chip { font-family: var(--font-mono); font-size: 11px; padding: 1px 7px; border-radius: 10px; border: 1px solid currentColor; white-space: nowrap; }
+.climate-tropical { color: var(--green); }
+.climate-desert { color: #e0a067; }
+.climate-warm { color: var(--amber); }
+.climate-temperate { color: var(--sky); }
+.climate-cold { color: #b9dcf2; }
+
 /* ── Admin pages ─────────────────────────────────────────────────────────── */
 .admin-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
 .admin-tabs a.active { color: var(--amber); border-color: var(--amber-dim); }

@@ -165,3 +165,16 @@ def test_viewers_do_not_see_the_join_code(client, db_conn, league):
     page = client.get(f"/leagues/{lg.id}/league").text
 
     assert code not in page
+
+
+def test_league_page_lists_every_teams_market_and_climate(client, league):
+    lg, _ = league
+
+    html = client.get(f"/leagues/{lg.id}/league").text
+
+    card = html.split('class="data-table lg-teams"')[1].split("</table>")[0]
+    # Biggest market first: Chicago (Big) before Boston (Mid-size).
+    assert card.index("Wind") < card.index("Beans")
+    assert "Big" in card and "Mid-size" in card
+    assert 'class="climate-chip climate-cold">Cold<' in card
+    assert "Teams (2)" in html
