@@ -43,8 +43,9 @@
   <div class="fa-section-title">Your expiring deals</div>
   <div class="fa-note">
     These deals end with this season. Veterans ({{ market_seasons }}+ seasons) and unhappy
-    players go to free agency unless you re-sign them now. The rest re-sign after the
-    draft unless you let them go. Either way the price is the one shown.
+    players go to free agency unless you re-sign them now. The rest re-sign when the
+    offseason runs unless you let them go, best first, as far as your owner's limit
+    stretches; anyone it can't cover goes to free agency. Either way the price is the one shown.
   </div>
   <div class="fa-list card" id="fa-expiring" style="margin-bottom:16px;"></div>
   {% endif %}
@@ -189,7 +190,7 @@ function row(p) {
 const FATE = {
   resign: 'Re-signing',
   go: 'Going to free agency',
-  auto: 'Re-signs after the draft',
+  auto: 'Re-signs if your owner can afford it',
 };
 function expiringRow(p) {
   const el = document.createElement('div');
