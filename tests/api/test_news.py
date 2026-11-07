@@ -357,10 +357,13 @@ class TestPlayoffs:
 
 class TestAllStars:
     def _star(self, db, lg, pid, team, slot="rf", replaces=None):
+        # Most votes first: each one added gets fewer than the last.
+        self.votes = getattr(self, "votes", 100) - 1
         db.execute(
-            """INSERT INTO all_stars (season_id, player_id, team_id, slot, replaces)
-               VALUES (%s, %s, %s, %s, %s)""",
-            (lg["season"].id, pid, team.id, slot, replaces),
+            """INSERT INTO all_stars (season_id, player_id, team_id, slot, replaces,
+                   points)
+               VALUES (%s, %s, %s, %s, %s, %s)""",
+            (lg["season"].id, pid, team.id, slot, replaces, self.votes),
         )
 
     def _hurt(self, db, lg, pid):

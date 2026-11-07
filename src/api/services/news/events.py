@@ -229,7 +229,8 @@ def all_stars(conn, names: Names, league_id: str, season_id: str) -> None:
     news = NewsRepository(conn)
     rows = conn.execute(
         """SELECT a.player_id, a.team_id, a.replaces FROM all_stars a
-           WHERE a.season_id = %s""",
+           WHERE a.season_id = %s
+           ORDER BY a.points DESC, a.score DESC, a.player_id""",
         (season_id,),
     ).fetchall()
     if not rows:
