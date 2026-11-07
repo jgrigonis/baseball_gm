@@ -210,6 +210,59 @@ def _ticket_options() -> list[dict]:
     return out
 
 
+def _league_pay(db, seasons: list[dict], my_team: str | None) -> list[dict]:
+    """Every team's payroll, luxury tax and tax share by season, for the
+    league table on the Budget tab."""
+    ids = list({t for s in seasons for t in s["teams"]})
+    names = {
+        r["id"]: r
+        for r in db.execute(
+            "SELECT id, city, mascot FROM teams WHERE id = ANY(%s)", (ids,)
+        ).fetchall()
+    }
+    out = []
+    for s in seasons:
+        cap = s["cap"]
+        rows = []
+        for team_id, m in s["teams"].items():
+            team = names.get(team_id) or {"city": "", "mascot": team_id}
+            gap = m["payroll"] - cap
+            rows.append(
+                {
+                    "city": team["city"],
+                    "mascot": team["mascot"],
+                    "mine": team_id == my_team,
+                    "payroll": m["payroll"],
+                    "payroll_text": _money(m["payroll"]),
+                    "gap": gap,
+                    "gap_text": (
+                        f"{_money(gap)} over"
+                        if gap > 0
+                        else f"{_money(-gap)} under"
+                        if gap < 0
+                        else "At the cap"
+                    ),
+                    "over": gap > 0,
+                    "tax": m["tax"],
+                    "tax_text": _money(m["tax"]) if m["tax"] else None,
+                    "share": m["share"],
+                    "share_text": _money(m["share"]) if m["share"] else None,
+                }
+            )
+        rows.sort(key=lambda r: -r["payroll"])
+        out.append(
+            {
+                "year": s["year"],
+                "projected": s["projected"],
+                "cap_text": _money(cap),
+                "rows": rows,
+                "pool_text": _money(sum(r["tax"] for r in rows)),
+                "over_count": sum(1 for r in rows if r["over"]),
+            }
+        )
+    return out
+
+
 def _render(
     request, htmx, league_id, db, user, gm, error=None, saved=False,
     ticket_error=None, ticket_saved=False,
@@ -297,5 +350,10 @@ def _render(
         _books_view(b)
         for b in (budgets.books(league_id, team_id, year) if standing else [])
     ]
+    ctx["league_pay"] = (
+        _league_pay(db, budgets.league_payrolls(league_id, year), team_id)
+        if standing
+        else []
+    )
     db.commit()  # banks open on first look
     return tab_response(request, htmx, "dashboard/partials/budget.html", ctx)

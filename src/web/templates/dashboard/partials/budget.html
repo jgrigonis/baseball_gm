@@ -14,7 +14,7 @@
   .bud-section { margin-top:20px; padding-top:14px; border-top:1px solid var(--border); }
   .bud-good { color:var(--green); }
   .bud-line { font-size:13px; color:var(--text); line-height:1.6; margin-top:12px; }
-  .bud-table td.bud-bad { color:var(--red); }
+  .bud-table td.num.bud-bad { color:var(--red); }
   .bud-dept { display:flex; align-items:center; gap:12px; padding:8px 0; border-bottom:1px solid var(--border); }
   .bud-dept:last-of-type { border-bottom:none; }
   .bud-dept-name { flex:1; min-width:0; font-size:13px; color:var(--text); }
@@ -30,6 +30,7 @@
   .bud-profit .bud-value { margin-top:0; }
   .bud-tix-top { display:flex; align-items:baseline; gap:10px; }
   .bud-tix-range { width:100%; margin:10px 0 2px; accent-color:var(--green); }
+  .bud-table td.num.bud-good { color:var(--green); }
   .bud-tix-ends { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); }
 </style>
 
@@ -212,6 +213,55 @@
         On today's payroll. The playoff gate and the luxury tax are settled when the playoffs end, and the tax share depends on every team's final payroll.
         Your market is fixed; fan interest moves each season with winning, the playoffs, a title and your All-Stars, and sets next season's revenue.
       </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% if league_pay %}
+<div class="card" style="margin-bottom:16px;" id="league-payrolls">
+  <div class="card-header"><span class="card-title">League payrolls</span>
+    {% if league_pay|length > 1 %}
+    <select style="margin-left:auto;width:auto;font-size:12px;" aria-label="Season"
+            onchange="document.querySelectorAll('.bud-pay-year').forEach(function(el){el.hidden = el.dataset.year !== this.value;}, this)">
+      {% for s in league_pay %}<option value="{{ s.year }}">{{ s.year }}{% if s.projected %} (projected){% endif %}</option>{% endfor %}
+    </select>
+    {% elif league_pay[0].projected %}<span class="admin-dim" style="margin-left:auto;font-size:11px;">{{ league_pay[0].year }} projected</span>{% endif %}
+  </div>
+  <div class="card-body">
+    {% for s in league_pay %}
+    <div class="bud-pay-year" data-year="{{ s.year }}" {% if not loop.first %}hidden{% endif %}>
+      <div class="bud-note" style="margin-top:0;margin-bottom:8px;">
+        Cap {{ s.cap_text }} · {{ s.over_count }} team{{ '' if s.over_count == 1 else 's' }} over{% if s.over_count %} · {{ s.pool_text }} tax{% if s.projected %} so far{% endif %}, split among the teams under{% endif %}
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="data-table bud-table bud-pay" data-sortable>
+          <thead><tr>
+            <th data-sort="text">Team</th>
+            <th class="num" data-sort="num" data-sort-first="desc">Payroll</th>
+            <th class="num phone-hide" data-sort="num" data-sort-first="desc">Vs cap</th>
+            <th class="num" data-sort="num" data-sort-first="desc">Tax</th>
+            <th class="num" data-sort="num" data-sort-first="desc">Tax share</th>
+          </tr></thead>
+          <tbody>
+            {% for r in s.rows %}
+            <tr class="{% if r.mine %}my-team{% endif %}">
+              <td data-sort-value="{{ r.city }} {{ r.mascot }}" style="white-space:nowrap;{% if r.mine %}color:var(--green);font-weight:600;{% endif %}">
+                <span class="tb">{{ team_badge(r.city, r.mascot) }}</span><span class="phone-hide">{{ r.city }} </span>{{ r.mascot }}
+              </td>
+              <td class="num" data-sort-value="{{ r.payroll }}">{{ r.payroll_text }}</td>
+              <td class="num phone-hide {% if r.over %}bud-bad{% endif %}" data-sort-value="{{ r.gap }}">{{ r.gap_text }}</td>
+              <td class="num {% if r.tax %}bud-bad{% endif %}" data-sort-value="{{ r.tax }}">{{ r.tax_text or '—' }}</td>
+              <td class="num {% if r.share %}bud-good{% endif %}" data-sort-value="{{ r.share }}">{{ r.share_text or '—' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if s.projected %}
+      <div class="bud-line">On today's payrolls. The tax and the shares are settled on final payrolls when the playoffs end. Click a column to sort.</div>
       {% endif %}
     </div>
     {% endfor %}

@@ -324,6 +324,44 @@ def test_teams_under_the_cap_get_a_share_of_the_tax(lg):
     assert abs(share - taxes[x.mine.id]) <= bg.CAP_ROUNDING // 2
 
 
+def test_league_payrolls_project_this_season_then_use_the_books(lg):
+    x = lg()
+    x.budgets.for_league(x.league.id, 2026)
+    mine = x.contracts.payroll(x.mine.id, 2026)
+    theirs = x.contracts.payroll(x.theirs.id, 2026)
+    cap = (mine + theirs) // 2
+    x.db.execute("UPDATE team_budgets SET cap = %s", (cap,))
+    [now] = x.budgets.league_payrolls(x.league.id, 2026)
+    assert now["projected"] and now["cap"] == cap
+    assert now["teams"][x.mine.id] == {
+        "payroll": mine,
+        "tax": bg.luxury_tax(mine, cap),
+        "share": 0,
+    }
+    assert now["teams"][x.theirs.id]["share"] > 0
+    taxes = x.budgets.assess(x.league.id, 2026)
+    [done] = x.budgets.league_payrolls(x.league.id, 2026)
+    assert not done["projected"]
+    assert done["teams"][x.mine.id]["tax"] == taxes[x.mine.id]
+    money = x.budgets.finances(x.league.id, 2026)
+    assert done["teams"][x.theirs.id]["share"] == money[x.theirs.id]["tax_share"]
+
+
+def test_the_budget_tab_shows_every_teams_payroll_and_tax(lg, client_for):
+    x = lg()
+    x.budgets.for_league(x.league.id, 2026)
+    mine = x.contracts.payroll(x.mine.id, 2026)
+    theirs = x.contracts.payroll(x.theirs.id, 2026)
+    cap = (mine + theirs) // 2
+    x.db.execute("UPDATE team_budgets SET cap = %s", (cap,))
+    html = client_for(x).get(f"/leagues/{x.league.id}/budget").text
+    assert "League payrolls" in html and "data-sortable" in html
+    assert "Club" in html  # the other team is in the table
+    assert bg.format_salary(theirs) in html
+    assert bg.format_salary(bg.luxury_tax(mine, cap)) in html
+    assert "1 team over" in html
+
+
 # ── The owner's bank and hard limit (plans/budget.md, Q4 and Q5) ──────────────
 
 
