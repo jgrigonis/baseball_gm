@@ -141,7 +141,7 @@ def test_no_vote_until_the_finals_are_over(db_conn, factory, lg):
 def test_an_inductee_gets_a_plaque_a_badge_and_a_story(db_conn, factory, lg):
     db = db_conn
     lid = lg["league"].id
-    # 30 WAR a season, even at half for the backstory: a sure thing.
+    # 30 WAR a season, even weighted down for the backstory: a sure thing.
     great = _career(db, factory, lg, range(1991, 2001), retired=2000, war=30.0)
 
     hall_of_fame.decide_league(db, lid)
@@ -152,9 +152,9 @@ def test_an_inductee_gets_a_plaque_a_badge_and_a_story(db_conn, factory, lg):
     assert [p["player_id"] for p in plaques] == [great.id]
     assert plaques[0]["team"] == "Tokyo Samurai"
     assert "WAR" in plaques[0]["line"]
-    # Nine of his ten seasons were before the league: they count half.
+    # Nine of his ten seasons were before the league: they count three quarters.
     assert row["summary"]["backstory_seasons"] == 9
-    assert row["summary"]["weighted_war"] == 165.0
+    assert row["summary"]["weighted_war"] == 232.5
     assert row["summary"]["war"] == 300.0
 
     badge = hall_of_fame.badge(db, great.id)
