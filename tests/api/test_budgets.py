@@ -119,12 +119,36 @@ def test_every_team_has_the_same_cap(lg):
     assert x.budgets.for_league(x.league.id, 2026) == budgets
 
 
-def test_next_seasons_cap_grows_from_this_ones(lg):
+def test_next_seasons_cap_grows_from_this_ones_before_it_ends(lg):
     x = lg()
     x.budgets.for_league(x.league.id, 2026)
     now = x.budgets.cap(x.league.id, 2026)
-    x.budgets.for_league(x.league.id, 2027)
     assert x.budgets.cap(x.league.id, 2027) == bg.grown(now)
+
+
+def test_after_a_season_the_cap_follows_its_average_payroll(lg):
+    x = lg()
+    x.budgets.for_league(x.league.id, 2026)
+    now = x.budgets.cap(x.league.id, 2026)
+    # Payroll climbs past the cap before the season ends.
+    for _ in range(4):
+        x.factory.rated_player(x.mine, x.league, level=85)
+    x.contracts.sign_unsigned(x.league.id, 2026)
+    x.contracts.guarantee(
+        [
+            r["player_id"]
+            for r in x.db.execute(
+                "SELECT player_id FROM team_players WHERE team_id = ANY(%s)",
+                ([x.mine.id, x.theirs.id],),
+            ).fetchall()
+        ]
+    )
+    x.budgets.assess(x.league.id, 2026)
+    pays = [x.contracts.payroll(t.id, 2026) for t in (x.mine, x.theirs)]
+    assert sum(pays) / 2 > now
+    assert x.budgets.cap(x.league.id, 2027) == bg.next_cap(now, pays)
+    # Seasons further out grow from there.
+    assert x.budgets.cap(x.league.id, 2028) == bg.grown(bg.next_cap(now, pays))
 
 
 def test_speed_blitz_has_no_budgets(lg):
@@ -261,10 +285,11 @@ def test_the_season_end_records_fans_and_profit(lg):
     money = x.budgets.finances(x.league.id, 2026)[x.mine.id]
     assert money["fans_after"] is not None and money["profit"] is not None
     assert money["payroll"] == x.contracts.payroll(x.mine.id, 2026)
-    # Next season's cap still grows 5%.
+    # Next season's cap follows the season's final payrolls.
+    pays = [x.contracts.payroll(t.id, 2026) for t in (x.mine, x.theirs)]
     x.budgets.for_league(x.league.id, 2027)
-    assert x.budgets.cap(x.league.id, 2027) == bg.grown(
-        x.budgets.cap(x.league.id, 2026)
+    assert x.budgets.cap(x.league.id, 2027) == bg.next_cap(
+        x.budgets.cap(x.league.id, 2026), pays
     )
 
 
@@ -282,7 +307,18 @@ def test_the_tax_is_split_among_teams_under_the_cap():
     # Tax: 10M + 2.5M = 12.5M, split between the two under the cap.
     assert bg.tax_shares(pays, 160 * M) == {"cheap": 6_200_000, "frugal": 6_200_000}
     assert bg.tax_shares({"a": 150 * M}, 160 * M) == {}
-    assert bg.tax_shares({"a": 170 * M}, 160 * M) == {}
+
+
+def test_with_nobody_under_the_cap_every_team_shares_the_tax():
+    # Tax: 10M + 5M = 15M, split between both teams rather than burned.
+    pays = {"a": 180 * M, "b": 170 * M}
+    assert bg.tax_shares(pays, 160 * M) == {"a": 7_500_000, "b": 7_500_000}
+
+
+def test_next_cap_follows_the_average_payroll_but_never_drops():
+    assert bg.next_cap(160 * M, [200 * M, 240 * M]) == 220 * M
+    assert bg.next_cap(160 * M, [100 * M, 150 * M]) == 160 * M
+    assert bg.next_cap(160 * M, []) == bg.grown(160 * M)
 
 
 def test_salary_scale_counts_from_the_leagues_first_cap(lg):

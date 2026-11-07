@@ -4,8 +4,10 @@ The league's payroll cap and each owner's budget (Josh's decisions,
 2026-11-05 and 2026-11-06).
 
 The league sets one payroll cap a season, the same for every team: the
-league's average payroll the first season budgets are needed, then
-CAP_GROWTH more each season after. It's a soft cap: a team can go over
+league's average payroll the first season budgets are needed, then each
+season after, last season's average payroll (Josh, 2026-11-07: the cap
+follows the league), never lower than last season's cap. With no finished
+season to go by, it grows CAP_GROWTH a season. It's a soft cap: a team can go over
 it, and pays a luxury tax on what's over when the season ends. Nothing is
 blocked; the game warns before a move that takes a team over.
 
@@ -30,7 +32,8 @@ from __future__ import annotations
 
 from src.player.contracts import format_salary
 
-# How much the cap grows each season (Josh: "something like 5%").
+# How much the cap grows a season when there's no finished season's payrolls
+# to follow, and how fast contract prices grow (salary_scale).
 CAP_GROWTH = 0.05
 # Luxury tax: this share of every dollar of payroll over the cap.
 LUXURY_TAX_RATE = 0.5
@@ -67,6 +70,15 @@ def first_cap(payrolls: list[int]) -> int:
         FIRST_CAP_ROUNDING,
         round(avg / FIRST_CAP_ROUNDING) * FIRST_CAP_ROUNDING,
     )
+
+
+def next_cap(cap: int, payrolls: list[int]) -> int:
+    """Next season's cap after a season with these final payrolls: their
+    average, but never below this season's cap."""
+    if not payrolls:
+        return grown(cap)
+    avg = sum(payrolls) / len(payrolls)
+    return max(cap, round(avg / CAP_ROUNDING) * CAP_ROUNDING)
 
 
 def grown(cap: int, seasons: int = 1) -> int:
@@ -141,10 +153,11 @@ def luxury_tax(payroll: int, cap: int) -> int:
 
 def tax_shares(payrolls: dict[str, int], cap: int) -> dict[str, int]:
     """The season's luxury tax, split evenly among the teams that finished
-    under the cap (plans/budget.md, Q6). {team_id: share} for those teams;
-    empty when nobody paid tax or nobody was under."""
+    under the cap (plans/budget.md, Q6), or among every team when nobody
+    was under (Josh, 2026-11-07), so the money stays in the league.
+    {team_id: share}; empty when nobody paid tax."""
     pool = sum(luxury_tax(p, cap) for p in payrolls.values())
-    under = [t for t, p in payrolls.items() if p < cap]
+    under = [t for t, p in payrolls.items() if p < cap] or list(payrolls)
     if not pool or not under:
         return {}
     share = round(pool / len(under) / CAP_ROUNDING) * CAP_ROUNDING
