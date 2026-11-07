@@ -214,3 +214,33 @@ def test_the_season_review_message(lg, factory):
     office = owner_office.office(x.db, x.league.id, x.teams[0].id, x.gm.id)
     assert office["messages"][0]["kind"] == "review"
     assert office["mood"] in [w for _, w in owner_office.om.MOODS]
+
+
+def test_the_mood_carries_into_next_season_until_its_first_week(lg, factory):
+    """Josh saw no owner mood at the start of a season: moods are kept per
+    season and the new one has none until a week of games is in."""
+    from src.api.services import owner_office
+
+    x = lg(n=2)
+    service.ensure(x.db, x.league.id)
+    team = x.teams[0].id
+    x.db.execute(
+        """INSERT INTO owner_moods (league_id, team_id, season_id, mood, as_of)
+           VALUES (%s, %s, %s, -0.5, NULL)""",
+        (x.league.id, team, x.season.id),
+    )
+    nxt = factory.season(year=2027)
+    factory.league_season(x.league, nxt)
+    x.db.execute("UPDATE leagues SET state = 'preseason' WHERE id = %s", (x.league.id,))
+    office = owner_office.office(x.db, x.league.id, team, x.gm.id)
+    assert office["mood"] == "frustrated"  # last season's, not blank
+    assert owner_office.latest_moods(x.db, x.league.id, 2027) == {team: -0.5}
+
+
+def test_an_owner_with_no_mood_yet_is_content(lg):
+    from src.api.services import owner_office
+
+    x = lg(n=2)
+    service.ensure(x.db, x.league.id)
+    office = owner_office.office(x.db, x.league.id, x.teams[0].id, x.gm.id)
+    assert office["mood"] == "content"
