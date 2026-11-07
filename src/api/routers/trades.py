@@ -174,6 +174,8 @@ def trades_tab(
     asks = HappinessRepository(db, league_id).trade_requests(
         p["player_id"] for p in my_players if p.get("roster_status") != "pick"
     )
+    for p in my_players:
+        p["wants_trade"] = p["player_id"] in asks
     shop_players = sorted(
         (
             {
