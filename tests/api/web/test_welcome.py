@@ -454,3 +454,23 @@ def test_welcome_page_shows_the_budget(client, db_conn, factory, league):
 def test_no_budget_card_without_budgets(client, league):
     lg, _, _ = league
     assert "Your budget" not in client.get(f"/leagues/{lg.id}/welcome").text
+
+
+def test_welcome_page_shows_the_citys_market_and_climate(client, db_conn, league):
+    lg, _, team = league
+    db_conn.execute("UPDATE teams SET city = 'Boston' WHERE id = %s", (team.id,))
+
+    html = client.get(f"/leagues/{lg.id}/welcome").text
+
+    facts = html.split('class="wl-facts"')[1].split("</div>")[0]
+    # Boston is a mid-size market, Chicago a big one.
+    assert "<b>Mid-size</b> market · 2nd of 2" in facts
+    assert "revenue 1.00×, the league average" in facts
+    assert "<b>Cold</b> climate" in facts
+    assert "North America" in facts
+
+
+def test_a_team_outside_the_pool_shows_no_city_facts(client, league):
+    lg, _, _ = league
+
+    assert 'class="wl-facts"' not in client.get(f"/leagues/{lg.id}/welcome").text

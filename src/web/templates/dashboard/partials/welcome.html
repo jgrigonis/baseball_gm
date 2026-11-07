@@ -9,7 +9,7 @@
 {%- endmacro %}
 
 <style>
-  .wl-hero { position:relative; overflow:hidden; padding:28px 24px 26px;
+  .wl-hero { position:relative; padding:28px 24px 26px;
              background:{{ c.primary }}; color:{{ c.ink }}; border-bottom:6px solid {{ c.secondary }}; }
   .wl-hero::after { content:""; position:absolute; left:0; right:0; bottom:0; height:6px; background:{{ c.accent }}; }
   .wl-hero-row { display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
@@ -17,6 +17,11 @@
   .wl-kicker { font-family:var(--font-mono); font-size:12px; letter-spacing:.12em; text-transform:uppercase; opacity:.8; }
   .wl-title { font-family:var(--font-display); font-size:44px; line-height:1; text-transform:uppercase; margin:4px 0; }
   .wl-tagline { font-family:var(--font-sans); font-size:14px; opacity:.9; }
+  .wl-facts { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .wl-facts > span { font-family:var(--font-mono); font-size:11px; letter-spacing:.06em; padding:3px 9px; border-radius:3px;
+                     background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.25); }
+  .wl-facts .setting-tip { border-bottom-color:rgba(255,255,255,.25); }
+  .wl-facts b { font-weight:600; }
   .wl-body { padding:20px 24px 32px; display:grid; gap:16px;
              grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); align-items:start; }
   .wl-wide { grid-column:1 / -1; }
@@ -94,6 +99,13 @@
       <h1 class="wl-title">The {{ w.year }} {{ w.city }} {{ w.mascot }}</h1>
       {% endif %}
       <div class="wl-tagline">{{ c.tagline }}</div>
+      {% if w.city_facts %}{% set f = w.city_facts %}
+      <div class="wl-facts">
+        <span class="setting-tip" tabindex="0" data-tip="{{ f.market_name }} market: revenue {{ '%.2f'|format(f.market_mult) }}×{% if f.market == 3 %}, the league average{% endif %}. Bigger markets draw more money and make players feel famous."><b>{{ f.market_name }}</b> market · {{ f.market_place }}</span>
+        <span class="setting-tip" tabindex="0" data-tip="{{ f.climate_name }} weather. Players who like it are happier here; players who'd rather be somewhere else are less happy."><b>{{ f.climate_name }}</b> climate</span>
+        <span><b>{{ f.region }}</b></span>
+      </div>
+      {% endif %}
     </div>
   </div>
 </section>
