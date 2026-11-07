@@ -3,6 +3,7 @@
 who bench themselves, and what re-signing does
 (src/db/repositories/happiness_repo.py)."""
 
+from dataclasses import replace
 from datetime import date, timedelta
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -241,9 +242,20 @@ def test_a_player_happy_again_takes_back_his_trade_request(lg):
     assert any("happy to stay" in s["headline"] for s in feed)
 
 
+def _middling(personality_for=hp.personality_for):
+    """Personalities with middling traits, so a calm player's slow-moving
+    mood (low temper) doesn't change how many weeks a test needs."""
+    return lambda pid: replace(
+        personality_for(pid),
+        traits={"ego": 50, "temper": 50, "loyalty": 50},
+        ruiner=False,
+    )
+
+
 def test_restless_is_settled_enough_to_take_back_a_request(lg):
     pid = lg.players[lg.a.id][0].id
     with (
+        patch.object(hp, "personality_for", _middling()),
         patch.object(hp, "target", return_value=-1.0),
         patch.object(hp, "asks_for_trade", side_effect=lambda m, w, t, r: True),
     ):
