@@ -8,11 +8,13 @@ Offseason free agency (free agency phase 2, PR 3; Josh's decisions
    - Veterans (MARKET_SEASONS seasons or more under contract in the league)
      and unhappy players (mood "unhappy" or worse) go to market unless their
      team re-signs them now, at their price.
-   - Everyone else re-signs after the draft as before, unless their GM
-     chooses to let them go.
+   - Everyone else is tendered (re-signed) by default unless their GM lets
+     them go, as long as the owner's hard limit has room for the raise
+     (Josh, 2026-11-07: re-signs answer to the owner).
    A GM makes the call on the Free Agents tab (contract_choices). AI teams
-   re-sign their market-bound 40-man players whose new deal fits what their
-   owner's budget has left, and let the rest go. The window closes when the
+   re-sign the best first while their owner's budget has room (market-bound
+   players only from the 40-man) and let fringe players go rather than pay
+   them more than the minimum (_keeps). The window closes when the
    offseason runs (close_window): re-signed players get their new deal, and
    the ones let go become free agents.
 
@@ -164,6 +166,7 @@ def expiring(conn, league_id: str, year: int, team_ids=None) -> list[dict]:
                 "market": market,
                 "seasons": seasons.get(p.id, 0),
                 "choice": r["choice"],
+                "scale": scale,
             }
         )
     return out
@@ -207,22 +210,70 @@ def choose(
     return {"choice": choice}
 
 
-def _ai_keeps(conn, league_id: str, year: int, rows: list[dict]) -> set[str]:
-    """The market-bound players AI teams re-sign: on the 40-man, and the new
-    deal fits what the owner's budget has left (counting his old salary as
-    coming off)."""
-    keep = set()
+def _is_fringe(player) -> bool:
+    """C- or worse: the kind of player free agency has plenty of."""
+    kind = "pitcher" if player.is_pitcher() else "hitter"
+    return ct.grade_position(role_rating(player), kind) >= ct.GRADES.index("C-")
+
+
+def _room(conn, league_id: str, team_id: str, year: int, human: bool) -> float:
+    """What a team can add before its owner balks: up to the hard limit for
+    a person, the budget for an AI GM. Unlimited without budgets."""
+    if not human:
+        return ai_free_agents._budget_room(conn, league_id, team_id, year)
+    s = BudgetRepository(conn).standing(league_id, team_id, year)
+    if s is None:
+        return float("inf")
+    return s["limit"] - s["spend"]
+
+
+def _keeps(
+    conn, league_id: str, year: int, rows: list[dict], humans: set[str]
+) -> set[str]:
+    """Who re-signs (Josh, 2026-11-07: re-signs answer to the owner). Every
+    expiring deal is decided here; nothing re-signs on its own later.
+
+    - A person's call stands. Without one, a veteran or unhappy player goes
+      to market, and anyone else is tendered by default if the owner's hard
+      limit still has room for his raise (best players first).
+    - An AI GM keeps the best first while the owner's budget has room,
+      market-bound players only from the 40-man, and lets a fringe player
+      (C- or worse) go rather than pay him more than the minimum.
+
+    A raise is the new salary less the old one, which comes off."""
+    keep: set[str] = set()
     room: dict[str, float] = {}
-    for r in sorted(rows, key=lambda r: -role_rating(r["player"])):
-        if r["status"] not in FORTY_MAN_STATUSES:
-            continue
+
+    def fits(r: dict, force: bool = False) -> bool:
         t = r["team_id"]
         if t not in room:
-            room[t] = ai_free_agents._budget_room(conn, league_id, t, year)
+            room[t] = _room(conn, league_id, t, year, t in humans)
         cost = r["deal"].salary - r["old_salary"]
-        if cost <= room[t]:
+        if cost > room[t] and not force:
+            return False
+        room[t] -= max(0, cost)
+        return True
+
+    by_value = sorted(rows, key=lambda r: -role_rating(r["player"]))
+    # A person's own re-sign calls stand, and come off the room first.
+    for r in by_value:
+        if r["team_id"] in humans and r["choice"] == "resign":
             keep.add(r["player_id"])
-            room[t] -= max(0, cost)
+            fits(r, force=True)
+    for r in by_value:
+        if r["player_id"] in keep or r["choice"] == "let_go":
+            continue
+        if r["team_id"] in humans:
+            if r["choice"] is None and not r["market"] and fits(r):
+                keep.add(r["player_id"])
+            continue
+        if r["market"] and r["status"] not in FORTY_MAN_STATUSES:
+            continue
+        minimum = ct.round_salary(ct.MIN_SALARY * r["scale"], r["scale"])
+        if _is_fringe(r["player"]) and r["deal"].salary > minimum:
+            continue
+        if fits(r):
+            keep.add(r["player_id"])
     return keep
 
 
@@ -231,13 +282,8 @@ def close_window(conn, league_id: str) -> dict:
     season, and those going to market become free agents. Returns counts."""
     year = _year(conn, league_id)
     rows = expiring(conn, league_id, year)
-    humans = GMRepository(conn).get_human_team_ids(league_id)
-    ai_keep = _ai_keeps(
-        conn,
-        league_id,
-        year,
-        [r for r in rows if r["team_id"] not in humans and r["market"]],
-    )
+    humans = set(GMRepository(conn).get_human_team_ids(league_id))
+    keep = _keeps(conn, league_id, year, rows, humans)
     contracts = ContractRepository(conn)
     status = PlayerStatusRepository(conn)
     teams = TeamRepository(conn)
@@ -245,17 +291,7 @@ def close_window(conn, league_id: str) -> dict:
     resigned, gone, unhappy_out = 0, [], []
     for r in rows:
         pid, team = r["player_id"], r["team_id"]
-        if team in humans:
-            if r["choice"] == "resign":
-                action = "resign"
-            elif r["choice"] == "let_go" or r["market"]:
-                action = "go"
-            else:
-                action = None  # re-signs after the draft as before
-        elif r["market"]:
-            action = "resign" if pid in ai_keep else "go"
-        else:
-            action = None
+        action = "resign" if pid in keep else "go"
         if action == "resign":
             contracts.insert_deal(
                 pid,

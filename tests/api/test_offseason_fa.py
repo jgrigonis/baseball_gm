@@ -47,6 +47,11 @@ def lg(db_conn, factory):
 def roomy_owners(monkeypatch):
     monkeypatch.setattr(BudgetRepository, "refusal", lambda *a, **k: None)
     monkeypatch.setattr(ai_free_agents, "_budget_room", lambda *a: float("inf"))
+    monkeypatch.setattr(offseason_fa, "_room", _roomy)
+
+
+def _roomy(conn, league_id, team_id, year, human):
+    return ai_free_agents._budget_room(conn, league_id, team_id, year)
 
 
 def _expiring(lg, team, start, years, level=60, status="40man"):
@@ -94,13 +99,52 @@ def test_closing_the_window_follows_the_gms_calls(lg):
 
     out = offseason_fa.close_window(lg.db, lg.league.id)
 
-    assert out == {"resigned": 1, "to_market": 2}
+    assert out == {"resigned": 2, "to_market": 2}
     assert lg.status.get_status(vet) == "free_agent" and vet not in _on(lg, lg.mine)
     assert lg.status.get_status(cut) == "free_agent"
     new = lg.contracts.active(kept_vet, 2027)
     assert new["start_year"] == 2027 and new["guaranteed"]
-    # The rest re-sign after the draft as before: nothing yet.
-    assert young in _on(lg, lg.mine) and lg.contracts.active(young, 2027) is None
+    # Anyone else is tendered by default, now.
+    assert lg.contracts.active(young, 2027)["start_year"] == 2027
+
+
+def test_a_default_tender_the_owner_cant_cover_goes_to_market(lg, monkeypatch):
+    monkeypatch.setattr(ai_free_agents, "_budget_room", lambda *a: 0)
+    young = _expiring(lg, lg.mine, 2024, 3, level=75)
+    kept = _expiring(lg, lg.mine, 2024, 3, level=75)
+    offseason_fa.choose(lg.db, lg.league.id, lg.mine.id, kept, "resign")
+    offseason_fa.close_window(lg.db, lg.league.id)
+    # His own call stands; the default can't get past the owner.
+    assert lg.contracts.active(kept, 2027) is not None
+    assert lg.status.get_status(young) == "free_agent"
+
+
+def test_ai_teams_tender_the_best_first_while_the_budget_lasts(lg, monkeypatch):
+    star = _expiring(lg, lg.ai, 2024, 3, level=85)
+    good = _expiring(lg, lg.ai, 2024, 3, level=70)
+    rows = {r["player_id"]: r for r in offseason_fa.expiring(lg.db, lg.league.id, 2026)}
+    room = rows[star]["deal"].salary - 5_000_000
+    monkeypatch.setattr(ai_free_agents, "_budget_room", lambda *a: room)
+    offseason_fa.close_window(lg.db, lg.league.id)
+    assert lg.contracts.active(star, 2027) is not None
+    assert lg.status.get_status(good) == "free_agent"
+
+
+def test_ai_teams_let_fringe_players_go_rather_than_pay_them(lg):
+    # Every level from fringe up: a C- or worse player is kept only at the
+    # minimum, anyone better whenever the budget has room.
+    ids = [_expiring(lg, lg.ai, 2025, 2, level=lv) for lv in range(20, 61, 4)]
+    rows = {r["player_id"]: r for r in offseason_fa.expiring(lg.db, lg.league.id, 2026)}
+    offseason_fa.close_window(lg.db, lg.league.id)
+    let_go = 0
+    for pid in ids:
+        r = rows[pid]
+        minimum = ct.round_salary(ct.MIN_SALARY * r["scale"], r["scale"])
+        priced_out = offseason_fa._is_fringe(r["player"]) and r["deal"].salary > minimum
+        let_go += priced_out
+        kept = lg.contracts.active(pid, 2027) is not None
+        assert kept != priced_out
+    assert let_go  # some fringe players asked for more than the minimum
 
 
 def test_ai_teams_keep_their_40_man_vets_they_can_afford(lg, monkeypatch):
