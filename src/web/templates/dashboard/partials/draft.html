@@ -699,9 +699,14 @@ function renderPreview(picks) {
   }).join('');
 }
 
+// The button keeps its label and size while saving (no "Saving…" swap or
+// disabled dimming); a flag stops double clicks and the toast confirms.
+let strategySaving = false;
 async function saveStrategy() {
+  if (strategySaving) return false;
+  strategySaving = true;
   const btn = document.getElementById('submit-btn');
-  btn.disabled = true; btn.textContent = 'Saving…';
+  btn.setAttribute('aria-busy', 'true');
   let ok = false;
   try {
     const res = await fetch(`/leagues/${LEAGUE_ID}/draft/strategy`, {
@@ -723,7 +728,7 @@ async function saveStrategy() {
     console.error('Save failed', err);
     gmToast('✗ Network error. Strategy not saved.', 'err');
   }
-  finally { btn.disabled = false; btn.textContent = 'Save Strategy'; }
+  finally { strategySaving = false; btn.removeAttribute('aria-busy'); }
   return ok;
 }
 
