@@ -441,17 +441,11 @@ class BudgetRepository:
                 (league_id, year),
             ).fetchall()
         }
-        season = self.conn.execute(
-            """SELECT s.id FROM seasons s JOIN league_seasons ls ON ls.season_id = s.id
-               WHERE ls.league_id = %s AND s.year = %s AND NOT s.is_backstory""",
-            (league_id, year),
-        ).fetchone()
-        results = self._results(league_id, season["id"]) if season else {}
+        season_id = self._season_id(league_id, year)
+        results = self._results(league_id, season_id) if season_id else {}
         cap = self.cap(league_id, year)
         money = self._team_money(league_id, year, list(budgets))
-        # A season budgeted before owners set budgets has no revenue yet.
-        planned = fn.plan(cap, money)
-        revenue = {t: rows[t]["revenue"] or planned[t].revenue for t in budgets}
+        revenue = self._revenues(league_id, year, rows, money, cap)
         average = sum(revenue.values()) / len(revenue)
         # A Standard front office and an average farm are in every owner's
         # budget, so the fixed costs leave them out; each team pays for its
@@ -459,11 +453,7 @@ class BudgetRepository:
         # the fixed costs, so this can go below zero: the league's money
         # covering an average farm.
         farms = self._minor_leagues(league_id, year, list(budgets))
-        costs = (
-            fn.fixed_costs(average)
-            - bg.standard_front_office(cap)
-            - bg.average_farm(farms.values())
-        )
+        costs = self._fixed_costs(average, cap) - bg.average_farm(farms.values())
         levels = self.league_levels(league_id, year)
         payrolls = {t: self.contracts.payroll(t, year) for t in budgets}
         shares = bg.tax_shares(payrolls, cap)
@@ -511,6 +501,122 @@ class BudgetRepository:
             )
             taxes[team_id] = tax
         return taxes
+
+    def _season_id(self, league_id: str, year: int) -> str | None:
+        row = self.conn.execute(
+            """SELECT s.id FROM seasons s JOIN league_seasons ls ON ls.season_id = s.id
+               WHERE ls.league_id = %s AND s.year = %s AND NOT s.is_backstory""",
+            (league_id, year),
+        ).fetchone()
+        return row["id"] if row else None
+
+    def _revenues(
+        self, league_id: str, year: int, rows: dict, money: dict, cap: int
+    ) -> dict[str, int]:
+        """Each team's revenue for the season (before the playoff gate). A
+        season budgeted before owners set budgets has none stored yet, so
+        it's planned now."""
+        if all(r["revenue"] is not None for r in rows.values()):
+            return {t: int(r["revenue"]) for t, r in rows.items()}
+        planned = fn.plan(cap, money)
+        return {t: int(rows[t]["revenue"] or planned[t].revenue) for t in rows}
+
+    @staticmethod
+    def _fixed_costs(average_revenue: float, cap: int) -> int:
+        """The season's fixed costs, the same for every team. A Standard
+        front office is in every owner's budget, so they leave it out; each
+        team pays for its own front office."""
+        return fn.fixed_costs(average_revenue) - bg.standard_front_office(cap)
+
+    def books(self, league_id: str, team_id: str, year: int) -> list[dict]:
+        """The team's money in and out season by season, newest first, for
+        the Budget tab's revenue breakdown (src/league/finances.py books).
+        This season, until its books close, is projected: today's payroll,
+        tax and tax share, and the playoff gate so far. Empty without
+        budgets."""
+        if self.budget(league_id, team_id, year) is None:
+            return []
+        rows = self.conn.execute(
+            """SELECT team_id, year, cap, revenue, playoff_revenue, payroll,
+                      luxury_tax, tax_share, front_office, minor_league, profit,
+                      fans_before
+               FROM team_budgets WHERE league_id = %s AND year <= %s""",
+            (league_id, year),
+        ).fetchall()
+        seasons: dict[int, dict] = {}
+        for r in rows:
+            seasons.setdefault(r["year"], {})[r["team_id"]] = r
+        market = self._team_money(league_id, year, [team_id])[team_id].market
+        out = []
+        for y in sorted(seasons, reverse=True):
+            league_rows = seasons[y]
+            mine = league_rows.get(team_id)
+            if mine is None:
+                continue
+            done = mine["profit"] is not None
+            if not done and y != year:
+                continue
+            cap = int(mine["cap"]) if mine["cap"] else self.cap(league_id, y)
+            money = self._team_money(league_id, y, list(league_rows))
+            revenue = self._revenues(league_id, y, league_rows, money, cap)
+            average = sum(revenue.values()) / len(revenue)
+            per_game = fn.playoff_gate(average, 1)
+            fans = mine["fans_before"]
+            fans = money[team_id].fans if fans is None else fans
+            if done:
+                gate = int(mine["playoff_revenue"] or 0)
+                line = dict(
+                    playoff_gate=gate,
+                    home_playoff_games=round(gate / per_game) if per_game else 0,
+                    tax_share=int(mine["tax_share"] or 0),
+                    payroll=int(mine["payroll"] or 0),
+                    front_office=int(mine["front_office"] or 0),
+                    luxury_tax=int(mine["luxury_tax"] or 0),
+                    minor_league=int(mine["minor_league"] or 0),
+                    # Seasons closed before the farm counted have no
+                    # minor_league stored, and no farm help either.
+                    farm_help=bg.average_farm(
+                        int(r["minor_league"])
+                        for r in league_rows.values()
+                        if r["minor_league"] is not None
+                    ),
+                    profit=int(mine["profit"]),
+                )
+            else:
+                season_id = self._season_id(league_id, y)
+                games = (
+                    self._results(league_id, season_id)
+                    .get(team_id, {})
+                    .get("home_playoff_games", 0)
+                    if season_id
+                    else 0
+                )
+                payrolls = {t: self.contracts.payroll(t, y) for t in league_rows}
+                farms = self._minor_leagues(league_id, y, list(league_rows))
+                line = dict(
+                    minor_league=farms.get(team_id, 0),
+                    farm_help=bg.average_farm(farms.values()),
+                    playoff_gate=fn.playoff_gate(average, games),
+                    home_playoff_games=games,
+                    tax_share=bg.tax_shares(payrolls, cap).get(team_id, 0),
+                    payroll=payrolls[team_id],
+                    front_office=self.front_office(league_id, team_id, y),
+                    luxury_tax=bg.luxury_tax(payrolls[team_id], cap),
+                )
+            out.append(
+                {
+                    "year": y,
+                    **fn.books(
+                        revenue=revenue[team_id],
+                        market=market,
+                        fans=fans,
+                        gate_per_game=per_game,
+                        costs=self._fixed_costs(average, cap),
+                        **line,
+                    ),
+                }
+            )
+        return out
 
     def _results(self, league_id: str, season_id: str) -> dict[str, dict]:
         """Each team's season, for fan interest and the playoff gate: win %,

@@ -34,6 +34,77 @@ def _money(amount) -> str | None:
     return f"-{text}" if amount < 0 else text
 
 
+def _times(mult: float) -> str:
+    return f"\u00d7{mult:.2f}"
+
+
+def _books_view(b: dict) -> dict:
+    """One season's money in and out (BudgetRepository.books), as text."""
+    games = b["home_playoff_games"]
+    money_in = [
+        {
+            "label": "Regular season",
+            "amount": _money(b["revenue"]),
+            "note": (
+                f"{_money(b['base'])} league base"
+                f" {_times(b['market_mult'])} {b['market_name'].lower()} market"
+                f" {_times(b['fan_mult'])} fan interest {b['fans']}"
+            ),
+        },
+        {
+            "label": "Playoff gate",
+            "amount": _money(b["playoff_gate"]) if b["playoff_gate"] else None,
+            "note": (
+                f"{games} home playoff game{'' if games == 1 else 's'}"
+                f"{' so far' if b['projected'] else ''}"
+                f" at {_money(b['gate_per_game'])} each"
+                if games
+                else f"{_money(b['gate_per_game'])} for each home playoff game"
+            ),
+        },
+        {
+            "label": "Luxury tax share",
+            "amount": _money(b["tax_share"]) if b["tax_share"] else None,
+            "note": (
+                "Your cut of the tax paid by teams over the cap"
+                if b["tax_share"]
+                else "Paid to teams under the cap when someone goes over"
+            ),
+        },
+        {
+            "label": "League farm help",
+            "amount": _money(b["farm_help"]) if b["farm_help"] else None,
+            "note": "The league covers an average farm's salaries",
+        },
+    ]
+    money_out = [
+        {"label": "Payroll", "amount": _money(b["payroll"]),
+         "note": "Guaranteed salaries plus dead money"},
+        {"label": "Front office", "amount": _money(b["front_office"]),
+         "note": "Coaching, facilities and analytics"},
+        {"label": "Minor leagues", "amount": _money(b["minor_league"]) if b["minor_league"] else None,
+         "note": "Salaries of players off the 40-man"},
+        {"label": "Luxury tax", "amount": _money(b["luxury_tax"]) if b["luxury_tax"] else None,
+         "note": f"{round(bg.LUXURY_TAX_RATE * 100)}% of payroll over the cap", "bad": bool(b["luxury_tax"])},
+        {"label": "Fixed costs", "amount": _money(b["costs"]),
+         "note": "Ballpark, travel and staff, the same for every team"},
+    ]  # fmt: skip
+    if b["other"]:
+        money_out.append(
+            {"label": "Other costs", "amount": _money(b["other"]), "note": ""}
+        )
+    return {
+        "year": b["year"],
+        "projected": b["projected"],
+        "money_in": money_in,
+        "money_out": money_out,
+        "total_in": _money(b["total_in"]),
+        "total_out": _money(b["total_out"]),
+        "profit": _money(b["profit"]),
+        "loss": b["profit"] < 0,
+    }
+
+
 @router.get("/leagues/{league_id}/budget", response_class=HTMLResponse)
 def budget_tab(
     request: Request,
@@ -155,6 +226,10 @@ def _render(request, htmx, league_id, db, user, gm, error=None, saved=False):
         }
         for r in (budgets.history(league_id, team_id) if standing else [])
         if r["profit"] is not None
+    ]
+    ctx["books"] = [
+        _books_view(b)
+        for b in (budgets.books(league_id, team_id, year) if standing else [])
     ]
     db.commit()  # banks open on first look
     return tab_response(request, htmx, "dashboard/partials/budget.html", ctx)
