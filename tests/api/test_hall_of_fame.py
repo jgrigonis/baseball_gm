@@ -152,9 +152,9 @@ def test_an_inductee_gets_a_plaque_a_badge_and_a_story(db_conn, factory, lg):
     assert [p["player_id"] for p in plaques] == [great.id]
     assert plaques[0]["team"] == "Tokyo Samurai"
     assert "WAR" in plaques[0]["line"]
-    # Nine of his ten seasons were before the league: they count three quarters.
+    # Nine of his ten seasons were before the league: they count nine tenths.
     assert row["summary"]["backstory_seasons"] == 9
-    assert row["summary"]["weighted_war"] == 232.5
+    assert row["summary"]["weighted_war"] == 273.0
     assert row["summary"]["war"] == 300.0
 
     badge = hall_of_fame.badge(db, great.id)

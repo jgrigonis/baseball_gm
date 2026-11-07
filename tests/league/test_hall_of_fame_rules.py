@@ -4,6 +4,8 @@ a career, who's eligible, the screening committee, and the vote."""
 
 import random
 
+import pytest
+
 from src.league import hall_of_fame as hof
 
 
@@ -51,18 +53,18 @@ def _writers(n_teams=30):
 # ── What a career counts for ─────────────────────────────────────────────────
 
 
-def test_backstory_seasons_count_three_quarters():
+def test_backstory_seasons_count_nine_tenths():
     played = _career(years=10, war=4.0)
     made_up = _career(years=10, war=4.0, backstory=10)
     assert played.war == 40.0
-    assert made_up.war == 30.0
+    assert made_up.war == pytest.approx(36.0)
     assert made_up.raw_war == 40.0
-    assert made_up.total("hits") == played.total("hits") * 0.75
+    assert made_up.total("hits") == pytest.approx(played.total("hits") * 0.9)
 
 
-def test_backstory_honors_count_three_quarters():
+def test_backstory_honors_count_nine_tenths():
     c = _career(backstory=5, honors=[("mvp", 2001), ("mvp", 2010)])
-    assert c.honors_count("mvp") == 1.75
+    assert c.honors_count("mvp") == pytest.approx(1.9)
     assert c.honors_count("mvp", weighted=False) == 2
 
 
@@ -157,7 +159,7 @@ def test_the_same_great_made_up_before_the_league_falls_short():
         random.Random(2),
     )
     by = {r.player_id: r for r in res}
-    assert by["a"].share > by["b"].share + 0.4
+    assert by["a"].share > by["b"].share + 0.1
     assert by["b"].outcome != "elected"
 
 
