@@ -214,8 +214,10 @@ async function schedSimRun(count) {
 
       // Refresh the open tab so it shows the day's results. Through htmx, so
       // script-built tabs (Lineup, Stats) are drawn again; it keeps the
-      // Lineup's unsaved edits and the Leaders pane.
-      if (document.querySelector('.tab-link.active') && window.liveRefreshTab) {
+      // Lineup's unsaved edits and the Leaders pane. The sidebar's in-place
+      // pages count too: History's row for this season shows the GM's
+      // record so far.
+      if (document.querySelector('.tab-link.active, .side-link.active') && window.liveRefreshTab) {
         try { await window.liveRefreshTab(); } catch(e) {}
       }
       // Only re-enter sim mode if we're continuing

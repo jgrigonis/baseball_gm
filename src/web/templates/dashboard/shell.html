@@ -343,7 +343,7 @@ function _reloadTab(url, quiet) {
 // Reload the open tab after the league has moved on without this page, e.g.
 // a ready-check period or another GM's sim.
 window.refreshActiveTab = function() {
-  var activeLink = document.querySelector('.tab-link.active');
+  var activeLink = document.querySelector('.tab-link.active, .side-link.active');
   if (!activeLink) return;
   _reloadTab(activeLink.getAttribute('hx-get') || activeLink.getAttribute('href'), false);
 };

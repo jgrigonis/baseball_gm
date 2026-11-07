@@ -239,7 +239,7 @@ async function _simPlayoffsRun(mode) {
 
       // Redraw the open tab (the bracket, or whichever live tab the GM went
       // to) in place, so the day's dots appear.
-      if (document.querySelector('.tab-link.active') && window.liveRefreshTab) {
+      if (document.querySelector('.tab-link.active, .side-link.active') && window.liveRefreshTab) {
         try { await window.liveRefreshTab(); } catch (e) {}
       } else {
         htmx.ajax('GET', '/leagues/' + LEAGUE_ID + '/playoffs', {target:'#tab-content', swap:'innerHTML'});
