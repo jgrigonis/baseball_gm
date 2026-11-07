@@ -379,6 +379,8 @@ def _settings_rows(html):
 
 
 TIMER_ROWS = ["Pace", "Decision window", "Draft window", "Lineup window"]
+# Rows greyed while solo: the timer rows plus Days per sim period.
+SOLO_ROWS = TIMER_ROWS + ["Days per sim period"]
 
 
 def test_timer_settings_are_greyed_out_with_one_human(client, db_conn, lobby):
@@ -389,7 +391,7 @@ def test_timer_settings_are_greyed_out_with_one_human(client, db_conn, lobby):
 
     rows = _settings_rows(_settings_page(client, league))
 
-    for label in TIMER_ROWS:
+    for label in SOLO_ROWS:
         assert 'class="setting-off"' in rows[label], label
         assert "data-needs-humans" in rows[label], label
     assert "setting-off" not in rows["Teams"]
@@ -408,7 +410,7 @@ def test_timer_settings_light_up_once_a_second_human_joins(client, db_conn, lobb
 
     rows = _settings_rows(_settings_page(client, league))
 
-    for label in TIMER_ROWS:
+    for label in SOLO_ROWS:
         assert "setting-off" not in rows[label], label
     assert 'data-humans="2"' in _gms(client, league).text
 
@@ -431,6 +433,15 @@ def test_confirmed_pace_keeps_the_windows_greyed_out(client, db_conn, lobby):
         assert 'class="setting-off"' in rows[label], label
         # The lobby's live update leaves these alone.
         assert "data-needs-humans" not in rows[label], label
+
+
+def test_reentry_sits_below_seasons(client, db_conn, lobby):
+    league, _ = lobby
+
+    labels = list(_settings_rows(_settings_page(client, league)))
+
+    assert labels.index("Re-entry") == labels.index("Seasons") + 1
+    assert labels.index("Days per sim period") < labels.index("Seasons")
 
 
 def test_commissioner_controls_sit_above_the_settings(client, db_conn, lobby):
