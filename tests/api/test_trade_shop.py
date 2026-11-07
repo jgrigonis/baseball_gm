@@ -56,6 +56,7 @@ def test_a_player_nobody_wants_gets_no_interest(lg):  # noqa: F811
     assert result["offers"] == []
     assert result["no_interest"] == ["AI Club"]
     assert result["why"] == {"fit": ["AI Club"]}
+    assert result["close"] == []
 
 
 def test_you_can_only_shop_your_own_player(lg):  # noqa: F811

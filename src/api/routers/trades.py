@@ -282,7 +282,7 @@ def shop_player(
         return JSONResponse({"detail": str(e)}, status_code=422)
     season_id = SeasonRepository(db).get_current_id_for_league(league_id)
     ai_gms = PersonaRepository(db).by_team(league_id)
-    for o in result["offers"]:
+    for o in result["offers"] + result["close"]:
         cards = {
             c["player_id"]: c
             for c in team_cards(db, league_id, season_id, o["team_id"])

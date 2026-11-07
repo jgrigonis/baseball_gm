@@ -98,7 +98,7 @@ class _Ctx:
     def offer_from(self, team_id: str) -> ShopOffer | None:
         """This AI team's best offer, as its answer to the offer would be."""
         offer = self.offer_or_why(team_id)
-        return offer if isinstance(offer, ShopOffer) else None
+        return offer if isinstance(offer, ShopOffer) and not offer.short else None
 
     def offer_or_why(self, team_id: str) -> ShopOffer | str:
         """This AI team's best offer, or why it has none (TRADED_HIM, or
@@ -149,10 +149,13 @@ def _statuses(conn, team_id: str) -> dict[str, str]:
 def shop(conn, league_id: str, gm: dict, player_id: str) -> dict:
     """Every AI team's best offer for the GM's player:
     {"player", "offers": [{team_id, team_name, give: [ids], score}], best
-    for the GM first, "no_interest": [team names], "why": {reason: [team
-    names]}} (reasons: ai_proposer.NO_HELP/NO_ROOM/NO_MATCH, TRADED_HIM)."""
+    for the GM first, "close": the same for teams that want him but have no
+    deal they'd take (the package each came closest to taking, best for the
+    GM first, the near ones (it would come out ahead, just not by its
+    margin) before the rest), "no_interest": [team names], "why": {reason: [team names]}}
+    (reasons: ai_proposer.NO_HELP/NO_ROOM/NO_MATCH, TRADED_HIM)."""
     ctx = _Ctx(conn, league_id, gm, player_id)
-    offers, none, why = [], [], {}
+    offers, close, none, why = [], [], [], {}
     for t in ctx.ai_teams():
         name = f"{t['city']} {t['mascot']}"
         offer = ctx.offer_or_why(t["id"])
@@ -160,20 +163,23 @@ def shop(conn, league_id: str, gm: dict, player_id: str) -> dict:
             none.append(name)
             why.setdefault(offer, []).append(name)
             continue
-        offers.append(
+        (close if offer.short else offers).append(
             {
                 "team_id": t["id"],
                 "team_name": name,
                 "give": [a.id for a in offer.give],
                 "score": round(offer.score, 1),
+                **({"near": offer.near} if offer.short else {}),
             }
         )
     offers.sort(key=lambda o: o["score"], reverse=True)
+    close.sort(key=lambda o: (o["near"], o["score"]), reverse=True)
     _tell_other_gms(conn, ctx, gm)
     conn.commit()
     return {
         "player": ctx.target.name,
         "offers": offers,
+        "close": close,
         "no_interest": sorted(none),
         "why": {k: sorted(v) for k, v in why.items()},
         "offseason": ctx.league["state"] in trade_deadline.OFFSEASON_STATES,

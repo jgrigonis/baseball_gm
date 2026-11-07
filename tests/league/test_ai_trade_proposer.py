@@ -100,6 +100,7 @@ from src.league.trades.ai_proposer import (  # noqa: E402
     NO_HELP,
     NO_MATCH,
     NO_ROOM,
+    ShopOffer,
     shop_offer,
     shop_offer_or_why,
 )
@@ -191,3 +192,21 @@ def test_why_there_is_no_offer():
     buyer = _side("contending", untradeable=())
     buyer.tradeable = set()
     assert shop_offer_or_why(buyer, seller, veteran, 60) == NO_MATCH
+
+
+def test_when_no_deal_works_the_closest_package_comes_back_short():
+    """A team that wants him but turns down every package the seller would
+    want shows the one it came closest to taking, marked short."""
+    veteran = _p(64, age=31)
+    seller = _side("rebuilding", [veteran], margin=0.0)
+    stars = [_p(75, age=24), _p(73, age=25)]
+    buyer = _side("contending", stars, margin=0.5)
+    buyer.tradeable = {a.id for a in stars}
+    offer = shop_offer_or_why(buyer, seller, veteran, 60)
+    assert isinstance(offer, ShopOffer) and offer.short
+    assert offer.give and all(a in stars for a in offer.give)
+    assert not evaluate(
+        buyer.roster, offer.give, [veteran], buyer.state, 60, buyer.margin
+    ).accept
+    # ...and it's no offer to take.
+    assert shop_offer(buyer, seller, veteran, 60) is None

@@ -538,13 +538,18 @@ function shopRow(p) {
   '</div>';
 }
 
-var SHOP = null;  // the last shop: {pid, player, offers, no_interest, why, offseason}
+var SHOP = null;  // the last shop: {pid, player, offers, close, no_interest, why, offseason}
 var SHOP_WHY = [
-  ['price', 'Like him, but won\'t give enough for him'],
+  ['price', 'Like him, but have no one you\'d want'],
   ['fit', 'He wouldn\'t help them'],
   ['pay', 'No room in their budget for his salary'],
   ['traded', 'Traded him away this season'],
 ];
+
+// How many of the close packages show before "Show more".
+var SHOP_CLOSE_SHOWN = 5;
+
+function shopAll() { return SHOP ? SHOP.offers.concat(SHOP.close) : []; }
 
 function renderShop() {
   var el = document.getElementById('tr-shop-results');
@@ -555,19 +560,34 @@ function renderShop() {
             (SHOP.offseason ? 'Try again later in the offseason' : 'Try again after a few more games') +
             ', or build an offer yourself below.</div>';
   }
-  SHOP.offers.forEach(function(o, i) {
-    html += '<div class="tr-offer tr-shop-offer">' +
+  // Real offers first, then (SHOP.close) the package each team that wants
+  // him came closest to taking: no Make this trade, since it would say no.
+  shopAll().forEach(function(o, i) {
+    var close = i >= SHOP.offers.length;
+    if (close && !SHOP.allClose && i - SHOP.offers.length === SHOP_CLOSE_SHOWN) {
+      html += '<button class="tr-link tr-shop-more" onclick="SHOP.allClose = true; renderShop()">Show ' +
+              (SHOP.close.length - SHOP_CLOSE_SHOWN) + ' more</button>';
+    }
+    if (close && !SHOP.allClose && i - SHOP.offers.length >= SHOP_CLOSE_SHOWN) return;
+    if (close && i === SHOP.offers.length)
+      html += '<div class="tr-shop-close-head"><strong>They\'d want more.</strong> ' +
+              'These teams want him, but turn down every package of their players that you\'d want. ' +
+              'Here\'s the one each came closest to taking. <em>Close</em>: they\'d come out ahead, ' +
+              'just not by enough, so a small sweetener may do it. <em>Far</em>: it costs them more than he\'s worth to them. ' +
+              'Tweak one to add to your side.</div>';
+    html += '<div class="tr-offer tr-shop-offer' + (close ? ' tr-shop-short' : '') + '">' +
       '<div class="tr-offer-text">' +
-        '<div>' + (i === 0 ? '<span class="tr-tag">best for you</span>' : '') +
+        '<div>' + (i === 0 && !close ? '<span class="tr-tag">best for you</span>' : '') +
+          (close ? '<span class="tr-tag' + (o.near ? '' : ' tr-tag-far') + '">' + (o.near ? 'close' : 'far') + '</span>' : '') +
           'The <strong>' + esc(o.team_name) + '</strong>' +
           (o.gm_name ? ' <span class="tr-gm">(' + esc(o.gm_name) + ')</span>' : '') +
-          ' give</div>' +
+          (close ? ' came closest with' : ' give') + '</div>' +
         o.players.map(shopRow).join('') +
       '</div>' +
       '<div class="tr-offer-btns">' +
         '<button class="btn btn-secondary" title="Compare the players side by side" onclick="trShopCompare(' + i + ')">Compare ↔</button>' +
-        '<button class="btn btn-secondary" title="Open it in the builder to change it" onclick="trShopTweak(' + i + ')">Tweak</button>' +
-        '<button class="btn btn-primary" onclick="trShopTake(' + i + ')">Make this trade</button>' +
+        '<button class="btn ' + (close ? 'btn-primary' : 'btn-secondary') + '" title="Open it in the builder to change it" onclick="trShopTweak(' + i + ')">Tweak</button>' +
+        (close ? '' : '<button class="btn btn-primary" onclick="trShopTake(' + i + ')">Make this trade</button>') +
       '</div>' +
     '</div>';
   });
@@ -596,7 +616,7 @@ window.trShop = function(pid) {
     var ok = res[0], d = res[1];
     btn.disabled = false; btn.textContent = 'Shop him';
     if (!ok) { SHOP = null; el.innerHTML = '<div class="tr-empty">✗ ' + esc(d.detail || 'Something went wrong.') + '</div>'; return; }
-    SHOP = {pid: pid, player: d.player, offers: d.offers, no_interest: d.no_interest, why: d.why || {}, offseason: d.offseason};
+    SHOP = {pid: pid, player: d.player, offers: d.offers, close: d.close || [], no_interest: d.no_interest, why: d.why || {}, offseason: d.offseason};
     renderShop();
   }).catch(function() {
     btn.disabled = false; btn.textContent = 'Shop him';
@@ -625,14 +645,14 @@ window.trShopTake = function(i) {
 
 // What they'd give first, then the player you're shopping.
 window.trShopCompare = function(i) {
-  var o = SHOP && SHOP.offers[i];
+  var o = shopAll()[i];
   if (!o) return;
   compareTrade(o.players.map(function(p) { return p.player_id; }), [SHOP.pid]);
 };
 
 // Open a shop offer in the builder, to change it before sending.
 window.trShopTweak = function(i) {
-  var o = SHOP && SHOP.offers[i];
+  var o = shopAll()[i];
   if (!o) return;
   COUNTER = null;
   document.getElementById('tr-team').value = o.team_id;
@@ -718,6 +738,10 @@ if (done) { showResult(done.msg, done.kind, done.dest); window._tradeResult = nu
 #trades-page .tr-tag { font-family: var(--font-mono); font-size: 10px; color: var(--amber); border: 1px solid var(--amber-dim);
   padding: 0 4px; margin-right: 6px; text-transform: uppercase; }
 #trades-page .tr-shop { margin-bottom: 14px; }
+#trades-page .tr-shop-close-head { margin: 12px 0 6px; font-size: 13px; color: var(--text-dim); }
+#trades-page .tr-shop-short { opacity: 0.85; }
+#trades-page .tr-shop-more { margin: 4px 0 8px; }
+#trades-page .tr-tag.tr-tag-far { color: var(--text-dim); border-color: var(--muted); }
 #trades-page .tr-shop-pick { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
 #trades-page .tr-shop-pick .tr-team { flex: 1; min-width: 0; max-width: 420px; padding: 5px 6px; }
 #trades-page .tr-shop-player { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
