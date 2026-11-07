@@ -52,19 +52,32 @@ window.schedSetSimMode = setSimMode;
 // _simStop lives on window so it survives IIFE re-execution on tab refresh
 if (typeof window._simStop === 'undefined') window._simStop = false;
 
-// "Ignore trades": multi-day runs play through trade
-// offers and the deadline. Offers stay pending (they expire at the deadline
-// as usual); nothing is declined for the GM. Remembered per browser.
-var IGNORE_TRADES_KEY = 'sim-ignore-trades-{{ league_id }}';
-function schedIgnoreTrades() {
-  if (typeof window._ignoreTrades === 'boolean') return window._ignoreTrades;
-  try { return localStorage.getItem(IGNORE_TRADES_KEY) === '1'; } catch (e) { return false; }
+// "Stop for trade offers" and "Stop at the trade deadline": whether
+// multi-day runs stop the day an offer arrives, and after the deadline
+// day's games. Unchecked, they play on: offers stay pending (they expire as
+// usual) and nothing is declined for the GM. Both start checked and are
+// remembered per browser. The old "Ignore trades" box (one key for both)
+// carries over the first time.
+var STOP_OFFERS_KEY = 'sim-stop-offers-{{ league_id }}';
+var STOP_DEADLINE_KEY = 'sim-stop-deadline-{{ league_id }}';
+var OLD_IGNORE_TRADES_KEY = 'sim-ignore-trades-{{ league_id }}';
+function schedTradeStop(key, cache) {
+  if (typeof window[cache] === 'boolean') return window[cache];
+  try {
+    var v = localStorage.getItem(key);
+    if (v === null) v = localStorage.getItem(OLD_IGNORE_TRADES_KEY) === '1' ? '0' : '1';
+    return v === '1';
+  } catch (e) { return true; }
 }
-function schedSetIgnoreTrades(on) {
-  window._ignoreTrades = !!on;
-  try { localStorage.setItem(IGNORE_TRADES_KEY, on ? '1' : '0'); } catch (e) {}
+function schedSetTradeStop(key, cache, on) {
+  window[cache] = !!on;
+  try { localStorage.setItem(key, on ? '1' : '0'); } catch (e) {}
+  schedUpdateStops();
 }
-window.schedIgnoreTrades = schedIgnoreTrades;
+function schedStopOffers() { return schedTradeStop(STOP_OFFERS_KEY, '_stopOffers'); }
+function schedStopDeadline() { return schedTradeStop(STOP_DEADLINE_KEY, '_stopDeadline'); }
+window.schedSetStopOffers = function(on) { schedSetTradeStop(STOP_OFFERS_KEY, '_stopOffers', on); };
+window.schedSetStopDeadline = function(on) { schedSetTradeStop(STOP_DEADLINE_KEY, '_stopDeadline', on); };
 
 // "Sim through the All-Star break": multi-day runs don't stop when the
 // ballot opens, when the All-Stars are named or after the weekend. The
@@ -82,7 +95,6 @@ function schedSetThroughBreak(on) {
 }
 window.schedThroughBreak = schedThroughBreak;
 window.schedSetThroughBreak = schedSetThroughBreak;
-window.schedSetIgnoreTrades = function(on) { schedSetIgnoreTrades(on); schedUpdateStops(); };
 
 // Full Season's note says where it will stop: the first of the season's
 // stops (next_move.sim_stops) that the boxes above don't skip.
@@ -92,7 +104,7 @@ function schedUpdateStops() {
   var note = item && item.querySelector('.nm-note');
   if (!note || !item.dataset.stops) return;
   var skipStars = !!document.getElementById('sched-through-break-box') && schedThroughBreak();
-  var skipDeadline = !!document.getElementById('sched-ignore-trades-box') && schedIgnoreTrades();
+  var skipDeadline = !!document.getElementById('sched-stop-deadline-box') && !schedStopDeadline();
   var stops = [];
   try { stops = JSON.parse(item.dataset.stops); } catch (e) { return; }
   var next = stops.find(function(s) {
@@ -105,8 +117,10 @@ function schedUpdateStops() {
 // The boxes start as this browser left them (and again whenever the
 // next-move button reloads: refreshNextMove calls this).
 function schedSyncBoxes() {
-  var box = document.getElementById('sched-ignore-trades-box');
-  if (box) box.checked = schedIgnoreTrades();
+  var offers = document.getElementById('sched-stop-offers-box');
+  if (offers) offers.checked = schedStopOffers();
+  var dl = document.getElementById('sched-stop-deadline-box');
+  if (dl) dl.checked = schedStopDeadline();
   var brk = document.getElementById('sched-through-break-box');
   if (brk) brk.checked = schedThroughBreak();
   schedUpdateStops();
@@ -117,11 +131,14 @@ schedSyncBoxes();
 async function schedSimRun(count) {
   window._simStop = false;
   setSimMode(count !== 1);
-  // Only multi-day runs ignore trades; a single day stops anyway.
-  var ignoreTrades = count !== 1 && !!document.getElementById('sched-ignore-trades-box') && schedIgnoreTrades();
-  // While it runs, trade offers and votes go in the news bar instead of
-  // popping up: the sim won't stop for them, so the card would only flash.
-  window._simIgnoringTrades = ignoreTrades;
+  // Only multi-day runs skip trade stops; a single day stops anyway.
+  var multi = count !== 1;
+  var skipOffers = multi && !!document.getElementById('sched-stop-offers-box') && !schedStopOffers();
+  var skipDeadline = multi && !!document.getElementById('sched-stop-deadline-box') && !schedStopDeadline();
+  // While it runs past offers, trade offers and votes go in the news bar
+  // instead of popping up: the sim won't stop for them, so the card would
+  // only flash.
+  window._simIgnoringTrades = skipOffers;
   // Multi-day runs can also play straight through the All-Star break.
   var throughBreak = count !== 1 && !!document.getElementById('sched-through-break-box') && schedThroughBreak();
   var weekendPlayed = false;
@@ -170,11 +187,11 @@ async function schedSimRun(count) {
       var hasNews = showInjuryNews(d);
 
       // Every sim stops after the games of trade deadline day
-      // (unless this run ignores trades)
-      var atDeadline = !ignoreTrades && !!d.trade_deadline;
+      // (unless this run plays through it)
+      var atDeadline = !skipDeadline && !!d.trade_deadline;
       if (atDeadline) window._simStop = true;
-      // ...and, if the GM asked for it, the day a trade offer arrives
-      var newOffer = !ignoreTrades && !!d.trade_offer;
+      // ...and the day a trade offer arrives (unless it plays on)
+      var newOffer = !skipOffers && !!d.trade_offer;
       if (newOffer) window._simStop = true;
       // ...and when All-Star voting opens or the All-Stars are announced:
       // off to the All-Stars tab.

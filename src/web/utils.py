@@ -300,7 +300,7 @@ def _shell_ctx(
                     "multiplayer": is_multiplayer(db, league_id),
                     # A league without injuries has no Until Injury button.
                     "injuries_enabled": injuries_allowed(league),
-                    # A league that trades gets the Ignore trades box by the
+                    # A league that trades gets the trade stop boxes by the
                     # sim buttons.
                     "trades_enabled": trades_enabled_for(league),
                 }

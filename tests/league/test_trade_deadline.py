@@ -173,15 +173,11 @@ class TestSimStopsAtTheDeadline:
 
 
 class TestSimStopsForAnOffer:
-    """Single player: with stop_for_trade_offers on, a sim stops the day an
-    offer arrives for the GM."""
+    """Single player: a sim stops the day an offer arrives for the GM (the
+    browser's Stop for trade offers box decides whether a run heeds it)."""
 
-    def _sim(self, db, factory, stop=True, humans=1, expiring=False):
+    def _sim(self, db, factory, humans=1, expiring=False):
         league, season = _season_with_games(db, factory)
-        db.execute(
-            "UPDATE leagues SET stop_for_trade_offers = %s WHERE id = %s",
-            (stop, league.id),
-        )
         teams = db.execute(
             "SELECT DISTINCT home_team_id, away_team_id FROM games WHERE season_id = %s",
             (season.id,),
@@ -234,11 +230,6 @@ class TestSimStopsForAnOffer:
         summary, days = self._sim(db_conn, factory, expiring=True)
         assert days == 1
         assert summary["trade_offer"] is True
-
-    def test_with_the_toggle_off_it_plays_on(self, db_conn, factory):
-        summary, days = self._sim(db_conn, factory, stop=False)
-        assert days == 2
-        assert summary["trade_offer"] is False
 
     def test_multiplayer_sims_never_stop_for_offers(self, db_conn, factory):
         summary, days = self._sim(db_conn, factory, humans=2)
