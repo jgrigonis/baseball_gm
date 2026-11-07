@@ -69,8 +69,9 @@ PLAYOFF_GATE = 0.036
 POPULARITY_FROM = 55
 POPULARITY_SHARE = 0.15
 # Fixed costs (staff, the ballpark, travel): this share of the league's
-# average revenue, the same for every team.
-FIXED_COSTS = 0.20
+# average revenue, the same for every team (Josh, 2026-11-07: up from 20%
+# to trim the average team's profit from about +$50M to about +$25M).
+FIXED_COSTS = 0.26
 
 ROUNDING = 100_000
 
