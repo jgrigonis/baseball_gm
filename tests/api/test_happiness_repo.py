@@ -239,3 +239,18 @@ def test_a_player_happy_again_takes_back_his_trade_request(lg):
     assert _repo(lg).mood(pid, lg.season.id)["content_weeks"] == 0
     feed = NewsRepository(lg.db).feed(lg.league.id)
     assert any("happy to stay" in s["headline"] for s in feed)
+
+
+def test_restless_is_settled_enough_to_take_back_a_request(lg):
+    pid = lg.players[lg.a.id][0].id
+    with (
+        patch.object(hp, "target", return_value=-1.0),
+        patch.object(hp, "asks_for_trade", side_effect=lambda m, w, t, r: True),
+    ):
+        _repo(lg).update(lg.season.id, date(2025, 4, 11))
+    # Restless, even with the ignored-request penalty on top.
+    with patch.object(hp, "target", return_value=-0.2):
+        for week in range(1, 12):
+            _repo(lg).update(lg.season.id, date(2025, 4, 11) + timedelta(weeks=week))
+    assert hp.mood_word(_repo(lg).mood(pid, lg.season.id)["mood"]) == "restless"
+    assert pid not in _repo(lg).trade_requests([pid])

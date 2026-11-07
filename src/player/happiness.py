@@ -735,15 +735,16 @@ def asks_for_trade(
     return roll < chance
 
 
-# A player who's been content or better this many weekly updates in a row
-# takes his trade request back (Josh, 2026-11-07); a loyal one a week sooner.
-CONTENT = -0.15  # "content" and better
+# A player who's been restless or better (no longer unhappy) this many
+# weekly updates in a row takes his trade request back (Josh, 2026-11-07);
+# a loyal one a week sooner.
+SETTLED = UNHAPPY  # "restless" and better
 WITHDRAW_WEEKS = 4
 LOYAL_WITHDRAW = 70
 
 
 def withdraws_request(content_weeks: int, traits: dict[str, int]) -> bool:
-    """Whether a player with an open trade request has been happy long
+    """Whether a player with an open trade request has been settled long
     enough to take it back."""
     needed = WITHDRAW_WEEKS - (1 if traits["loyalty"] >= LOYAL_WITHDRAW else 0)
     return content_weeks >= needed
