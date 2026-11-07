@@ -253,9 +253,9 @@ class HappinessRepository:
                     goal = max(-1.0, goal - hp.IGNORED_PENALTY)  # still waiting
                 mood = hp.step(now["mood"], goal, person.traits["temper"])
             weeks = weeks + 1 if mood < hp.UNHAPPY else 0
-            # Happy again for long enough with a request open: he takes it
-            # back.
-            content = content + 1 if request and mood >= hp.CONTENT else 0
+            # No longer unhappy for long enough with a request open: he
+            # takes it back.
+            content = content + 1 if request and mood >= hp.SETTLED else 0
             if request and hp.withdraws_request(content, person.traits):
                 request = None
                 content = 0
