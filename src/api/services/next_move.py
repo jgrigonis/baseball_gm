@@ -37,9 +37,9 @@ def _item(label, fn, arg="", btn_id=None, note=""):
 
 
 # Where a multi-day sim stops (_play_script.html), and the Full Season note
-# for each. The All-Star stops go by with "Sim through the All-Star break"
-# checked, the deadline with "Stop at the trade deadline" unchecked; the browser picks the first
-# stop left (schedUpdateStops).
+# for each. The All-Star stops go by with "Stop for All-Star breaks"
+# unchecked, the deadline with "Stop at the trade deadline" unchecked; the
+# browser picks the first stop left (schedUpdateStops).
 STOP_NOTES = {
     "vote": "to the All-Star vote",
     "stars": "to the All-Star break",
@@ -216,7 +216,8 @@ def pick(
         move["stop"] = True
         # Leagues that trade: boxes for stopping at offers and the deadline.
         move["trade_stops"] = bool(ctx.get("trades_enabled"))
-        # Multi-day sims can play straight through the All-Star break.
+        # Multi-day sims can play straight through the All-Star break
+        # (Stop for All-Star breaks unchecked).
         move["through_break"] = any(s["kind"] in ALL_STAR_STOPS for s in stops)
         move["pill"] = _pill(ctx, page)
         return move

@@ -79,10 +79,11 @@ function schedStopDeadline() { return schedTradeStop(STOP_DEADLINE_KEY, '_stopDe
 window.schedSetStopOffers = function(on) { schedSetTradeStop(STOP_OFFERS_KEY, '_stopOffers', on); };
 window.schedSetStopDeadline = function(on) { schedSetTradeStop(STOP_DEADLINE_KEY, '_stopDeadline', on); };
 
-// "Sim through the All-Star break": multi-day runs don't stop when the
+// "Stop for All-Star breaks" unchecked: multi-day runs don't stop when the
 // ballot opens, when the All-Stars are named or after the weekend. The
 // scouts cast an unsaved ballot and make a captain's picks, and the weekend
-// is played on the way. Remembered per browser.
+// is played on the way. Remembered per browser (stored as "through the
+// break", the box's opposite, as it was before the box was flipped).
 var THROUGH_BREAK_KEY = 'sim-through-break-{{ league_id }}';
 function schedThroughBreak() {
   if (typeof window._throughBreak === 'boolean') return window._throughBreak;
@@ -103,7 +104,7 @@ function schedUpdateStops() {
   var item = document.getElementById('sched-season-btn');
   var note = item && item.querySelector('.nm-note');
   if (!note || !item.dataset.stops) return;
-  var skipStars = !!document.getElementById('sched-through-break-box') && schedThroughBreak();
+  var skipStars = !!document.getElementById('sched-stop-allstar-box') && schedThroughBreak();
   var skipDeadline = !!document.getElementById('sched-stop-deadline-box') && !schedStopDeadline();
   var stops = [];
   try { stops = JSON.parse(item.dataset.stops); } catch (e) { return; }
@@ -121,8 +122,8 @@ function schedSyncBoxes() {
   if (offers) offers.checked = schedStopOffers();
   var dl = document.getElementById('sched-stop-deadline-box');
   if (dl) dl.checked = schedStopDeadline();
-  var brk = document.getElementById('sched-through-break-box');
-  if (brk) brk.checked = schedThroughBreak();
+  var brk = document.getElementById('sched-stop-allstar-box');
+  if (brk) brk.checked = !schedThroughBreak();
   schedUpdateStops();
 }
 window.schedSyncBoxes = schedSyncBoxes;
@@ -140,7 +141,7 @@ async function schedSimRun(count) {
   // only flash.
   window._simIgnoringTrades = skipOffers;
   // Multi-day runs can also play straight through the All-Star break.
-  var throughBreak = count !== 1 && !!document.getElementById('sched-through-break-box') && schedThroughBreak();
+  var throughBreak = count !== 1 && !!document.getElementById('sched-stop-allstar-box') && schedThroughBreak();
   var weekendPlayed = false;
 
   var totalGames = 0;

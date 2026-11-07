@@ -40,12 +40,12 @@
                 {% if it.stops %}data-stops="{{ it.stops|tojson|forceescape }}"{% endif %}>{{ it.label }}{% if it.note %} <small class="nm-note">{{ it.note }}</small>{% endif %}</button>
         {% endfor %}
         {% if nm.through_break %}
-        {# Multi-day sims don't stop for the All-Star vote, the All-Stars or
-           the weekend: the scouts vote and make a captain's picks. #}
-        <label id="sched-through-break" class="nm-item nm-check"
-               title="Multi-day sims play straight through the All-Star break. Your scouts fill in your ballot and make any captain&#39;s picks, and the weekend is played on the way.">
-          <input type="checkbox" id="sched-through-break-box" onchange="schedSetThroughBreak(this.checked)">
-          Sim through the All-Star break <small>scouts vote and pick</small>
+        {# Multi-day sims stop for the All-Star vote, the All-Stars and the
+           weekend. Unchecked, the scouts vote and make a captain's picks. #}
+        <label id="sched-stop-allstar" class="nm-item nm-check"
+               title="Multi-day sims stop when All-Star voting opens, when the All-Stars are named and after the weekend. Unchecked, they play straight through: your scouts fill in your ballot and make any captain&#39;s picks.">
+          <input type="checkbox" id="sched-stop-allstar-box" onchange="schedSetThroughBreak(!this.checked)">
+          Stop for All-Star breaks
         </label>
         {% endif %}
         {% if nm.trade_stops %}
