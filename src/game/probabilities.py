@@ -187,7 +187,7 @@ SURGERY_INJURY_PROB = 2
 
 # Injury probability multipliers by activity
 INJURY_ACTIVITY_WEIGHT = {
-    "pitching": 7.55,  # raised from 6.8 to keep pitcher injury rate unchanged when INJURY_BASE_PROB was lowered
+    "pitching": 7.25,  # 6.8 -> 7.55 when INJURY_BASE_PROB was lowered; 7.25 once pitcher fatigue raised the odds (~+5%)
     "batting": 0.6,
     "running": 1.2,
     "fielding": 1.0,  # baseline, modified by position below
