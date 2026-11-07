@@ -3,8 +3,10 @@
    Takes `info` (src/api/view_models/league_info.py). Shared by the lobby, the
    top bar's season pill and the League page. Once the league has started it
    also shows who runs the teams and how many seasons are done.
-   Pace and the three windows only matter once a second person has joined, so
-   their values are greyed out (.setting-off) while there's one human GM. The
+   Pace, the three windows and Days per sim period only matter once a second
+   person has joined (a lone GM sims at their own pace; the period length then
+   only sets waiver length), so their values are greyed out (.setting-off)
+   while there's one human GM. The
    windows also stay greyed under Confirmed pace, which has no clock. Rows
    marked data-needs-humans are the ones the lobby un-greys live when someone
    joins (see lobby.html). #}
@@ -15,7 +17,7 @@
 {# Rows whose value is greyed out: always (Confirmed pace's windows), or
    while the league has one human GM. #}
 {% set always_off = ["Decision window", "Draft window", "Lineup window"] if info.pace_control != "timer" else [] %}
-{% set needs_humans = ["Pace", "Decision window", "Draft window", "Lineup window"] %}
+{% set needs_humans = ["Pace", "Decision window", "Draft window", "Lineup window", "Days per sim period"] %}
 {% set settings = [
   ("Mode", info.mode.label,
    info.mode.description),
@@ -41,15 +43,16 @@
    "How long GMs get to set their draft before it runs. It runs early once every GM clicks Ready." ~ timer_note ~ solo_note),
   ("Lineup window", info.lineup_window_sec ~ "s",
    "How long GMs get after the draft to set their first lineup before the season starts." ~ timer_note ~ solo_note),
-  ("Re-entry", "Enabled" if info.reentry_enabled else "Disabled",
-   "Whether a fired GM can be handed another open team instead of sitting out. GM firing isn't in the game yet, so this has no effect for now."),
   ("Days per sim period", info.sim_period_days,
-   "How many days of the regular season each sim period plays before GMs get their next decision window."),
+   "How many days of the regular season each sim period plays before GMs get their next decision window." ~
+   (" With one human GM there are no sim periods: the GM sims at their own pace. All it sets then is how long a released player sits on waivers, two periods of game days." if solo else "")),
   ("Seasons", (info.season_number ~ " of " ~ (info.num_seasons or "∞")) if started and info.season_number
    else (info.num_seasons or "Unlimited"),
    "Unlimited: the league keeps going, season after season, with no last one." if not info.num_seasons
    else "Which season the league is in, out of how many it runs before it ends." if started and info.season_number
    else "How many seasons the league runs before it ends."),
+  ("Re-entry", "Enabled" if info.reentry_enabled else "Disabled",
+   "Whether a fired GM can be handed another open team instead of sitting out. GM firing isn't in the game yet, so this has no effect for now."),
 ] %}
 {% set settings = settings + [
   ("Injuries", "On" if info.injuries_enabled else "Off",
