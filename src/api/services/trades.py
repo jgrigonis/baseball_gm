@@ -139,6 +139,11 @@ def _propose(
             or parent["to_team_id"] != my_team_id
             or parent["from_team_id"] != to_team_id
         ):
+            if parent and parent["status"] == "countered":
+                raise TradeError(
+                    "You already countered that offer, and you can only counter "
+                    "an offer once. Propose a new trade instead."
+                )
             raise TradeError("That offer can't be countered any more.")
 
     give_ids, get_ids = _dedupe(give_ids), _dedupe(get_ids)

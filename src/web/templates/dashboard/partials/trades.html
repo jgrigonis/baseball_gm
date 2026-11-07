@@ -69,9 +69,9 @@
         </div>
         <div class="tr-offer-btns">
           {{ compare_btn(o.sent, o.received) }}
-          <button class="btn btn-primary" onclick="trAnswer('{{ o.id }}', 'accept')">Accept</button>
-          <button class="btn btn-secondary" onclick='trCounter({{ {"id": o.id, "team": o.from_team_id, "theirs": o.sent | map(attribute="player_id") | list, "mine": o.received | map(attribute="player_id") | list} | tojson }})'>Counter</button>
-          <button class="btn btn-secondary" onclick="trAnswer('{{ o.id }}', 'reject')">Reject</button>
+          <button class="btn btn-primary" data-offer-act="accept" onclick="trAnswer('{{ o.id }}', 'accept')">Accept</button>
+          <button class="btn btn-secondary" data-offer-act="counter" onclick='trCounter({{ {"id": o.id, "team": o.from_team_id, "theirs": o.sent | map(attribute="player_id") | list, "mine": o.received | map(attribute="player_id") | list} | tojson }})'>Counter</button>
+          <button class="btn btn-secondary" data-offer-act="reject" onclick="trAnswer('{{ o.id }}', 'reject')">Reject</button>
         </div>
       </div>
       {% endfor %}
@@ -433,6 +433,25 @@ window.trCounter = function(o) {
              'Their offer is replaced by yours.', 'warn');
   document.getElementById('tr-bar').scrollIntoView({behavior: 'smooth', block: 'center'});
 };
+// A counter to an AI team was turned down: the offer it answered can't be
+// countered (or accepted) again, so grey out its buttons with the reason.
+function markCountered(offerId) {
+  var row = document.getElementById('offer-' + offerId);
+  if (!row) return;
+  row.querySelectorAll('[data-offer-act]').forEach(function(b) {
+    b.disabled = true;
+    b.title = b.dataset.offerAct === 'counter'
+      ? 'You can only counter an offer once'
+      : 'Your counter replaced this offer';
+  });
+  var text = row.querySelector('.tr-offer-text');
+  if (text && !row.querySelector('.tr-countered')) {
+    var note = document.createElement('div');
+    note.className = 'tr-reason tr-countered';
+    note.textContent = 'You countered and they said no. This offer is off the table.';
+    text.appendChild(note);
+  }
+}
 window.trCancelCounter = function() {
   COUNTER = null;
   document.getElementById('tr-result').style.display = 'none';
@@ -532,7 +551,17 @@ window.trSend = function() {
                           'of the next sim period to answer. You\'ll hear back in the news bar.');
       }
       if (!d.accepted) {
-        showResult('✗ The ' + esc(teamName) + ' said no: “' + esc(d.reason) + '”', 'warn');
+        var countered = COUNTER;
+        var after = '';
+        if (countered) {
+          // Their offer was replaced by the counter, so it's gone now: one
+          // counter per offer (src/api/services/trades.py, _propose). What's
+          // in the builder can still go as a new offer.
+          COUNTER = null;
+          markCountered(countered);
+          after = '<br>Their first offer is off the table now. You can still send this as a new offer.';
+        }
+        showResult('✗ The ' + esc(teamName) + ' said no: “' + esc(d.reason) + '”' + after, 'warn');
         summarize();
         return;
       }

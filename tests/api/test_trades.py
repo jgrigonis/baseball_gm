@@ -371,6 +371,17 @@ def test_a_counter_replaces_the_offer(gms):
     assert repo.get(offer_id)["status"] == "countered"
     assert repo.get(counter["offer_id"])["parent_id"] == offer_id
     assert [n["event"] for n in _news(lg, lg.gm)] == ["counter"]
+    # One counter per offer: the first one replaced it.
+    with pytest.raises(TradeError, match="already countered"):
+        trades.propose(
+            lg.db,
+            lg.league.id,
+            lg.other,
+            lg.mine.id,
+            [b.id],
+            [a.id],
+            counter_of=offer_id,
+        )
     # Now it's mine to answer.
     result = trades.respond(lg.db, lg.league.id, lg.gm, counter["offer_id"], "accept")
     assert result["status"] == "accepted"
