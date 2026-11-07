@@ -13,6 +13,7 @@ from src.api.view_models.playoffs import playoffs_context
 from src.api.view_models.standings import standings_rows
 from src.db.repositories.all_star_repo import AllStarRepository
 from src.db.repositories.draft_repo import DraftRepository
+from src.db.repositories.hr_derby_repo import HRDerbyRepository
 from src.db.repositories.injury_repo import INJURY_TIERS, InjuryRepository
 from src.db.repositories.player_games import PlayerGameRepository
 from src.db.repositories.player_repo import PlayerRepository
@@ -105,6 +106,7 @@ def season_summary_context(
         "all_stars": [],
         "all_star_mine": 0,
         "all_star_games": [],
+        "derby_champion": None,
         "my_leaders": [],
         "my_highlights": [],
         "hof_class": [],
@@ -236,7 +238,9 @@ def season_summary_context(
 
 def my_highlights(ctx: dict) -> list[dict]:
     """The GM's team's standout season in short chips: each award its
-    players (or its GM) won, then each no-hitter its pitchers threw."""
+    players (or its GM) won, its All-Stars and the break's honors, each
+    no-hitter its pitchers threw, and anyone elected to the Hall of Fame in
+    its cap."""
     out = []
     for a in ctx["awards"]:
         for w in a["winners"]:
@@ -263,6 +267,18 @@ def my_highlights(ctx: dict) -> list[dict]:
                             "title": w["line"],
                         }
                     )
+    for row in ctx["all_stars"]:
+        for p in row["players"]:
+            if p["is_mine"]:
+                out.append(
+                    {
+                        "icon": "★",
+                        "what": "All-Star",
+                        "name": p["name"],
+                        "player_id": p["player_id"],
+                        "title": f"{ctx['season_year']} All-Star, {row['position']}",
+                    }
+                )
     for g in ctx["all_star_games"]:
         if g["mvp"] and g["mvp"]["is_mine"]:
             out.append(
@@ -274,6 +290,17 @@ def my_highlights(ctx: dict) -> list[dict]:
                     "title": g["mvp"]["line"],
                 }
             )
+    derby = ctx["derby_champion"]
+    if derby and derby["is_mine"]:
+        out.append(
+            {
+                "icon": "💥",
+                "what": "HR Derby champ",
+                "name": derby["name"],
+                "player_id": derby["player_id"],
+                "title": derby["line"],
+            }
+        )
     for nh in ctx["no_hitters"]:
         if nh["is_mine"]:
             out.append(
@@ -283,6 +310,17 @@ def my_highlights(ctx: dict) -> list[dict]:
                     "name": nh["name"],
                     "player_id": nh["player_id"],
                     "title": f"vs {nh['opponent']}, {nh['game_date']}",
+                }
+            )
+    for r in ctx["hof_class"]:
+        if r["is_mine"]:
+            out.append(
+                {
+                    "icon": "🏛️",
+                    "what": "Hall of Fame",
+                    "name": r["name"],
+                    "player_id": r["player_id"],
+                    "title": f"Elected with {r['pct']} · {r['line']}",
                 }
             )
     return out
@@ -329,6 +367,29 @@ def all_star_summary(db, season_id: str, my_team_id: str | None) -> dict:
         "all_stars": rows,
         "all_star_mine": sum(1 for r in stars if r["team_id"] == my_team_id),
         "all_star_games": games,
+        "derby_champion": _derby_champion(db, season_id, my_team_id),
+    }
+
+
+def _derby_champion(db, season_id: str, my_team_id: str | None) -> dict | None:
+    """Who won the Home Run Derby, with his home runs over the derby and his
+    longest, or None if it wasn't held."""
+    results = HRDerbyRepository(db).results(season_id)
+    if not results:
+        return None
+    last = max(r["round"] for r in results)
+    champ = next((r for r in results if r["round"] == last and r["won"]), None)
+    if not champ:
+        return None
+    mine = [r for r in results if r["player_id"] == champ["player_id"]]
+    homers = sum(r["homers"] + (r["swingoff"] or 0) for r in mine)
+    longest = max(r["longest"] for r in mine)
+    return {
+        "player_id": champ["player_id"],
+        "name": champ["name"],
+        "team": f"{champ['city']} {champ['mascot']}" if champ["city"] else "",
+        "line": f"{homers} HR, longest {longest} ft",
+        "is_mine": bool(my_team_id and champ["team_id"] == my_team_id),
     }
 
 
