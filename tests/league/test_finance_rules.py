@@ -61,4 +61,24 @@ def test_fans_follow_winning():
 def test_profit_takes_off_payroll_tax_and_costs():
     assert fn.profit(250 * M, 160 * M, 5 * M, 50 * M) == 35 * M
     assert fn.playoff_gate(250 * M, 0) == 0
-    assert fn.playoff_gate(250 * M, 4) == 12 * M
+    assert fn.playoff_gate(250 * M, 4) == 36 * M
+
+
+def test_only_keen_fans_bring_in_popularity_money():
+    assert fn.popularity_money(250 * M, 40) == 0
+    assert fn.popularity_money(250 * M, fn.POPULARITY_FROM) == 0
+    # Half way from 55 to 100: half of 15% of average revenue.
+    assert fn.popularity_money(250 * M, 77.5) == 18_800_000
+    assert fn.popularity_money(250 * M, 100) == 37_500_000
+
+
+def test_the_books_count_popularity_money_in():
+    kw = dict(
+        revenue=200 * M, market=3, fans=80, playoff_gate=0, home_playoff_games=0,
+        gate_per_game=7 * M, tax_share=0, payroll=150 * M, front_office=20 * M,
+        luxury_tax=0, costs=10 * M,
+    )  # fmt: skip
+    plain = fn.books(**kw)
+    popular = fn.books(**kw, popularity=20 * M)
+    assert popular["total_in"] == plain["total_in"] + 20 * M
+    assert popular["profit"] == plain["profit"] + 20 * M

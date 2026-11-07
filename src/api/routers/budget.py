@@ -71,6 +71,15 @@ def _books_view(b: dict) -> dict:
             ),
         },
         {
+            "label": "Popularity",
+            "amount": _money(b["popularity"]) if b["popularity"] else None,
+            "note": (
+                f"Fan interest {b['fans']}: keen fans bring in extra money"
+                if b["popularity"]
+                else f"Earned once fan interest is over {b['popularity_from']}"
+            ),
+        },
+        {
             "label": "Luxury tax share",
             "amount": _money(b["tax_share"]) if b["tax_share"] else None,
             "note": (

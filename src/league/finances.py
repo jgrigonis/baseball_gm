@@ -10,7 +10,7 @@ A light money model, just enough for owners to set budgets and judge profit:
   playoffs, a title and the team's All-Stars.
 - **Revenue** per season: a league-wide base, times the team's market size
   (the team pool's 1 to 5), times how interested its fans are, plus a gate
-  for every home playoff game.
+  for every home playoff game and popularity money when fans are keen.
 - **Budget**: what the owner will spend on payroll and the front office
   (src/league/budget.py DEPARTMENTS). The league sets one payroll cap for every team
   (src/league/budget.py: the average payroll, then last season's average
@@ -59,11 +59,19 @@ FAN_MULT_SPAN = 0.40
 # Share of revenue an owner spends on payroll: Spending 0 to 100.
 SHARE_LOW = 0.45
 SHARE_SPAN = 0.30
-# Each home playoff game earns this share of the league's average revenue.
-PLAYOFF_GATE = 0.012
+# Each home playoff game earns this share of the league's average revenue
+# (Josh, 2026-11-07: tripled from 1.2%, so October pays).
+PLAYOFF_GATE = 0.036
+# Popularity money (Josh, 2026-11-07): fan interest above POPULARITY_FROM
+# earns extra revenue, rising evenly to POPULARITY_SHARE of the league's
+# average revenue at 100, so a popular team can carry a tax bill. It goes by
+# fan interest coming into the season. Under POPULARITY_FROM earns nothing.
+POPULARITY_FROM = 55
+POPULARITY_SHARE = 0.15
 # Fixed costs (staff, the ballpark, travel): this share of the league's
-# average revenue, the same for every team.
-FIXED_COSTS = 0.20
+# average revenue, the same for every team (Josh, 2026-11-07: up from 20%
+# to trim the average team's profit from about +$50M to about +$25M).
+FIXED_COSTS = 0.26
 
 ROUNDING = 100_000
 
@@ -194,6 +202,12 @@ def plan(cap: int, teams: dict[str, TeamMoney]) -> dict[str, Plan]:
     }
 
 
+def popularity_money(average_revenue: float, fans: float) -> int:
+    """What a team's popularity earns in a season."""
+    over = max(0.0, min(100.0, fans) - POPULARITY_FROM) / (100 - POPULARITY_FROM)
+    return _round(average_revenue * POPULARITY_SHARE * over)
+
+
 def playoff_gate(average_revenue: int, home_games: int) -> int:
     return _round(average_revenue * PLAYOFF_GATE * home_games)
 
@@ -232,6 +246,7 @@ def books(
     minor_league: int = 0,
     farm_help: int = 0,
     ticket_price=None,
+    popularity: int = 0,
     profit: int | None = None,
 ) -> dict:
     """A team's season as money in and money out, for the Budget tab.
@@ -247,7 +262,7 @@ def books(
     mm, fm = market_mult(market), fan_mult(fans)
     level = ticket_level(ticket_price)
     tickets = ticket_revenue(revenue, level) - revenue
-    total_in = revenue + tickets + playoff_gate + tax_share + farm_help
+    total_in = revenue + tickets + playoff_gate + popularity + tax_share + farm_help
     known_out = payroll + front_office + minor_league + luxury_tax + costs
     projected = profit is None
     if projected:
@@ -266,6 +281,8 @@ def books(
         "ticket_pct": round((ticket_mult(level) - 1) * 100, 1),
         "tickets": tickets,
         "playoff_gate": playoff_gate,
+        "popularity": popularity,
+        "popularity_from": POPULARITY_FROM,
         "home_playoff_games": home_playoff_games,
         "gate_per_game": gate_per_game,
         "tax_share": tax_share,

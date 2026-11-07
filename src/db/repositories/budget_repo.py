@@ -550,11 +550,13 @@ class BudgetRepository:
             )
             gate = fn.playoff_gate(average, r.get("home_playoff_games", 0))
             tickets = fn.ticket_revenue(revenue[team_id], rows[team_id]["ticket_price"])
-            total = tickets + gate
+            popular = fn.popularity_money(average, before)
+            total = tickets + gate + popular
             self.conn.execute(
                 """UPDATE team_budgets
                    SET luxury_tax = %s, revenue = %s, fans_before = %s,
-                       fans_after = %s, playoff_revenue = %s, payroll = %s,
+                       fans_after = %s, playoff_revenue = %s,
+                       popularity_revenue = %s, payroll = %s,
                        tax_share = %s, front_office = %s, minor_league = %s,
                        profit = %s
                    WHERE league_id = %s AND team_id = %s AND year = %s""",
@@ -564,6 +566,7 @@ class BudgetRepository:
                     int(round(before)),
                     fans,
                     gate,
+                    popular,
                     payroll,
                     share,
                     office,
@@ -614,7 +617,7 @@ class BudgetRepository:
         rows = self.conn.execute(
             """SELECT team_id, year, cap, revenue, playoff_revenue, payroll,
                       luxury_tax, tax_share, front_office, minor_league, profit,
-                      fans_before, ticket_price
+                      fans_before, ticket_price, popularity_revenue
                FROM team_budgets WHERE league_id = %s AND year <= %s""",
             (league_id, year),
         ).fetchall()
@@ -643,6 +646,7 @@ class BudgetRepository:
                 line = dict(
                     playoff_gate=gate,
                     home_playoff_games=round(gate / per_game) if per_game else 0,
+                    popularity=int(mine["popularity_revenue"] or 0),
                     tax_share=int(mine["tax_share"] or 0),
                     payroll=int(mine["payroll"] or 0),
                     front_office=int(mine["front_office"] or 0),
@@ -673,6 +677,7 @@ class BudgetRepository:
                     farm_help=bg.average_farm(farms.values()),
                     playoff_gate=fn.playoff_gate(average, games),
                     home_playoff_games=games,
+                    popularity=fn.popularity_money(average, fans),
                     tax_share=bg.tax_shares(payrolls, cap).get(team_id, 0),
                     payroll=payrolls[team_id],
                     front_office=self.front_office(league_id, team_id, y),
