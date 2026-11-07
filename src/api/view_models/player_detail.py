@@ -67,14 +67,16 @@ def _contract(db, league_id: str, pid: str) -> dict | None:
 
 def _asking(db, league_id: str, pid: str) -> dict | None:
     """A free agent's asking price (services/free_agents.py)."""
-    from src.api.services.free_agents import asking_deal, price_scale
+    from src.api.services.free_agents import asking_deal, market_discount, price_scale
     from src.player.contracts import format_salary
 
     year = ContractRepository(db).current_year(league_id)
     record = PlayerRepository(db).look_up(pid)
     if year is None or record is None:
         return None
-    deal = asking_deal(record, year, price_scale(db, league_id, year))
+    deal = asking_deal(
+        record, year, price_scale(db, league_id, year), market_discount(db, league_id)
+    )
     return {"salary_text": format_salary(deal.salary), "years": deal.years}
 
 

@@ -140,7 +140,7 @@ def test_ai_teams_let_fringe_players_go_rather_than_pay_them(lg):
     for pid in ids:
         r = rows[pid]
         minimum = ct.round_salary(ct.MIN_SALARY * r["scale"], r["scale"])
-        priced_out = offseason_fa._is_fringe(r["player"]) and r["deal"].salary > minimum
+        priced_out = free_agents.is_fringe(r["player"]) and r["deal"].salary > minimum
         let_go += priced_out
         kept = lg.contracts.active(pid, 2027) is not None
         assert kept != priced_out

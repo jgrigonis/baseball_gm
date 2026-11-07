@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from src.api.database import get_db
 from src.api.dependencies import get_current_gm, get_current_user, get_gm_or_viewer
 from src.api.main import app
+from src.player import contracts as ct
 from src.api.services import free_agents, waivers
 from src.api.services.free_agents import FreeAgentError
 from src.db.repositories.contract_repo import ContractRepository
@@ -187,7 +188,8 @@ def test_signing_a_free_agent_at_his_asking_price(lg):
     result = free_agents.sign(lg.db, lg.league.id, lg.mine.id, pid)
 
     record = PlayerRepository(lg.db).look_up(pid)
-    ask = free_agents.asking_deal(record, 2026)
+    discount = free_agents.market_discount(lg.db, lg.league.id)
+    ask = free_agents.asking_deal(record, 2026, 1.0, discount)
     deal = lg.contracts.active(pid, 2026)
     assert (deal["salary"], deal["years"], deal["start_year"]) == (
         ask.salary,
@@ -219,12 +221,52 @@ def test_a_full_minors_has_to_release_first(lg, monkeypatch):
         free_agents.sign(lg.db, lg.league.id, lg.mine.id, pid)
 
 
-def test_the_asking_price_holds_all_season(lg):
+def test_the_asking_price_holds_within_a_step(lg):
     pid = lg.factory.rated_player(lg.mine, lg.league, level=60).id
     record = PlayerRepository(lg.db).look_up(pid)
     assert free_agents.asking_deal(record, 2026) == free_agents.asking_deal(
         record, 2026
     )
+
+
+def test_unsigned_free_agents_get_cheaper_down_to_half():
+    d = free_agents.discount_for
+    assert d("offseason", 0) == d("draft", 0) == 1.0
+    assert d("preseason", 0) == pytest.approx(0.9)
+    assert d("season", 0) == pytest.approx(0.9)
+    assert d("season", 6) == pytest.approx(0.9)
+    assert d("season", 7) == pytest.approx(0.8)
+    assert d("season", 90) == free_agents.MARKET_FLOOR == 0.5
+
+
+def test_a_discounted_ask_and_a_fringe_ask(lg):
+    good = PlayerRepository(lg.db).look_up(
+        lg.factory.rated_player(lg.mine, lg.league, level=70).id
+    )
+    full = free_agents.asking_deal(good, 2026)
+    half = free_agents.asking_deal(good, 2026, 1.0, 0.5)
+    assert half.years == full.years
+    assert half.salary == pytest.approx(full.salary / 2, rel=0.01)
+    fringe = PlayerRepository(lg.db).look_up(
+        lg.factory.rated_player(lg.mine, lg.league, level=35).id
+    )
+    assert free_agents.is_fringe(fringe)
+    assert free_agents.asking_deal(fringe, 2026) == ct.Deal(
+        ct.MIN_SALARY, 1, "standard"
+    )
+
+
+def test_the_discount_follows_days_played(lg):
+    assert free_agents.market_discount(lg.db, lg.league.id) == pytest.approx(0.9)
+    for day in ("2026-04-02", "2026-04-16"):
+        lg.db.execute(
+            """INSERT INTO games (id, game_date, season_id, home_team_id,
+                                  away_team_id, completed)
+               VALUES (%s, %s, %s, %s, %s, 1)""",
+            (lg.factory._id(), day, lg.season.id, lg.mine.id, lg.theirs.id),
+        )
+    # Two weeks in: two more steps off.
+    assert free_agents.market_discount(lg.db, lg.league.id) == pytest.approx(0.7)
 
 
 # ── The tab ───────────────────────────────────────────────────────────────────
