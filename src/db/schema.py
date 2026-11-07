@@ -1498,6 +1498,7 @@ CREATE TABLE IF NOT EXISTS player_moods (
     unhappy_weeks   INTEGER NOT NULL DEFAULT 0, -- weekly updates in a row unhappy or worse (migration 067)
     trade_request_on TEXT,         -- league date he asked to be traded, while still on team_id
     refusing_until  TEXT,          -- league date he plays again after benching himself
+    content_weeks   INTEGER NOT NULL DEFAULT 0, -- weekly updates in a row content or better with a request open (migration 091)
     PRIMARY KEY (player_id, season_id)
 );
 
