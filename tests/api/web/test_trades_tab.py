@@ -186,3 +186,28 @@ def test_the_trades_tab_is_there_during_the_draft(client_for, db_conn):
     )
     html = client.get(f"/leagues/{league.id}/roster").text
     assert f'href="/leagues/{league.id}/trades"' in html
+
+
+def test_you_give_can_filter_to_players_who_want_a_trade(client_for, db_conn):
+    client, league, _, roster = client_for("blitz", players=2)
+    unhappy = roster[0]
+    season_id = db_conn.execute(
+        "SELECT season_id FROM league_season_teams WHERE league_id = %s LIMIT 1",
+        (league.id,),
+    ).fetchone()["season_id"]
+    team_id = db_conn.execute(
+        "SELECT team_id FROM team_players WHERE player_id = %s", (unhappy.id,)
+    ).fetchone()["team_id"]
+    db_conn.execute(
+        """INSERT INTO player_moods (player_id, season_id, league_id, team_id,
+                                     mood, target, detail, updated_on,
+                                     trade_request_on)
+           VALUES (%s, %s, %s, %s, -0.8, -0.8, '{}', '2025-04-01',
+                   '2025-04-01')""",
+        (unhappy.id, season_id, league.id, team_id),
+    )
+    html = client.get(f"/leagues/{league.id}/trades").text
+    assert "trTradeFilter()" in html
+    assert f'"player_id": "{unhappy.id}"' in html
+    wants = html.split(f'"player_id": "{unhappy.id}"', 1)[1].split("}", 1)[0]
+    assert '"wants_trade": true' in wants
