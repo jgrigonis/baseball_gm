@@ -210,3 +210,46 @@ def test_when_no_deal_works_the_closest_package_comes_back_short():
     ).accept
     # ...and it's no offer to take.
     assert shop_offer(buyer, seller, veteran, 60) is None
+
+
+# ── Dumping salary (dump_offer_or_why) ──────────────────────────────────────
+from src.league.trades.ai_proposer import DumpOffer, dump_offer_or_why  # noqa: E402
+
+
+def test_a_team_takes_a_useful_player_alone_for_a_throw_in():
+    regular = _priced(64, 12_000_000, age=29)
+    seller = _side("rebuilding", [regular], margin=0.0)
+    filler = _priced(40, 0, age=24)
+    buyer = _side("contending", [filler])
+    offer = dump_offer_or_why(buyer, seller, regular, days_left=60)
+    assert isinstance(offer, DumpOffer)
+    assert offer.add == []
+    assert offer.give == [filler]
+    assert offer.saved == 12_000_000
+
+
+def test_a_player_who_wouldnt_help_them_needs_a_sweetener():
+    scrub = _priced(50, 8_000_000)
+    prospect = _p(66, age=22)
+    seller = _side("rebuilding", [scrub, prospect], margin=0.0)
+    buyer = _side("contending", [_priced(40, 0)])
+    offer = dump_offer_or_why(buyer, seller, scrub, days_left=60)
+    assert isinstance(offer, DumpOffer)
+    assert len(offer.add) == 1 and offer.add[0] is not scrub
+    assert offer.saved >= 8_000_000
+
+
+def test_no_dump_past_the_owners_budget():
+    regular = _priced(64, 12_000_000, age=29)
+    seller = _side("rebuilding", [regular], margin=0.0)
+    buyer = _side("contending", [_priced(40, 0)])
+    buyer.pay_room = 1_000_000
+    assert dump_offer_or_why(buyer, seller, regular, 60) == NO_ROOM
+
+
+def test_no_dump_with_nothing_to_add():
+    scrub = _priced(45, 8_000_000)
+    seller = _side("rebuilding", [scrub], margin=0.0)
+    seller.tradeable = {scrub.id}
+    buyer = _side("contending", [_priced(40, 0)])
+    assert dump_offer_or_why(buyer, seller, scrub, 60) == NO_MATCH
