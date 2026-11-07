@@ -13,7 +13,8 @@ A light money model, just enough for owners to set budgets and judge profit:
   for every home playoff game.
 - **Budget**: what the owner will spend on payroll and the front office
   (src/league/budget.py DEPARTMENTS). The league sets one payroll cap for every team
-  (src/league/budget.py: the average payroll, then 5% more a season), and
+  (src/league/budget.py: the average payroll, then last season's average
+  payroll plus 5% each season after), and
   each owner gives the GM a leash from it by their Spending trait: a miser
   wants payroll under the cap, a spender lets it go well over.
 - The revenue base is scaled so an owner who spends an average share of

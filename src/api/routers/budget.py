@@ -317,7 +317,6 @@ def _render(
         ctx["tickets"] = {"level": level, "options": _ticket_options()}
     ctx["rules"] = {
         "tax_pct": round(bg.LUXURY_TAX_RATE * 100),
-        "growth_pct": round(bg.CAP_GROWTH * 100),
         "pull_pct": round(bg.BANK_PULL * 100),
         "swing_pct": round(bg.BANK_SWING * 100),
         "margin_pct": round(bg.HARD_MARGIN * 100),

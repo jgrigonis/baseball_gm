@@ -255,8 +255,10 @@ class BudgetRepository:
 
     def cap(self, league_id: str, year: int) -> int:
         """The league's payroll cap for the season, the same for every
-        team: the one already set, else the newest season's grown to now,
-        else the league's average payroll."""
+        team: the one already set; else the newest season's followed to its
+        teams' average final payroll (src/league/budget.py next_cap), or
+        grown when that season isn't finished; else the league's average
+        payroll."""
         row = self.conn.execute(
             """SELECT year, MAX(cap) AS cap FROM team_budgets
                WHERE league_id = %s AND year <= %s AND cap IS NOT NULL
@@ -264,7 +266,21 @@ class BudgetRepository:
             (league_id, year),
         ).fetchone()
         if row:
-            return bg.grown(int(row["cap"]), year - row["year"])
+            cap, gap = int(row["cap"]), year - row["year"]
+            if gap <= 0:
+                return cap
+            finals = [
+                int(r["payroll"])
+                for r in self.conn.execute(
+                    """SELECT payroll FROM team_budgets
+                       WHERE league_id = %s AND year = %s
+                         AND payroll IS NOT NULL AND profit IS NOT NULL""",
+                    (league_id, row["year"]),
+                ).fetchall()
+            ]
+            if finals:
+                return bg.grown(bg.next_cap(cap, finals), gap - 1)
+            return bg.grown(cap, gap)
         payrolls = [self.contracts.payroll(t, year) for t in self._team_ids(league_id)]
         return bg.first_cap(payrolls)
 
