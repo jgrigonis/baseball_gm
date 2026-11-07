@@ -329,6 +329,7 @@ class TestTrades:
         (s,) = _stories(db_conn, lg, "verdict")
         assert s["headline"] == "GM Josh's trade for Kim pays off"
         assert s["body"].startswith("Kai Kim hit .500 with 25 HR and 50 RBI")
+        assert "for the Captains after the trade, while the Samurai went 0-25." in s["body"]
         assert "GM Bertie may want that one back." in s["body"]
         assert s["weight"] == 3
 

@@ -486,9 +486,11 @@ def _trade_verdicts(conn, news, names, league_id, season_id, on) -> None:
                 else f"{possessive('The ' + names.team(to))} {deal} for {names.last(pid)} pays off"
             )
             body = f"{who} {line['text']} for the {names.team(to)} after the trade"
-            rec = _record_after(conn, season_id, to, o["created_on"])
+            # The other side's record since the deal: how the team that let
+            # him go fared without him.
+            rec = _record_after(conn, season_id, other, o["created_on"])
             if rec:
-                body += f", and they went {rec[0]}-{rec[1]}"
+                body += f", while the {names.team(other)} went {rec[0]}-{rec[1]}"
             body += "."
             other_gm = gm_by_team[other]
             if not any(j[1] == other for j in hits) and other_gm:
