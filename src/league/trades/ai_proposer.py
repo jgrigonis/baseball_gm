@@ -149,6 +149,12 @@ MAX_SHOP_GIVERS = 10
 class ShopOffer:
     give: list[Asset]  # from the AI team
     score: float  # how much it helps the shopping team, as it sees him
+    # Not a deal it would take: the package it came closest to taking,
+    # when it has none it would (NO_MATCH), to show the shopping GM.
+    short: bool = False
+    # A short package it would still come out ahead on, just not by its
+    # margin (not one that leaves it worse off).
+    near: bool = False
 
 
 def shop_offer(
@@ -163,7 +169,7 @@ def shop_offer(
     the seller (traded away by the seller this season). The seller judges
     as a person does, with no margin; the AI with its own."""
     offer = shop_offer_or_why(ai, seller, target, days_left, blocked)
-    return offer if isinstance(offer, ShopOffer) else None
+    return offer if isinstance(offer, ShopOffer) and not offer.short else None
 
 
 # Why an AI team made no shop offer, for the shopping GM: he doesn't help
@@ -179,7 +185,11 @@ def shop_offer_or_why(
     days_left: int,
     blocked: set[str] = frozenset(),
 ) -> ShopOffer | str:
-    """shop_offer, or why there's none (NO_HELP, NO_ROOM or NO_MATCH)."""
+    """shop_offer, or why there's none (NO_HELP, NO_ROOM or NO_MATCH). When
+    it wants him but no package passes its margin, the package it came
+    closest to taking, marked short (and near when it would still come out
+    ahead on it, just not by its margin); NO_MATCH only when there's no
+    package at all."""
     ai_base = ai_evaluator.strengths(ai.see(ai.roster), days_left)
     seller_base = ai_evaluator.strengths(seller.see(seller.roster), days_left)
     # Whether he'd help at all, before pay: the salary it sends back in a
@@ -211,17 +221,28 @@ def shop_offer_or_why(
 
     best: ShopOffer | None = None
     over_budget = False
+    closest, closest_gap, near = None, None, False
     for give in packages:
         v = _verdict(ai, give, [target], days_left, ai.margin, ai_base)
         if not v.accept:
-            if v.reason == ai_evaluator.OVER_BUDGET_REASON and not over_budget:
-                over_budget = _verdict(
-                    free, give, [target], days_left, ai.margin, ai_base
-                ).accept
+            if v.reason == ai_evaluator.OVER_BUDGET_REASON:
+                if not over_budget:
+                    over_budget = _verdict(
+                        free, give, [target], days_left, ai.margin, ai_base
+                    ).accept
+            else:
+                # Short of its margin; worse still if it leaves it worse off.
+                gap = min(v.score, 0.0) + (v.score - v.threshold)
+                if closest_gap is None or gap > closest_gap:
+                    closest, closest_gap, near = give, gap, v.score > 0
             continue
         score = for_seller(give)
         if best is None or score > best.score:
             best = ShopOffer(give, score)
     if best is not None:
         return best
-    return NO_ROOM if over_budget else NO_MATCH
+    if over_budget:
+        return NO_ROOM
+    if closest is not None:
+        return ShopOffer(closest, for_seller(closest), short=True, near=near)
+    return NO_MATCH
