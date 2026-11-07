@@ -118,7 +118,7 @@
           <button class="r-rev-btn" id="forty-rev" onclick="toggleReverse('40')">↑</button>
         </div>
       </div>
-      <div style="display:flex;align-items:center;gap:6px;">
+      <div class="r-filter-row">
         <div style="display:flex;gap:0;border:1px solid var(--border);">
           <button class="r-filter-btn active" data-col="40" data-key="type" data-val=""
                   onclick="setFilter(this,'40','type','')">All</button>
@@ -135,6 +135,12 @@
                   onclick="setFilter(this,'40','health','healthy')">Healthy</button>
           <button class="r-filter-btn" data-col="40" data-key="health" data-val="injured"
                   onclick="setFilter(this,'40','health','injured')">Injured</button>
+        </div>
+        <span class="r-filter-sep"></span>
+        <div style="display:flex;gap:0;border:1px solid var(--border);">
+          <button class="r-filter-btn r-trade-btn" data-col="40" data-key="trade"
+                  title="Show only players who have asked to be traded"
+                  onclick="toggleTradeFilter('40')">Wants Trade</button>
         </div>
       </div>
     </div>
@@ -209,7 +215,7 @@
           <button class="r-rev-btn" id="org-rev" onclick="toggleReverse('org')">↑</button>
         </div>
       </div>
-      <div style="display:flex;align-items:center;gap:6px;">
+      <div class="r-filter-row">
         <div style="display:flex;gap:0;border:1px solid var(--border);">
           <button class="r-filter-btn active" data-col="org" data-key="type" data-val=""
                   onclick="setFilter(this,'org','type','')">All</button>
@@ -226,6 +232,12 @@
                   onclick="setFilter(this,'org','health','healthy')">Healthy</button>
           <button class="r-filter-btn" data-col="org" data-key="health" data-val="injured"
                   onclick="setFilter(this,'org','health','injured')">Injured</button>
+        </div>
+        <span class="r-filter-sep"></span>
+        <div style="display:flex;gap:0;border:1px solid var(--border);">
+          <button class="r-filter-btn r-trade-btn" data-col="org" data-key="trade"
+                  title="Show only players who have asked to be traded"
+                  onclick="toggleTradeFilter('org')">Wants Trade</button>
         </div>
       </div>
     </div>
@@ -279,7 +291,8 @@
 .r-filter-btn:last-child { border-right: none; }
 .r-filter-btn:hover { color: var(--text); background: var(--bg-3); }
 .r-filter-btn.active { color: var(--amber); background: var(--amber-lo); }
-/* Separator between type and health groups */
+.r-filter-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+/* Separator between filter groups */
 .r-filter-sep {
   display: inline-block; width: 1px; height: 18px;
   background: var(--border); flex-shrink: 0;
@@ -347,6 +360,8 @@
   .roster-seg b { color: var(--text-hi); margin-left: 6px; font-weight: 600; }
   .roster-cols { grid-template-columns: minmax(0, 1fr); height: auto; overflow: visible; padding: 10px 12px 72px; }
   .roster-col-wrap.phone-off { display: none; }
+  /* The filter groups wrap; a bar left hanging at a line end looks stray. */
+  .r-filter-sep { display: none; }
   .roster-drop-col { overflow: visible; }
   .roster-col-hdr .r-col-label { display: none; }
   .drag-zone { display: none; }
@@ -372,6 +387,7 @@ window.removeInjured = removeInjured;
 window.revertToSaved = revertToSaved;
 window.render        = render;
 window.setFilter     = setFilter;
+window.toggleTradeFilter = toggleTradeFilter;
 window.toggleReverse = toggleReverse;
 window.zoneOver      = zoneOver;
 window.zoneLeave     = zoneLeave;
@@ -396,8 +412,8 @@ let fortyMan;
 let rosterSaved = false;
 
 let colState = {
-  '40':  { s1: 'overall', s2: '', reversed: false, type: '', health: 'all' },
-  'org': { s1: 'overall', s2: '', reversed: false, type: '', health: 'all' },
+  '40':  { s1: 'overall', s2: '', reversed: false, type: '', health: 'all', trade: false },
+  'org': { s1: 'overall', s2: '', reversed: false, type: '', health: 'all', trade: false },
 };
 
 let _dragging     = null;
@@ -439,6 +455,15 @@ function setFilter(btn, colKey, filterKey, val) {
   render();
 }
 
+// On/off: just the players who have asked to be traded.
+function toggleTradeFilter(colKey) {
+  colState[colKey].trade = !colState[colKey].trade;
+  document.querySelector(`.r-trade-btn[data-col="${colKey}"]`)
+    .classList.toggle('active', colState[colKey].trade);
+  saveToStorage();
+  render();
+}
+
 function toggleReverse(colKey) {
   colState[colKey].reversed = !colState[colKey].reversed;
   const btn = document.getElementById(colKey === '40' ? 'forty-rev' : 'org-rev');
@@ -449,8 +474,9 @@ function toggleReverse(colKey) {
 }
 
 function isVisible(p, colKey) {
-  const { type, health } = colState[colKey];
+  const { type, health, trade } = colState[colKey];
   if (type   && p.player_type !== type) return false;
+  if (trade  && !(p.mood_badge && p.mood_badge.wants_trade)) return false;
   if (health === 'healthy' && p.injured)  return false;
   if (health === 'injured' && !p.injured) return false;
   return true;
@@ -791,6 +817,8 @@ function restoreColState(saved) {
       document.querySelectorAll(`.r-filter-btn[data-col="${col}"][data-key="${key}"]`)
         .forEach(b => b.classList.toggle('active', b.dataset.val === val));
     });
+    document.querySelector(`.r-trade-btn[data-col="${col}"]`)
+      ?.classList.toggle('active', !!st.trade);
   });
 }
 
