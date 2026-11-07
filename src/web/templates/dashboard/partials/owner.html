@@ -54,8 +54,8 @@
         {% if my_owner.bio %}<div class="ow-bio">“{{ my_owner.bio }}”</div>{% endif %}
         {% if my_owner.wants %}<div class="ow-line">{{ my_owner.wants }}</div>{% endif %}
         {% if my_budget %}<div class="ow-line">The league's {{ my_budget.year }} payroll cap is <strong>{{ my_budget.cap_text }}</strong>, the same for every team. It's a soft cap: you can go over it, and pay {{ (my_budget.tax_rate * 100) | round | int }}% luxury tax on the difference.
-          {% if my_budget.payroll_budget > my_budget.cap %}After the front office, your owner is fine with payroll up to <strong>{{ my_budget.payroll_budget_text }}</strong>, {{ my_budget.leash_text }}.
-          {%- elif my_budget.payroll_budget < my_budget.cap %}After the front office, your owner wants payroll under <strong>{{ my_budget.payroll_budget_text }}</strong>, {{ my_budget.leash_text }}.
+          {% if my_budget.payroll_budget > my_budget.cap %}After the front office and the minor leagues, your owner is fine with payroll up to <strong>{{ my_budget.payroll_budget_text }}</strong>, {{ my_budget.leash_text }}.
+          {%- elif my_budget.payroll_budget < my_budget.cap %}After the front office and the minor leagues, your owner wants payroll under <strong>{{ my_budget.payroll_budget_text }}</strong>, {{ my_budget.leash_text }}.
           {%- else %}Your owner wants payroll under the cap.{% endif %} Going past their number comes out of their profit, and past <strong>{{ my_budget.limit_text }}</strong> they won't sign off on moves that add money. The Budget tab has the details.</div>
         <div class="ow-line">Your payroll now: <strong>{{ my_budget.payroll_text }}</strong>{% if my_budget.over %}, <span class="ow-over">{{ my_budget.over_text }} over the cap ({{ my_budget.tax_text }} tax if it stays there)</span>{% elif my_budget.room_text %}, {{ my_budget.room_text }} under the cap{% endif %}{% if my_budget.over_budget %}, <span class="ow-over">{{ my_budget.over_budget_text }} past your owner's number</span>{% endif %}.</div>{% endif %}
         {% if my_owner.rival %}<div class="ow-line">Can't stand losing to the {{ my_owner.rival }}.</div>{% endif %}

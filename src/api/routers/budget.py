@@ -146,6 +146,7 @@ def _render(request, htmx, league_id, db, user, gm, error=None, saved=False):
             ),
             "tax": _money(r["luxury_tax"]) if r["luxury_tax"] else None,
             "front_office": _money(r["front_office"]),
+            "minor_league": _money(r["minor_league"]),
             "share": _money(r["tax_share"]) if r["tax_share"] else None,
             "profit": _money(r["profit"]),
             "loss": r["profit"] is not None and r["profit"] < 0,
