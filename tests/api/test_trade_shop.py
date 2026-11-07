@@ -91,3 +91,22 @@ def test_other_people_hear_hes_on_the_block_once_a_day(lg):  # noqa: F811
     assert "are shopping" in news[0]["text"]
     # Not the GM doing the shopping.
     assert take_injury_news(lg.db, lg.gm["id"])["trades"] == []
+
+
+# ── Dumping salary ─────────────────────────────────────────────────────────
+
+
+def test_dump_lists_who_would_take_him_and_the_trade_goes_through(lg):  # noqa: F811
+    regular = lg.factory.rated_player(lg.mine, lg.league, 68)
+    lg.factory.rated_player(lg.theirs, lg.league, 40, status="minors")
+    result = trade_shop.dump(lg.db, lg.league.id, lg.gm, regular.id)
+    (offer,) = result["offers"]
+    assert offer["team_id"] == lg.theirs.id
+    assert len(offer["give"]) == 1
+    assert all(_team_of_id(lg.db, pid) == lg.theirs.id for pid in offer["give"])
+    taken = trade_shop.dump_take(lg.db, lg.league.id, lg.gm, regular.id, lg.theirs.id)
+    assert taken["accepted"]
+    assert _team_of(lg.db, regular) == lg.theirs.id
+    for pid in offer["add"]:
+        assert _team_of_id(lg.db, pid) == lg.theirs.id
+    assert _team_of_id(lg.db, offer["give"][0]) == lg.mine.id

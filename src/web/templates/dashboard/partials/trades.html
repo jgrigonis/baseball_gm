@@ -107,16 +107,17 @@
      (src/api/services/trade_shop.py). #}
   <div class="card tr-shop" id="tr-shop">
     <div class="card-header"><span class="card-title">🛒 Shop a player</span>
-      <span class="tr-hint">Every AI team's best offer for him, best for you first</span></div>
+      <span class="tr-hint">Every AI team's best offer for him, or who'd take his salary off your hands</span></div>
     <div class="card-body">
       <div class="tr-shop-pick">
-        <select id="tr-shop-player" class="tr-team" onchange="document.getElementById('tr-shop-btn').disabled = !this.value">
+        <select id="tr-shop-player" class="tr-team" onchange="document.getElementById('tr-shop-btn').disabled = document.getElementById('tr-dump-btn').disabled = !this.value">
           <option value="">Pick one of your players…</option>
           {% for p in shop_players %}
           <option value="{{ p.player_id }}">{{ p.name }} ({{ p.position }}{% if p.overall %}, {{ p.overall }}{% endif %}){% if p.wants_trade %} · wants a trade{% endif %}{% if not p.forty %} · org{% endif %}</option>
           {% endfor %}
         </select>
         <button class="btn btn-primary" id="tr-shop-btn" onclick="trShop()" disabled>Shop him</button>
+        <button class="btn btn-secondary" id="tr-dump-btn" onclick="trDump()" disabled title="Ask every AI team what it would take to absorb his salary">Dump salary</button>
       </div>
       <div id="tr-shop-results"></div>
     </div>
@@ -138,7 +139,7 @@
           <option value="">Pick a team…</option>
           {% for t in trade_teams %}
           <option value="{{ t.id }}" data-human="{{ 1 if t.human else 0 }}">
-            {{ t.name }}{% if t.human %} (GM){% elif ai_gms.get(t.id) %} ({{ ai_gms[t.id].name }}){% endif %}
+            {{ t.name }}{% if t.human %} (GM){% elif ai_gms.get(t.id) %} ({{ ai_gms[t.id].name }}){% endif %}{% if t.room_text %} · {{ t.room_text }}{% endif %}
           </option>
           {% endfor %}
         </select>
@@ -621,7 +622,8 @@ function renderShop() {
           (close ? '<span class="tr-tag' + (o.near ? '' : ' tr-tag-far') + '">' + (o.near ? 'close' : 'far') + '</span>' : '') +
           'The <strong>' + esc(o.team_name) + '</strong>' +
           (o.gm_name ? ' <span class="tr-gm">(' + esc(o.gm_name) + ')</span>' : '') +
-          (close ? ' came closest with' : ' give') + '</div>' +
+          (close ? ' came closest with' : ' give') +
+          (o.room_text ? ' <span class="tr-room">' + esc(o.room_text) + '</span>' : '') + '</div>' +
         o.players.map(shopRow).join('') +
       '</div>' +
       '<div class="tr-offer-btns">' +
@@ -683,6 +685,89 @@ window.trShopTake = function(i) {
   });
 };
 
+// ── Dump salary (trade_shop.dump) ─────────────────────────────────────
+var DUMP = null;  // the last dump: {pid, player, salary_text, offers, why}
+var DUMP_WHY = [
+  ['pay', 'No room in their budget for his salary'],
+  ['price', 'Wouldn\'t take him for anything you could add'],
+  ['traded', 'Traded him away this season'],
+];
+
+function renderDump() {
+  var el = document.getElementById('tr-shop-results');
+  if (!DUMP) { el.innerHTML = ''; return; }
+  var html = '<div class="tr-shop-close-head">Who would take ' + esc(DUMP.player) +
+    (DUMP.salary ? ' (' + esc(DUMP.salary_text) + ' this season)' : '') +
+    ' off your hands. Each sends back one cheap player, since every trade needs someone going each way. ' +
+    'Teams that take him alone come first, then those that want a sweetener, the cheapest one for you first.</div>';
+  if (!DUMP.offers.length)
+    html += '<div class="tr-empty">No AI team would take ' + esc(DUMP.player) + ' today.</div>';
+  DUMP.offers.forEach(function(o, i) {
+    html += '<div class="tr-offer tr-shop-offer">' +
+      '<div class="tr-offer-text">' +
+        '<div>' + (o.add.length ? '<span class="tr-tag tr-tag-far">sweetener</span>' : '<span class="tr-tag">takes him alone</span>') +
+          'The <strong>' + esc(o.team_name) + '</strong>' +
+          (o.gm_name ? ' <span class="tr-gm">(' + esc(o.gm_name) + ')</span>' : '') +
+          (o.room_text ? ' <span class="tr-room">' + esc(o.room_text) + '</span>' : '') + '</div>' +
+        (o.adds.length ? '<div class="tr-dump-label">If you add</div>' + o.adds.map(shopRow).join('') : '') +
+        '<div class="tr-dump-label">They send back</div>' + o.players.map(shopRow).join('') +
+        '<div class="tr-dump-saved">' + (o.saved > 0 ? 'Saves you ' + esc(o.saved_text) + ' in payroll this season' : 'Doesn\'t lower your payroll: his deal isn\'t guaranteed yet') + '</div>' +
+      '</div>' +
+      '<div class="tr-offer-btns">' +
+        '<button class="btn btn-secondary" title="Open it in the builder to change it" onclick="trDumpTweak(' + i + ')">Tweak</button>' +
+        '<button class="btn btn-primary" onclick="trDumpTake(' + i + ')">Make this trade</button>' +
+      '</div>' +
+    '</div>';
+  });
+  DUMP_WHY.forEach(function(w) {
+    var teams = DUMP.why[w[0]];
+    if (teams && teams.length)
+      html += '<div class="tr-reason tr-shop-none"><strong>' + w[1] + ':</strong> ' + esc(teams.join(', ')) + '</div>';
+  });
+  el.innerHTML = html;
+}
+
+window.trDump = function() {
+  var sel = document.getElementById('tr-shop-player');
+  var btn = document.getElementById('tr-dump-btn');
+  var pid = sel.value;
+  if (!pid) return;
+  SHOP = null;
+  btn.disabled = true;
+  btn.textContent = 'Asking around…';
+  var el = document.getElementById('tr-shop-results');
+  el.innerHTML = '<div class="tr-empty">Calling every AI team…</div>';
+  post('/shop/' + encodeURIComponent(pid) + '/dump').then(function(res) {
+    var ok = res[0], d = res[1];
+    btn.disabled = false; btn.textContent = 'Dump salary';
+    if (!ok) { DUMP = null; el.innerHTML = '<div class="tr-empty">✗ ' + esc(d.detail || 'Something went wrong.') + '</div>'; return; }
+    DUMP = {pid: pid, player: d.player, salary: d.salary, salary_text: d.salary_text, offers: d.offers, why: d.why || {}};
+    renderDump();
+  }).catch(function() {
+    btn.disabled = false; btn.textContent = 'Dump salary';
+    el.innerHTML = '<div class="tr-empty">✗ Couldn\'t reach the server.</div>';
+  });
+};
+
+window.trDumpTake = function(i) {
+  var o = DUMP && DUMP.offers[i];
+  if (!o) return;
+  var nm = function(p) { return (p.first_name + ' ' + p.last_name).trim(); };
+  var lines = [];
+  if (o.adds.length) lines.push('You also send ' + o.adds.map(nm).join(' and ') + '.');
+  lines.push('The ' + o.team_name + ' send back ' + o.players.map(nm).join(' and ') + '.');
+  if (o.saved > 0) lines.push('It saves you ' + o.saved_text + ' in payroll this season.');
+  window.gmConfirm({title: 'Trade ' + DUMP.player + '?', lines: lines, ok: 'Make this trade'}).then(function(yes) {
+    if (!yes) return;
+    post('/shop/' + encodeURIComponent(DUMP.pid) + '/dump/take', {team_id: o.team_id}).then(function(res) {
+      var ok = res[0], d = res[1];
+      if (!ok) { showResult('✗ ' + esc(d.detail || 'Something went wrong.'), 'bad'); return trDump(); }
+      if (!d.accepted) { showResult('✗ The ' + esc(o.team_name) + ' said no: “' + esc(d.reason) + '”', 'warn'); return trDump(); }
+      reloadWith(arrivedMsg(d.arrived, d.playing_count), 'good', 'roster');
+    }).catch(function() { showResult('✗ Couldn\'t reach the server.', 'bad'); });
+  });
+};
+
 // What they'd give first, then the player you're shopping.
 window.trShopCompare = function(i) {
   var o = shopAll()[i];
@@ -697,6 +782,18 @@ window.trShopTweak = function(i) {
   COUNTER = null;
   document.getElementById('tr-team').value = o.team_id;
   SIDES.mine.picked = new Set([SHOP.pid]);
+  render('mine');
+  trLoadTeam(o.team_id, o.give);
+  document.getElementById('tr-bar').scrollIntoView({behavior: 'smooth', block: 'center'});
+};
+
+// Open a dump offer in the builder: your player and any sweetener, their throw-in.
+window.trDumpTweak = function(i) {
+  var o = DUMP && DUMP.offers[i];
+  if (!o) return;
+  COUNTER = null;
+  document.getElementById('tr-team').value = o.team_id;
+  SIDES.mine.picked = new Set([DUMP.pid].concat(o.add));
   render('mine');
   trLoadTeam(o.team_id, o.give);
   document.getElementById('tr-bar').scrollIntoView({behavior: 'smooth', block: 'center'});
@@ -785,6 +882,12 @@ if (done) { showResult(done.msg, done.kind, done.dest); window._tradeResult = nu
 #trades-page .tr-shop-pick .tr-team { flex: 1; min-width: 0; max-width: 420px; padding: 5px 6px; }
 #trades-page .tr-shop-player { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
 #trades-page .tr-shop-none { padding: 8px 4px 2px; }
+@media (max-width: 600px) {
+  #trades-page .tr-shop-pick .tr-team { flex-basis: 100%; max-width: none; }
+}
+#trades-page .tr-room { color: var(--text-dim); font-size: 11px; margin-left: 4px; }
+#trades-page .tr-dump-label { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+#trades-page .tr-dump-saved { font-size: 12px; color: var(--green, var(--text)); margin-top: 4px; }
 #trades-page .tr-link { background: none; border: none; padding: 0; color: var(--sky); cursor: pointer;
   font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; }
 @media (max-width: 760px) {

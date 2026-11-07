@@ -285,3 +285,14 @@ def test_only_people_in_the_lobby_pick_real_teams(db_conn, factory):
     assert not lobby_teams.pick(db_conn, league.id, ai["id"], *team)
     db_conn.execute("UPDATE leagues SET state = 'draft' WHERE id = %s", (league.id,))
     assert not lobby_teams.pick(db_conn, league.id, me.id, *team)
+
+
+def test_the_choices_show_market_and_climate(db_conn, factory):
+    league, _ = _lobby(db_conn, factory)
+
+    choices = {
+        (c["city"], c["mascot"]): c for c in lobby_teams.choices(db_conn, league.id)
+    }
+
+    assert choices[("New York", "Titans")]["facts"] == "Huge · Mild"
+    assert choices[("Cairo", "Pharaohs")]["facts"] == "Mid-size · Desert"

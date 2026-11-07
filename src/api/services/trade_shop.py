@@ -18,6 +18,11 @@
 #
 # In a league with other people, they hear (news bar) that the player is on
 # the block, once a league day, so they can make an offer too.
+#
+# Dumping salary (dump, dump_take) is the same call made for the money: each
+# AI team says what it would take the player for, sending back one cheap
+# throw-in, with a sweetener from the GM when he alone isn't worth it to
+# them (ai_proposer.dump_offer_or_why). Cheapest for the GM first.
 
 from __future__ import annotations
 
@@ -35,7 +40,13 @@ from src.db.repositories.trade_repo import TradeRepository
 from src.league import trade_deadline
 from src.league.personas import Leanings
 from src.league.trades import ai_evaluator
-from src.league.trades.ai_proposer import ShopOffer, Side, shop_offer_or_why
+from src.league.trades.ai_proposer import (
+    DumpOffer,
+    ShopOffer,
+    Side,
+    dump_offer_or_why,
+    shop_offer_or_why,
+)
 
 
 class _Ctx:
@@ -77,6 +88,13 @@ class _Ctx:
         )
         self._rooms = None
 
+    def seller_tradeable(self) -> None:
+        """Let the GM's other players be offered as sweeteners (a dump)."""
+        statuses = _statuses(self.conn, self.team_id)
+        self.seller.tradeable = {
+            a.id for a in self.seller.roster if statuses.get(a.id) in trades.TRADEABLE
+        }
+
     def _roster(self, team_id: str):
         hurt = self.injuries.get_team_injuries(team_id, self.today)
         return trades._assets(self.conn, team_id, hurt, self.season_id)
@@ -103,6 +121,38 @@ class _Ctx:
     def offer_or_why(self, team_id: str) -> ShopOffer | str:
         """This AI team's best offer, or why it has none (TRADED_HIM, or
         ai_proposer.shop_offer_or_why)."""
+        side = self._ai_side(team_id)
+        if isinstance(side, str):
+            return side
+        ai, blocked = side
+        return shop_offer_or_why(ai, self.seller, self.target, self.days_left, blocked)
+
+    def dump_or_why(self, team_id: str) -> DumpOffer | str:
+        """What this AI team would take the player's salary for, or why
+        not (TRADED_HIM, or ai_proposer.dump_offer_or_why)."""
+        side = self._ai_side(team_id)
+        if isinstance(side, str):
+            return side
+        ai, blocked = side
+        # A sweetener can't go back to a team that traded him away either.
+        mine = [a.id for a in self.seller.roster if a.id in self.seller.tradeable]
+        back = self.trade_repo.former_teams(self.season_id, mine)
+        seller = self.seller
+        gone = {pid for pid, teams in back.items() if team_id in teams}
+        if gone:
+            seller = Side(
+                team_id=self.seller.team_id,
+                state=self.seller.state,
+                roster=self.seller.roster,
+                tradeable=self.seller.tradeable - gone,
+                margin=0.0,
+                stats_weight=self.seller.stats_weight,
+            )
+        return dump_offer_or_why(ai, seller, self.target, self.days_left, blocked)
+
+    def _ai_side(self, team_id: str) -> tuple[Side, set[str]] | str:
+        """The AI team as the search sees it, and its players who can't go
+        to the GM; or TRADED_HIM."""
         # A player can't go back to a team that traded him away this season.
         former = self.trade_repo.former_teams(self.season_id, [self.player_id])
         if team_id in former.get(self.player_id, ()):
@@ -129,7 +179,7 @@ class _Ctx:
             horizon=lean.horizon,
             pay_room=self._rooms.get(team_id),
         )
-        return shop_offer_or_why(ai, self.seller, self.target, self.days_left, blocked)
+        return ai, blocked
 
 
 # A team that traded him away this season can't take him back.
@@ -206,6 +256,73 @@ def take(conn, league_id: str, gm: dict, player_id: str, team_id: str) -> dict:
                 gm,
                 team_id,
                 [player_id],
+                [a.id for a in offer.give],
+                None,
+                call_limit=False,
+            )
+    except LeagueBusy:
+        raise trades.TradeError("Games are being played. Try again in a moment.")
+
+
+def dump(conn, league_id: str, gm: dict, player_id: str) -> dict:
+    """What every AI team would take the GM's player's salary for:
+    {"player", "salary", "offers": [{team_id, team_name, give: [ids],
+    add: [ids], saved}], those that take him alone first (most saved
+    first), then by how little the sweetener costs the GM, "why": {reason:
+    [team names]}} (reasons: ai_proposer.NO_ROOM/NO_MATCH, TRADED_HIM)."""
+    ctx = _Ctx(conn, league_id, gm, player_id)
+    ctx.seller_tradeable()
+    offers, why = [], {}
+    for t in ctx.ai_teams():
+        name = f"{t['city']} {t['mascot']}"
+        offer = ctx.dump_or_why(t["id"])
+        if not isinstance(offer, DumpOffer):
+            why.setdefault(offer, []).append(name)
+            continue
+        offers.append(
+            {
+                "team_id": t["id"],
+                "team_name": name,
+                "give": [a.id for a in offer.give],
+                "add": [a.id for a in offer.add],
+                "saved": offer.saved,
+                "_cost": offer.cost,
+            }
+        )
+    offers.sort(key=lambda o: (bool(o["add"]), o["_cost"], -o["saved"]))
+    for o in offers:
+        del o["_cost"]
+    _tell_other_gms(conn, ctx, gm)
+    conn.commit()
+    return {
+        "player": ctx.target.name,
+        "salary": ctx.target.salary,
+        "offers": offers,
+        "why": {k: sorted(v) for k, v in why.items()},
+    }
+
+
+def dump_take(conn, league_id: str, gm: dict, player_id: str, team_id: str) -> dict:
+    """Make the AI team's dump offer as a trade, worked out again now.
+    Answers like trades.propose for an AI team."""
+    try:
+        with league_lock(conn, league_id):
+            ctx = _Ctx(conn, league_id, gm, player_id)
+            ctx.seller_tradeable()
+            if team_id not in {t["id"] for t in ctx.ai_teams()}:
+                raise trades.TradeError("That team isn't taking offers here.")
+            offer = ctx.dump_or_why(team_id)
+            if not isinstance(offer, DumpOffer):
+                raise trades.TradeError(
+                    f"The {TeamRepository(conn).get_name(team_id)} won't take "
+                    "him any more."
+                )
+            return trades._propose(
+                conn,
+                league_id,
+                gm,
+                team_id,
+                [player_id] + [a.id for a in offer.add],
                 [a.id for a in offer.give],
                 None,
                 call_limit=False,

@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import random
 
-from src.league import team_pool
+from src.league import team_facts, team_pool
 from src.league.team_pool import PoolTeam
 
 
@@ -146,6 +146,8 @@ def choices(conn, league_id: str) -> list[dict]:
                 "city": city,
                 "mascot": mascot,
                 "region": pool.region if pool else None,
+                # "Big · Cold": the picker shows it after the name.
+                "facts": team_facts.short(city, mascot),
                 "in_league": (city, mascot) in in_league,
                 "holder_id": gm["id"] if gm else None,
                 "holder": gm["display_name"] if gm else None,

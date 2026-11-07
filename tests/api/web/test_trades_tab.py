@@ -169,6 +169,14 @@ def test_shop_offers_and_the_builder_have_compare_buttons(client_for):
     assert 'id="tr-compare"' in html
 
 
+def test_shop_has_a_dump_salary_button_and_teams_show_cap_room(client_for):
+    client, league, _, _ = client_for("blitz", players=2)
+    html = client.get(f"/leagues/{league.id}/trades").text
+    assert 'id="tr-dump-btn"' in html
+    # Blitz has budgets, so each team in the picker shows its room.
+    assert "under the cap" in html or "over the cap" in html
+
+
 def test_the_trades_tab_is_there_during_the_draft(client_for, db_conn):
     """The offseason trade window is open through the draft, so the tab (and
     the player panel's Shop him, which opens it) works before the draft is
