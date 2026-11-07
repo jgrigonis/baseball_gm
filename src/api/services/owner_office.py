@@ -132,6 +132,22 @@ def moods(conn, league_id: str, season_id: str) -> dict[str, dict]:
     return {r["team_id"]: dict(r) for r in rows}
 
 
+def latest_moods(
+    conn, league_id: str, before_year: int | None = None
+) -> dict[str, float]:
+    """Each team's owner's newest mood from any season in this league (before
+    before_year if given). A new season has no mood row until its first week
+    of games, so this carries last season's mood (the review) until then."""
+    rows = conn.execute(
+        """SELECT DISTINCT ON (m.team_id) m.team_id, m.mood
+           FROM owner_moods m JOIN seasons s ON s.id = m.season_id
+           WHERE m.league_id = %s AND (%s::int IS NULL OR s.year < %s::int)
+           ORDER BY m.team_id, s.year DESC""",
+        (league_id, before_year, before_year),
+    ).fetchall()
+    return {r["team_id"]: r["mood"] for r in rows}
+
+
 def _set_mood(conn, league_id: str, team_id: str, season_id: str, mood: float, on):
     conn.execute(
         """INSERT INTO owner_moods (league_id, team_id, season_id, mood, as_of)
@@ -213,6 +229,8 @@ def catch_up(conn, league_id: str, today: str | None = None) -> int:
         else {}
     )
     current = moods(conn, league_id, season["id"])
+    # The first reading of a season starts from where last season left off.
+    before = latest_moods(conn, league_id, year) if in_season else {}
     contracts = ContractRepository(conn)
     for team_id, owner in by_team.items():
         gm = gms.get(team_id)
@@ -241,7 +259,8 @@ def catch_up(conn, league_id: str, today: str | None = None) -> int:
             scores = sc.score_dimensions(so_far, owner["traits"], money)
             reading = sc.season_score(scores, owner["weights"])
             reading *= min(1.0, games / MOOD_FULL_GAMES)
-            mood = om.next_mood(m["mood"] if m else 0.0, reading, traits["temper"])
+            start = m["mood"] if m else before.get(team_id, 0.0)
+            mood = om.next_mood(start, reading, traits["temper"])
             _set_mood(conn, league_id, team_id, sid, mood, today)
             current[team_id] = {"mood": mood, "as_of": today}
         # Check-ins, spread through the season.
@@ -369,13 +388,15 @@ def review(conn, league_id: str, season_id: str, today: str | None = None) -> in
 
 def office(conn, league_id: str, team_id: str, gm_id: str) -> dict:
     """What the GM sees in the owner's office: the mood word and their
-    messages, newest first. Marks them seen."""
+    messages, newest first. Marks them seen. Between seasons and before the
+    first week's games, the mood is last season's; an owner with no mood yet
+    is content (a mood of 0)."""
     season = _season(conn, league_id)
-    mood = None
-    if season:
-        m = moods(conn, league_id, season["id"]).get(team_id)
-        if m:
-            mood = om.mood_word(m["mood"])
+    m = moods(conn, league_id, season["id"]).get(team_id) if season else None
+    if m:
+        mood = om.mood_word(m["mood"])
+    else:
+        mood = om.mood_word(latest_moods(conn, league_id).get(team_id, 0.0))
     rows = conn.execute(
         """SELECT m.id, m.kind, m.body, m.created_on, m.mood, m.seen_at, s.year
            FROM owner_messages m JOIN seasons s ON s.id = m.season_id
