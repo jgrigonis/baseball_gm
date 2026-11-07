@@ -1099,6 +1099,7 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
 .badge-minors  { background: var(--bg-3);       border-color: var(--muted);     color: var(--muted); }
 .badge-human   { background: var(--sky-dim);    border-color: var(--sky);       color: var(--sky); }
 .badge-all-star { background: var(--amber-lo);  border-color: var(--amber);     color: var(--amber); }
+.badge-icon     { background: var(--sky-dim);   border-color: var(--sky);       color: var(--sky); }
 .badge-hof       { background: var(--amber);     border-color: var(--amber);     color: var(--bg); font-weight: 700; }
 .badge-hof-ballot { background: transparent;     border-color: var(--amber-dim); color: var(--text-dim); }
 /* A status tag that sits beside buttons (the lobby's AI / Human): a rounded,
@@ -1387,6 +1388,10 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
   cursor: help; white-space: nowrap;
 }
 .lu-mood-bad { color: var(--red); }
+.lu-icon {
+  font-family: var(--font-mono); font-size: 10px; color: var(--sky); margin-left: 6px;
+  cursor: help; white-space: nowrap;
+}
 .pd-mood-admin table { border-collapse: collapse; margin-top: 2px; }
 .pd-mood-admin th, .pd-mood-admin td { padding: 0 6px 0 0; text-align: left; }
 .pd-overall {

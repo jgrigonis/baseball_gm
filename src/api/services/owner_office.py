@@ -21,7 +21,7 @@ import random
 from dataclasses import replace
 from datetime import date
 
-from src.api.services import owner_review
+from src.api.services import icons, owner_review
 from src.api.services import owners as owner_service
 from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.contract_repo import ContractRepository
@@ -292,9 +292,8 @@ def _trade_reactions(
     written = 0
     for t in conn.execute(
         """SELECT o.id,
-                  EXISTS (SELECT 1 FROM trade_offer_items i JOIN all_stars a
-                          ON a.player_id = i.player_id AND a.team_id = i.from_team_id
-                          WHERE i.offer_id = o.id AND i.from_team_id = %s) AS icon_out,
+                  ARRAY(SELECT i.player_id FROM trade_offer_items i
+                        WHERE i.offer_id = o.id AND i.from_team_id = %s) AS sent,
                   EXISTS (SELECT 1 FROM trade_offer_items i JOIN all_stars a
                           ON a.player_id = i.player_id
                           WHERE i.offer_id = o.id AND i.from_team_id <> %s) AS star_in
@@ -308,7 +307,10 @@ def _trade_reactions(
         if _has(conn, league_id, team_id, key):
             continue
         what = None
-        if t["icon_out"] and w["icons"] >= owners.STRONG:
+        icon_out = w["icons"] >= owners.STRONG and icons.find(
+            conn, [(pid, team_id) for pid in t["sent"] or []]
+        )
+        if icon_out:
             what = "icons"
         elif t["star_in"] and w["stars"] >= owners.STRONG:
             what = "stars"

@@ -113,6 +113,14 @@ function moodTag(p) {
   return `<span class="lu-mood" title="He's ${b.mood}. Open his card to see why.">${b.mood.toUpperCase()}</span>`;
 }
 
+// "ICON" after a franchise icon's name (src/api/services/icons.py): years
+// with the club and still good. Owners who care about icons hate losing one.
+function iconTag(p) {
+  const n = p.icon_seasons;
+  if (!n) return '';
+  return `<span class="lu-icon" title="Franchise icon: ${n} seasons with the club and still a top player. Owners who care about icons won't like seeing him traded or released.">ICON</span>`;
+}
+
 // "IL (12d)" after an injured player's name; the hover names the injury.
 function ilTag(p) {
   if (!p.injured) return '';

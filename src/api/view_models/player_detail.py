@@ -33,7 +33,7 @@ from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.api.services import hr_derby, rookie_game
 from src.api.services import awards as awards_service
-from src.api.services import hall_of_fame
+from src.api.services import hall_of_fame, icons
 from src.league import all_star
 from src.league import awards as awards_mod
 from src.api.services import season_value as sv
@@ -329,6 +329,13 @@ def player_panel_data(
         "all_star_years": _all_star_years(db, pid),
         "awards": player_awards(db, pid),
         "hall_of_fame": hall_of_fame.badge(db, pid),
+        "icon_seasons": (
+            icons.find(db, [(pid, team["id"])], {pid: overall_grade}).get(
+                (pid, team["id"])
+            )
+            if team
+            else None
+        ),
     }
 
 

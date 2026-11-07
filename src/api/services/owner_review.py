@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from psycopg.types.json import Jsonb
 
+from src.api.services import icons
 from src.api.services import owners as owner_service
 from src.league import budget as bg
 from src.league import finances as fn
@@ -196,7 +197,7 @@ def gather(
            GROUP BY team_id""",
         (season_id, season_id),
     )
-    icons = _icons_lost(conn, league_id, season_id, year)
+    lost_icons = _icons_lost(conn, league_id, season_id, year)
     teams = list(by_team)
     league_home = sum(homegrown.get(t, 0.0) for t in teams) / max(1, len(teams))
     league_stars = sum(
@@ -235,7 +236,7 @@ def gather(
             league_star_points=league_stars,
             all_stars=all_stars.get(team_id, 0),
             award_winners=awards.get(team_id, 0),
-            icons_lost=icons.get(team_id, 0),
+            icons_lost=lost_icons.get(team_id, 0),
             trades=trades.get(team_id, 0),
             rival_wins=rw,
             rival_losses=rl,
@@ -322,10 +323,10 @@ def _homegrown(conn, league_id: str, team_ids: list[str]) -> dict[str, float]:
 
 
 def _icons_lost(conn, league_id: str, season_id: str, year: int) -> dict[str, int]:
-    """Players each team traded away or released this season who'd been an
-    All-Star for it: the franchise's icons."""
+    """The franchise icons (src/api/services/icons.py) each team traded away
+    or released this season."""
     rows = conn.execute(
-        """SELECT team_id, COUNT(DISTINCT player_id) AS n FROM (
+        """SELECT DISTINCT team_id, player_id FROM (
                SELECT i.from_team_id AS team_id, i.player_id
                FROM trade_offer_items i JOIN trade_offers o ON o.id = i.offer_id
                WHERE o.season_id = %s AND o.status = 'accepted'
@@ -334,14 +335,13 @@ def _icons_lost(conn, league_id: str, season_id: str, year: int) -> dict[str, in
                JOIN players p ON p.id = c.player_id
                WHERE p.league_id = %s AND c.released_year = %s
                  AND c.released_team_id IS NOT NULL
-           ) gone
-           WHERE EXISTS (SELECT 1 FROM all_stars a
-                         WHERE a.player_id = gone.player_id
-                           AND a.team_id = gone.team_id)
-           GROUP BY team_id""",
+           ) gone""",
         (season_id, league_id, year),
     ).fetchall()
-    return {r["team_id"]: int(r["n"]) for r in rows}
+    out: dict[str, int] = {}
+    for _, team_id in icons.find(conn, [(r["player_id"], r["team_id"]) for r in rows]):
+        out[team_id] = out.get(team_id, 0) + 1
+    return out
 
 
 def _vs(conn, season_id: str, team_id: str, rival_id: str) -> tuple[int, int]:
