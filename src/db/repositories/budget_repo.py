@@ -214,6 +214,31 @@ class BudgetRepository:
             (bg.clean_level(level), league_id, team_id, year),
         )
 
+    # ── Ticket prices ────────────────────────────────────────────────────────
+
+    def ticket_price(self, league_id: str, team_id: str, year: int) -> int | None:
+        """The team's ticket price level for the season (1 to 10), or None
+        without budgets."""
+        if self.budget(league_id, team_id, year) is None:
+            return None
+        row = self.conn.execute(
+            """SELECT ticket_price FROM team_budgets
+               WHERE league_id = %s AND team_id = %s AND year = %s""",
+            (league_id, team_id, year),
+        ).fetchone()
+        return fn.ticket_level(row["ticket_price"] if row else None)
+
+    def set_ticket_price(
+        self, league_id: str, team_id: str, year: int, level: int
+    ) -> None:
+        """Set the team's ticket prices (the caller checks it's allowed)."""
+        self.for_league(league_id, year)
+        self.conn.execute(
+            """UPDATE team_budgets SET ticket_price = %s
+               WHERE league_id = %s AND team_id = %s AND year = %s""",
+            (fn.ticket_level(level), league_id, team_id, year),
+        )
+
     def _make(
         self, league_id: str, year: int, team_ids: list[str], cap: int
     ) -> dict[str, int]:
@@ -408,7 +433,7 @@ class BudgetRepository:
                 """SELECT year, cap, budget, payroll, revenue, playoff_revenue,
                           luxury_tax, tax_share, front_office, minor_league,
                           profit,
-                          fans_before, fans_after
+                          fans_before, fans_after, ticket_price
                    FROM team_budgets WHERE league_id = %s AND team_id = %s
                    ORDER BY year""",
                 (league_id, team_id),
@@ -436,8 +461,8 @@ class BudgetRepository:
         rows = {
             r["team_id"]: r
             for r in self.conn.execute(
-                """SELECT team_id, budget, revenue, fans_before FROM team_budgets
-                   WHERE league_id = %s AND year = %s""",
+                """SELECT team_id, budget, revenue, fans_before, ticket_price
+                   FROM team_budgets WHERE league_id = %s AND year = %s""",
                 (league_id, year),
             ).fetchall()
         }
@@ -473,9 +498,11 @@ class BudgetRepository:
                 r.get("playoffs", False),
                 r.get("champion", False),
                 r.get("all_stars", 0),
+                rows[team_id]["ticket_price"],
             )
             gate = fn.playoff_gate(average, r.get("home_playoff_games", 0))
-            total = revenue[team_id] + gate
+            tickets = fn.ticket_revenue(revenue[team_id], rows[team_id]["ticket_price"])
+            total = tickets + gate
             self.conn.execute(
                 """UPDATE team_budgets
                    SET luxury_tax = %s, revenue = %s, fans_before = %s,
@@ -539,7 +566,7 @@ class BudgetRepository:
         rows = self.conn.execute(
             """SELECT team_id, year, cap, revenue, playoff_revenue, payroll,
                       luxury_tax, tax_share, front_office, minor_league, profit,
-                      fans_before
+                      fans_before, ticket_price
                FROM team_budgets WHERE league_id = %s AND year <= %s""",
             (league_id, year),
         ).fetchall()
@@ -612,6 +639,7 @@ class BudgetRepository:
                         fans=fans,
                         gate_per_game=per_game,
                         costs=self._fixed_costs(average, cap),
+                        ticket_price=mine["ticket_price"],
                         **line,
                     ),
                 }

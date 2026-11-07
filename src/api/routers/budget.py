@@ -18,6 +18,7 @@ from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.contract_repo import ContractRepository
 from src.league import budget as bg
+from src.league import finances as fn
 from src.player.contracts import format_salary
 from src.web.utils import _shell_ctx, tab_response
 
@@ -50,6 +51,13 @@ def _books_view(b: dict) -> dict:
                 f" {_times(b['market_mult'])} {b['market_name'].lower()} market"
                 f" {_times(b['fan_mult'])} fan interest {b['fans']}"
             ),
+        },
+        {
+            "label": "Ticket prices",
+            "amount": _money(b["tickets"]) if b["tickets"] else None,
+            "note": f"{b['ticket_name']} ({b['ticket_price']} of 10)"
+            + (f": {b['ticket_pct']:+g}% at the gate" if b["ticket_pct"] else ""),
+            "bad": b["tickets"] < 0,
         },
         {
             "label": "Playoff gate",
@@ -152,10 +160,65 @@ def set_front_office(
     return _render(request, htmx, league_id, db, user, gm, error, saved=not error)
 
 
-def _render(request, htmx, league_id, db, user, gm, error=None, saved=False):
+@router.post("/leagues/{league_id}/budget/tickets", response_class=HTMLResponse)
+def set_tickets(
+    request: Request,
+    htmx: IsHTMX,
+    league_id: str,
+    db: DB,
+    user: User,
+    gm: GM,
+    _active: ActiveLeague,
+    level: int = Form(...),
+):
+    """Set ticket prices for the season. Only between seasons, like the
+    front office."""
+    team_id = gm.get("team_id")
+    error = None
+    with league_lock(db, league_id):
+        league = LeagueRepository(db).get_by_id(league_id)
+        budgets = BudgetRepository(db)
+        year = ContractRepository(db).current_year(league_id)
+        if not year or budgets.ticket_price(league_id, team_id, year) is None:
+            error = "This league has no ticket prices."
+        elif league["state"] not in FRONT_OFFICE_STATES:
+            error = (
+                "Ticket prices are set between seasons, from the draft to Opening Day."
+            )
+        else:
+            budgets.set_ticket_price(league_id, team_id, year, level)
+        db.commit()
+    return _render(
+        request, htmx, league_id, db, user, gm,
+        ticket_error=error, ticket_saved=not error,
+    )  # fmt: skip
+
+
+def _ticket_options() -> list[dict]:
+    out = []
+    for level in fn.TICKET_LEVELS:
+        pct = round((fn.ticket_mult(level) - 1) * 100, 1)
+        fans = fn.ticket_fans(level)
+        out.append(
+            {
+                "level": level,
+                "name": fn.ticket_name(level),
+                "revenue": "no change" if not pct else f"{pct:+g}%",
+                "fans": "no change" if not fans else f"{fans:+d}",
+            }
+        )
+    return out
+
+
+def _render(
+    request, htmx, league_id, db, user, gm, error=None, saved=False,
+    ticket_error=None, ticket_saved=False,
+):  # fmt: skip
     ctx = _shell_ctx(request, db, gm, league_id, "budget", user)
     ctx["fo_error"] = error
     ctx["fo_saved"] = saved
+    ctx["ticket_error"] = ticket_error
+    ctx["ticket_saved"] = ticket_saved
     team_id = gm.get("team_id")
     budgets = BudgetRepository(db)
     year = ContractRepository(db).current_year(league_id)
@@ -197,6 +260,8 @@ def _render(request, htmx, league_id, db, user, gm, error=None, saved=False):
             for key, label, what in bg.DEPARTMENTS
         ]
         ctx["fo_open"] = ctx.get("league_state") in FRONT_OFFICE_STATES
+        level = budgets.ticket_price(league_id, team_id, year)
+        ctx["tickets"] = {"level": level, "options": _ticket_options()}
     ctx["rules"] = {
         "tax_pct": round(bg.LUXURY_TAX_RATE * 100),
         "growth_pct": round(bg.CAP_GROWTH * 100),
@@ -213,7 +278,8 @@ def _render(request, htmx, league_id, db, user, gm, error=None, saved=False):
             "revenue": _money(
                 None
                 if r["revenue"] is None or r["profit"] is None
-                else r["revenue"] + (r["playoff_revenue"] or 0)
+                else fn.ticket_revenue(r["revenue"], r["ticket_price"])
+                + (r["playoff_revenue"] or 0)
             ),
             "tax": _money(r["luxury_tax"]) if r["luxury_tax"] else None,
             "front_office": _money(r["front_office"]),

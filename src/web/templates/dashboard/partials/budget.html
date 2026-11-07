@@ -28,6 +28,9 @@
   .bud-row-dim .bud-row-amt { color:var(--muted); }
   .bud-profit { display:flex; align-items:baseline; gap:12px; margin-top:14px; padding-top:12px; border-top:2px solid var(--border); }
   .bud-profit .bud-value { margin-top:0; }
+  .bud-tix-top { display:flex; align-items:baseline; gap:10px; }
+  .bud-tix-range { width:100%; margin:10px 0 2px; accent-color:var(--green); }
+  .bud-tix-ends { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); }
 </style>
 
 <div class="tab-head">
@@ -118,6 +121,53 @@
 {% if fo_saved %}<script>if (window.gmToast) gmToast('Front office saved');</script>{% endif %}
 {% endif %}
 
+{% if tickets %}
+<div class="card" style="margin-bottom:16px;" id="tickets">
+  <div class="card-header"><span class="card-title">Ticket prices</span>
+    <span class="admin-dim" style="margin-left:auto;font-size:11px;">{% if not fo_open %}locked until the offseason{% endif %}</span></div>
+  <div class="card-body">
+    {% if ticket_error %}<div class="bud-line bud-bad" style="margin-top:0;margin-bottom:10px;">{{ ticket_error }}</div>{% endif %}
+    <form hx-post="/leagues/{{ league_id }}/budget/tickets" hx-target="#tab-content" hx-swap="innerHTML" hx-trigger="change">
+      <div class="bud-tix-top">
+        <div class="bud-value" style="margin-top:0;" id="bud-tix-name">{{ tickets.options[tickets.level - 1].name }}</div>
+        <div class="bud-label" id="bud-tix-level">{{ tickets.level }} of 10</div>
+      </div>
+      <input type="range" name="level" min="1" max="10" step="1" value="{{ tickets.level }}" class="bud-tix-range"
+             aria-label="Ticket prices, 1 to 10" {% if not fo_open %}disabled{% endif %}
+             oninput="budTix(this.value)">
+      <div class="bud-tix-ends"><span>Cheap seats</span><span>Top dollar</span></div>
+      <div class="bud-grid" style="margin-top:10px;">
+        <div class="bud-stat">
+          <div class="bud-label">Regular season revenue</div>
+          <div class="bud-value" id="bud-tix-rev">{{ tickets.options[tickets.level - 1].revenue }}</div>
+          <div class="bud-note">This season, against Standard (5)</div>
+        </div>
+        <div class="bud-stat">
+          <div class="bud-label">Fan interest</div>
+          <div class="bud-value" id="bud-tix-fans">{{ tickets.options[tickets.level - 1].fans }}</div>
+          <div class="bud-note">To where fans head each season</div>
+        </div>
+      </div>
+    </form>
+    <div class="bud-line">
+      Higher prices take more at the gate now, with less extra at the top, but cool your fans; fan interest drives next season's revenue, and owners notice attendance. Lower prices cost money now and win fans back. Set between seasons, from the draft to Opening Day.
+    </div>
+  </div>
+</div>
+<script>
+  window.budTixOptions = {{ tickets.options | tojson }};
+  window.budTix = function (v) {
+    var o = window.budTixOptions[Number(v) - 1];
+    if (!o) return;
+    document.getElementById('bud-tix-name').textContent = o.name;
+    document.getElementById('bud-tix-level').textContent = o.level + ' of 10';
+    document.getElementById('bud-tix-rev').textContent = o.revenue;
+    document.getElementById('bud-tix-fans').textContent = o.fans;
+  };
+</script>
+{% if ticket_saved %}<script>if (window.gmToast) gmToast('Ticket prices saved');</script>{% endif %}
+{% endif %}
+
 {% if books %}
 <div class="card" style="margin-bottom:16px;" id="revenue">
   <div class="card-header"><span class="card-title">Revenue and profit</span>
@@ -137,7 +187,7 @@
           {% for r in b.money_in %}
           <div class="bud-row {% if not r.amount %}bud-row-dim{% endif %}">
             <div class="bud-row-name">{{ r.label }}<div class="bud-note">{{ r.note }}</div></div>
-            <div class="bud-row-amt">{{ r.amount or '—' }}</div>
+            <div class="bud-row-amt {% if r.bad %}bud-bad{% endif %}">{{ r.amount or '—' }}</div>
           </div>
           {% endfor %}
           <div class="bud-row bud-total"><div class="bud-row-name">Total</div><div class="bud-row-amt">{{ b.total_in }}</div></div>

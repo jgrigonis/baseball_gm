@@ -65,6 +65,22 @@ FIXED_COSTS = 0.20
 
 ROUNDING = 100_000
 
+# Ticket prices (Josh, 2026-11-07): the GM sets them on a 1 to 10 slider
+# between seasons. Higher prices take more at the gate this season, with
+# less and less extra at the top, but push the fans' target down, so fan
+# interest (and the revenue that follows it) slips over the seasons; low
+# prices cost money now and win fans back. 5 is where every team starts.
+TICKET_LEVELS = tuple(range(1, 11))
+TICKET_DEFAULT = 5
+TICKET_NAMES = (
+    "Giveaway", "Bargain", "Cheap", "Value", "Standard",
+    "Pricey", "Steep", "Premium", "Luxury", "Gouging",
+)  # fmt: skip
+# Regular season revenue multiplier by level.
+TICKET_REVENUE = (0.85, 0.90, 0.94, 0.97, 1.00, 1.03, 1.05, 1.06, 1.065, 1.07)
+# Points added to the fans' end-of-season target by level.
+TICKET_FANS = (8, 6, 4, 2, 0, -2, -4, -7, -10, -14)
+
 
 def _round(value: float) -> int:
     return round(value / ROUNDING) * ROUNDING
@@ -83,10 +99,38 @@ def spend_share(spending: int) -> float:
     return SHARE_LOW + SHARE_SPAN * max(0, min(100, spending)) / 100
 
 
+def ticket_level(level) -> int:
+    """A ticket price level, 1 to 10 (the default when unset)."""
+    if level is None:
+        return TICKET_DEFAULT
+    return max(TICKET_LEVELS[0], min(TICKET_LEVELS[-1], int(level)))
+
+
+def ticket_mult(level) -> float:
+    return TICKET_REVENUE[ticket_level(level) - 1]
+
+
+def ticket_fans(level) -> int:
+    return TICKET_FANS[ticket_level(level) - 1]
+
+
+def ticket_name(level) -> str:
+    return TICKET_NAMES[ticket_level(level) - 1]
+
+
+def ticket_revenue(revenue: int, level) -> int:
+    """Regular season revenue at these ticket prices."""
+    return _round(revenue * ticket_mult(level))
+
+
 def fan_target(
-    win_pct: float, made_playoffs: bool, champion: bool, all_stars: int
+    win_pct: float,
+    made_playoffs: bool,
+    champion: bool,
+    all_stars: int,
+    tickets: int = 0,
 ) -> float:
-    target = 50 + (win_pct - 0.5) * FAN_PER_WIN_PCT
+    target = 50 + (win_pct - 0.5) * FAN_PER_WIN_PCT + tickets
     target += FAN_PLAYOFFS if made_playoffs else 0
     target += FAN_TITLE if champion else 0
     target += FAN_PER_ALL_STAR * min(all_stars, FAN_MAX_ALL_STARS)
@@ -94,10 +138,17 @@ def fan_target(
 
 
 def fans_after(
-    fans: float, win_pct: float, made_playoffs: bool, champion: bool, all_stars: int
+    fans: float,
+    win_pct: float,
+    made_playoffs: bool,
+    champion: bool,
+    all_stars: int,
+    ticket_price=None,
 ) -> int:
     """Fan interest after a season."""
-    target = fan_target(win_pct, made_playoffs, champion, all_stars)
+    target = fan_target(
+        win_pct, made_playoffs, champion, all_stars, ticket_fans(ticket_price)
+    )
     after = fans + FAN_STEP * (target - fans)
     return int(round(max(FAN_MIN, min(FAN_MAX, after))))
 
@@ -175,6 +226,7 @@ def books(
     costs: int,
     minor_league: int = 0,
     farm_help: int = 0,
+    ticket_price=None,
     profit: int | None = None,
 ) -> dict:
     """A team's season as money in and money out, for the Budget tab.
@@ -182,12 +234,15 @@ def books(
     Revenue is the league's base times the market and fan interest, so the
     base is backed out of it. The league covers an average farm's salaries
     (farm_help: it comes off everyone's fixed costs in assess) and each team
-    pays its own minor leaguers. With a profit (a finished season) anything it
+    pays its own minor leaguers. Ticket prices move the regular season
+    revenue up or down (tickets). With a profit (a finished season) anything it
     doesn't explain shows as other costs; without one the profit is
     projected from the lines.
     """
     mm, fm = market_mult(market), fan_mult(fans)
-    total_in = revenue + playoff_gate + tax_share + farm_help
+    level = ticket_level(ticket_price)
+    tickets = ticket_revenue(revenue, level) - revenue
+    total_in = revenue + tickets + playoff_gate + tax_share + farm_help
     known_out = payroll + front_office + minor_league + luxury_tax + costs
     projected = profit is None
     if projected:
@@ -201,6 +256,10 @@ def books(
         "fans": int(round(fans)),
         "fan_mult": fm,
         "revenue": revenue,
+        "ticket_price": level,
+        "ticket_name": ticket_name(level),
+        "ticket_pct": round((ticket_mult(level) - 1) * 100, 1),
+        "tickets": tickets,
         "playoff_gate": playoff_gate,
         "home_playoff_games": home_playoff_games,
         "gate_per_game": gate_per_game,
