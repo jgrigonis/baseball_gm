@@ -70,8 +70,9 @@
         </a>
       {% endfor %}
       {% if gname == 'League' %}
-        {# Not tabs (they don't refresh during sims), but they load in
-           place like tabs so a multi-day sim keeps running. #}
+        {# Not tabs, but they load in place like tabs so a multi-day sim
+           keeps running, and the sim redraws the open one after each day
+           (History's current-season record). #}
         {% if league_info %}
         <a href="/leagues/{{ league_id }}/league"
            hx-get="/leagues/{{ league_id }}/league"
