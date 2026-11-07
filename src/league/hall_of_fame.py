@@ -13,7 +13,7 @@ The BBWAA's rules, scaled to our leagues:
   - Each writer votes for up to 10. 75% elects, under 5% drops a player,
     and 10 years on the ballot is the limit.
 
-Everything the writers look at counts a backstory season at three quarters,
+Everything the writers look at counts a backstory season at nine tenths,
 so the Hall isn't crowded with players whose best years were made up before
 the league started, but the best of them still draw real votes (at half,
 nobody in a league's first elections got a single vote).
@@ -39,7 +39,7 @@ KEEP_SHARE = 0.05
 MAX_VOTES = 10
 WRITERS_PER_TEAM = 2
 
-BACKSTORY_WEIGHT = 0.75
+BACKSTORY_WEIGHT = 0.9
 PEAK_SEASONS = 7
 
 # What a Hall of Famer's numbers look like. A score of 1.0 against these is
