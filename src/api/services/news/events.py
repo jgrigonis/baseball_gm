@@ -174,11 +174,63 @@ def drafts(conn, names: Names, league_id: str, season_ids: list[str]) -> None:
 # ── The All-Star break ────────────────────────────────────────────────────────
 
 
+def _count_word(n: int) -> str:
+    return {1: "one", 2: "two", 3: "three", 4: "four", 5: "five"}.get(n, str(n))
+
+
+def _all_star_team_body(
+    names: Names, team: str, pids: list[str], hurt: set, stand_in: dict, team_of: dict
+) -> str:
+    """A GM's All-Stars: who made it, who's hurt and who takes his place,
+    and who's in as a reserve for someone else's injured All-Star."""
+
+    def of(pid: str) -> str:
+        t = team_of.get(pid)
+        return f" of the {names.team(t)}" if t and t != team else ""
+
+    reserve_for = {s["player_id"]: r for r, s in stand_in.items()}
+    voted = [p for p in pids if p not in reserve_for]
+    reserves = [p for p in pids if p in reserve_for]
+    parts = []
+    if voted:
+        many = len(voted) > 1
+        parts.append(
+            f"{and_list([names.player(p) for p in voted])}"
+            f" {'are All-Stars' if many else 'is an All-Star'}."
+        )
+    for p in voted:
+        if p not in hurt:
+            continue
+        sub = stand_in.get(p)
+        if sub:
+            parts.append(
+                f"{names.last(p)} is injured; {names.player(sub['player_id'])}"
+                f"{of(sub['player_id'])} takes his place."
+            )
+        else:
+            parts.append(f"{names.last(p)} is injured and will miss the game.")
+    for p in reserves:
+        gone = reserve_for[p]
+        if team_of.get(gone) == team:
+            continue  # said above
+        parts.append(
+            f"{names.player(p)} is in as a reserve for the injured"
+            f" {names.player(gone)}{of(gone)}."
+        )
+    credits = [
+        f"{names.last(p)} ({how})" for p in pids if (how := names.origin(p, team)[0])
+    ]
+    if credits:
+        parts.append(f"{and_list(credits)}.")
+    return " ".join(parts)
+
+
 def all_stars(conn, names: Names, league_id: str, season_id: str) -> None:
     news = NewsRepository(conn)
     rows = conn.execute(
         """SELECT a.player_id, a.team_id, a.replaces FROM all_stars a
-           WHERE a.season_id = %s""",
+           WHERE a.season_id = %s
+           ORDER BY a.points DESC, a.score DESC, a.player_id""",
         (season_id,),
     ).fetchall()
     if not rows:
@@ -212,25 +264,33 @@ def all_stars(conn, names: Names, league_id: str, season_id: str) -> None:
             "All-Star rosters are set", body, weight=3,
             team_ids=[top], gm_ids=names.gm_ids(top),
         )  # fmt: skip
+        # Who's hurt: anyone a reserve stands in for, and anyone hurt now
+        # (a reserve isn't named when nobody healthy is left at his spot).
+        stand_in = {r["replaces"]: r for r in rows if r["replaces"]}
+        hurt = set(stand_in) | all_star_service._hurt(
+            conn, league_id, [r["player_id"] for r in rows]
+        )
+        team_of = {r["player_id"]: r["team_id"] for r in rows}
+        reserves_ids = {r["player_id"] for r in stand_in.values()}
         for team, pids in by_team.items():
             if not names.is_human(team):
                 continue
             gm = names.gm_of(team)
-            listed = [names.player(p) for p in pids]
-            credits = [
-                f"{names.last(p)} ({how})"
-                for p in pids
-                if (how := names.origin(p, team)[0])
-            ]
-            body = f"{and_list(listed)} {'is an All-Star' if len(pids) == 1 else 'are All-Stars'}."
-            if credits:
-                body += f" {and_list(credits)}."
+            body = _all_star_team_body(names, team, pids, hurt, stand_in, team_of)
             n = len(pids)
+            # Voted in and hurt (a reserve hurt since doesn't count).
+            injured = sum(1 for p in pids if p in hurt and p not in reserves_ids)
+            headline = (
+                f"{possessive(names.gm_name(gm))} {names.team(team)} send"
+                f" {n} to the All-Star Game"
+            )
+            if injured == n:
+                headline += ", but he's injured" if n == 1 else ", all injured"
+            elif injured:
+                headline += f", {_count_word(injured)} injured"
             news.add(
                 league_id, season_id, on, "all_star",
-                f"allstar:team:{season_id}:{team}",
-                f"{possessive(names.gm_name(gm))} {names.team(team)} send"
-                f" {n} to the All-Star Game",
+                f"allstar:team:{season_id}:{team}", headline,
                 body, weight=2, team_ids=[team], player_ids=pids, gm_ids=[gm["id"]],
             )  # fmt: skip
     g = conn.execute(

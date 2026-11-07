@@ -359,6 +359,87 @@ class TestPlayoffs:
         assert s["weight"] == 3
 
 
+class TestAllStars:
+    def _star(self, db, lg, pid, team, slot="rf", replaces=None):
+        # Most votes first: each one added gets fewer than the last.
+        self.votes = getattr(self, "votes", 100) - 1
+        db.execute(
+            """INSERT INTO all_stars (season_id, player_id, team_id, slot, replaces,
+                   points)
+               VALUES (%s, %s, %s, %s, %s, %s)""",
+            (lg["season"].id, pid, team.id, slot, replaces, self.votes),
+        )
+
+    def _hurt(self, db, lg, pid):
+        db.execute(
+            """INSERT INTO player_injuries (player_id, league_id, return_date)
+               VALUES (%s, %s, '2099-01-01')""",
+            (pid, lg["league"].id),
+        )
+
+    def _team_story(self, db, lg):
+        news.update_league(db, lg["league"].id)
+        return next(s for s in _stories(db, lg, "all_star") if "send" in s["headline"])
+
+    def test_healthy_all_stars(self, db_conn, lg):
+        a = _player(db_conn, lg, lg["mine"], "Ann", "Ames")
+        b = _player(db_conn, lg, lg["mine"], "Bo", "Banks")
+        self._star(db_conn, lg, a, lg["mine"])
+        self._star(db_conn, lg, b, lg["mine"], "lf")
+
+        s = self._team_story(db_conn, lg)
+
+        assert s["headline"] == "GM Josh's Captains send 2 to the All-Star Game"
+        assert s["body"] == "Ann Ames and Bo Banks are All-Stars."
+
+    def test_an_injured_all_star_and_his_reserve(self, db_conn, lg):
+        a = _player(db_conn, lg, lg["mine"], "Ann", "Ames")
+        b = _player(db_conn, lg, lg["mine"], "Bo", "Banks")
+        sub = _player(db_conn, lg, lg["theirs"], "Cy", "Cole")
+        self._star(db_conn, lg, a, lg["mine"])
+        self._star(db_conn, lg, b, lg["mine"], "lf")
+        self._hurt(db_conn, lg, b)
+        self._star(db_conn, lg, sub, lg["theirs"], "lf", replaces=b)
+
+        s = self._team_story(db_conn, lg)
+
+        assert s["headline"] == (
+            "GM Josh's Captains send 2 to the All-Star Game, one injured"
+        )
+        assert s["body"] == (
+            "Ann Ames and Bo Banks are All-Stars."
+            " Banks is injured; Cy Cole of the Samurai takes his place."
+        )
+
+    def test_hurt_with_no_reserve(self, db_conn, lg):
+        a = _player(db_conn, lg, lg["mine"], "Ann", "Ames")
+        self._star(db_conn, lg, a, lg["mine"])
+        self._hurt(db_conn, lg, a)
+
+        s = self._team_story(db_conn, lg)
+
+        assert s["headline"] == (
+            "GM Josh's Captains send 1 to the All-Star Game, but he's injured"
+        )
+        assert s["body"] == (
+            "Ann Ames is an All-Star. Ames is injured and will miss the game."
+        )
+
+    def test_my_reserve_for_someone_elses_injured_star(self, db_conn, lg):
+        out = _player(db_conn, lg, lg["theirs"], "Cy", "Cole")
+        mine = _player(db_conn, lg, lg["mine"], "Ann", "Ames")
+        self._star(db_conn, lg, out, lg["theirs"])
+        self._hurt(db_conn, lg, out)
+        self._star(db_conn, lg, mine, lg["mine"], replaces=out)
+
+        s = self._team_story(db_conn, lg)
+
+        assert s["headline"] == "GM Josh's Captains send 1 to the All-Star Game"
+        assert s["body"] == (
+            "Ann Ames is in as a reserve for the injured Cy Cole of the Samurai."
+        )
+
+
 class TestNewsTab:
     @pytest.fixture
     def client(self, db_conn, lg):
