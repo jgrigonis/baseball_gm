@@ -90,7 +90,7 @@
       {% set li = league_info %}
       <details class="league-info" id="league-info">
         <summary class="topbar-state state-{{ league_state }}" title="League settings">
-          {{ league_state }}{% if li.season_number and league_state != "complete" %} <span class="num-tile lit">{{ li.season_number }}</span><span class="plate-of">of</span><span class="num-tile">{% if li.num_seasons %}{{ li.num_seasons }}{% else %}<span class="inf">∞</span>{% endif %}</span>{% endif %} ▾
+          <span class="topbar-state-label">{{ league_state }}</span>{% if li.season_number and league_state != "complete" %} <span class="num-tile lit">{{ li.season_number }}</span><span class="plate-of">of</span><span class="num-tile">{% if li.num_seasons %}{{ li.num_seasons }}{% else %}<span class="inf">∞</span>{% endif %}</span>{% endif %} ▾
         </summary>
         <div class="league-info-panel">
           <table class="data-table">
@@ -113,7 +113,7 @@
       });
       </script>
     {% elif league_state %}
-      <span class="topbar-state state-{{ league_state }}">{{ league_state }}</span>
+      <span class="topbar-state state-{{ league_state }}"><span class="topbar-state-label">{{ league_state }}</span></span>
     {% endif %}
     {% if is_viewer %}
       <span class="topbar-state" style="margin-left:8px;" title="You're watching this league. Only its GMs can make moves.">Viewing</span>
