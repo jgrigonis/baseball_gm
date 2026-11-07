@@ -51,18 +51,18 @@ def _writers(n_teams=30):
 # ── What a career counts for ─────────────────────────────────────────────────
 
 
-def test_backstory_seasons_count_half():
+def test_backstory_seasons_count_three_quarters():
     played = _career(years=10, war=4.0)
-    half = _career(years=10, war=4.0, backstory=10)
+    made_up = _career(years=10, war=4.0, backstory=10)
     assert played.war == 40.0
-    assert half.war == 20.0
-    assert half.raw_war == 40.0
-    assert half.total("hits") == played.total("hits") / 2
+    assert made_up.war == 30.0
+    assert made_up.raw_war == 40.0
+    assert made_up.total("hits") == played.total("hits") * 0.75
 
 
-def test_backstory_honors_count_half():
+def test_backstory_honors_count_three_quarters():
     c = _career(backstory=5, honors=[("mvp", 2001), ("mvp", 2010)])
-    assert c.honors_count("mvp") == 1.5
+    assert c.honors_count("mvp") == 1.75
     assert c.honors_count("mvp", weighted=False) == 2
 
 
@@ -159,6 +159,22 @@ def test_the_same_great_made_up_before_the_league_falls_short():
     by = {r.player_id: r for r in res}
     assert by["a"].share > by["b"].share + 0.4
     assert by["b"].outcome != "elected"
+
+
+def test_a_strong_career_made_up_before_the_league_still_draws_votes():
+    """A league's first ballots are all mostly-backstory careers. The best of
+    them get real votes (not 0%), and a borderline one gets some but not all."""
+    made_up = _career("great", years=16, war=5.5, backstory=14,
+                      honors=[*[("all_star", 2000 + i) for i in range(7)]])  # fmt: skip
+    played = _career("border", years=15, war=5.0)
+    _, res = hof.elect(
+        [hof.Candidate(made_up, 1), hof.Candidate(played, 1)],
+        _writers(),
+        random.Random(3),
+    )
+    by = {r.player_id: r for r in res}
+    assert 0.1 <= by["great"].share < 0.75
+    assert 0.1 <= by["border"].share < 0.9
 
 
 def test_ten_votes_at_most():

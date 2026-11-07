@@ -115,6 +115,33 @@ class ContractRepository:
         ).fetchone()
         return int(row["total"]) + self.dead_money(team_id, year)
 
+    def minor_league_pay(self, team_ids, year: int) -> dict[str, int]:
+        """What each team pays this season to the minor leaguers who aren't
+        on its payroll (deals never guaranteed: never on the 40-man), by
+        team id. Not payroll or the cap, but it counts against the owner's
+        budget (src/league/budget.py)."""
+        ids = list(team_ids)
+        out = dict.fromkeys(ids, 0)
+        if not ids:
+            return out
+        rows = self.conn.execute(
+            f"""
+            SELECT tp.team_id, SUM(c.salary) AS total
+            FROM team_players tp
+            JOIN player_status ps ON ps.player_id = tp.player_id
+            JOIN player_contracts c ON c.player_id = tp.player_id
+            WHERE tp.team_id = ANY(%s) AND ps.status = 'minors'
+              AND NOT c.guaranteed
+              AND c.start_year <= %s AND c.start_year + c.years > %s
+              AND {IN_FORCE}
+            GROUP BY tp.team_id
+            """,
+            (ids, year, year, year),
+        ).fetchall()
+        for r in rows:
+            out[r["team_id"]] = int(r["total"] or 0)
+        return out
+
     def dead_money(self, team_id: str, year: int) -> int:
         """This season's salary of the guaranteed deals the team released."""
         return sum(r["salary"] for r in self.dead_money_rows(team_id, year))

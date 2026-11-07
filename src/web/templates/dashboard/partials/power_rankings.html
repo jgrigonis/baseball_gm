@@ -142,5 +142,18 @@ window.prSort = function(th) {
       return c || val(b, 0) - val(a, 0);
     })
     .forEach(function(r) { body.appendChild(r); });
+  // Remembered, so a sim day's live refresh (or a trip to another tab)
+  // keeps the sort.
+  window._prSortState = {col: col, dir: th.dataset.prDir};
 };
+// The table comes back in power rank order: sort it as the GM left it.
+(function() {
+  var st = window._prSortState;
+  if (!st || (st.col === 0 && st.dir === 'desc')) return;
+  var table = document.querySelector('.pr-table');
+  var th = table && table.tHead && table.tHead.rows[0].cells[st.col];
+  if (!th || !th.classList.contains('pr-sort')) return;
+  th.dataset.prDir = st.dir === 'desc' ? 'asc' : 'desc';
+  window.prSort(th);
+})();
 </script>

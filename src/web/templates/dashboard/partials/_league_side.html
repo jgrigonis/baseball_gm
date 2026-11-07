@@ -70,17 +70,27 @@
         </a>
       {% endfor %}
       {% if gname == 'League' %}
-        {# Whole pages, not tabs: they load in full. #}
+        {# Not tabs (they don't refresh during sims), but they load in
+           place like tabs so a multi-day sim keeps running. #}
         {% if league_info %}
-        <a href="/leagues/{{ league_id }}/league" title="League info"
+        <a href="/leagues/{{ league_id }}/league"
+           hx-get="/leagues/{{ league_id }}/league"
+           hx-target="#tab-content" hx-swap="innerHTML" hx-push-url="true"
+           onclick="setActiveTab(this)" title="League info"
            class="side-link{% if path.endswith('/league') %} active{% endif %}">
           <span class="tab-icon" aria-hidden="true">ℹ️</span><span class="tab-label">League info</span></a>
         {% endif %}
-        <a href="/leagues/{{ league_id }}/history" title="History"
+        <a href="/leagues/{{ league_id }}/history"
+           hx-get="/leagues/{{ league_id }}/history"
+           hx-target="#tab-content" hx-swap="innerHTML" hx-push-url="true"
+           onclick="setActiveTab(this)" title="History"
            class="side-link{% if '/history' in path %} active{% endif %}">
           <span class="tab-icon" aria-hidden="true">📜</span><span class="tab-label">History</span></a>
         {% if hall_of_fame %}
-        <a href="/leagues/{{ league_id }}/hall-of-fame" title="Hall of Fame"
+        <a href="/leagues/{{ league_id }}/hall-of-fame"
+           hx-get="/leagues/{{ league_id }}/hall-of-fame"
+           hx-target="#tab-content" hx-swap="innerHTML" hx-push-url="true"
+           onclick="setActiveTab(this)" title="Hall of Fame"
            class="side-link{% if '/hall-of-fame' in path %} active{% endif %}">
           <span class="tab-icon" aria-hidden="true">🏛️</span><span class="tab-label">Hall of Fame</span></a>
         {% endif %}

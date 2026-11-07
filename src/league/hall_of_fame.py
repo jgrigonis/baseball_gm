@@ -13,9 +13,10 @@ The BBWAA's rules, scaled to our leagues:
   - Each writer votes for up to 10. 75% elects, under 5% drops a player,
     and 10 years on the ballot is the limit.
 
-Everything the writers look at counts a backstory season at half, so the
-Hall isn't crowded with players whose best years were made up before the
-league started.
+Everything the writers look at counts a backstory season at three quarters,
+so the Hall isn't crowded with players whose best years were made up before
+the league started, but the best of them still draw real votes (at half,
+nobody in a league's first elections got a single vote).
 
 The writers are two beat writers per team, made up from the league's id
 the same way every time. Each leans one way (career value, milestones,
@@ -38,7 +39,7 @@ KEEP_SHARE = 0.05
 MAX_VOTES = 10
 WRITERS_PER_TEAM = 2
 
-BACKSTORY_WEIGHT = 0.5
+BACKSTORY_WEIGHT = 0.75
 PEAK_SEASONS = 7
 
 # What a Hall of Famer's numbers look like. A score of 1.0 against these is
@@ -148,7 +149,7 @@ class Career:
         return games > 0 and starts < 0.3 * games
 
     def total(self, stat: str) -> float:
-        """A counting stat, backstory seasons at half."""
+        """A counting stat, backstory seasons weighted down."""
         return sum(getattr(s, stat) * s.weight for s in self.seasons)
 
     def raw_total(self, stat: str) -> int:
@@ -305,11 +306,12 @@ LEAN_MIX = {
     "awards": (0.3, 0.2, 0.5),
     "small": (0.5, 0.25, 0.25),
 }
-BAR = {"value": 1.0, "counting": 1.0, "awards": 1.0, "small": 1.15}
+BAR = {"value": 0.85, "counting": 0.85, "awards": 0.85, "small": 1.0}
 BAR_SPREAD = 0.06
-NOISE = 0.07  # each writer's own read of each player
+NOISE = 0.15  # each writer's own read of each player: wide, so shares rise
+# gradually with a career (a 1.0 career gets about half the vote, not all)
 HOMER = 0.05  # a player who played for the writer's team
-HOLDOVER_WARMING = 0.012  # per earlier year on the ballot
+HOLDOVER_WARMING = 0.02  # per earlier year on the ballot
 MOMENTUM = 0.08  # times (last year's share - 0.5): a rising candidate rises
 FINAL_YEAR_PUSH = 0.04
 STANDOUT = 0.75  # a career this share of its best view, whatever the lean

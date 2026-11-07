@@ -32,7 +32,7 @@ function setSimMode(simming) {
   if (!simming) window._simIgnoringTrades = false;
 
   // Grey out tabs that don't update live during sim
-  var liveTabs = ['standings', 'schedule', 'leaders', 'headlines', 'stats'];
+  var liveTabs = ['standings', 'schedule', 'leaders', 'headlines', 'stats', 'power'];
   document.querySelectorAll('.tab-link').forEach(function(link) {
     var href = link.getAttribute('href') || '';
     var isLive = liveTabs.some(function(t) { return href.indexOf('/' + t) !== -1; });
@@ -193,10 +193,13 @@ async function schedSimRun(count) {
 
       // Update topbar state badge if league state changed
       if (d.league_state) {
+        // Only the state word changes: the season pill keeps its
+        // "3 of 25 ▾" and its settings panel.
         var badge = document.querySelector('.topbar-state');
-        if (badge) {
-          var prevState = badge.textContent.trim();
-          badge.textContent = d.league_state;
+        var label = badge && badge.querySelector('.topbar-state-label');
+        if (badge && label) {
+          var prevState = label.textContent.trim();
+          label.textContent = d.league_state;
           badge.className = 'topbar-state state-' + d.league_state;
           var tabChangingStates = ['playoffs', 'offseason', 'draft', 'complete'];
           if (prevState !== d.league_state && tabChangingStates.includes(d.league_state)) {

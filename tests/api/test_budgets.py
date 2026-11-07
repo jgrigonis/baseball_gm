@@ -573,6 +573,131 @@ def test_analytics_levels_are_read_for_games(db_conn):
     }
 
 
+# ── The minor leagues count against spending (Josh, 2026-11-06) ─────────────
+
+
+def _farm(x, team, n):
+    """n never-guaranteed minor leaguers on the team, signed; their pay."""
+    ids = [
+        x.factory.rated_player(team, x.league, level=40, status="minors").id
+        for _ in range(n)
+    ]
+    x.contracts.sign_unsigned(x.league.id, 2026)
+    return ids, sum(c["salary"] for c in x.contracts.active_for(ids, 2026).values())
+
+
+def test_owners_cover_a_farm_by_their_spending():
+    assert bg.farm_share(0) == 0.8
+    assert bg.farm_share(50) == 1.0
+    assert bg.farm_share(100) == pytest.approx(1.2)
+    assert bg.farm_allowance(50 * M, 5) == 41 * M
+    assert bg.farm_allowance(50 * M, 95) == 59 * M
+    assert bg.average_farm([2 * M, 3 * M]) == 2_500_000
+    assert bg.average_farm([]) == 0
+
+
+def test_the_farm_counts_full_salaries_against_spending_not_the_cap(lg):
+    x = lg()
+    x.budgets.for_league(x.league.id, 2026)
+    before = x.budgets.standing(x.league.id, x.mine.id, 2026)
+    assert before["minors"] == 0
+    farm, pay = _farm(x, x.mine, 10)
+    # And one who's been on the 40-man: he's payroll.
+    vet = x.factory.rated_player(x.mine, x.league, level=40)
+    x.contracts.sign_unsigned(x.league.id, 2026)
+    x.contracts.guarantee([vet.id])
+    x.db.execute(
+        "UPDATE player_status SET status = 'minors' WHERE player_id = %s", (vet.id,)
+    )
+    assert pay >= 10 * ct.MIN_SALARY
+    assert x.contracts.minor_league_pay([x.mine.id], 2026) == {x.mine.id: pay}
+
+    after = x.budgets.standing(x.league.id, x.mine.id, 2026)
+    assert after["minors"] == pay
+    vet_pay = x.contracts.active(vet.id, 2026)["salary"]
+    assert after["payroll"] == before["payroll"] + vet_pay
+    assert after["tax"] == bg.luxury_tax(after["payroll"], after["cap"])
+    assert after["spend"] == after["payroll"] + after["front_office"] + pay
+    assert after["payroll_budget"] == (
+        after["budget"] - after["front_office"] - after["minors"]
+    )
+    # Letting one go saves his salary.
+    one = x.contracts.active(farm[0], 2026)["salary"]
+    x.contracts.release(farm[0], x.mine.id, 2026)
+    x.db.execute("DELETE FROM team_players WHERE player_id = %s", (farm[0],))
+    assert x.budgets.standing(x.league.id, x.mine.id, 2026)["minors"] == pay - one
+
+
+def test_budgets_grow_by_the_leagues_average_farm(lg):
+    x = lg()
+    stored = x.budgets.for_league(x.league.id, 2026)
+    _, pay = _farm(x, x.mine, 20)
+    budgets = x.budgets.for_league(x.league.id, 2026)
+    # Mine has the whole farm, theirs none: each (middle) owner covers the
+    # average, and it's worked out live, so the draft moves it.
+    allowance = bg.average_farm([pay, 0])
+    assert allowance > 0
+    for t in (x.mine.id, x.theirs.id):
+        assert budgets[t] == stored[t] + allowance
+    s = x.budgets.standing(x.league.id, x.mine.id, 2026)
+    assert s["farm_allowance"] == allowance
+
+
+def test_a_miser_covers_less_of_the_farm(lg):
+    x = lg()
+    stored = x.budgets.for_league(x.league.id, 2026)
+    _, pay = _farm(x, x.mine, 20)
+    average = bg.average_farm([pay, 0])
+    x.budgets._spending = lambda league_id: {x.mine.id: 5, x.theirs.id: 95}
+    budgets = x.budgets.for_league(x.league.id, 2026)
+    assert budgets[x.mine.id] == stored[x.mine.id] + bg.farm_allowance(average, 5)
+    assert budgets[x.theirs.id] == stored[x.theirs.id] + bg.farm_allowance(average, 95)
+    assert budgets[x.mine.id] - stored[x.mine.id] < average
+    assert budgets[x.theirs.id] - stored[x.theirs.id] > average
+
+
+def test_the_farm_comes_out_of_profit(lg):
+    x = lg()
+    _, pay = _farm(x, x.mine, 20)
+    x.budgets.for_league(x.league.id, 2026)
+    x.budgets.assess(x.league.id, 2026)
+    rows = {
+        r["team_id"]: r
+        for r in x.db.execute(
+            "SELECT team_id, minor_league FROM team_budgets"
+            " WHERE league_id = %s AND year = 2026",
+            (x.league.id,),
+        ).fetchall()
+    }
+    assert rows[x.mine.id]["minor_league"] == pay
+    assert rows[x.theirs.id]["minor_league"] == 0
+    assert x.budgets.history(x.league.id, x.mine.id)[0]["minor_league"] == pay
+
+
+def test_ai_budget_room_leaves_out_the_farm(lg):
+    from src.api.services import ai_free_agents, owners
+
+    x = lg()
+    x.budgets.for_league(x.league.id, 2026)
+    room = ai_free_agents._budget_room(x.db, x.league.id, x.theirs.id, 2026)
+    _, pay = _farm(x, x.theirs, 10)
+    allowance = bg.average_farm([pay, 0])
+    want = room - pay + allowance
+    assert ai_free_agents._budget_room(x.db, x.league.id, x.theirs.id, 2026) == want
+    rooms = owners.pay_rooms(x.db, x.league.id, x.season.id, [x.theirs.id])
+    assert rooms[x.theirs.id] == want
+
+
+def test_the_budget_tab_shows_the_minor_leagues(lg, client_for):
+    x = lg()
+    _, pay = _farm(x, x.mine, 10)
+    x.budgets.for_league(x.league.id, 2026)
+    html = client_for(x).get(f"/leagues/{x.league.id}/budget").text
+    assert f"front office + {bg.format_salary(pay)} minor leagues" in html
+    allowance = bg.format_salary(bg.average_farm([pay, 0]))
+    assert f"includes {allowance} for the farm" in html
+
+
 # ── Revenue breakdown ─────────────────────────────────────────────────────────
 
 
@@ -628,3 +753,16 @@ def test_the_budget_tab_shows_the_revenue_breakdown(lg, client_for):
 def test_speed_blitz_has_no_books(lg):
     x = lg(mode="speed_blitz")
     assert x.budgets.books(x.league.id, x.mine.id, 2026) == []
+
+
+def test_the_books_count_the_farm_and_still_match_the_closed_profit(lg):
+    x = lg()
+    _, pay = _farm(x, x.mine, 10)
+    x.budgets.for_league(x.league.id, 2026)
+    (projected,) = x.budgets.books(x.league.id, x.mine.id, 2026)
+    assert projected["minor_league"] == pay
+    assert projected["farm_help"] == bg.average_farm([pay, 0])
+    x.budgets.assess(x.league.id, 2026)
+    (closed,) = x.budgets.books(x.league.id, x.mine.id, 2026)
+    assert closed["other"] == 0 and closed["profit"] == projected["profit"]
+    assert closed["minor_league"] == pay

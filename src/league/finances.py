@@ -19,7 +19,9 @@ A light money model, just enough for owners to set budgets and judge profit:
   revenue (from about 45% for a miser to 75% for a spender) would spend
   about the cap.
 - **Profit** = revenue plus any share of the league's luxury tax (teams
-  under the cap split it), minus payroll, luxury tax and fixed costs. Nothing
+  under the cap split it), minus payroll, luxury tax, fixed costs, the
+  front office and the minor leagues (src/league/budget.py
+  minor_league_cost). Nothing
   carries over between seasons; owners only read it.
 
 Speed Blitz has no budgets, so none of this runs there.
@@ -151,8 +153,11 @@ def profit(
     costs: int,
     tax_share: int = 0,
     front_office: int = 0,
+    minor_league: int = 0,
 ) -> int:
-    return revenue + tax_share - payroll - luxury_tax - costs - front_office
+    return (
+        revenue + tax_share - payroll - luxury_tax - costs - front_office - minor_league
+    )
 
 
 def books(
@@ -168,18 +173,22 @@ def books(
     front_office: int,
     luxury_tax: int,
     costs: int,
+    minor_league: int = 0,
+    farm_help: int = 0,
     profit: int | None = None,
 ) -> dict:
     """A team's season as money in and money out, for the Budget tab.
 
     Revenue is the league's base times the market and fan interest, so the
-    base is backed out of it. With a profit (a finished season) anything it
+    base is backed out of it. The league covers an average farm's salaries
+    (farm_help: it comes off everyone's fixed costs in assess) and each team
+    pays its own minor leaguers. With a profit (a finished season) anything it
     doesn't explain shows as other costs; without one the profit is
     projected from the lines.
     """
     mm, fm = market_mult(market), fan_mult(fans)
-    total_in = revenue + playoff_gate + tax_share
-    known_out = payroll + front_office + luxury_tax + costs
+    total_in = revenue + playoff_gate + tax_share + farm_help
+    known_out = payroll + front_office + minor_league + luxury_tax + costs
     projected = profit is None
     if projected:
         profit = total_in - known_out
@@ -196,9 +205,11 @@ def books(
         "home_playoff_games": home_playoff_games,
         "gate_per_game": gate_per_game,
         "tax_share": tax_share,
+        "farm_help": farm_help,
         "total_in": total_in,
         "payroll": payroll,
         "front_office": front_office,
+        "minor_league": minor_league,
         "luxury_tax": luxury_tax,
         "costs": costs,
         "other": other,

@@ -500,3 +500,54 @@ def test_no_all_star_break_no_card(client, league):
     lid, sid = league["league"].id, league["past"].id
     r = client.get(f"/leagues/{lid}/season-summary?season_id={sid}")
     assert 'id="all-stars"' not in r.text
+
+
+def test_my_team_card_has_every_honor(db_conn, league):
+    """My team's chips include its All-Stars, the HR Derby champ and a Hall
+    of Famer in its cap, not only the awards."""
+    _all_star_break(db_conn, league)
+    p, past = league["players"], league["past"].id
+    mine, champ = league["mine"].id, league["champ"].id
+    # The derby: my Will Wilson beats Ray Hudgins in the final.
+    for pid, team, homers, won in (
+        (p["era"], mine, 9, True),
+        (p["avg"], champ, 7, False),
+    ):
+        db_conn.execute(
+            """INSERT INTO hr_derby_results (season_id, round, match, player_id,
+                   team_id, seed, homers, longest, won)
+               VALUES (%s, 1, 1, %s, %s, 1, %s, 455, %s)""",
+            (past, pid, team, homers, won),
+        )
+    # Hal Homer goes into the Hall in my cap.
+    db_conn.execute(
+        "INSERT INTO hall_elections (season_id, league_id, year, ballots)"
+        " VALUES (%s, %s, 2025, 10)",
+        (past, league["league"].id),
+    )
+    db_conn.execute(
+        """INSERT INTO hall_ballot (season_id, player_id, league_id, votes, share,
+               outcome, team_id)
+           VALUES (%s, %s, %s, 9, 0.9, 'elected', %s)""",
+        (past, p["hr"], league["league"].id, mine),
+    )
+    ctx = _summary(db_conn, league)
+    chips = {(h["what"], h["player_id"]) for h in ctx["my_highlights"]}
+    assert ("All-Star", p["era"]) in chips
+    assert ("HR Derby champ", p["era"]) in chips
+    assert ("Hall of Fame", p["hr"]) in chips
+    # Other teams' All-Stars get no chip.
+    assert ("All-Star", p["avg"]) not in chips
+    assert ctx["derby_champion"]["line"] == "9 HR, longest 455 ft"
+
+
+def test_summary_page_shows_the_derby_champion(client, db_conn, league):
+    db_conn.execute(
+        """INSERT INTO hr_derby_results (season_id, round, match, player_id,
+               team_id, seed, homers, longest, won)
+           VALUES (%s, 1, 1, %s, %s, 1, 5, 430, TRUE)""",
+        (league["past"].id, league["players"]["hr"], league["best"].id),
+    )
+    lid, sid = league["league"].id, league["past"].id
+    r = client.get(f"/leagues/{lid}/season-summary?season_id={sid}")
+    assert "Home Run Derby Champion" in r.text and 'id="all-stars"' in r.text

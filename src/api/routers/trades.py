@@ -155,6 +155,7 @@ def trades_tab(
                 standing["budget"],
                 offer_pay_change(db, league_id, o),
                 standing["front_office"],
+                standing["minors"],
             )
     my_players = (
         team_cards(db, league_id, season_id, team_id)

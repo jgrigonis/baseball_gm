@@ -169,9 +169,14 @@ def pay_rooms(
     repo = BudgetRepository(conn)
     cap = repo.cap(league_id, year)
     levels = repo.league_levels(league_id, year)
-    # The budget pays the front office too (src/league/budget.py).
+    farms = repo.league_minor_leagues(league_id, year)
+    # The budget pays the front office and the minor leagues too
+    # (src/league/budget.py).
     return {
-        t: b - contracts.payroll(t, year) - bg.front_office_cost(cap, levels.get(t, {}))
+        t: b
+        - contracts.payroll(t, year)
+        - bg.front_office_cost(cap, levels.get(t, {}))
+        - farms.get(t, 0)
         for t, b in budgets.items()
         if team_ids is None or t in team_ids
     }

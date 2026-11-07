@@ -205,10 +205,10 @@
   {% endif %}
 
   {# All-Star break: each game's MVP and score, then every All-Star by position #}
-  {% if all_stars or all_star_games %}
+  {% if all_stars or all_star_games or derby_champion %}
   <div class="card" id="all-stars" style="margin-bottom:24px;padding:20px 24px;">
     <div class="ss-kicker" style="margin-bottom:12px;">All-Stars</div>
-    {% if all_star_games %}
+    {% if all_star_games or derby_champion %}
     <div class="ss-awards" style="margin-bottom:16px;">
       {% for g in all_star_games %}
       <div class="ss-award">
@@ -224,6 +224,16 @@
         <div class="ss-award-detail ss-as-final">{{ g.final }}</div>
       </div>
       {% endfor %}
+      {% if derby_champion %}
+      {% set d = derby_champion %}
+      <div class="ss-award">
+        <div class="ss-award-name">💥 Home Run Derby Champion</div>
+        <div class="ss-award-winner ss-clickable" onclick="openPlayerPanel('{{ d.player_id }}')" title="View {{ d.name }}">
+          <span class="ss-award-who" style="color:{% if d.is_mine %}var(--green){% else %}var(--text){% endif %};">{{ d.name }}</span>
+          <div class="ss-award-detail">{% if d.team %}{{ d.team }} · {% endif %}{{ d.line }}</div>
+        </div>
+      </div>
+      {% endif %}
     </div>
     {% endif %}
     {% if all_stars %}

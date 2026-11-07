@@ -6,7 +6,7 @@
   <div class="hof-rules">
     Writers vote each year once the Finals end. A player needs 10 seasons and 5 years retired,
     and {{ elect_pct }}% of the ballots to get in. Under {{ keep_pct }}% or 10 years on the ballot and he's off.
-    Seasons from before the league started count half.
+    Seasons from before the league started count three quarters.
   </div>
 </div>
 
@@ -96,7 +96,7 @@
             <div>{{ r.line }}</div>
             {% if r.honors %}<div class="hof-who-team">{{ r.honors }}</div>{% endif %}
             {% if r.summary.backstory_seasons %}<div class="hof-who-team hof-counted"
-              title="Seasons from before the league started count half with the writers">Writers count {{ '%.1f'|format(r.summary.weighted_war) }} WAR · {{ r.summary.backstory_seasons }} of {{ r.summary.seasons }} seasons before the league</div>{% endif %}
+              title="Seasons from before the league started count three quarters with the writers">Writers count {{ '%.1f'|format(r.summary.weighted_war) }} WAR · {{ r.summary.backstory_seasons }} of {{ r.summary.seasons }} seasons before the league</div>{% endif %}
           </td>
         </tr>
         {% endfor %}

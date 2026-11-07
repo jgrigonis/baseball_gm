@@ -163,6 +163,7 @@ def budget_warning(
         standing["budget"],
         added,
         standing["front_office"],
+        standing["minors"],
     )
 
 
