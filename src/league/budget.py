@@ -152,13 +152,18 @@ def tax_shares(payrolls: dict[str, int], cap: int) -> dict[str, int]:
 
 
 # ── The front office (plans/budget.md, section 7) ───────────────────────────
-# Three departments the GM funds out of the owner's budget, each at one of
+# Four departments the GM funds out of the owner's budget, each at one of
 # five levels, set once each offseason (draft and preseason) and locked for
 # the season. Scouting waits for grade fog. Department levels are private.
 DEPARTMENTS = (
     ("coaching", "Coaching", "How fast players grow, and how they like the staff"),
     ("facilities", "Facilities", "Injuries, time on the IL and wear over a season"),
     ("analytics", "Analytics", "How well your strategy settings are carried out"),
+    (
+        "marketing",
+        "Marketing",
+        "Promotions and ads: how keen your fans get each season",
+    ),
 )
 DEPARTMENT_KEYS = tuple(d[0] for d in DEPARTMENTS)
 LEVELS = ("Bare bones", "Thin", "Standard", "Strong", "Elite")
@@ -206,6 +211,17 @@ COACHING_NO_AGE = 28
 # hitters and pitchers alike (Josh, 2026-11-06).
 FACILITIES_INJURY = (1.15, 1.07, 1.0, 0.93, 0.85)
 FACILITIES_DAYS = (1.15, 1.07, 1.0, 0.93, 0.85)
+
+
+# Marketing (Josh, 2026-11-07): points on the fans' end-of-season target
+# (src/league/finances.py fans_after). Fan interest drives revenue and
+# owners' attendance scores, so Elite roughly pays for itself over a few
+# seasons; Bare bones saves money now and lets the fans drift off.
+MARKETING_FANS = (-4, -2, 0, 3, 6)
+
+
+def marketing_fans(level) -> int:
+    return MARKETING_FANS[clean_level(level)]
 
 
 def coaching_growth(level: int, age: int) -> float:

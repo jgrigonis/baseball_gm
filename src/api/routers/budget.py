@@ -89,7 +89,7 @@ def _books_view(b: dict) -> dict:
         {"label": "Payroll", "amount": _money(b["payroll"]),
          "note": "Guaranteed salaries plus dead money"},
         {"label": "Front office", "amount": _money(b["front_office"]),
-         "note": "Coaching, facilities and analytics"},
+         "note": "Coaching, facilities, analytics and marketing"},
         {"label": "Minor leagues", "amount": _money(b["minor_league"]) if b["minor_league"] else None,
          "note": "Salaries of players off the 40-man"},
         {"label": "Luxury tax", "amount": _money(b["luxury_tax"]) if b["luxury_tax"] else None,

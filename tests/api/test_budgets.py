@@ -499,8 +499,8 @@ def test_department_levels_cost_a_share_of_the_cap():
         9 * M,
         12 * M,
     ]
-    assert bg.standard_front_office(160 * M) == 18 * M
-    assert bg.front_office_cost(160 * M, {"coaching": 4}) == 24 * M
+    assert bg.standard_front_office(160 * M) == 24 * M
+    assert bg.front_office_cost(160 * M, {"coaching": 4}) == 30 * M
     assert bg.clean_level("x") == bg.STANDARD and bg.clean_level(9) == 4
 
 
@@ -927,3 +927,44 @@ def test_fans_start_at_50_without_a_backstory(lg):
         "SELECT fans_before FROM team_budgets WHERE league_id = %s", (x.league.id,)
     ).fetchall()
     assert {r["fans_before"] for r in rows} == {50}
+
+
+# ── Marketing (Josh, 2026-11-07) ─────────────────────────────────────────────
+
+
+def test_marketing_is_a_fourth_department_that_moves_fans():
+    from src.league import finances as fn
+
+    assert "marketing" in bg.DEPARTMENT_KEYS
+    assert bg.marketing_fans(bg.STANDARD) == 0
+    assert bg.marketing_fans(0) < 0 < bg.marketing_fans(4)
+    base = fn.fans_after(50, 0.5, False, False, 0)
+    assert fn.fans_after(50, 0.5, False, False, 0, None, bg.STANDARD) == base
+    assert fn.fans_after(50, 0.5, False, False, 0, None, 4) > base
+    assert fn.fans_after(50, 0.5, False, False, 0, None, 0) < base
+
+
+def test_elite_marketing_costs_money_and_warms_the_fans(lg):
+    x = lg()
+    x.budgets.for_league(x.league.id, 2026)
+    cap = x.budgets.cap(x.league.id, 2026)
+    before = x.budgets.front_office(x.league.id, x.mine.id, 2026)
+    x.budgets.set_level(x.league.id, x.mine.id, 2026, "marketing", 4)
+    after = x.budgets.front_office(x.league.id, x.mine.id, 2026)
+    assert after - before == bg.level_cost(cap, 4) - bg.level_cost(cap, bg.STANDARD)
+    x.budgets.assess(x.league.id, 2026)
+    fans = {
+        r["team_id"]: r["fans_after"]
+        for r in x.db.execute(
+            "SELECT team_id, fans_after FROM team_budgets WHERE league_id = %s",
+            (x.league.id,),
+        ).fetchall()
+    }
+    assert fans[x.mine.id] > fans[x.theirs.id]
+
+
+def test_the_budget_tab_has_a_marketing_department(lg, client_for):
+    x = lg()
+    x.budgets.for_league(x.league.id, 2026)
+    html = client_for(x).get(f"/leagues/{x.league.id}/budget").text
+    assert 'name="department" value="marketing"' in html

@@ -77,13 +77,13 @@ class BudgetRepository:
             self.conn.execute(
                 """INSERT INTO team_budgets
                        (league_id, team_id, year, cap, budget, revenue, fans_before,
-                        coaching, facilities, analytics)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        coaching, facilities, analytics, marketing)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                    ON CONFLICT (league_id, team_id, year) DO NOTHING""",
                 (
                     league_id, team_id, year, cap, amount, revenue, fans,
                     levels.get("coaching"), levels.get("facilities"),
-                    levels.get("analytics"),
+                    levels.get("analytics"), levels.get("marketing"),
                 ),
             )  # fmt: skip
         return self._with_farm(league_id, year, {**have, **made})
@@ -124,7 +124,7 @@ class BudgetRepository:
         if self.budget(league_id, team_id, year) is None:
             return {}
         row = self.conn.execute(
-            """SELECT coaching, facilities, analytics FROM team_budgets
+            """SELECT coaching, facilities, analytics, marketing FROM team_budgets
                WHERE league_id = %s AND team_id = %s AND year = %s""",
             (league_id, team_id, year),
         ).fetchone()
@@ -138,7 +138,7 @@ class BudgetRepository:
         if not self.for_league(league_id, year):
             return {}
         rows = self.conn.execute(
-            """SELECT team_id, coaching, facilities, analytics FROM team_budgets
+            """SELECT team_id, coaching, facilities, analytics, marketing FROM team_budgets
                WHERE league_id = %s AND year = %s""",
             (league_id, year),
         ).fetchall()
@@ -530,6 +530,7 @@ class BudgetRepository:
                 r.get("champion", False),
                 r.get("all_stars", 0),
                 rows[team_id]["ticket_price"],
+                levels.get(team_id, {}).get("marketing"),
             )
             gate = fn.playoff_gate(average, r.get("home_playoff_games", 0))
             tickets = fn.ticket_revenue(revenue[team_id], rows[team_id]["ticket_price"])
