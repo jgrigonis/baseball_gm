@@ -828,3 +828,13 @@ def test_ticket_prices_are_set_between_seasons_on_the_budget_tab(lg, client_for)
     assert x.budgets.ticket_price(x.league.id, x.mine.id, 2026) == 8
     html = client.get(f"/leagues/{x.league.id}/budget").text
     assert "Premium (8 of 10)" in html
+
+
+def test_budget_tab_forms_keep_the_scroll(lg, client_for):
+    """Ticket prices and front office forms reload the tab quietly, so the
+    page stays put instead of jumping (Josh, 2026-11-07)."""
+    x = lg()
+    x.budgets.for_league(x.league.id, 2026)
+    html = client_for(x).get(f"/leagues/{x.league.id}/budget").text
+    forms = [f for f in html.split("<form")[1:] if "/budget/" in f.split(">")[0]]
+    assert forms and all("data-quiet-swap" in f.split(">")[0] for f in forms)
