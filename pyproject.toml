@@ -32,6 +32,13 @@ dev = [
   "pytest>=9.1",
   "ruff>=0.17",
 ]
+# Real MLB stats (scripts/real_rosters.py): the Lahman database ships in
+# pylahman as parquet files. Only the rating script needs these, not the game.
+stats = [
+  "pandas>=2.3",
+  "pyarrow>=21.0",
+  "pylahman>=0.7",
+]
 
 [tool.uv]
 # Older uv versions fail with a clear error instead of misreading uv.lock.
