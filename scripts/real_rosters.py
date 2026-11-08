@@ -23,17 +23,18 @@ How a skill is rated
 Skills Lahman can't see (clutch, and pitchers' durability) get the generated
 median for that position plus a little seeded noise.
 
-Usage:
-    uv run python -m scripts.real_rosters --data DIR [--teams 1961:NYA,2001:SEA,1986:NYN]
-        [--json OUT.json] [--workload modern|era]
-    uv run python -m scripts.real_rosters --data DIR --export-season 2025
+Usage (the "stats" extra brings pandas, pyarrow and the Lahman data):
+    uv run --extra stats python -m scripts.real_rosters
+        [--teams 1961:NYA,2001:SEA,1986:NYN] [--json OUT.json]
+        [--workload modern|era] [--data DIR]
+    uv run --extra stats python -m scripts.real_rosters --export-season 2025
 
 --export-season writes the data file a real-season league starts from
-(src/league/real_seasons/data/YEAR.json). Needs pandas and pyarrow, which
-the game itself doesn't: `uv pip install pandas pyarrow` first.
+(src/league/real_seasons/data/YEAR.json).
 
-DIR holds Lahman parquet files (Batting, Pitching, Fielding, People,
-Appearances, Teams), e.g. the pylahman wheel's pylahman/data folder.
+--data is a folder of Lahman parquet files (Batting, Pitching, Fielding,
+People, Appearances, Teams). It defaults to the copy inside the pylahman
+package; pass it only to use a newer or different copy.
 """
 
 import argparse
@@ -855,9 +856,25 @@ def export_season(rater: Rater, year: int, out: Path) -> None:
     print(f"Wrote {len(clubs)} clubs to {out}")
 
 
+def lahman_dir() -> Path:
+    """The Lahman parquet files that ship inside the pylahman package."""
+    from importlib.util import find_spec
+
+    spec = find_spec("pylahman")
+    if spec is None or not spec.submodule_search_locations:
+        raise SystemExit(
+            "No Lahman data: run with `uv run --extra stats ...`, or pass --data DIR."
+        )
+    return Path(next(iter(spec.submodule_search_locations))) / "data"
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--data", required=True, type=Path)
+    ap.add_argument(
+        "--data",
+        type=Path,
+        help="Lahman parquet folder (default: the pylahman package's own)",
+    )
     ap.add_argument("--teams", default="1961:NYA,2001:SEA,1986:NYN")
     ap.add_argument("--ref-teams", type=int, default=400)
     ap.add_argument("--json", type=Path)
@@ -871,7 +888,7 @@ def main() -> None:
 
     global WORKLOAD
     WORKLOAD = args.workload
-    rater = Rater(args.data, args.ref_teams)
+    rater = Rater(args.data or lahman_dir(), args.ref_teams)
     if args.export_season:
         export_season(
             rater,
