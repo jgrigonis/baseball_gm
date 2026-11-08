@@ -3,9 +3,13 @@
 What owners say, and how they feel (plans/owners.md, "Messages").
 
 GMs only learn what their owner wants from what the owner says, so messages
-never show a number. They're built from templates keyed by dimension and
-tone, with several wordings each, and picked by what the owner weighs most
-and by how far each thing is from what they expected.
+never show the owner's targets or scores. They do point at public facts (the
+record, the trades, payroll against the owner's budget) so the GM knows what
+the owner is reacting to. They're built from templates keyed by dimension
+and tone, with several wordings each, and picked by what the owner weighs
+most and by how far each thing is from what they expected. A check-in opens
+in the owner's mood (the word on the owner card) and leads with what explains
+it; anything running the other way is one short aside at the end.
 
 Mood is an in-season running read of the same thing the season review
 scores: how the season is going for what this owner cares about. Temper sets
@@ -20,6 +24,7 @@ from __future__ import annotations
 import random
 
 from src.league import owners
+from src.player.contracts import format_salary
 
 # ── Mood ─────────────────────────────────────────────────────────────────────
 # (lowest mood for the word, word), best first. Mood runs from -1 to 1.
@@ -244,39 +249,127 @@ NOTES = {
     },
 }
 
-# Check-in openers. Only a few use the GM's name, and a check-in never opens
-# the way one of the owner's last few did (checkin's recent).
+# Check-in openers, by the owner's mood word, so a check-in opens the way the
+# owner card says they feel. Only a few use the GM's name, and a check-in
+# never opens the way one of the owner's last few did (checkin's recent).
 CHECKIN_OPEN = {
-    "good": (
-        "Quick note.",
-        "Checking in.",
+    "thrilled": (
+        "This is the season I've been waiting for.",
+        "I couldn't be happier, {gm}.",
+        "Now this is fun.",
+        "Keep it rolling.",
+        "What a year this is turning into.",
+    ),
+    "pleased": (
         "Good stuff so far.",
         "I like what I'm seeing.",
-        "Keep it rolling.",
-        "Nice work, {gm}.",
-        "Just a quick one.",
         "Things are looking up.",
+        "Nice work, {gm}.",
+        "Quick note. A good one.",
     ),
-    "ok": (
+    "content": (
         "Checking in.",
-        "Let's talk.",
-        "Got a minute?",
+        "Quick update from upstairs.",
         "Here's where I'm at.",
         "A few thoughts.",
-        "So far, so-so.",
-        "Quick update from upstairs.",
+        "Got a minute?",
         "A word, {gm}.",
     ),
-    "bad": (
+    "uneasy": (
+        "Something's bothering me.",
+        "I've got a few worries.",
+        "I'm starting to wonder about this season.",
+        "We should talk, {gm}.",
+        "I don't love what I'm seeing.",
+    ),
+    "frustrated": (
         "We need to talk.",
-        "{gm}. My office. Now.",
         "I'm not happy.",
         "This isn't working.",
         "I expected better.",
-        "Something has to change.",
         "I've been watching. I don't like it.",
-        "Close the door.",
     ),
+    "furious": (
+        "{gm}. My office. Now.",
+        "Close the door.",
+        "Something has to change. Today.",
+        "I've had it.",
+    ),
+}
+
+# When the latest news runs against the mood (mood moves slowly), the opener
+# says so instead, so "I'm uneasy" doesn't sit next to nothing but praise.
+CHECKIN_TURN = {
+    "up": (
+        "Better lately. I'm not sold yet.",
+        "Things are turning around. Keep going.",
+        "You've got my attention again. In a good way, for once.",
+    ),
+    "down": (
+        "I was happy with this team. Lately, less so.",
+        "We were rolling. Now I'm not so sure.",
+        "Don't let a good start go to waste.",
+    ),
+}
+
+# How each mood word leans: up, flat or down.
+LEAN = {
+    "thrilled": 1,
+    "pleased": 1,
+    "content": 0,
+    "uneasy": -1,
+    "frustrated": -1,
+    "furious": -1,
+}
+
+# A short word on something that runs against the owner's overall feeling:
+# "good" for the bright spot in a bad stretch, "bad" for the worry in a good
+# one. Said last, so the message still lands where the mood is.
+ASIDES = {
+    "wins": {
+        "good": "At least we're winning games.",
+        "bad": "But we have to win more than this.",
+    },
+    "postseason": {
+        "good": "At least we're in the playoff picture.",
+        "bad": "But I want October, and we're not on track for it.",
+    },
+    "profit": {
+        "good": "At least the books look fine.",
+        "bad": "But watch the money. We're spending more than we make.",
+    },
+    "attendance": {
+        "good": "At least people are coming to the park.",
+        "bad": "But I'd like more people in the seats.",
+    },
+    "fans": {
+        "good": "At least the fans are with us.",
+        "bad": "But the fans are cooling on us.",
+    },
+    "future": {
+        "good": "At least the kids coming up look good.",
+        "bad": "But I worry about the next few years.",
+    },
+    "homegrown": {
+        "good": "At least our own kids are getting their chance.",
+        "bad": "But I'd like to see more of our own players.",
+    },
+    "stars": {
+        "good": "At least we've got names people know.",
+        "bad": "But we could use a real star.",
+    },
+    "icons": {
+        "good": "At least the core's still here.",
+        "bad": "But I haven't forgotten the icon you let go.",
+    },
+    "stability": {
+        "good": "At least you've kept the roster steady.",
+        "bad": "But go easy on the trades.",
+    },
+    "rivalry": {
+        "good": "At least we're handling the {rival}.",
+        "bad": "But I'm sick of losing to the {rival}.",
+    },
 }
 
 # End-of-season review: the verdict, by job security band.
@@ -325,9 +418,9 @@ TRADE_REACTIONS = {
 }
 
 OVER_BUDGET = (
-    "Payroll just went over the budget I gave you. I didn't sign off on that.",
-    "We're over budget. I gave you a number for a reason. Fix it.",
-    "{budget} was the number. You're past it.",
+    "Payroll's at {payroll}. I gave you {budget} for players. I didn't sign off on that.",
+    "We're over budget: {payroll} in payroll against the {budget} I gave you. Fix it.",
+    "{budget} was the number for payroll. You're at {payroll}.",
 )
 
 
@@ -363,19 +456,148 @@ def preseason(
     return " ".join(lines)
 
 
-def _notes(
-    scores: dict, weights: dict, fields: dict, rng: random.Random, n: int, money: bool
-) -> tuple[str, list[str]]:
-    """The overall tone and a line on each of the n dimensions furthest from
-    target, among those the owner cares about most."""
+_COUNTS = ("No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight")
+
+
+def _count(n: int, thing: str) -> str:
+    word = _COUNTS[n] if n < len(_COUNTS) else str(n)
+    return f"{word} {thing}{'' if n == 1 else 's'}"
+
+
+def facts(
+    season: dict | None,
+    payroll: int | None = None,
+    payroll_budget: int | None = None,
+    final: bool = False,
+) -> dict:
+    """What an owner can point at when they talk: the record, the trades,
+    the series with the rival, payroll against what they gave for it, and
+    whether the books are in the red. Public facts, never the owner's own
+    targets or scores. season: a TeamSeason as a dict (owner_scoring)."""
+    s = season or {}
+    out: dict = {"final": final}
+    w, l = s.get("wins") or 0, s.get("losses") or 0
+    if w or l:
+        out["record"] = f"{w}-{l}"
+    out["trades"] = s.get("trades")
+    rw, rl = s.get("rival_wins") or 0, s.get("rival_losses") or 0
+    if rw or rl:
+        out["rival_record"] = f"{rw}-{rl}"
+    out["profit"] = s.get("profit")
+    if payroll is not None and payroll_budget and payroll > payroll_budget:
+        out["over_budget"] = True
+        out["payroll"] = format_salary(payroll)
+        out["payroll_budget"] = format_salary(payroll_budget)
+    return out
+
+
+def _context(key: str, t: str, f: dict, fields: dict, used: set) -> str:
+    """The fact a line on this dimension is about, to say before it, or "".
+    used: facts already said in this message."""
+    final = f.get("final")
+    if key in ("wins", "postseason") and f.get("record") and "record" not in used:
+        used.add("record")
+        return f"We finished {f['record']}." if final else f"We're {f['record']}."
+    if key == "stability" and f.get("trades") is not None:
+        n = f["trades"]
+        if final:
+            return f"{_count(n, 'trade')} this year."
+        return f"{_count(n, 'trade')} so far." if n else "No trades so far."
+    if key == "rivalry" and f.get("rival_record") and fields.get("rival"):
+        verb = "went" if final else "are"
+        return f"We {verb} {f['rival_record']} against the {fields['rival']}."
+    if key == "profit":
+        if f.get("over_budget") and not final:
+            return (
+                f"Payroll's at {f['payroll']}. I gave you {f['payroll_budget']} "
+                "for players."
+            )
+        profit = f.get("profit")
+        if profit is not None and profit < 0:
+            return (
+                "We lost money this year."
+                if final
+                else "At this payroll, we lose money this year."
+            )
+        if profit is not None and profit > 0 and t == "good":
+            return (
+                "We made money this year."
+                if final
+                else "We're on pace to turn a profit."
+            )
+    return ""
+
+
+def _choose(
+    scores: dict, weights: dict, fields: dict, n: int, money: bool, lean: int | None
+) -> tuple[str, int, list[str]]:
+    """The overall tone, the way the message leans, and the n dimensions to
+    talk about, among the six the owner weighs most. The first is what most
+    explains the owner's feeling: the worst of it when they lean down, the
+    best when they lean up, the biggest either way when flat (lean None:
+    read the lean from these scores)."""
     w = owners.clean_weights(weights)
     keys = [
         k for k in _speakable(weights, fields, money)[:6] if scores.get(k) is not None
     ]
-    keys.sort(key=lambda k: -abs(scores[k]) * w[k])
-    lines = [_pick(rng, NOTES[k][tone(scores[k])], fields) for k in keys[:n]]
     total = sum(w[k] * scores[k] for k in keys) / (sum(w[k] for k in keys) or 1)
-    return tone(total), lines
+    feel = tone(total)
+    if lean is None:
+        lean = _LEAN_OF_TONE[feel]
+
+    def impact(k):
+        return scores[k] * w[k]
+
+    if lean < 0:
+        keys.sort(key=impact)
+    elif lean > 0:
+        keys.sort(key=lambda k: -impact(k))
+    else:
+        keys.sort(key=lambda k: -abs(impact(k)))
+    return feel, lean, keys[:n]
+
+
+_LEAN_OF_TONE = {"good": 1, "ok": 0, "bad": -1}
+
+
+def _notes(
+    scores: dict,
+    weights: dict,
+    fields: dict,
+    rng: random.Random,
+    n: int,
+    money: bool,
+    lean: int | None = None,
+    season: dict | None = None,
+) -> tuple[str, list[str], list[str]]:
+    """The overall tone, up to n lines on what the owner cares about most,
+    and their tones, told so they agree with each other and with how the
+    owner feels (_choose). Each line says the fact it's about when there is
+    one (season: facts()). A line that runs against the message's direction
+    becomes one short aside ("At least...", "But..."), said last."""
+    feel, lean, keys = _choose(scores, weights, fields, n, money, lean)
+    if not keys:
+        return feel, [], []
+    # The message's direction: the lead line's, or the mood's when the lead
+    # is middling. (Mood runs behind the news, so the lead can run against
+    # it when everything does; checkin's opener then says things turned.)
+    way = _LEAN_OF_TONE[tone(scores[keys[0]])] or lean
+    against = "good" if way < 0 else "bad" if way > 0 else None
+    f = season or {}
+    used: set = set()
+    lines, asides, tones = [], [], []
+    for i, k in enumerate(keys):
+        t = tone(scores[k])
+        if i and t == against:
+            if not asides:
+                asides.append(_fill(ASIDES[k][t], fields))
+                tones.append(t)
+            continue
+        line = _pick(rng, NOTES[k][t], fields)
+        said = _context(k, t, f, fields, used)
+        lines.append(f"{said} {line}" if said else line)
+        tones.insert(len(lines) - 1, t)
+    return feel, lines + asides, tones
 
 
 def checkin(
@@ -385,16 +607,29 @@ def checkin(
     rng: random.Random,
     money: bool = True,
     recent: list[str] | tuple[str, ...] = (),
+    mood: float | None = None,
+    season: dict | None = None,
 ) -> str:
-    """A mid-season check-in. recent: the owner's last few messages, so the
-    opener doesn't repeat one of theirs."""
-    feel, lines = _notes(scores, weights, fields, rng, 2, money)
+    """A mid-season check-in. mood: the owner's mood now, so the opener
+    matches the word on the owner card (None: read from these scores).
+    season: facts() for the lines to point at. recent: the owner's last few
+    messages, so the opener doesn't repeat one of theirs."""
+    word = mood_word(mood) if mood is not None else None
+    lean = LEAN[word] if word else None
+    feel, lines, tones = _notes(scores, weights, fields, rng, 2, money, lean, season)
+    if word is None:
+        word = {"good": "pleased", "ok": "content", "bad": "frustrated"}[feel]
+    openers = CHECKIN_OPEN[word]
+    # Mood runs behind the news. When nothing said runs the mood's way, the
+    # opener says things have turned instead.
+    if lean and lean < 0 and "good" in tones and "bad" not in tones:
+        openers = CHECKIN_TURN["up"]
+    elif lean and lean > 0 and "bad" in tones and "good" not in tones:
+        openers = CHECKIN_TURN["down"]
     fresh = tuple(
-        o
-        for o in CHECKIN_OPEN[feel]
-        if not any(r.startswith(_fill(o, fields)) for r in recent)
+        o for o in openers if not any(r.startswith(_fill(o, fields)) for r in recent)
     )
-    return " ".join([_pick(rng, fresh or CHECKIN_OPEN[feel], fields), *lines])
+    return " ".join([_pick(rng, fresh or openers, fields), *lines])
 
 
 def review(
@@ -404,10 +639,12 @@ def review(
     band: str,
     rng: random.Random,
     money: bool = True,
+    season: dict | None = None,
 ) -> str:
     """The end-of-season review: the verdict, the best and worst of what the
-    owner cares about, and how safe the GM's job is, all without numbers."""
-    feel, lines = _notes(scores, weights, fields, rng, 3, money)
+    owner cares about, and how safe the GM's job is, without the owner's
+    targets or scores. season: facts(final=True) for the lines to point at."""
+    feel, lines, _ = _notes(scores, weights, fields, rng, 3, money, None, season)
     return " ".join(
         [
             _pick(rng, REVIEW_OPEN[feel], fields),

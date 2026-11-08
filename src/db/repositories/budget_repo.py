@@ -699,6 +699,61 @@ class BudgetRepository:
             )
         return out
 
+    def projected(self, league_id: str, year: int) -> dict[str, dict]:
+        """Each team's revenue (with the playoff gate so far) and profit for
+        the season, by team id, as the Budget tab projects them until the
+        books close (books): today's payroll, tax and tax share for the
+        year. Empty without budgets."""
+        rows = {
+            r["team_id"]: r
+            for r in self.conn.execute(
+                """SELECT team_id, cap, revenue, fans_before, ticket_price
+                   FROM team_budgets WHERE league_id = %s AND year = %s""",
+                (league_id, year),
+            ).fetchall()
+        }
+        if not rows:
+            return {}
+        first = next(iter(rows.values()))
+        cap = int(first["cap"]) if first["cap"] else self.cap(league_id, year)
+        money = self._team_money(league_id, year, list(rows))
+        revenue = self._revenues(league_id, year, rows, money, cap)
+        average = sum(revenue.values()) / len(revenue)
+        costs = self._fixed_costs(average, cap)
+        payrolls = {t: self.contracts.payroll(t, year) for t in rows}
+        shares = bg.tax_shares(payrolls, cap)
+        farms = self._minor_leagues(league_id, year, list(rows))
+        farm_help = bg.average_farm(farms.values())
+        levels = self.league_levels(league_id, year)
+        season_id = self._season_id(league_id, year)
+        results = self._results(league_id, season_id) if season_id else {}
+        out = {}
+        for t, r in rows.items():
+            fans = money[t].fans if r["fans_before"] is None else r["fans_before"]
+            games = results.get(t, {}).get("home_playoff_games", 0)
+            gate = fn.playoff_gate(average, games)
+            b = fn.books(
+                revenue=revenue[t],
+                market=money[t].market,
+                fans=fans,
+                gate_per_game=fn.playoff_gate(average, 1),
+                costs=costs,
+                ticket_price=r["ticket_price"],
+                minor_league=farms.get(t, 0),
+                farm_help=farm_help,
+                playoff_gate=gate,
+                home_playoff_games=games,
+                popularity=fn.popularity_money(average, fans),
+                tax_share=shares.get(t, 0),
+                payroll=payrolls[t],
+                front_office=(
+                    bg.front_office_cost(cap, levels[t]) if levels.get(t) else 0
+                ),
+                luxury_tax=bg.luxury_tax(payrolls[t], cap),
+            )
+            out[t] = {"revenue": revenue[t] + gate, "profit": b["profit"]}
+        return out
+
     def _results(self, league_id: str, season_id: str) -> dict[str, dict]:
         """Each team's season, for fan interest and the playoff gate: win %,
         whether it made the playoffs or won the title, its All-Stars and its
