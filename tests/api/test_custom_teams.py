@@ -99,9 +99,13 @@ def test_no_duplicates_and_a_full_roster(as_user, db_conn, josh):
     team_id = _new_team(client)
     client.post(f"/teams/{team_id}/add", data={"key": "ruthba01-1927"})
     r = client.post(f"/teams/{team_id}/add", data={"key": "ruthba01-1927"})
-    assert r.status_code == 400 and "already on the team (1927)" in r.text
-    r = client.post(f"/teams/{team_id}/add", data={"key": "ruthba01-1921"})
-    assert r.status_code == 400  # one season of a man per team
+    assert r.status_code == 400 and "Babe Ruth 1927 is already on the team" in r.text
+    client.post(f"/teams/{team_id}/add", data={"key": "ruthba01-1921"})
+    # Another season of him is fine.
+    assert [e["key"] for e in _team(db_conn, team_id)["players"]] == [
+        "ruthba01-1927",
+        "ruthba01-1921",
+    ]
     keys = [f"x-{i}" for i in range(ct.ROSTER_MAX)]
     CustomTeamRepository(db_conn).save_players(
         team_id, [{"key": k, "skills": None} for k in keys]
@@ -225,3 +229,30 @@ def test_summary_counts_what_the_team_needs():
         "at least 5 starting pitchers",
         "a catcher",
     ]
+
+
+def test_search_by_year_and_club(as_user, josh):
+    client = as_user(josh)
+    team_id = _new_team(client)
+    html = client.get(f"/teams/{team_id}?q=1986&club=NYN").text
+    assert "Keith Hernandez" in html and "Dwight Gooden" in html
+    assert "Wade Boggs" not in html  # 1986 Red Sox
+    assert '<option value="NYN" selected>New York Mets (1962–2025)</option>' in html
+    # A club alone lists all its seasons; Any club is the default.
+    html = client.get(f"/teams/{team_id}?club=SE1").text
+    assert "Seattle Pilots" in html
+    assert '<option value="">Any club</option>' in html
+    # Names open his skills; headers sort.
+    assert 'class="ct-name" data-player="' in html
+    assert "data-sortable" in html
+
+
+def test_adding_keeps_the_club_filter(as_user, josh):
+    client = as_user(josh)
+    team_id = _new_team(client)
+    r = client.post(
+        f"/teams/{team_id}/add",
+        data={"key": "hernake01-1986", "q": "1986", "club": "NYN"},
+        follow_redirects=False,
+    )
+    assert r.headers["location"] == f"/teams/{team_id}?q=1986&club=NYN#search"

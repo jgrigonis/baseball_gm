@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import functools
 import gzip
+import json
 import random
 import unicodedata
 import uuid
@@ -23,6 +24,7 @@ from src.player.player_record import PlayerRecord
 from src.player.player_skills import PlayerSkills
 
 PLAYERS_FILE = DATA_DIR / "players.tsv.gz"
+CLUBS_FILE = DATA_DIR / "clubs.json"
 
 
 @dataclass(frozen=True)
@@ -97,6 +99,18 @@ def _all() -> tuple[tuple[PlayerSeason, ...], dict[str, PlayerSeason], list[str]
     return seasons, by_key, names
 
 
+@functools.cache
+def clubs() -> dict[str, dict]:
+    """Every club code the seasons use: {"SEA": {"name": "Seattle Mariners",
+    "first": 1977, "last": 2025}}. The name is the club's latest."""
+    return json.loads(CLUBS_FILE.read_text())
+
+
+def club_name(code: str) -> str:
+    club = clubs().get(code)
+    return club["name"] if club else code
+
+
 def count() -> int:
     return len(_all()[0])
 
@@ -106,20 +120,26 @@ def get(key: str) -> PlayerSeason | None:
     return _all()[1].get(key)
 
 
-def search(query: str, limit: int = 50) -> tuple[list[PlayerSeason], int]:
+def search(
+    query: str, limit: int = 50, club: str = ""
+) -> tuple[list[PlayerSeason], int]:
     """Player-seasons whose name has every word of the query as the start of
     a word ("ken grif"), and a four-digit word, if any, as the year
-    ("griffey 1997"). Sorted by last name, first name, then year. Returns at
-    most `limit` of them and how many matched in all."""
+    ("griffey 1997"), and who played for `club` that season if given. A
+    year or a club alone lists everyone in it ("1986", or NYN). Sorted by
+    last name, first name, then year. Returns at most `limit` of them and
+    how many matched in all."""
     words = _fold(query).split()
     years = {int(w) for w in words if w.isdigit() and len(w) == 4}
     words = [w for w in words if not (w.isdigit() and len(w) == 4)]
-    if not words and not years:
+    if not words and not years and not club:
         return [], 0
     seasons, _, names = _all()
     found = []
     for s, name in zip(seasons, names):
         if years and s.year not in years:
+            continue
+        if club and club not in s.teams:
             continue
         parts = name.split()
         if all(any(p.startswith(w) for p in parts) for w in words):

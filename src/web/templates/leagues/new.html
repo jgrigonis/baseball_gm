@@ -29,7 +29,7 @@
       <select name="real_season" id="real-season">
         <option value="">Generated players</option>
         {% for year in real_seasons %}
-        <option value="{{ year }}">The real {{ year }} season</option>
+        <option value="{{ year }}"{% if not can_real_season %} disabled{% endif %}>The real {{ year }} season{% if not can_real_season %} (paid contributors){% endif %}</option>
         {% endfor %}
       </select>
       <span class="mode-note" id="real-season-note" hidden>Every club's 40 players from that season, rated from their real stats, playing as this league's 30 teams. No made-up history: the league opens on the real rosters.</span>
