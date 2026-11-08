@@ -8,7 +8,8 @@ their own. players is a JSON list of {"key": "griffke02-1997", "skills":
 
 A league's commissioner can put one of their custom teams on any team in a
 single-player lobby (league_custom_teams, a copy of the players at the
-time). leagues.single_player then keeps anyone else from joining.
+time). leagues.single_player then keeps anyone else from joining, and
+gm_career_seasons.custom_teams keeps its seasons from earning GM badges.
 """
 
 VERSION = 96
@@ -46,6 +47,10 @@ def upgrade(conn):
     conn.execute(
         "ALTER TABLE leagues ADD COLUMN IF NOT EXISTS"
         " single_player BOOLEAN NOT NULL DEFAULT FALSE"
+    )
+    conn.execute(
+        "ALTER TABLE gm_career_seasons ADD COLUMN IF NOT EXISTS"
+        " custom_teams BOOLEAN NOT NULL DEFAULT FALSE"
     )
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_custom_teams_owner ON custom_teams(owner_id)"

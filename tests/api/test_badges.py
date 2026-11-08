@@ -60,6 +60,14 @@ class TestCareerBadges:
         c = _check(db_conn, u, "champion")
         assert c.earned and c.detail == "League L1 · 2031"
 
+    def test_custom_team_leagues_earn_nothing(self, db_conn):
+        """A league with custom teams (single player) counts for no badge."""
+        u = _user(db_conn)
+        _season(db_conn, u, year=2031, playoff_result="Champion", custom_teams=True)
+        assert not _check(db_conn, u, "champion").earned
+        _season(db_conn, u, "B", year=2032, playoff_result="Champion")
+        assert _check(db_conn, u, "champion").detail == "League B · 2032"
+
     def test_dynasty_needs_three_in_one_league(self, db_conn):
         u = _user(db_conn)
         _season(db_conn, u, "A", 2030, playoff_result="Champion")

@@ -970,6 +970,7 @@ CREATE TABLE IF NOT EXISTS gm_career_seasons (
     trades         INTEGER NOT NULL DEFAULT 0,      -- accepted trades
     front_office   TEXT,                            -- the team's last team_states state that season
     final          BOOLEAN NOT NULL DEFAULT FALSE,  -- season over, or they left
+    custom_teams   BOOLEAN NOT NULL DEFAULT FALSE,  -- the league had custom teams: no badges (migration 096)
     updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (user_id, league_id, season_id)
 );

@@ -52,7 +52,7 @@ def record_league(conn, league_id: str, leaving_gm_id: str | None = None) -> Non
     ``leaving_gm_id``, only that GM's, and their rows are made final since
     they're leaving."""
     league = conn.execute(
-        "SELECT id, name, state, is_practice FROM leagues WHERE id = %s",
+        "SELECT id, name, state, is_practice, single_player FROM leagues WHERE id = %s",
         (league_id,),
     ).fetchone()
     if not league or league["is_practice"] or league["state"] == "lobby":
@@ -109,6 +109,8 @@ def record_league(conn, league_id: str, leaving_gm_id: str | None = None) -> Non
                     "trades": _trades(conn, season["id"], gm["team_id"]),
                     "front_office": facts.front_office.get(gm["team_id"]),
                     "final": over or leaving_gm_id is not None,
+                    # No GM badges from a league with custom teams.
+                    "custom_teams": bool(league["single_player"]),
                 }
             )
         _record_head_to_head(
