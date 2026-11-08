@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS leagues (
     backstory_years      INTEGER NOT NULL DEFAULT 10,    -- past seasons generated at the start (src/league/backstory/)
     weighted_schedule    BOOLEAN NOT NULL DEFAULT FALSE, -- division rivals play more often (src/league/weighted_schedule.py)
     real_season          INTEGER,  -- starts with this MLB season's players (src/league/real_seasons/, migration 095)
+    single_player        BOOLEAN NOT NULL DEFAULT FALSE, -- has a custom team: nobody else can join (migration 096)
     created_at TEXT DEFAULT (NOW())
 );
 
@@ -696,6 +697,18 @@ CREATE TABLE IF NOT EXISTS league_lobby_teams (
     league_id TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
     city      TEXT NOT NULL,
     mascot    TEXT NOT NULL,
+    PRIMARY KEY (league_id, city, mascot)
+);
+
+-- A custom team's players (a copy) put on one of a single-player lobby's
+-- teams by its commissioner; used when the league starts (migration 096).
+CREATE TABLE IF NOT EXISTS league_custom_teams (
+    league_id      TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    city           TEXT NOT NULL,
+    mascot         TEXT NOT NULL,
+    custom_team_id TEXT,
+    name           TEXT NOT NULL,
+    players        JSONB NOT NULL,
     PRIMARY KEY (league_id, city, mascot)
 );
 
