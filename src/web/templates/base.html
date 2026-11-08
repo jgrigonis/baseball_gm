@@ -155,6 +155,7 @@
         {% endif %}
         <div class="nav-menu-group">
           <a href="/leagues/">Leagues</a>
+          {% if nav_user and (nav_user.is_admin or nav_user.is_contributor) %}<a href="/teams/">My Teams</a>{% endif %}
           {% if nav_user and nav_user.is_admin %}<a href="/admin/">Admin</a>{% endif %}
           {% if discord_url %}<a href="{{ discord_url }}" target="_blank" rel="noopener">Discord ↗</a>{% endif %}
         </div>

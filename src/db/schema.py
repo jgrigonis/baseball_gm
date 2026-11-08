@@ -113,6 +113,20 @@ CREATE TABLE IF NOT EXISTS password_resets (
 -- email_verifications: one row per emailed verify link. Only a SHA-256 hash
 --   of the token is kept, with the address it went to, so an old link can't
 --   verify a changed email. A link works for a day, once (migration 070).
+-- A contributor's team of real player-seasons, shared by code (migration 096).
+-- players: [{{"key": "griffke02-1997", "skills": {{...}} or null}}].
+CREATE TABLE IF NOT EXISTS custom_teams (
+    id          TEXT PRIMARY KEY,
+    owner_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name        TEXT NOT NULL,
+    share_code  TEXT UNIQUE NOT NULL,
+    copied_from TEXT,
+    players     JSONB NOT NULL DEFAULT '[]',
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_custom_teams_owner ON custom_teams(owner_id);
+
 CREATE TABLE IF NOT EXISTS email_verifications (
     id           TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

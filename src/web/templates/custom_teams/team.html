@@ -1,0 +1,51 @@
+{# custom_teams/team.html — one of your custom teams: roster, search to add
+   players, rename, share, delete (routers/custom_teams.py). #}
+{% extends "base.html" %}
+{% block title %}{{ team.name }} — My Teams — Baseball GM{% endblock %}
+{% block main %}
+{% include "custom_teams/_style.html" %}
+<div class="page-content"><div class="content-inner" style="max-width:1100px;">
+  <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+    <h1 class="page-title">{{ team.name }}</h1>
+    <a href="/teams/" class="btn btn-secondary">← My Teams</a>
+  </div>
+  {% if error %}<div class="card ct-card"><div class="card-body" style="color:var(--red);font-family:var(--font-mono);font-size:12px;">{{ error }}</div></div>{% endif %}
+  {% include "custom_teams/_summary.html" %}
+
+  <div id="roster">{% set editable = true %}{% include "custom_teams/_roster.html" %}</div>
+
+  <div class="card ct-card" id="search">
+    <div class="ct-card-title">Add a player</div>
+    <div class="card-body">
+      <form method="GET" action="/teams/{{ team.id }}" class="ct-row">
+        <input type="text" name="q" value="{{ q }}" placeholder="Name and year, e.g. griffey 1997" autocomplete="off" aria-label="Search players"
+               hx-get="/teams/{{ team.id }}/search" hx-trigger="input changed delay:300ms" hx-target="#search-results" hx-swap="outerHTML">
+        <button type="submit" class="btn btn-secondary">Search</button>
+      </form>
+    </div>
+    {% set full = summary.size >= summary.max %}
+    {% include "custom_teams/_search.html" %}
+  </div>
+
+  <div class="card ct-card"><div class="card-body">
+    <div class="ct-card-title" style="padding:0 0 8px;">Share</div>
+    <p style="margin:0 0 8px;">Anyone signed in can open this link and see the team. Contributors can save their own copy, and changes to a copy don't touch yours.</p>
+    <div class="ct-row">
+      <span class="ct-share" id="share-url">{{ share_url }}</span>
+      <button type="button" class="btn btn-secondary admin-small" onclick="navigator.clipboard.writeText(document.getElementById('share-url').textContent).then(function(){ if (window.gmToast) gmToast('Link copied'); })">Copy link</button>
+      <span class="admin-dim" style="font-family:var(--font-mono);font-size:12px;">Code {{ team.share_code }}</span>
+    </div>
+  </div></div>
+
+  <div class="card ct-card"><div class="card-body">
+    <form method="POST" action="/teams/{{ team.id }}/rename" class="ct-row">
+      <input type="text" name="name" value="{{ team.name }}" maxlength="{{ name_max }}" required aria-label="Team name">
+      <button type="submit" class="btn btn-secondary">Rename</button>
+    </form>
+    <form method="POST" action="/teams/{{ team.id }}/delete" style="margin-top:12px;"
+          data-confirm="Delete {{ team.name }}?" data-confirm-text="Copies other people saved stay theirs." data-confirm-ok="Delete" data-confirm-tone="danger">
+      <button type="submit" class="btn btn-secondary" style="color:var(--red);">Delete team</button>
+    </form>
+  </div></div>
+</div></div>
+{% endblock %}

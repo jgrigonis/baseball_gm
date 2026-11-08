@@ -1,0 +1,41 @@
+{# custom_teams/player.html — hand-edit one player's skills on your custom team. #}
+{% extends "base.html" %}
+{% block title %}{{ p.name }} {{ p.year }} — {{ team.name }} — Baseball GM{% endblock %}
+{% block main %}
+{% include "custom_teams/_style.html" %}
+<div class="page-content"><div class="content-inner" style="max-width:760px;">
+  <div class="page-header"><h1 class="page-title">{{ p.name }} <span class="admin-dim">{{ p.year }}</span></h1></div>
+  <p style="margin:0 0 12px;font-family:var(--font-mono);font-size:12px;">
+    {{ p.pos|upper }} · age {{ p.age }} · {{ p.bats }}/{{ p.throws }} · {{ p.teams }} ·
+    <span class="grade grade-{{ grade_class(p.grade) }}">{{ p.grade }}</span>
+    on <a href="/teams/{{ team.id }}" style="color:var(--amber);">{{ team.name }}</a>
+  </p>
+  {% if error %}<div class="card ct-card"><div class="card-body" style="color:var(--red);font-family:var(--font-mono);font-size:12px;">{{ error }}</div></div>{% endif %}
+  <div class="card"><div class="card-body">
+    <form method="POST" action="/teams/{{ team.id }}/players/{{ p.slot }}">
+      {% for title, group in [('Hitting', skills[:8]), ('Defense', skills[8:12]), ('Pitching', skills[12:])] %}
+      <div class="ct-group">{{ title }}</div>
+      <div class="ct-skills">
+        {% for s in group %}
+        {% set v = values[s] if values else p.skills[s] %}
+        <div class="{% if s in p.edited %}changed{% endif %}">
+          <label for="sk-{{ s }}">{{ s|replace('_', ' ')|capitalize }}</label>
+          <input id="sk-{{ s }}" name="{{ s }}" type="number" min="1" max="100" value="{{ v }}" required>
+          <span class="hint">Real {{ p.real[s] }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endfor %}
+      <div style="display:flex;gap:8px;margin-top:18px;flex-wrap:wrap;">
+        <button type="submit" class="btn btn-primary">Save</button>
+        <a href="/teams/{{ team.id }}#slot-{{ p.slot }}" class="btn btn-secondary">Cancel</a>
+      </div>
+    </form>
+    {% if p.edited %}
+    <form method="POST" action="/teams/{{ team.id }}/players/{{ p.slot }}/reset" style="margin-top:12px;">
+      <button type="submit" class="btn btn-secondary">Reset to his real ratings</button>
+    </form>
+    {% endif %}
+  </div></div>
+</div></div>
+{% endblock %}
