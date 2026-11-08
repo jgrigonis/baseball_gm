@@ -70,8 +70,9 @@ POPULARITY_FROM = 55
 POPULARITY_SHARE = 0.15
 # Fixed costs (staff, the ballpark, travel): this share of the league's
 # average revenue, the same for every team (Josh, 2026-11-07: up from 20%
-# to trim the average team's profit from about +$50M to about +$25M).
-FIXED_COSTS = 0.26
+# to trim the average team's profit to about +$25M a season; 26% still left
+# about +$42M in a 6-season sim, so 32%).
+FIXED_COSTS = 0.32
 
 ROUNDING = 100_000
 
