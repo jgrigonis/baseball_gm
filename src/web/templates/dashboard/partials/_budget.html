@@ -6,14 +6,21 @@
 {% macro payroll_line(budget, payroll_text, dead_money_text=None) %}
 <span class="page-subtitle payroll-line" style="margin-left:12px;"
       title="{% if budget %}Cap {{ budget.cap_text }}, {{ (budget.tax_rate * 100) | round | int }}% tax over it{% if budget.tax_text %}: {{ budget.tax_text }}{% endif %}.&#10;Owner's number {{ budget.payroll_budget_text }} after the front office and minor leagues{% if budget.over_budget_text %}: {{ budget.over_budget_text }} over{% endif %}.&#10;{% endif %}Guaranteed salaries plus dead money.">
-  Payroll {{ budget.payroll_text if budget else payroll_text }}
-  {%- if dead_money_text %} <span style="color:var(--red);">({{ dead_money_text }} dead)</span>{% endif %}
-  {%- if budget %}{% if budget.over %} <span class="pl-over">· {{ budget.over_text }} over cap</span>
-  {%- elif budget.over_budget %} <span class="pl-over">· {{ budget.over_budget_text }} past owner</span>
-  {%- elif budget.room_text %} <span class="pl-dim">· {{ budget.room_text }} under cap</span>{% endif %}{% endif %}
+  <span class="pl-main">Payroll {{ budget.payroll_text if budget else payroll_text }}
+  {%- if dead_money_text %} <span style="color:var(--red);">({{ dead_money_text }} dead)</span>{% endif %}</span>
+  {%- if budget %}{% if budget.over %} <span class="pl-note pl-over">{{ budget.over_text }} over cap</span>
+  {%- elif budget.over_budget %} <span class="pl-note pl-over">{{ budget.over_budget_text }} past owner</span>
+  {%- elif budget.room_text %} <span class="pl-note pl-dim">{{ budget.room_text }} under cap</span>{% endif %}{% endif %}
 </span>
 <style>
+/* One line with a dot when there's room. When there isn't, the cap note drops
+   under the payroll, left-aligned, and the dot (which sits in the gap before
+   the note) is clipped away, so a wrapped line never starts with a stray "·". */
+.payroll-line { display: inline-flex; flex-wrap: wrap; column-gap: 2ch; row-gap: 2px; overflow: hidden; }
+.payroll-line .pl-main, .payroll-line .pl-note { white-space: nowrap; }
+.payroll-line .pl-note { position: relative; }
+.payroll-line .pl-note::before { content: "·"; position: absolute; right: 100%; width: 2ch; text-align: center; color: var(--text-dim); }
 .payroll-line .pl-dim { color: var(--text-dim); }
-.payroll-line .pl-over { color: var(--red); white-space: nowrap; }
+.payroll-line .pl-over { color: var(--red); }
 </style>
 {% endmacro %}
