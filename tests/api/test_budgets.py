@@ -849,6 +849,19 @@ def test_the_books_count_the_farm_and_still_match_the_closed_profit(lg):
     assert closed["minor_league"] == pay
 
 
+def test_owners_judge_money_in_season_on_the_projected_books(lg):
+    x = lg()
+    _farm(x, x.mine, 10)
+    x.budgets.for_league(x.league.id, 2026)
+    projected = x.budgets.projected(x.league.id, 2026)
+    (books,) = x.budgets.books(x.league.id, x.mine.id, 2026)
+    assert projected[x.mine.id]["profit"] == books["profit"]
+    assert projected[x.mine.id]["revenue"] == books["revenue"] + books["playoff_gate"]
+    x.budgets.assess(x.league.id, 2026)
+    (closed,) = x.budgets.books(x.league.id, x.mine.id, 2026)
+    assert closed["profit"] == projected[x.mine.id]["profit"]
+
+
 # ── Ticket prices (Josh, 2026-11-07) ─────────────────────────────────────────
 
 

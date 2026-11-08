@@ -185,6 +185,16 @@ def _fields(owner: dict, gm: dict, names: dict, budget: int | None) -> dict:
     }
 
 
+def _in_season(season, traits: dict, money: bool, state: str) -> dict:
+    """The owner's scores on the season so far. Until the playoffs start,
+    nobody has made or missed them, so the postseason isn't judged yet
+    (score_dimensions would read every team as having missed)."""
+    scores = sc.score_dimensions(season, traits, money)
+    if state == "season":
+        scores["postseason"] = None
+    return scores
+
+
 def weekly(conn, league_id: str, today: str) -> int:
     """From the sim, after a day's games: catch up once a week (the first
     day of the season, then every MOOD_DAYS)."""
@@ -232,6 +242,11 @@ def catch_up(conn, league_id: str, today: str | None = None) -> int:
     # The first reading of a season starts from where last season left off.
     before = latest_moods(conn, league_id, year) if in_season else {}
     contracts = ContractRepository(conn)
+    # The books don't close until the season ends, so in season owners judge
+    # the money on the Budget tab's projection: today's payroll for the year.
+    projected = (
+        BudgetRepository(conn).projected(league_id, year) if money and in_season else {}
+    )
     for team_id, owner in by_team.items():
         gm = gms.get(team_id)
         if not gm or year < owner["since_year"]:
@@ -253,10 +268,14 @@ def catch_up(conn, league_id: str, today: str | None = None) -> int:
         traits = owners.clean_traits(owner["traits"])
         # Mood, weekly.
         m = current.get(team_id)
-        # Mid-season, money is judged on payroll against budget so far.
-        so_far = replace(facts[team_id], payroll=contracts.payroll(team_id, year))
+        payroll = contracts.payroll(team_id, year)
+        so_far = replace(facts[team_id], payroll=payroll)
+        p = projected.get(team_id)
+        if p and so_far.profit is None:
+            so_far = replace(so_far, revenue=p["revenue"], profit=p["profit"])
+        said = om.facts(so_far.as_dict(), payroll, budgets.get(team_id))
         if today and (m is None or _days(m["as_of"], today) >= MOOD_DAYS):
-            scores = sc.score_dimensions(so_far, owner["traits"], money)
+            scores = _in_season(so_far, owner["traits"], money, league["state"])
             reading = sc.season_score(scores, owner["weights"])
             reading *= min(1.0, games / MOOD_FULL_GAMES)
             start = m["mood"] if m else before.get(team_id, 0.0)
@@ -272,11 +291,11 @@ def catch_up(conn, league_id: str, today: str | None = None) -> int:
                 key = f"check:{sid}:{n}"
                 if _has(conn, league_id, team_id, key):
                     continue
-                scores = sc.score_dimensions(so_far, owner["traits"], money)
+                scores = _in_season(so_far, owner["traits"], money, league["state"])
                 mood = current.get(team_id, {}).get("mood", 0.0)
                 body = om.checkin(
                     scores, owner["weights"], fields, _rng(sid, team_id, n), money,
-                    _recent(conn, league_id, team_id),
+                    _recent(conn, league_id, team_id), mood, said,
                 )  # fmt: skip
                 written += _write(
                     conn, league_id, team_id, gm["id"], sid, key, "checkin", body,
@@ -288,10 +307,13 @@ def catch_up(conn, league_id: str, today: str | None = None) -> int:
         if (
             budget
             and weights["profit"] >= 40
-            and contracts.payroll(team_id, year) > budget
+            and payroll > budget
             and not _has(conn, league_id, team_id, f"over:{sid}")
         ):
-            body = om.over_budget(fields, _rng(sid, team_id, "over"))
+            body = om.over_budget(
+                {**fields, "payroll": format_salary(payroll)},
+                _rng(sid, team_id, "over"),
+            )
             written += _write(
                 conn, league_id, team_id, gm["id"], sid, f"over:{sid}", "budget",
                 body, today, None,
@@ -370,6 +392,7 @@ def review(conn, league_id: str, season_id: str, today: str | None = None) -> in
         )
         fields = _fields(owner, gm, names, None)
         scores = (r["detail"] or {}).get("scores", {})
+        said = om.facts((r["detail"] or {}).get("facts"), final=True)
         body = om.review(
             scores,
             owner["weights"],
@@ -377,6 +400,7 @@ def review(conn, league_id: str, season_id: str, today: str | None = None) -> in
             band,
             _rng(season_id, r["team_id"], "rv"),
             money,
+            said,
         )
         _set_mood(conn, league_id, r["team_id"], season_id, r["score"], today)
         written += _write(
