@@ -875,6 +875,21 @@ def export_season(rater: Rater, year: int, out: Path) -> None:
 PLAYERS_FILE = "players.tsv.gz"
 
 
+def export_clubs(teams: pd.DataFrame, out: Path) -> None:
+    """Every club code the player file uses, with its latest name and the
+    years it played, for the custom-team builder's club filter."""
+    clubs = {}
+    for team_id, rows in teams.groupby("teamID"):
+        rows = rows.sort_values("yearID")
+        clubs[team_id] = {
+            "name": rows.iloc[-1]["name"],
+            "first": int(rows["yearID"].min()),
+            "last": int(rows["yearID"].max()),
+        }
+    out.write_text(json.dumps(clubs, indent=0, sort_keys=True) + "\n")
+    print(f"Wrote {len(clubs)} clubs to {out}")
+
+
 def export_players(rater: Rater, out: Path) -> None:
     """Write every real player-season worth picking, rated, for custom teams
     (src/league/real_seasons/players.py): one tab-separated line each, the
@@ -929,6 +944,7 @@ def export_players(rater: Rater, out: Path) -> None:
     with gzip.open(out, "wt", compresslevel=9) as f:
         f.write("\n".join(lines) + "\n")
     print(f"Wrote {len(keys)} player-seasons to {out}")
+    export_clubs(rater.d["Teams"], out.parent / "clubs.json")
 
 
 def lahman_dir() -> Path:

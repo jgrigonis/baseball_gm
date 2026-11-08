@@ -58,7 +58,12 @@ TEAMS = 30
 
 def available() -> tuple[int, ...]:
     """Seasons a league can start from, newest first."""
-    return tuple(sorted((int(p.stem) for p in DATA_DIR.glob("*.json")), reverse=True))
+    return tuple(
+        sorted(
+            (int(p.stem) for p in DATA_DIR.glob("*.json") if p.stem.isdigit()),
+            reverse=True,
+        )
+    )
 
 
 @functools.cache

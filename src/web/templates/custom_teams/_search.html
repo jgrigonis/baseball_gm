@@ -1,18 +1,25 @@
-{# custom_teams/_search.html — real player-seasons matching the search box. #}
+{# custom_teams/_search.html — real player-seasons matching the search box
+   and club filter. Headers sort; a name opens his skills (#ct-card). #}
 <div id="search-results">
-{% if q and q.strip() %}
+{% if (q and q.strip()) or club %}
   {% if results %}
-  <table class="data-table ct-table">
-    <thead><tr><th>Player</th><th class="num">Year</th><th>Club</th><th>Pos</th><th class="num">Age</th><th>Ovr</th><th class="num">Born</th><th></th></tr></thead>
+  <div style="overflow-x:auto;">
+  <table class="data-table ct-table" data-sortable>
+    <thead><tr>
+      <th data-sort="text">Player</th><th class="num" data-sort="num">Year</th><th data-sort="text">Club</th><th data-sort="text">Pos</th>
+      <th class="num" data-sort="num">Age</th><th data-sort="num" data-sort-first="desc">Ovr</th><th class="num" data-sort="num">Born</th><th></th>
+    </tr></thead>
     <tbody>
       {% for p in results %}
       <tr>
-        <td class="team-name">{{ p.name }}</td>
+        <td class="team-name" data-sort-value="{{ p.name.split(' ')[-1] }} {{ p.name }}">
+          <button type="button" class="ct-name" data-player="{{ {"name": p.name, "year": p.year, "pos": p.pos|upper, "age": p.age, "bt": p.bats ~ "/" ~ p.throws, "club": p.club_names, "grade": p.grade, "skills": p.skills} | tojson | forceescape }}">{{ p.name }}</button>
+        </td>
         <td class="num">{{ p.year }}</td>
-        <td class="admin-dim">{{ p.teams }}</td>
+        <td class="admin-dim" title="{{ p.club_names }}">{{ p.teams }}</td>
         <td>{{ p.pos|upper }}</td>
         <td class="num">{{ p.age }}</td>
-        <td><span class="grade grade-{{ grade_class(p.grade) }}">{{ p.grade }}</span></td>
+        <td data-sort-value="{{ p.overall }}"><span class="grade grade-{{ grade_class(p.grade) }}">{{ p.grade }}</span></td>
         <td class="num admin-dim">{{ p.born or '' }}</td>
         <td style="text-align:right;">
           {% if p.on_team %}<span class="admin-dim">On team</span>
@@ -21,6 +28,7 @@
           <form method="POST" action="/teams/{{ team.id }}/add" style="display:inline;">
             <input type="hidden" name="key" value="{{ p.key }}">
             <input type="hidden" name="q" value="{{ q }}">
+            <input type="hidden" name="club" value="{{ club }}">
             <button type="submit" class="btn btn-secondary admin-small">Add</button>
           </form>
           {% endif %}
@@ -29,9 +37,10 @@
       {% endfor %}
     </tbody>
   </table>
-  {% if total > results|length %}<p class="admin-dim ct-more">Showing {{ results|length }} of {{ total }}. Add a first name or a year to narrow it down.</p>{% endif %}
+  </div>
+  {% if total > results|length %}<p class="admin-dim ct-more">Showing {{ results|length }} of {{ total }}. Add a name, a year or a club to narrow it down.</p>{% endif %}
   {% else %}
-  <p class="admin-dim ct-more">No player-season matches "{{ q }}". Seasons need 100 plate appearances or 30 innings.</p>
+  <p class="admin-dim ct-more">No player-season matches. Seasons need 100 plate appearances or 30 innings.</p>
   {% endif %}
 {% endif %}
 </div>

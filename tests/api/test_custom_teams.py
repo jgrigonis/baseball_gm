@@ -229,3 +229,30 @@ def test_summary_counts_what_the_team_needs():
         "at least 5 starting pitchers",
         "a catcher",
     ]
+
+
+def test_search_by_year_and_club(as_user, josh):
+    client = as_user(josh)
+    team_id = _new_team(client)
+    html = client.get(f"/teams/{team_id}?q=1986&club=NYN").text
+    assert "Keith Hernandez" in html and "Dwight Gooden" in html
+    assert "Wade Boggs" not in html  # 1986 Red Sox
+    assert '<option value="NYN" selected>New York Mets (1962–2025)</option>' in html
+    # A club alone lists all its seasons; Any club is the default.
+    html = client.get(f"/teams/{team_id}?club=SE1").text
+    assert "Seattle Pilots" in html
+    assert '<option value="">Any club</option>' in html
+    # Names open his skills; headers sort.
+    assert 'class="ct-name" data-player="' in html
+    assert "data-sortable" in html
+
+
+def test_adding_keeps_the_club_filter(as_user, josh):
+    client = as_user(josh)
+    team_id = _new_team(client)
+    r = client.post(
+        f"/teams/{team_id}/add",
+        data={"key": "hernake01-1986", "q": "1986", "club": "NYN"},
+        follow_redirects=False,
+    )
+    assert r.headers["location"] == f"/teams/{team_id}?q=1986&club=NYN#search"

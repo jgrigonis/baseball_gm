@@ -55,3 +55,11 @@ def test_a_season_becomes_a_game_player():
     assert (ford.first_name, ford.last_name, ford.throws) == ("Whitey", "Ford", "L")
     assert ford.position == "sp"
     assert ford.skills.age == 32
+
+
+def test_search_by_club():
+    found, total = players.search("1986", club="NYN")
+    assert 25 <= total <= 45 and all("NYN" in s.teams for s in found)
+    assert players.club_name("NYN") == "New York Mets"
+    found, _ = players.search("", club="SE1")
+    assert {s.year for s in found} == {1969}

@@ -17,9 +17,13 @@
   <div class="card ct-card" id="search">
     <div class="ct-card-title">Add a player</div>
     <div class="card-body">
-      <form method="GET" action="/teams/{{ team.id }}" class="ct-row">
-        <input type="text" name="q" value="{{ q }}" placeholder="Name and year, e.g. griffey 1997" autocomplete="off" aria-label="Search players"
-               hx-get="/teams/{{ team.id }}/search" hx-trigger="input changed delay:300ms" hx-target="#search-results" hx-swap="outerHTML">
+      <form method="GET" action="/teams/{{ team.id }}" class="ct-row" id="ct-search-form"
+            hx-get="/teams/{{ team.id }}/search" hx-trigger="input changed delay:300ms from:input[name=q], change from:select[name=club]" hx-target="#search-results" hx-swap="outerHTML">
+        <input type="text" name="q" value="{{ q }}" placeholder="Name and/or year, e.g. griffey 1997 or 1986" autocomplete="off" aria-label="Search players">
+        <select name="club" aria-label="Club" style="flex:0 1 240px;min-width:0;">
+          <option value="">Any club</option>
+          {% for c in clubs %}<option value="{{ c.code }}"{% if c.code == club %} selected{% endif %}>{{ c.label }}</option>{% endfor %}
+        </select>
         <button type="submit" class="btn btn-secondary">Search</button>
       </form>
     </div>
@@ -48,4 +52,53 @@
     </form>
   </div></div>
 </div></div>
+<dialog id="ct-card" class="ct-dialog" aria-labelledby="ct-card-name">
+  <div class="ct-dialog-head">
+    <div><div id="ct-card-name" class="ct-dialog-name"></div><div id="ct-card-meta" class="ct-dialog-meta"></div></div>
+    <button type="button" class="ct-dialog-close" onclick="this.closest('dialog').close()" aria-label="Close">×</button>
+  </div>
+  <div id="ct-card-skills"></div>
+</dialog>
+<script>
+(function () {
+  var GROUPS = [
+    ['Hitting', {{ skills[:8] | list | tojson }}],
+    ['Defense', {{ skills[8:12] | list | tojson }}],
+    ['Pitching', {{ skills[12:] | list | tojson }}]
+  ];
+  var ABBR = {{ abbr | tojson }};
+  // A name in the search results opens his skills (delegated, so it works
+  // after the results are swapped in as you type).
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('.ct-name');
+    if (!btn) return;
+    var p = JSON.parse(btn.dataset.player);
+    document.getElementById('ct-card-name').textContent = p.name + ' ' + p.year;
+    document.getElementById('ct-card-meta').textContent =
+      p.pos + ' · age ' + p.age + ' · ' + p.bt + ' · ' + p.club + ' · ' + p.grade;
+    var box = document.getElementById('ct-card-skills');
+    box.innerHTML = '';
+    GROUPS.forEach(function (g) {
+      var h = document.createElement('div');
+      h.className = 'ct-group'; h.textContent = g[0];
+      box.appendChild(h);
+      var grid = document.createElement('div');
+      grid.className = 'ct-dialog-grid';
+      g[1].forEach(function (s) {
+        var cell = document.createElement('div');
+        cell.innerHTML = '<span></span><b></b>';
+        cell.firstChild.textContent = ABBR[s];
+        cell.firstChild.title = s.replace('_', ' ');
+        cell.lastChild.textContent = p.skills[s];
+        grid.appendChild(cell);
+      });
+      box.appendChild(grid);
+    });
+    document.getElementById('ct-card').showModal();
+  });
+  document.getElementById('ct-card').addEventListener('click', function (e) {
+    if (e.target === this) this.close();  // a click on the backdrop
+  });
+})();
+</script>
 {% endblock %}

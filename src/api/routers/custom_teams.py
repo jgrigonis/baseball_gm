@@ -21,7 +21,7 @@ from src.web.utils import templates
 
 router = APIRouter(tags=["web"])
 
-SEARCH_LIMIT = 40
+SEARCH_LIMIT = 200
 
 
 def _ctx(user, **extra) -> dict:
@@ -45,20 +45,43 @@ def _not_found(request: Request, user, message: str = "There's no such team."):
     )
 
 
-def _search(q: str) -> dict:
-    found, total = players.search(q, limit=SEARCH_LIMIT) if q.strip() else ([], 0)
+def _club_choices() -> list[dict]:
+    """The club filter's options, by name, each with the years it played."""
+    rows = [
+        {"code": code, "label": f"{c['name']} ({c['first']}–{c['last']})"}
+        for code, c in players.clubs().items()
+    ]
+    return sorted(rows, key=lambda r: r["label"])
+
+
+def _search(q: str, club: str = "") -> dict:
+    club = club if club in players.clubs() else ""
+    found, total = (
+        players.search(q, limit=SEARCH_LIMIT, club=club)
+        if q.strip() or club
+        else ([], 0)
+    )
+    results = [ct.describe(s) for s in found]
+    for r in results:
+        r["club_names"] = " / ".join(
+            players.club_name(c) for c in r["teams"].split("/")
+        )
     return {
         "q": q,
-        "results": [ct.describe(s) for s in found],
+        "club": club,
+        "results": results,
         "total": total,
         "limit": SEARCH_LIMIT,
     }
 
 
-def _back(team_id: str, q: str = "", anchor: str = "") -> RedirectResponse:
+def _back(
+    team_id: str, q: str = "", club: str = "", anchor: str = ""
+) -> RedirectResponse:
     url = f"/teams/{team_id}"
-    if q:
-        url += f"?q={quote(q)}"
+    args = [f"{k}={quote(v)}" for k, v in (("q", q), ("club", club)) if v]
+    if args:
+        url += "?" + "&".join(args)
     return RedirectResponse(url + anchor, status_code=303)
 
 
@@ -135,10 +158,10 @@ def copy_shared(request: Request, code: str, db: DB, user: User):
 # ── One of your teams ──────────────────────────────────────────────────
 
 
-def _team_page(request, user, team, q="", error="", status_code=200):
+def _team_page(request, user, team, q="", club="", error="", status_code=200):
     rows = ct.roster(team)
     on_team = {r["key"] for r in rows}
-    search = _search(q)
+    search = _search(q, club)
     for r in search["results"]:
         r["on_team"] = r["key"] in on_team
     return templates.TemplateResponse(
@@ -153,6 +176,7 @@ def _team_page(request, user, team, q="", error="", status_code=200):
             name_max=ct.NAME_MAX,
             share_url=(settings.public_base_url or str(request.base_url)).rstrip("/")
             + f"/teams/shared/{team['share_code']}",
+            clubs=_club_choices(),
             **search,
         ),
         status_code=status_code,
@@ -160,24 +184,32 @@ def _team_page(request, user, team, q="", error="", status_code=200):
 
 
 @router.get("/teams/{team_id}", response_class=HTMLResponse)
-def team_page(request: Request, team_id: str, db: DB, user: User, q: str = ""):
+def team_page(
+    request: Request, team_id: str, db: DB, user: User, q: str = "", club: str = ""
+):
     team = ct.owned(CustomTeamRepository(db), user, team_id)
     if not team:
         return _not_found(request, user)
-    return _team_page(request, user, team, q)
+    return _team_page(request, user, team, q, club)
 
 
 @router.get("/teams/{team_id}/search", response_class=HTMLResponse)
 def team_search(
-    request: Request, team_id: str, db: DB, user: User, htmx: IsHTMX, q: str = ""
+    request: Request,
+    team_id: str,
+    db: DB,
+    user: User,
+    htmx: IsHTMX,
+    q: str = "",
+    club: str = "",
 ):
     """Search results as you type (htmx); a plain load gets the whole page."""
     team = ct.owned(CustomTeamRepository(db), user, team_id)
     if not team:
         return _not_found(request, user)
     if not htmx:
-        return _back(team_id, q)
-    search = _search(q)
+        return _back(team_id, q, club)
+    search = _search(q, club)
     on_team = {e["key"] for e in team["players"]}
     for r in search["results"]:
         r["on_team"] = r["key"] in on_team
@@ -188,7 +220,7 @@ def team_search(
     )
 
 
-def _change(request, db, user, team_id, q, change, anchor=""):
+def _change(request, db, user, team_id, q, change, anchor="", club=""):
     """Run one change to the user's team, then back to the team page (or
     the page again with the reason it couldn't be done)."""
     repo = CustomTeamRepository(db)
@@ -200,9 +232,9 @@ def _change(request, db, user, team_id, q, change, anchor=""):
     except ct.CustomTeamError as e:
         db.rollback()
         team = ct.owned(repo, user, team_id)
-        return _team_page(request, user, team, q, str(e), 400)
+        return _team_page(request, user, team, q, club, str(e), 400)
     db.commit()
-    return _back(team_id, q, anchor)
+    return _back(team_id, q, club, anchor)
 
 
 @router.post("/teams/{team_id}/add")
@@ -213,6 +245,7 @@ def add_player(
     user: User,
     key: str = Form(...),
     q: str = Form(""),
+    club: str = Form(""),
 ):
     return _change(
         request,
@@ -222,6 +255,7 @@ def add_player(
         q,
         lambda repo, team: ct.add_player(repo, team, key),
         "#search",
+        club,
     )
 
 
@@ -233,6 +267,7 @@ def remove_player(
     user: User,
     slot: int = Form(...),
     q: str = Form(""),
+    club: str = Form(""),
 ):
     return _change(
         request,
@@ -242,6 +277,7 @@ def remove_player(
         q,
         lambda repo, team: ct.remove_player(repo, team, slot),
         "#roster",
+        club,
     )
 
 
