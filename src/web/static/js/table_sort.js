@@ -10,6 +10,10 @@
 // (?sort=<column>&dir=asc|desc), so a refresh or a shared link shows the same
 // order. Use it on at most one table per page.
 //
+// A table with data-sort-remember="<key>" remembers its last sort in this
+// browser and applies it again whenever a table with that key appears (a new
+// search, a reload after adding a player).
+//
 // Tables that arrive in an htmx swap (league tabs) are set up too.
 (function() {
   var slug = function(th) {
@@ -22,6 +26,8 @@
       table.dataset.sortReady = '1';
       var headers = table.querySelectorAll('th[data-sort]');
       var persist = table.hasAttribute('data-sort-url');
+      var remember = table.dataset.sortRemember;
+      var storeKey = remember ? 'table-sort:' + remember : null;
 
       var sortBy = function(th, asc) {
         var col = th.cellIndex;
@@ -53,8 +59,20 @@
             url.searchParams.set('dir', asc ? 'asc' : 'desc');
             history.replaceState(history.state, '', url);
           }
+          if (storeKey) {
+            try { localStorage.setItem(storeKey, JSON.stringify({ col: slug(th), asc: asc })); } catch (e) {}
+          }
         });
       });
+
+      if (storeKey) {
+        var saved = null;
+        try { saved = JSON.parse(localStorage.getItem(storeKey) || 'null'); } catch (e) {}
+        if (saved && saved.col) {
+          var hit = Array.from(headers).find(function(th) { return slug(th) === saved.col; });
+          if (hit) sortBy(hit, !!saved.asc);
+        }
+      }
 
       if (persist) {
         var params = new URLSearchParams(window.location.search);
