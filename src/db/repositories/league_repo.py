@@ -34,9 +34,9 @@ class LeagueRepository:
                 draft_window_sec, lineup_window_sec, reentry_enabled, pace_control,
                 sim_period_days, num_seasons, is_public, is_practice, trade_vote,
                 trades_enabled, pick_trades, injuries_enabled, backstory_years, weighted_schedule,
-                late_joins, state, commissioner_gm_id)
+                late_joins, real_season, state, commissioner_gm_id)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                    %s, %s, %s, %s, %s, %s, 'lobby', NULL)""",
+                    %s, %s, %s, %s, %s, %s, %s, 'lobby', NULL)""",
             (
                 league_id,
                 name,
@@ -59,6 +59,7 @@ class LeagueRepository:
                 settings.get("backstory_years", DEFAULT_BACKSTORY_YEARS),
                 settings.get("weighted_schedule", True),
                 settings.get("late_joins", True),
+                settings.get("real_season"),
             ),
         )
 

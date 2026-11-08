@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS leagues (
     injuries_enabled     BOOLEAN NOT NULL DEFAULT TRUE,  -- players can get hurt (off by default in Speed Blitz)
     backstory_years      INTEGER NOT NULL DEFAULT 10,    -- past seasons generated at the start (src/league/backstory/)
     weighted_schedule    BOOLEAN NOT NULL DEFAULT FALSE, -- division rivals play more often (src/league/weighted_schedule.py)
+    real_season          INTEGER,  -- starts with this MLB season's players (src/league/real_seasons/, migration 095)
     created_at TEXT DEFAULT (NOW())
 );
 

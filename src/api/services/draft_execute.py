@@ -68,6 +68,11 @@ class BlitzDraft(SnakeDraft):
             tid: s.copy() for tid, s in (gm_strategies or {}).items()
         }
         self._outlooks = outlooks or {}
+        # A real season's opening draft (src/league/real_seasons/): the
+        # clubs' real players keep the major league jobs, and this draft's
+        # picks start in the minors, as real draftees do.
+        self.draftees_start_in_minors = False
+        self._drafted: set[str] = set()
 
     def _run_snake(
         self,
@@ -110,6 +115,7 @@ class BlitzDraft(SnakeDraft):
                     break
 
                 available.discard(chosen.id)
+                self._drafted.add(chosen.id)
                 if strategy is not None:
                     scorer.wear_off(chosen.id, strategy)
                 rating = PlayerEvaluator.prospect_rating(chosen.skills)
@@ -144,6 +150,8 @@ class BlitzDraft(SnakeDraft):
         for team_entry in ai_teams:
             team_id = team_entry["team_id"]
             player_ids = self.player_repo.get_player_ids_from_team_players(team_id)
+            if self.draftees_start_in_minors:
+                player_ids = [p for p in player_ids if p not in self._drafted]
             players = []
             for pid in player_ids:
                 p = self.player_repo.look_up(pid)
@@ -201,6 +209,12 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
         human_team_ids=human_team_ids,
         gm_strategies=gm_strategies,
         outlooks=outlooks,
+    )
+
+    league = LeagueRepository(conn).get_by_id(league_id) or {}
+    blitz.draftees_start_in_minors = bool(
+        league.get("real_season")
+        and LeagueRepository(conn).count_seasons(league_id) == 1
     )
 
     if stored_order:

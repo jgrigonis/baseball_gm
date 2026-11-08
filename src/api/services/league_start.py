@@ -14,7 +14,7 @@ from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.pitcher_state import PitcherStateRepository
 from src.db.repositories.player_energy import PlayerEnergyRepository
-from src.league import divisions
+from src.league import divisions, real_seasons
 from src.league.backstory.service import create_backstory
 from src.league.bootstrap import LeagueBootstrapper
 from src.league.league_constants import (
@@ -59,11 +59,18 @@ def start_league(
     # (the lobby's, src/api/services/lobby_teams.py).
     # Every new league starts in LEAGUE_START_YEAR.
     year = LEAGUE_START_YEAR
-    factory = TeamFactory(rng=rng)
-    generated = [
-        factory.generate_team(city=city, mascot=mascot, size=26)
-        for city, mascot in lobby_teams.league_teams(conn, league_id)
-    ]
+    if league.get("real_season"):
+        # A real season's clubs play as the lobby's teams
+        # (src/league/real_seasons/).
+        generated = real_seasons.build_teams(
+            league["real_season"], list(lobby_teams.league_teams(conn, league_id)), rng
+        )
+    else:
+        factory = TeamFactory(rng=rng)
+        generated = [
+            factory.generate_team(city=city, mascot=mascot, size=26)
+            for city, mascot in lobby_teams.league_teams(conn, league_id)
+        ]
 
     # ── 2. Save the teams + first season ──────────────────────────────────────
     start_date = datetime.date(year, 4, 1)
@@ -96,7 +103,10 @@ def start_league(
     # ── 3c. Backstory: past seasons generated from the rosters ────────────────
     # Its own random stream, so the rest of the league comes out the same
     # for a seed whatever the backstory length.
-    backstory_years = league.get("backstory_years") or 0
+    # A real season has no made-up past: it opens on the real rosters.
+    backstory_years = (
+        0 if league.get("real_season") else league.get("backstory_years") or 0
+    )
     if backstory_years:
         on_stage("Simulating league history…")
     backstory = create_backstory(

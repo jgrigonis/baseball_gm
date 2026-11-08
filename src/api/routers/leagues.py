@@ -35,7 +35,7 @@ from src.db.repositories.career_repo import CareerRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.season_repo import SeasonRepository
-from src.league import divisions
+from src.league import divisions, real_seasons
 from src.league.league_constants import (
     DEFAULT_BACKSTORY_YEARS,
     MAX_BACKSTORY_YEARS,
@@ -184,6 +184,7 @@ def new_league_page(request: Request):
             "max_backstory_years": MAX_BACKSTORY_YEARS,
             # The seasons slider runs 1..MAX_SEASONS, then unlimited (0).
             "season_choices": [*range(1, MAX_SEASONS + 1), UNLIMITED_SEASONS],
+            "real_seasons": real_seasons.available(),
         },
     )
 
@@ -211,8 +212,16 @@ def new_league(
     num_teams: int = Form(divisions.DEFAULT_TEAM_COUNT),
     weighted_schedule: bool = Form(True),
     backstory_years: int = Form(DEFAULT_BACKSTORY_YEARS),
+    real_season: str = Form(""),
 ):
     get_mode(mode)  # rejects an unknown mode
+    season = int(real_season) if real_season else None
+    if season is not None:
+        if season not in real_seasons.available():
+            raise ValueError(f"There's no real {season} season to start from.")
+        # A real season is all 30 of its clubs and has no made-up past.
+        num_teams = real_seasons.TEAMS
+        backstory_years = 0
     if num_teams not in divisions.TEAM_COUNTS:
         raise ValueError(f"A league can't have {num_teams} teams.")
     if pace_control not in ("timer", "confirmed"):
@@ -263,6 +272,7 @@ def new_league(
             "num_teams": num_teams,
             "weighted_schedule": weighted_schedule,
             "backstory_years": backstory_years,
+            "real_season": season,
             # Left out (an old form or a script), the mode's default.
             "injuries_enabled": (
                 get_mode(mode).injuries_default

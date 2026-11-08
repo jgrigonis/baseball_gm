@@ -60,3 +60,39 @@ def test_the_form_has_it_under_advanced(client):
     advanced = html[html.index('class="advanced-settings"') :]
     assert 'name="backstory_years"' in advanced
     assert f'value="{DEFAULT_BACKSTORY_YEARS}"' in advanced
+
+
+# ── Real seasons (src/league/real_seasons/) ──────────────────────────────────
+
+
+def test_a_real_season_is_30_teams_with_no_history(client, db_conn):
+    r = client.post(
+        "/leagues/new",
+        data={
+            "name": "Real",
+            "real_season": "2025",
+            "num_teams": "20",
+            "backstory_years": "5",
+        },
+    )
+    league = LeagueRepository(db_conn).get_by_id(r.headers["location"].split("/")[2])
+    assert league["real_season"] == 2025
+    assert league["num_teams"] == 30
+    assert league["backstory_years"] == 0
+
+
+def test_a_generated_league_has_no_real_season(client, db_conn):
+    r = client.post("/leagues/new", data={"name": "Made up"})
+    league = LeagueRepository(db_conn).get_by_id(r.headers["location"].split("/")[2])
+    assert league["real_season"] is None
+
+
+def test_a_season_without_data_is_refused(client):
+    r = client.post("/leagues/new", data={"name": "Real", "real_season": "1888"})
+    assert r.status_code >= 400
+
+
+def test_the_form_offers_the_real_seasons(client):
+    html = client.get("/leagues/new").text
+    assert 'name="real_season"' in html
+    assert '<option value="2025">' in html

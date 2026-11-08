@@ -23,9 +23,23 @@
       </select>
       <span class="mode-note" id="speed-blitz-note">Trades and injuries default to off. Picking it sets 30 days per sim period, a 30 second decision window and 5 seasons.</span>
     </div>
+    {% if real_seasons %}
+    <div class="field">
+      <label for="real-season">Players</label>
+      <select name="real_season" id="real-season">
+        <option value="">Generated players</option>
+        {% for year in real_seasons %}
+        <option value="{{ year }}">The real {{ year }} season</option>
+        {% endfor %}
+      </select>
+      <span class="mode-note" id="real-season-note" hidden>Every club's 40 players from that season, rated from their real stats, playing as this league's 30 teams. No made-up history: the league opens on the real rosters.</span>
+    </div>
+    {% endif %}
+    <div class="generated-only">
     {% call step_slider("num_teams", "num-teams", "Teams", team_counts | list, default_team_count) %}
       <span class="mode-note" id="num-teams-note">Two leagues, each split into divisions. With 30 teams it's the Atlantic and Pacific Leagues, three divisions each, by geography. Any other size draws the teams into two leagues of two divisions at random.</span>
     {% endcall %}
+    </div>
     {{ step_slider("num_seasons", "num-seasons", "Number of Seasons", season_choices, 10, tip="How many seasons the league runs. Slide all the way right for unlimited.") }}
     <div class="field">
       <label for="is-public">Public League</label>
@@ -47,9 +61,11 @@
           </label>
           <span class="mode-note">You can change this later on the League page.</span>
         </div>
+        <div class="generated-only">
         {% call slider("backstory_years", "backstory-years", "Years of History", default_backstory_years, 0, max_backstory_years) %}
           <span class="mode-note">Past seasons simulated when the league starts, so it opens with standings, champions and player stats already on the books. 0 starts fresh, with a random first draft order. Each year adds a little to the start time.</span>
         {% endcall %}
+        </div>
         <div class="field">
           <label for="weighted-schedule">Weighted Schedule</label>
           <input type="hidden" name="weighted_schedule" value="false">
@@ -170,6 +186,20 @@
   }
   mode.addEventListener('change', applyModePresets);
   applyModePresets();
+})();
+// A real season is always 30 teams with no made-up history, so those
+// settings step aside while one is picked.
+(function () {
+  const real = document.getElementById('real-season');
+  if (!real) return;
+  const note = document.getElementById('real-season-note');
+  function syncRealSeason() {
+    const on = real.value !== '';
+    note.hidden = !on;
+    document.querySelectorAll('.generated-only').forEach(function (f) { f.hidden = on; });
+  }
+  real.addEventListener('change', syncRealSeason);
+  syncRealSeason();
 })();
 // The timing windows only apply to Timer pace; grey them out otherwise.
 (function () {
