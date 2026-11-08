@@ -6,29 +6,35 @@
 {# ── Sticky header ─────────────────────────────────────────────────────────── #}
 <div id="roster-header" class="tab-head" style="padding-top:14px;padding-bottom:10px;">
 
-  <div class="page-header" style="margin-bottom:0;">
-    <h1 class="page-title">Roster</h1>
-    <span id="forty-count" class="page-subtitle" style="margin-left:8px;"></span>
-    {% if payroll_text %}{{ payroll_line(budget, payroll_text, dead_money_text) }}{% endif %}
-    <div class="spacer"></div>
-    <a href="/leagues/{{ league_id }}/welcome" class="btn btn-secondary" style="margin-right:6px;"
-       title="Your team's uniforms, stars, weak spots and how it stacks up">{{ team_page_label or "Meet your team" }}</a>
-    <button class="btn btn-secondary" onclick="removeInjured()"
-            style="margin-right:6px;border-color:var(--red);color:var(--red);">
-      Remove Injured
-    </button>
-    <button class="btn btn-secondary" onclick="pickTopForty()" style="margin-right:6px;"
-            title="Fill the 40-man with your best healthy players, swapping out lower-rated ones. Injured players already on it stay.">
-      Pick Top 40
-    </button>
-    <button class="btn btn-primary" onclick="saveRoster()" id="save-btn">
-      Save Roster
-    </button>
-    <a id="lineup-btn" href="/leagues/{{ league_id }}/lineup"
-       class="btn btn-secondary"
-       style="margin-left:8px;border-color:var(--green);color:var(--green);display:none;">
-      Go to Lineup →
-    </a>
+  {# Title + count + payroll stay together; the buttons are one group that
+     drops to its own row (and wraps inside it) when the pane is too narrow,
+     so nothing gets squeezed into two-line labels. #}
+  <div class="page-header roster-head-row" style="margin-bottom:0;">
+    <div class="roster-head-info">
+      <h1 class="page-title">Roster</h1>
+      <span id="forty-count" class="page-subtitle"></span>
+      {% if payroll_text %}{{ payroll_line(budget, payroll_text, dead_money_text) }}{% endif %}
+    </div>
+    <div class="roster-head-actions">
+      <a href="/leagues/{{ league_id }}/welcome" class="btn btn-secondary"
+         title="Your team's uniforms, stars, weak spots and how it stacks up">{{ team_page_label or "Meet your team" }}</a>
+      <button class="btn btn-secondary" onclick="removeInjured()"
+              style="border-color:var(--red);color:var(--red);">
+        Remove Injured
+      </button>
+      <button class="btn btn-secondary" onclick="pickTopForty()"
+              title="Fill the 40-man with your best healthy players, swapping out lower-rated ones. Injured players already on it stay.">
+        Pick Top 40
+      </button>
+      <button class="btn btn-primary" onclick="saveRoster()" id="save-btn">
+        Save Roster
+      </button>
+      <a id="lineup-btn" href="/leagues/{{ league_id }}/lineup"
+         class="btn btn-secondary"
+         style="border-color:var(--green);color:var(--green);display:none;">
+        Go to Lineup →
+      </a>
+    </div>
   </div>
 
   {# Unsaved changes banner — hidden on first run via JS #}
@@ -256,6 +262,15 @@
 </div>
 
 <style>
+/* ── Header row ──────────────────────────────────────────────────────────────── */
+#roster-header .roster-head-row { flex-wrap: wrap; align-items: center; row-gap: 8px; column-gap: 16px; }
+.roster-head-info { display: flex; align-items: baseline; flex-wrap: wrap; column-gap: 12px; row-gap: 4px; min-width: 0; }
+.roster-head-info .payroll-line { margin-left: 0 !important; }
+#forty-count { white-space: nowrap; }
+.roster-head-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; justify-content: flex-end; }
+.roster-head-actions .btn { white-space: nowrap; }
+@media (max-width: 1400px) { .roster-head-actions .btn { padding: 7px 12px; } }
+
 /* ── Layout ────────────────────────────────────────────────────────────────── */
 .roster-cols {
   display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
@@ -368,6 +383,7 @@
   .r-card { grid-template-columns: 26px 34px minmax(0, 1fr) auto; padding: 8px; }
   .r-action-btn { font-size: 16px; padding: 6px 11px; }
   #roster-header .page-header .btn { padding: 6px 10px; font-size: 11px; }
+  .roster-head-actions { justify-content: flex-start; }
   #unsaved-banner {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; margin: 0 !important;
     padding: 10px 12px !important; border-width: 1px 0 0 !important;
