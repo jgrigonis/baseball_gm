@@ -6,7 +6,10 @@
   .data-table tbody td.num.ct-edited-val { color: var(--amber); font-weight: 600; }
   .ct-table a { color: var(--text); text-decoration: none; }
   .ct-table a:hover { color: var(--amber); text-decoration: underline; }
-  .ct-remove { background: none; border: none; color: var(--red); font-size: 20px; line-height: 1; cursor: pointer; padding: 0 6px; }
+  /* Same red × box as the Roster tab's release button. */
+  .ct-remove { font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: var(--red); border: 1px solid var(--border); background: var(--bg-3); cursor: pointer; padding: 2px 7px; line-height: 1; transition: all .1s; }
+  .ct-remove:hover { background: var(--red-dim); border-color: var(--red); }
+  @media (max-width: 700px) { .ct-remove { font-size: 16px; padding: 6px 11px; } }
   .ct-summary { font-family: var(--font-mono); font-size: 12px; margin: 0 0 12px; }
   .ct-needs { color: var(--amber); }
   .ct-ready { color: var(--green); }

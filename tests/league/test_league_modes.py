@@ -12,6 +12,7 @@ from random import Random
 import pytest
 from fastapi.testclient import TestClient
 
+from src.api.dependencies import get_current_user
 from src.api.main import app
 from src.game.game import Game
 from src.league.league_modes import (
@@ -75,7 +76,12 @@ def test_unknown_mode_is_rejected():
 
 
 def test_new_league_form_offers_both_blitz_modes_with_their_presets():
-    r = TestClient(app).get("/leagues/new")
+    # The form is for signed-in people (it shows real seasons to contributors).
+    app.dependency_overrides[get_current_user] = lambda: {"id": "u1"}
+    try:
+        r = TestClient(app).get("/leagues/new")
+    finally:
+        app.dependency_overrides.clear()
     assert r.status_code == 200
     options = re.findall(r'<option value="(\w+)" data-presets=\'([^\']*)\'', r.text)
     presets = {key: json.loads(html.unescape(p)) for key, p in options}
@@ -114,7 +120,11 @@ def test_db_accepts_a_speed_blitz_league(db_conn, factory):
 
 
 def test_new_league_form_starts_injuries_from_each_modes_default():
-    r = TestClient(app).get("/leagues/new")
+    app.dependency_overrides[get_current_user] = lambda: {"id": "u1"}
+    try:
+        r = TestClient(app).get("/leagues/new")
+    finally:
+        app.dependency_overrides.clear()
     found = dict(
         re.findall(r'<option value="(\w+)"[^>]*data-injuries="(on|off)"', r.text)
     )

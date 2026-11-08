@@ -10,7 +10,7 @@ import string
 import uuid
 from urllib.parse import quote
 
-from fastapi import APIRouter, Form, Request
+from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel
 
@@ -180,7 +180,7 @@ def state_label(state: str, season_number: int) -> str:
 
 
 @router.get("/leagues/new", response_class=HTMLResponse)
-def new_league_page(request: Request):
+def new_league_page(request: Request, user: User):
     return templates.TemplateResponse(
         request,
         "leagues/new.html",
@@ -194,6 +194,8 @@ def new_league_page(request: Request):
             # The seasons slider runs 1..MAX_SEASONS, then unlimited (0).
             "season_choices": [*range(1, MAX_SEASONS + 1), UNLIMITED_SEASONS],
             "real_seasons": real_seasons.available(),
+            # Real seasons are for paid contributors (others can join one).
+            "can_real_season": custom_teams.can_build(user),
         },
     )
 
@@ -228,6 +230,11 @@ def new_league(
     if season is not None:
         if season not in real_seasons.available():
             raise ValueError(f"There's no real {season} season to start from.")
+        if not custom_teams.can_build(user):
+            raise HTTPException(
+                status_code=403,
+                detail="Real-season leagues are for paid contributors.",
+            )
         # A real season is all 30 of its clubs and has no made-up past.
         num_teams = real_seasons.TEAMS
         backstory_years = 0

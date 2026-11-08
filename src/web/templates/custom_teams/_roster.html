@@ -29,7 +29,7 @@
           <form method="POST" action="/teams/{{ team.id }}/remove" style="display:inline;">
             <input type="hidden" name="slot" value="{{ p.slot }}">
             <input type="hidden" name="q" value="{{ q or '' }}">
-            <button type="submit" class="ct-remove" title="Remove {{ p.name }}" aria-label="Remove {{ p.name }}">−</button>
+            <button type="submit" class="ct-remove" title="Remove {{ p.name }}" aria-label="Remove {{ p.name }}">×</button>
           </form>
         </td>
         {% endif %}

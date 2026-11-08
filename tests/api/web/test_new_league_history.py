@@ -27,6 +27,7 @@ def client(db_conn):
         "id": uid,
         "has_password": True,
         "display_name": "Alice",
+        "is_contributor": True,  # real seasons are for paid contributors
     }
     yield TestClient(app, follow_redirects=False)
     app.dependency_overrides.clear()
@@ -96,3 +97,16 @@ def test_the_form_offers_the_real_seasons(client):
     html = client.get("/leagues/new").text
     assert 'name="real_season"' in html
     assert '<option value="2025">' in html
+
+
+def test_real_seasons_are_for_paid_contributors(client, db_conn):
+    unpaid = dict(app.dependency_overrides[get_current_user](), is_contributor=False)
+    app.dependency_overrides[get_current_user] = lambda: unpaid
+    html = client.get("/leagues/new").text
+    assert '<option value="2025" disabled>' in html
+    assert "(paid contributors)" in html
+    r = client.post("/leagues/new", data={"name": "Real", "real_season": "2025"})
+    assert r.status_code == 403
+    # Generated leagues are open to everyone.
+    r = client.post("/leagues/new", data={"name": "Made up"})
+    assert r.status_code in (302, 303)
