@@ -73,7 +73,11 @@ OUTFIELD = ("lf", "cf", "rf")
 
 ROSTER_HITTERS = 13  # a generated 26-man roster's split
 ROSTER_PITCHERS = 13
-SEASON_WEIGHT = 0.7  # rest goes to the 3-season window
+SEASON_WEIGHT = 0.7
+# "modern": stamina and recovery against 2015-2025 pitchers (workloads keep
+# their era), "era": against his own season like every other skill.
+WORKLOAD = "modern"
+MODERN_YEARS = (2015, 2025)  # rest goes to the 3-season window
 
 
 # ---------------------------------------------------------------- reference
@@ -395,7 +399,17 @@ def pitching_table(d: dict, tg: pd.DataFrame) -> pd.DataFrame:
     for col in ["_kk", "_bb", "_hr"]:
         q["z" + col] = zscore(q, col, q["regular"], grp)
     for col in ["_stam", "_rec"]:
-        q["z" + col] = zscore(q, col, q["regular"], rgrp)
+        if WORKLOAD == "era":
+            q["z" + col] = zscore(q, col, q["regular"], rgrp)
+        else:
+            # Workload is measured against today's pitchers, not his own
+            # season's: a 1961 ace who threw 7+ innings every fourth day
+            # really could carry more than a 2024 one.
+            ref = q[q["regular"] & q["yearID"].between(*MODERN_YEARS)]
+            st = ref.groupby("role")[col].agg(["mean", "std"])
+            m = q["role"].map(st["mean"])
+            sd = q["role"].map(st["std"])
+            q["z" + col] = (q[col] - m) / sd
     names = {
         "strikes": "_kk",
         "accuracy": "_bb",
@@ -800,8 +814,11 @@ def main() -> None:
     ap.add_argument("--teams", default="1961:NYA,2001:SEA,1986:NYN")
     ap.add_argument("--ref-teams", type=int, default=400)
     ap.add_argument("--json", type=Path)
+    ap.add_argument("--workload", choices=["modern", "era"], default="modern")
     args = ap.parse_args()
 
+    global WORKLOAD
+    WORKLOAD = args.workload
     rater = Rater(args.data, args.ref_teams)
     result = {}
     tnames = rater.d["Teams"].set_index(["yearID", "teamID"])["name"]
