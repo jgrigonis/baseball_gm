@@ -25,7 +25,12 @@ median for that position plus a little seeded noise.
 
 Usage:
     uv run python -m scripts.real_rosters --data DIR [--teams 1961:NYA,2001:SEA,1986:NYN]
-        [--json OUT.json] [--leaders YEAR:LG]
+        [--json OUT.json] [--workload modern|era]
+    uv run python -m scripts.real_rosters --data DIR --export-season 2025
+
+--export-season writes the data file a real-season league starts from
+(src/league/real_seasons/data/YEAR.json). Needs pandas and pyarrow, which
+the game itself doesn't: `uv pip install pandas pyarrow` first.
 
 DIR holds Lahman parquet files (Batting, Pitching, Fielding, People,
 Appearances, Teams), e.g. the pylahman wheel's pylahman/data folder.
@@ -657,6 +662,8 @@ class Rater:
         return {
             "id": pid,
             "name": f"{person['nameFirst']} {person['nameLast']}",
+            "first": person["nameFirst"] or person["nameLast"],
+            "last": person["nameLast"],
             "year": year,
             "age": age,
             "pos": pos,
@@ -808,6 +815,46 @@ def team_report(players: list[dict], n_ref: int = 300) -> dict:
     }
 
 
+def export_season(rater: Rater, year: int, out: Path) -> None:
+    """Write every club of a season, rated, for src/league/real_seasons.
+
+    Players are lists of skills in SKILLS order to keep the file small.
+    """
+    from src.league.real_seasons import SKILLS
+
+    teams = rater.d["Teams"]
+    clubs = []
+    for t in teams[teams["yearID"] == year].sort_values("teamID").itertuples():
+        players = rater.roster(year, t.teamID)
+        clubs.append(
+            {
+                "id": t.teamID,
+                "name": t.name,
+                "w": int(t.W),
+                "l": int(t.L),
+                "attendance": int(t.attendance or 0),
+                "players": [
+                    {
+                        "first": p["first"],
+                        "last": p["last"],
+                        "age": p["age"],
+                        "pos": p["pos"],
+                        "bats": p["bats"],
+                        "throws": p["throws"],
+                        "skills": [p["skills"][s] for s in SKILLS],
+                    }
+                    for p in players
+                ],
+            }
+        )
+    payload = {"year": year, "source": "Lahman Baseball Database", "clubs": clubs}
+    text = json.dumps(payload, separators=(",", ":"))
+    # One club per line keeps diffs readable.
+    text = text.replace(',{"id":', ',\n{"id":')
+    out.write_text(text + "\n")
+    print(f"Wrote {len(clubs)} clubs to {out}")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", required=True, type=Path)
@@ -815,11 +862,25 @@ def main() -> None:
     ap.add_argument("--ref-teams", type=int, default=400)
     ap.add_argument("--json", type=Path)
     ap.add_argument("--workload", choices=["modern", "era"], default="modern")
+    ap.add_argument(
+        "--export-season",
+        type=int,
+        help="Write every club of this season to src/league/real_seasons/data/",
+    )
     args = ap.parse_args()
 
     global WORKLOAD
     WORKLOAD = args.workload
     rater = Rater(args.data, args.ref_teams)
+    if args.export_season:
+        export_season(
+            rater,
+            args.export_season,
+            Path(__file__).resolve().parent.parent
+            / "src/league/real_seasons/data"
+            / f"{args.export_season}.json",
+        )
+        return
     result = {}
     tnames = rater.d["Teams"].set_index(["yearID", "teamID"])["name"]
     for spec in args.teams.split(","):

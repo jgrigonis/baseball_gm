@@ -27,6 +27,12 @@
    "Weighted: division rivals meet most often, the other league least, 162 games in all." if info.weighted_schedule
    else "Balanced: every team plays every other team about the same number of times, 162 games in all."),
 ] %}
+{% if info.real_season %}
+  {% set settings = settings + [
+    ("Players", "Real " ~ info.real_season ~ " season",
+     "Every club's 40 players from the real " ~ info.real_season ~ " season, rated from their stats, playing as the league's teams."),
+  ] %}
+{% endif %}
 {% if started %}
   {% set settings = settings + [
     ("GMs", info.human_gms ~ " human · " ~ info.ai_gms ~ " AI",
