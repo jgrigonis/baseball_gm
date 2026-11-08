@@ -29,8 +29,12 @@ Usage (the "stats" extra brings pandas, pyarrow and the Lahman data):
         [--workload modern|era] [--data DIR]
     uv run --extra stats python -m scripts.real_rosters --export-season 2025
 
+    uv run --extra stats python -m scripts.real_rosters --export-players
+
 --export-season writes the data file a real-season league starts from
-(src/league/real_seasons/data/YEAR.json).
+(src/league/real_seasons/data/YEAR.json). --export-players writes every
+player-season with 100+ PA or 30+ IP (data/players.tsv.gz), the pool custom
+teams pick from.
 
 --data is a folder of Lahman parquet files (Batting, Pitching, Fielding,
 People, Appearances, Teams). It defaults to the copy inside the pylahman
@@ -77,6 +81,8 @@ FIELD_POS = ["c", "1b", "2b", "ss", "3b", "lf", "cf", "rf"]
 INFIELD = ("1b", "2b", "ss", "3b")
 OUTFIELD = ("lf", "cf", "rf")
 
+MIN_PA = 100  # a hitter's season counts from 100 plate appearances
+MIN_IPOUTS = 90  # a pitcher's from 30 innings
 ROSTER_HITTERS = 13  # a generated 26-man roster's split
 ROSTER_PITCHERS = 13
 SEASON_WEIGHT = 0.7
@@ -129,7 +135,7 @@ def phi(z: float) -> float:
 
 def to_skill(z: float | None, pool: list[int]) -> float:
     """z-score among real regulars -> our skill at the same percentile."""
-    if z is None or (isinstance(z, float) and math.isnan(z)):
+    if z is None or pd.isna(z):
         return median(pool)
     pct = min(max(phi(z), 0.001), 0.999)
     return quantile(pool, pct)
@@ -202,7 +208,7 @@ def blend_window(df: pd.DataFrame, zcol: str, wcol: str) -> pd.Series:
         by_player[pid][yr] = (z, w)
     out = []
     for pid, yr, z in df[["playerID", "yearID", zcol]].itertuples(index=False):
-        if z is None or (isinstance(z, float) and math.isnan(z)):
+        if z is None or pd.isna(z):
             out.append(float("nan"))
             continue
         seasons = by_player[pid]
@@ -544,6 +550,13 @@ class Rater:
         self.hit = hitting_table(self.d, tg)
         self.pit = pitching_table(self.d, tg)
         self.fld = fielding_table(self.d, tg, self.prim)
+        # Nullable ints/floats (pd.NA) break comparisons; NaN compares False.
+        for name in ("hit", "pit", "fld"):
+            df = getattr(self, name)
+            for c in df.columns:
+                if pd.api.types.is_numeric_dtype(df[c]) and df[c].dtype.kind != "f":
+                    if df[c].isna().any() or str(df[c].dtype)[0].isupper():
+                        df[c] = df[c].astype("float64")
         self.fld_idx = self.fld.set_index(["playerID", "yearID", "POS"])
         self.people = self.d["People"].set_index("playerID")
         self.ref = reference_pools(ref_teams)
@@ -592,8 +605,10 @@ class Rater:
         skills["bunting"] = 0.5 * skills["bunting"] + 0.5 * median(ref_pos["bunting"])
 
         q = self._row(self.pit, pid, year)
+        # A two-way player (Ruth 1918, Ohtani) keeps his real pitching too.
+        two_way = q is not None and q["IPouts"] >= MIN_IPOUTS
         for s in PITCH_SKILLS:
-            if is_p and q is not None:
+            if q is not None and (is_p or two_way):
                 pool = self.ref[q["role"]][s]
                 skills[s] = to_skill(q["z_" + s], pool)
             else:
@@ -653,7 +668,7 @@ class Rater:
         person = self.people.loc[pid]
         by, bm = person["birthYear"], person["birthMonth"]
         age = (
-            int(year - by - (1 if (bm and not pd.isna(bm) and bm >= 7) else 0))
+            int(year - by - (1 if (not pd.isna(bm) and bm >= 7) else 0))
             if not pd.isna(by)
             else 28
         )
@@ -666,6 +681,7 @@ class Rater:
             "first": person["nameFirst"] or person["nameLast"],
             "last": person["nameLast"],
             "year": year,
+            "born": None if pd.isna(by) else int(by),
             "age": age,
             "pos": pos,
             "bats": bats,
@@ -856,6 +872,65 @@ def export_season(rater: Rater, year: int, out: Path) -> None:
     print(f"Wrote {len(clubs)} clubs to {out}")
 
 
+PLAYERS_FILE = "players.tsv.gz"
+
+
+def export_players(rater: Rater, out: Path) -> None:
+    """Write every real player-season worth picking, rated, for custom teams
+    (src/league/real_seasons/players.py): one tab-separated line each, the
+    skills in SKILLS order, gzipped to keep the repo small."""
+    import gzip
+
+    from src.league.real_seasons import SKILLS
+
+    b = rater.d["Batting"]
+    pa = (
+        (b[["AB", "BB", "HBP", "SH", "SF"]].apply(pd.to_numeric, errors="coerce"))
+        .fillna(0)
+        .sum(axis=1)
+    )
+    pa = pa.groupby([b["playerID"], b["yearID"]]).sum()
+    p = rater.d["Pitching"]
+    outs = pd.to_numeric(p["IPouts"], errors="coerce").fillna(0)
+    outs = outs.groupby([p["playerID"], p["yearID"]]).sum()
+    keys = sorted(
+        set(pa[pa >= MIN_PA].index) | set(outs[outs >= MIN_IPOUTS].index),
+        key=lambda k: (k[1], k[0]),
+    )
+    a = rater.d["Appearances"]
+    a = a.assign(order=range(len(a)))
+    clubs = (
+        a.sort_values("order")
+        .groupby(["playerID", "yearID"])["teamID"]
+        .agg(lambda t: "/".join(dict.fromkeys(t)))
+    )
+    head = [
+        "id",
+        "year",
+        "first",
+        "last",
+        "born",
+        "age",
+        "pos",
+        "bats",
+        "throws",
+        "teams",
+    ]
+    lines = ["\t".join(head + list(SKILLS))]
+    for i, (pid, year) in enumerate(keys):
+        r = rater.rate(pid, int(year))
+        row = [pid, str(year), r["first"] or "", r["last"] or ""]
+        row += [str(r["born"] or ""), str(r["age"])]
+        row += [r["pos"], r["bats"], r["throws"], clubs.get((pid, year), "")]
+        row += [str(r["skills"][s]) for s in SKILLS]
+        lines.append("\t".join(row))
+        if i % 10000 == 0:
+            print(f"{i}/{len(keys)}", flush=True)
+    with gzip.open(out, "wt", compresslevel=9) as f:
+        f.write("\n".join(lines) + "\n")
+    print(f"Wrote {len(keys)} player-seasons to {out}")
+
+
 def lahman_dir() -> Path:
     """The Lahman parquet files that ship inside the pylahman package."""
     from importlib.util import find_spec
@@ -884,11 +959,24 @@ def main() -> None:
         type=int,
         help="Write every club of this season to src/league/real_seasons/data/",
     )
+    ap.add_argument(
+        "--export-players",
+        action="store_true",
+        help="Write every player-season (custom teams) to src/league/real_seasons/data/",
+    )
     args = ap.parse_args()
 
     global WORKLOAD
     WORKLOAD = args.workload
     rater = Rater(args.data or lahman_dir(), args.ref_teams)
+    if args.export_players:
+        export_players(
+            rater,
+            Path(__file__).resolve().parent.parent
+            / "src/league/real_seasons/data"
+            / PLAYERS_FILE,
+        )
+        return
     if args.export_season:
         export_season(
             rater,
