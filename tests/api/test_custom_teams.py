@@ -99,9 +99,13 @@ def test_no_duplicates_and_a_full_roster(as_user, db_conn, josh):
     team_id = _new_team(client)
     client.post(f"/teams/{team_id}/add", data={"key": "ruthba01-1927"})
     r = client.post(f"/teams/{team_id}/add", data={"key": "ruthba01-1927"})
-    assert r.status_code == 400 and "already on the team (1927)" in r.text
-    r = client.post(f"/teams/{team_id}/add", data={"key": "ruthba01-1921"})
-    assert r.status_code == 400  # one season of a man per team
+    assert r.status_code == 400 and "Babe Ruth 1927 is already on the team" in r.text
+    client.post(f"/teams/{team_id}/add", data={"key": "ruthba01-1921"})
+    # Another season of him is fine.
+    assert [e["key"] for e in _team(db_conn, team_id)["players"]] == [
+        "ruthba01-1927",
+        "ruthba01-1921",
+    ]
     keys = [f"x-{i}" for i in range(ct.ROSTER_MAX)]
     CustomTeamRepository(db_conn).save_players(
         team_id, [{"key": k, "skills": None} for k in keys]

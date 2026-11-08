@@ -109,11 +109,12 @@
   ] %}
 {% endif %}
 {# The commissioner can flip these two from the lobby and the League page
-   (can_edit_settings), with a small button beside the value. #}
+   (can_edit_settings), with a small button beside the value. Not in a
+   single-player league (custom teams): it stays private and closed. #}
 {% set editable = {
   "Visibility": ("is_public", info.is_public, "Make private" if info.is_public else "Make public"),
   "Late joiners": ("late_joins", info.late_joins, "Turn off" if info.late_joins else "Allow"),
-} if can_edit_settings and not info.is_practice else {} %}
+} if can_edit_settings and not info.is_practice and not info.single_player else {} %}
 {% for label, value, tip in settings %}
 {% set off = label in always_off or (solo and label in needs_humans) %}
 <tr{% if label in needs_humans and label not in always_off %} data-needs-humans{% endif %}{% if off %} class="setting-off"{% endif %}>

@@ -100,6 +100,9 @@ def test_a_custom_team_makes_the_league_single_player(as_user, db_conn):
     html = client.get(f"/leagues/{league['id']}/").text
     assert "nobody else can join" in html
     assert league["join_code"] not in html
+    # No Make public / Allow buttons: they can't be turned on.
+    assert "/settings/is_public" not in html
+    assert "/settings/late_joins" not in html
 
     # The code no longer lets anyone in.
     pat = _user(db_conn, contributor=False)

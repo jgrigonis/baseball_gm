@@ -181,10 +181,9 @@ def add_player(repo: CustomTeamRepository, team: dict, key: str) -> None:
         raise CustomTeamError("There's no such player-season.")
     if len(entries) >= ROSTER_MAX:
         raise CustomTeamError(f"A team holds {ROSTER_MAX} players. Remove one first.")
-    for e in entries:
-        pid, _, year = e["key"].rpartition("-")
-        if pid == season.id:
-            raise CustomTeamError(f"{season.name} is already on the team ({year}).")
+    # Two seasons of one man are fine (Josh, 2026-11-08); the same season twice isn't.
+    if any(e["key"] == key for e in entries):
+        raise CustomTeamError(f"{season.name} {season.year} is already on the team.")
     entries.append({"key": key, "skills": None})
     repo.save_players(team["id"], entries)
 
