@@ -10,6 +10,7 @@ scripts/calibrate_backstory.py (after an engine change, say).
 import random
 import statistics
 import uuid
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -297,9 +298,26 @@ def _seed_league(db_conn, factory, n_teams=10, seed=7):
     return league, s, list(real_ids.values())
 
 
-def test_past_seasons_are_saved_with_standings_and_a_champion(db_conn, factory):
-    league, s, team_ids = _seed_league(db_conn, factory)
-    bs = create_backstory(db_conn, league.id, s.id, 3, random.Random(1))
+@pytest.fixture(scope="module")
+def saved(_session_conn):
+    """One league with a three-year backstory, built once for the tests below
+    that only read it (building one takes a few seconds). It's saved inside
+    its own savepoint, which is rolled back when this module's tests finish;
+    each test still gets its own savepoint on top from db_conn."""
+    # Imported here: a module-level Test* name makes pytest try to collect it.
+    from tests.factories.data_factory import TestDataFactory
+
+    conn = _session_conn
+    conn.execute("SAVEPOINT backstory_module")
+    league, s, team_ids = _seed_league(conn, TestDataFactory(conn))
+    bs = create_backstory(conn, league.id, s.id, 3, random.Random(1))
+    yield SimpleNamespace(league=league, season=s, team_ids=team_ids, bs=bs)
+    conn.execute("ROLLBACK TO SAVEPOINT backstory_module")
+    conn.execute("RELEASE SAVEPOINT backstory_module")
+
+
+def test_past_seasons_are_saved_with_standings_and_a_champion(db_conn, saved):
+    league, s, team_ids, bs = saved.league, saved.season, saved.team_ids, saved.bs
 
     seasons = SeasonRepository(db_conn).get_seasons_for_league(league.id)
     assert [x["year"] for x in seasons] == [START, START - 1, START - 2, START - 3]
@@ -315,9 +333,8 @@ def test_past_seasons_are_saved_with_standings_and_a_champion(db_conn, factory):
     assert bs.last_season_id == bs.season_ids[-1]
 
 
-def test_veterans_have_career_lines_and_all_stars(db_conn, factory):
-    league, s, _ = _seed_league(db_conn, factory)
-    bs = create_backstory(db_conn, league.id, s.id, 3, random.Random(2))
+def test_veterans_have_career_lines_and_all_stars(db_conn, saved):
+    bs = saved.bs
     lines = db_conn.execute(
         "SELECT COUNT(*) AS n FROM player_season_stats WHERE season_id = ANY(%s)",
         (bs.season_ids,),
@@ -336,35 +353,26 @@ def test_veterans_have_career_lines_and_all_stars(db_conn, factory):
     assert history == lines
 
 
-def test_retired_veterans_are_saved_as_retired(db_conn, factory):
-    league, s, _ = _seed_league(db_conn, factory)
-    bs = create_backstory(db_conn, league.id, s.id, 3, random.Random(3))
+def test_retired_veterans_are_saved_as_retired(db_conn, saved):
+    bs = saved.bs
     assert bs.retirees > 0
     rows = db_conn.execute(
         """SELECT pr.season_id, ps.status FROM player_retirements pr
            JOIN player_status ps ON ps.player_id = pr.player_id
            WHERE pr.league_id = %s""",
-        (league.id,),
+        (saved.league.id,),
     ).fetchall()
     assert len(rows) == bs.retirees
     assert {r["status"] for r in rows} == {"retired"}
     assert {r["season_id"] for r in rows} <= set(bs.season_ids)
 
 
-def test_no_years_means_no_backstory(db_conn, factory):
-    league, s, _ = _seed_league(db_conn, factory, n_teams=8)
-    bs = create_backstory(db_conn, league.id, s.id, 0, random.Random(4))
-    assert bs.last_season_id is None
-    assert len(SeasonRepository(db_conn).get_seasons_for_league(league.id)) == 1
-
-
-def test_history_and_the_welcome_screen_show_the_past(db_conn, factory):
+def test_history_and_the_welcome_screen_show_the_past(db_conn, saved):
     from src.api.view_models.seasons import history_context
     from src.api.view_models.welcome import history
 
-    league, s, team_ids = _seed_league(db_conn, factory)
-    bs = create_backstory(db_conn, league.id, s.id, 3, random.Random(5))
-    mine = team_ids[0]
+    league, s, bs = saved.league, saved.season, saved.bs
+    mine = saved.team_ids[0]
 
     rows = history_context(db_conn, league.id, mine)["history_rows"]
     assert [r["is_backstory"] for r in rows] == [False, True, True, True]
@@ -378,6 +386,13 @@ def test_history_and_the_welcome_screen_show_the_past(db_conn, factory):
     assert h["champion"]["team_id"] == champ["team_id"]
     assert h["seasons"] == 3
     assert 0 <= h["titles"] <= h["playoffs"] <= 3
+
+
+def test_no_years_means_no_backstory(db_conn, factory):
+    league, s, _ = _seed_league(db_conn, factory, n_teams=8)
+    bs = create_backstory(db_conn, league.id, s.id, 0, random.Random(4))
+    assert bs.last_season_id is None
+    assert len(SeasonRepository(db_conn).get_seasons_for_league(league.id)) == 1
 
 
 def test_a_league_without_a_past_has_no_history_card(db_conn, factory):

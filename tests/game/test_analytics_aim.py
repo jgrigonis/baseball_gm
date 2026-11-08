@@ -4,26 +4,55 @@ staff send runners in good spots and hold them in bad ones
 (src/league/budget.py analytics_aim)."""
 
 from random import Random
+from types import SimpleNamespace
 
 from src.game.bases import FIRST
 from src.game.game import Game
 from src.game.strategy import GameStrategy, _analytics_level
 from src.league import budget as bg
-from tests.test_strategy import _make_bases, _make_count, _make_runner, _make_score
 
 TRIES = 20000
 
 
+# Plain stand-ins instead of MagicMocks: a mock records every call made on it,
+# and with TRIES calls per level that bookkeeping was nearly all of this
+# file's run time.
+class _Runner:
+    def __init__(self, speed):
+        self.skills = {"speed": speed, "base_running": 50}
+
+
+class _RunnerOnFirst:
+    is_empty = False
+    is_loaded = False
+    one_man_on = True
+    two_men_on = False
+
+    def __init__(self, speed):
+        self.runner = _Runner(speed)
+
+    def runner_on(self, base):
+        return self.runner if base == FIRST else None
+
+    def occupied_map(self):
+        return {FIRST: self.runner}
+
+    def only_occupied_base(self):
+        return FIRST
+
+
 def _steals(level, speed, arm):
     rng = Random(7)
-    bases = _make_bases(first=_make_runner(speed=speed))
+    bases = _RunnerOnFirst(speed)
+    count = SimpleNamespace(balls=0, strikes=0)
+    score = SimpleNamespace(differential=0)
     return sum(
         GameStrategy.should_attempt_steal(
             FIRST,
             bases,
             outs=0,
-            count=_make_count(),
-            score=_make_score(),
+            count=count,
+            score=score,
             runner_speed=speed,
             catcher_arm=arm,
             rng=rng,
@@ -35,10 +64,7 @@ def _steals(level, speed, arm):
 
 def _hit_and_runs(level, contact, speed):
     rng = Random(7)
-    bases = _make_bases(first=_make_runner(speed=speed))
-    bases.is_loaded = False
-    bases.one_man_on = True
-    bases.two_men_on = False
+    bases = _RunnerOnFirst(speed)
     return sum(
         GameStrategy.should_hit_and_run(
             bases, 0, contact, 1, 1, rng=rng, analytics=level

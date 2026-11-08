@@ -54,9 +54,16 @@ def _play(seed, ghost_runner):
     return game
 
 
+# Seeds whose games are tied after nine, tried first so the search below
+# rarely has to play the ~60 nine-inning games in between. If the engine
+# changes and these stop going to extras, the search still finds others.
+KNOWN_EXTRA_INNING_SEEDS = (1, 13, 15, 27, 63, 70)
+
+
 def _extra_inning_games(ghost_runner, want=6):
     games = []
-    for seed in range(400):
+    seeds = dict.fromkeys([*KNOWN_EXTRA_INNING_SEEDS, *range(400)])
+    for seed in seeds:
         game = _play(seed, ghost_runner)
         if game.inning.number >= GHOST_RUNNER_INNING:
             games.append(game)
@@ -152,7 +159,7 @@ def test_max_innings_stops_a_tie_after_nine():
     """The All-Star Game: tied after nine, it stops for the swing-off, with
     no winning or losing pitcher."""
     ties = 0
-    for seed in range(200):
+    for seed in range(30):  # holds four ties (seeds 1, 13, 15 and 27)
         game, result = _play_capped(seed)
         assert result.innings_played == 9
         if result.home_score == result.away_score:
