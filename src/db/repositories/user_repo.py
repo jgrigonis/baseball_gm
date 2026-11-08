@@ -16,7 +16,7 @@ class UserRepository:
         row = self.db.execute(
             """
             SELECT id, display_name, username, email, is_verified, created_at,
-                   is_admin, must_change_password, dismissed_tips, turn_emails,
+                   is_admin, is_contributor, must_change_password, dismissed_tips, turn_emails,
                    password_hash IS NOT NULL AS has_password
             FROM users
             WHERE session_token = %s

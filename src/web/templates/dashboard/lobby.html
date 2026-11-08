@@ -40,6 +40,48 @@
       </div>
       {% endif %}
 
+      {% if custom %}
+      <div class="card" id="custom-teams">
+        <div class="card-header"><span class="card-title"><span class="setting-tip" tabindex="0" data-tip="Put one of your custom teams (My Teams) on any team here. That team keeps its city, name and uniforms; your players replace its roster when the league starts. A league with a custom team is single player: nobody else can join it.">Custom Teams</span></span></div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:10px;">
+          {% if custom_error %}<p style="font-family:var(--font-mono);font-size:12px;color:var(--red);margin:0;">{{ custom_error }}</p>{% endif %}
+          {% if custom.refusal and not custom.any %}
+            <p style="font-size:12px;color:var(--text-dim);margin:0;">{{ custom.refusal }}</p>
+          {% elif not custom.mine %}
+            <p style="font-size:12px;color:var(--text-dim);margin:0;">You haven't built a custom team yet. <a href="/teams/" style="color:var(--amber);">My Teams →</a></p>
+          {% else %}
+            {% if custom.any %}<p style="font-size:12px;color:var(--amber);margin:0;">Single player: this league has a custom team, so nobody else can join.</p>{% endif %}
+            {% for t in custom.teams if t.chosen %}
+            <form method="POST" action="/leagues/{{ league_id }}/lobby/custom" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0;">
+              <input type="hidden" name="team" value="{{ t.city }}|{{ t.mascot }}">
+              <input type="hidden" name="custom_team_id" value="">
+              <span style="white-space:nowrap;">{{ team_badge(t.city, t.mascot) }} {{ t.city }} {{ t.mascot }}</span>
+              <span style="font-family:var(--font-mono);font-size:12px;">plays as <b style="color:var(--amber);">{{ t.chosen.name }}</b></span>
+              <span class="spacer" style="flex:1;"></span>
+              {% if not custom.refusal or custom.any %}<button type="submit" class="btn btn-secondary admin-small" title="Back to generated players">Remove</button>{% endif %}
+            </form>
+            {% endfor %}
+            {% if not custom.refusal %}
+            {% set ready = custom.mine | selectattr('ready') | list %}
+            {% if ready %}
+            <form method="POST" action="/leagues/{{ league_id }}/lobby/custom" style="display:flex;gap:8px;flex-wrap:wrap;margin:0;">
+              <select name="team" aria-label="League team" style="flex:1 1 160px;min-width:0;">
+                {% for t in custom.teams if not t.chosen %}<option value="{{ t.city }}|{{ t.mascot }}">{{ t.city }} {{ t.mascot }}</option>{% endfor %}
+              </select>
+              <select name="custom_team_id" aria-label="Your custom team" style="flex:1 1 160px;min-width:0;">
+                {% for m in ready %}<option value="{{ m.id }}">{{ m.name }}</option>{% endfor %}
+              </select>
+              <button type="submit" class="btn btn-primary admin-small">Put in</button>
+            </form>
+            {% else %}
+            <p style="font-size:12px;color:var(--text-dim);margin:0;">None of your custom teams is ready yet: each needs 10 pitchers, 5 of them starters, and a catcher. <a href="/teams/" style="color:var(--amber);">My Teams →</a></p>
+            {% endif %}
+            {% endif %}
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
       <div class="card">
         <div class="card-header"><span class="card-title"><span class="setting-tip" tabindex="0" data-tip="How this league runs. Hover or tap any setting's name to see what it does. Only an admin can change them once the league exists.">League Settings</span></span></div>
         <div class="card-body">

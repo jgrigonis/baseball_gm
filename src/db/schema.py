@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS leagues (
     backstory_years      INTEGER NOT NULL DEFAULT 10,    -- past seasons generated at the start (src/league/backstory/)
     weighted_schedule    BOOLEAN NOT NULL DEFAULT FALSE, -- division rivals play more often (src/league/weighted_schedule.py)
     real_season          INTEGER,  -- starts with this MLB season's players (src/league/real_seasons/, migration 095)
+    single_player        BOOLEAN NOT NULL DEFAULT FALSE, -- has a custom team: nobody else can join (migration 096)
     created_at TEXT DEFAULT (NOW())
 );
 
@@ -113,6 +114,20 @@ CREATE TABLE IF NOT EXISTS password_resets (
 -- email_verifications: one row per emailed verify link. Only a SHA-256 hash
 --   of the token is kept, with the address it went to, so an old link can't
 --   verify a changed email. A link works for a day, once (migration 070).
+-- A contributor's team of real player-seasons, shared by code (migration 096).
+-- players: [{{"key": "griffke02-1997", "skills": {{...}} or null}}].
+CREATE TABLE IF NOT EXISTS custom_teams (
+    id          TEXT PRIMARY KEY,
+    owner_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name        TEXT NOT NULL,
+    share_code  TEXT UNIQUE NOT NULL,
+    copied_from TEXT,
+    players     JSONB NOT NULL DEFAULT '[]',
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_custom_teams_owner ON custom_teams(owner_id);
+
 CREATE TABLE IF NOT EXISTS email_verifications (
     id           TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -685,6 +700,18 @@ CREATE TABLE IF NOT EXISTS league_lobby_teams (
     PRIMARY KEY (league_id, city, mascot)
 );
 
+-- A custom team's players (a copy) put on one of a single-player lobby's
+-- teams by its commissioner; used when the league starts (migration 096).
+CREATE TABLE IF NOT EXISTS league_custom_teams (
+    league_id      TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    city           TEXT NOT NULL,
+    mascot         TEXT NOT NULL,
+    custom_team_id TEXT,
+    name           TEXT NOT NULL,
+    players        JSONB NOT NULL,
+    PRIMARY KEY (league_id, city, mascot)
+);
+
 -- Which league ("conference", since leagues holds whole leagues) and
 -- division each team plays in (src/league/divisions.py). Set when a league
 -- starts; leagues started before divisions existed have no rows.
@@ -943,6 +970,7 @@ CREATE TABLE IF NOT EXISTS gm_career_seasons (
     trades         INTEGER NOT NULL DEFAULT 0,      -- accepted trades
     front_office   TEXT,                            -- the team's last team_states state that season
     final          BOOLEAN NOT NULL DEFAULT FALSE,  -- season over, or they left
+    custom_teams   BOOLEAN NOT NULL DEFAULT FALSE,  -- the league had custom teams: no badges (migration 096)
     updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (user_id, league_id, season_id)
 );

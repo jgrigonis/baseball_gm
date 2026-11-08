@@ -96,6 +96,7 @@ class TestCompleteLeagueIsReadOnly:
             "/leagues/{league_id}/take-over",
             "/leagues/{league_id}/lobby/gms/{ai_gm_id}/reroll",
             "/leagues/{league_id}/lobby/team",
+            "/leagues/{league_id}/lobby/custom",
         }
 
         def calls(dependant):

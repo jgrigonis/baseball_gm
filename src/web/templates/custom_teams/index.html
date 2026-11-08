@@ -1,0 +1,50 @@
+{# custom_teams/index.html — My Teams: your custom teams of real player-seasons
+   (routers/custom_teams.py). #}
+{% extends "base.html" %}
+{% block title %}My Teams — Baseball GM{% endblock %}
+{% block main %}
+{% include "custom_teams/_style.html" %}
+<div class="page-content"><div class="content-inner" style="max-width:860px;">
+  <div class="page-header"><h1 class="page-title">My Teams</h1></div>
+  <p style="margin:0 0 16px;">Build a team from any real season since 1871: Ruth's 1927, Griffey's 1997, Ohtani's 2023. Edit any skill you like, then share the team with a code. Custom teams play only in single-player leagues.</p>
+  {% if error %}<div class="card" style="margin-bottom:16px;"><div class="card-body" style="color:var(--red);font-family:var(--font-mono);font-size:12px;">{{ error }}</div></div>{% endif %}
+
+  {% if can_build %}
+  <div class="card ct-card"><div class="card-body">
+    <form method="POST" action="/teams/" class="ct-row">
+      <input type="text" name="name" maxlength="{{ name_max }}" placeholder="Team name, e.g. Murderers' Row" required aria-label="Team name">
+      <button type="submit" class="btn btn-primary">New team</button>
+    </form>
+  </div></div>
+
+  {% if teams %}
+  <div class="card ct-card" style="overflow-x:auto;">
+    <table class="data-table">
+      <thead><tr><th>Team</th><th class="num">Players</th><th>Status</th><th>Share code</th></tr></thead>
+      <tbody>
+        {% for t in teams %}
+        <tr>
+          <td class="team-name"><a href="/teams/{{ t.id }}">{{ t.name }}</a></td>
+          <td class="num">{{ t.summary.size }}/{{ t.summary.max }}</td>
+          <td>{% if t.summary.ready %}<span class="ct-ready">Ready</span>{% else %}<span class="ct-needs" title="Needs {{ t.summary.needs|join(', ') }}">Needs players</span>{% endif %}</td>
+          <td class="admin-dim" style="font-family:var(--font-mono);">{{ t.share_code }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+  {% else %}
+  <div class="card ct-card"><div class="card-body">
+    Building custom teams is for paid contributors. You can still look at a team someone shares with you.
+  </div></div>
+  {% endif %}
+
+  <div class="card ct-card"><div class="card-body">
+    <form method="POST" action="/teams/open" class="ct-row">
+      <input type="text" name="code" maxlength="20" placeholder="Share code" required aria-label="Share code" style="text-transform:uppercase;">
+      <button type="submit" class="btn btn-secondary">Open a shared team</button>
+    </form>
+  </div></div>
+</div></div>
+{% endblock %}

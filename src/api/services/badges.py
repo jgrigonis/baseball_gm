@@ -13,7 +13,8 @@
 # theirs), when an email or the paid contributor flag is set, and when an
 # email is verified. Verified Email and Paid Contributor are the only badges
 # that can be taken back: when the email changes, or the flag is unset.
-# Tutorial leagues count only toward Rookie GM.
+# Tutorial leagues count only toward Rookie GM, and leagues with custom
+# teams (single player, league_custom_teams) toward none.
 
 from __future__ import annotations
 
@@ -53,8 +54,13 @@ class _Person:
             (user_id,),
         ).fetchone()
         # Oldest first, so the first match is where a badge was first earned.
+        # A league with custom teams earns no badges (league_custom_teams).
         self.seasons = sorted(
-            CareerRepository(conn).for_user(user_id),
+            (
+                s
+                for s in CareerRepository(conn).for_user(user_id)
+                if not s.get("custom_teams")
+            ),
             key=lambda s: (s["season_year"], s["league_name"]),
         )
 
@@ -166,7 +172,7 @@ def _full_run(p: _Person) -> Check:
                   (SELECT COUNT(*) FROM league_seasons ls JOIN seasons s ON s.id = ls.season_id
                    WHERE ls.league_id = l.id AND NOT s.is_backstory) AS seasons
            FROM gms g JOIN leagues l ON l.id = g.league_id
-           WHERE g.user_id = %s AND l.state = 'complete' AND NOT l.is_practice""",
+           WHERE g.user_id = %s AND l.state = 'complete' AND NOT l.is_practice AND NOT l.single_player""",
         (p.id,),
     ).fetchall()
     played = {lid: len(ss) for lid, ss in p.by_league().items()}
@@ -182,7 +188,7 @@ def _drafted_all_stars(p: _Person, min_round: int = 1) -> list[dict]:
                   pl.first_name, pl.last_name, l.name AS league_name
            FROM draft_picks dp
            JOIN gms g ON g.id = dp.gm_id
-           JOIN leagues l ON l.id = g.league_id AND NOT l.is_practice
+           JOIN leagues l ON l.id = g.league_id AND NOT l.is_practice AND NOT l.single_player
            JOIN all_stars a ON a.player_id = dp.player_id
            JOIN players pl ON pl.id = dp.player_id
            WHERE g.user_id = %s AND dp.round >= %s
@@ -212,7 +218,7 @@ def _all_star_captain(p: _Person) -> Check:
     row = p.conn.execute(
         """SELECT l.name, s.year FROM all_star_games a
            JOIN gms g ON g.team_id IN (a.captain1_team_id, a.captain2_team_id)
-           JOIN leagues l ON l.id = g.league_id AND NOT l.is_practice
+           JOIN leagues l ON l.id = g.league_id AND NOT l.is_practice AND NOT l.single_player
            JOIN seasons s ON s.id = a.season_id
            WHERE g.user_id = %s AND a.state = 'played'
            ORDER BY s.year LIMIT 1""",
@@ -227,7 +233,7 @@ def _derby_boss(p: _Person) -> Check:
         """SELECT l.name, s.year, pl.first_name, pl.last_name
            FROM hr_derby_results r
            JOIN gms g ON g.team_id = r.team_id
-           JOIN leagues l ON l.id = g.league_id AND NOT l.is_practice
+           JOIN leagues l ON l.id = g.league_id AND NOT l.is_practice AND NOT l.single_player
            JOIN seasons s ON s.id = r.season_id
            JOIN players pl ON pl.id = r.player_id
            WHERE g.user_id = %s AND r.won
@@ -248,7 +254,7 @@ def _gm_of_year(p: _Person) -> Check:
     row = p.conn.execute(
         """SELECT l.name, s.year FROM season_awards a
            JOIN gms g ON g.id = a.gm_id
-           JOIN leagues l ON l.id = g.league_id AND NOT l.is_practice
+           JOIN leagues l ON l.id = g.league_id AND NOT l.is_practice AND NOT l.single_player
            JOIN seasons s ON s.id = a.season_id
            WHERE g.user_id = %s AND a.award = 'gm_of_year'
            ORDER BY s.year LIMIT 1""",

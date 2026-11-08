@@ -48,8 +48,10 @@ class PlayerSeason:
     def name(self) -> str:
         return f"{self.first} {self.last}".strip()
 
-    def record(self, rng: random.Random) -> PlayerRecord:
-        """A new game player built from this season."""
+    def record(self, rng: random.Random, skills: dict | None = None) -> PlayerRecord:
+        """A new game player built from this season, with `skills` in place
+        of the real ones where given (a custom team's hand edits)."""
+        own = {s: int((skills or {}).get(s, self.skills[s])) for s in SKILLS}
         return PlayerRecord(
             id=uuid.UUID(int=rng.getrandbits(128)).hex,
             first_name=self.first,
@@ -57,7 +59,7 @@ class PlayerSeason:
             bats=self.bats if self.bats in ("L", "R", "S") else "R",
             throws=self.throws if self.throws in ("L", "R") else "R",
             position=self.pos,
-            skills=PlayerSkills(dict(self.skills), age=self.age),
+            skills=PlayerSkills(own, age=self.age),
         )
 
 

@@ -1,0 +1,44 @@
+{# custom_teams/_roster.html — a custom team's players, hitters then pitchers.
+   Set `editable` for the owner's page (edit links + remove buttons). #}
+{% for group, title, cols in [('hitters', 'Hitters', hitter_skills), ('pitchers', 'Pitchers', pitcher_skills)] %}
+{% set members = rows | selectattr('is_pitcher', 'equalto', group == 'pitchers') | list %}
+<div class="card ct-card" style="overflow-x:auto;">
+  <div class="ct-card-title">{{ title }} <span class="admin-dim">{{ members|length }}</span></div>
+  {% if members %}
+  <table class="data-table ct-table">
+    <thead><tr>
+      <th>Player</th><th class="num">Year</th><th>Pos</th><th class="num">Age</th><th>B/T</th><th>Ovr</th>
+      {% for s in cols %}<th class="num" title="{{ s|replace('_', ' ') }}">{{ abbr[s] }}</th>{% endfor %}
+      {% if editable %}<th></th>{% endif %}
+    </tr></thead>
+    <tbody>
+      {% for p in members %}
+      <tr id="slot-{{ p.slot }}">
+        <td class="team-name">
+          {% if editable %}<a href="/teams/{{ team.id }}/players/{{ p.slot }}" title="Edit his skills">{{ p.name }}</a>{% else %}{{ p.name }}{% endif %}
+          {% if p.edited %}<span class="ct-edited" title="Hand-edited: {{ p.edited|map('replace', '_', ' ')|join(', ') }}">✎</span>{% endif %}
+        </td>
+        <td class="num" title="{{ p.teams }}">{{ p.year }}</td>
+        <td>{{ p.pos|upper }}</td>
+        <td class="num">{{ p.age }}</td>
+        <td>{{ p.bats }}/{{ p.throws }}</td>
+        <td><span class="grade grade-{{ grade_class(p.grade) }}">{{ p.grade }}</span></td>
+        {% for s in cols %}<td class="num{% if s in p.edited %} ct-edited-val{% endif %}"{% if s in p.edited %} title="Real: {{ p.real[s] }}"{% endif %}>{{ p.skills[s] }}</td>{% endfor %}
+        {% if editable %}
+        <td style="text-align:right;">
+          <form method="POST" action="/teams/{{ team.id }}/remove" style="display:inline;">
+            <input type="hidden" name="slot" value="{{ p.slot }}">
+            <input type="hidden" name="q" value="{{ q or '' }}">
+            <button type="submit" class="ct-remove" title="Remove {{ p.name }}" aria-label="Remove {{ p.name }}">−</button>
+          </form>
+        </td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="card-body admin-dim">None yet.</div>
+  {% endif %}
+</div>
+{% endfor %}

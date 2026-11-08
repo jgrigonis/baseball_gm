@@ -16,12 +16,12 @@ class CareerRepository:
                    (user_id, league_id, season_id, league_name, season_year,
                     team_city, team_mascot, wins, losses, division_title,
                     finish, finish_of, playoff_result, sweeps, trades,
-                    front_office, final)
+                    front_office, final, custom_teams)
                VALUES (%(user_id)s, %(league_id)s, %(season_id)s, %(league_name)s,
                        %(season_year)s, %(team_city)s, %(team_mascot)s, %(wins)s,
                        %(losses)s, %(division_title)s, %(finish)s, %(finish_of)s,
                        %(playoff_result)s, %(sweeps)s, %(trades)s,
-                       %(front_office)s, %(final)s)
+                       %(front_office)s, %(final)s, %(custom_teams)s)
                ON CONFLICT (user_id, league_id, season_id) DO UPDATE SET
                    league_name    = EXCLUDED.league_name,
                    team_city      = EXCLUDED.team_city,
@@ -36,6 +36,7 @@ class CareerRepository:
                    front_office   = EXCLUDED.front_office,
                    playoff_result = EXCLUDED.playoff_result,
                    final          = EXCLUDED.final,
+                   custom_teams   = EXCLUDED.custom_teams,
                    updated_at     = NOW()
                WHERE NOT gm_career_seasons.final""",
             row,

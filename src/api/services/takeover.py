@@ -41,6 +41,8 @@ def closed_reason(conn, league: dict) -> str | None:
     name = league["name"]
     if league.get("is_practice"):
         return f"{name} is a tutorial league, so it can't take new GMs."
+    if league.get("single_player"):
+        return f"{name} has a custom team, so it's single player."
     if league["state"] == "complete":
         return f"{name} is over."
     if not league.get("late_joins"):

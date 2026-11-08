@@ -14,6 +14,7 @@ from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.pitcher_state import PitcherStateRepository
 from src.db.repositories.player_energy import PlayerEnergyRepository
+from src.api.services import league_custom_teams
 from src.league import divisions, real_seasons
 from src.league.backstory.service import create_backstory
 from src.league.bootstrap import LeagueBootstrapper
@@ -71,6 +72,10 @@ def start_league(
             factory.generate_team(city=city, mascot=mascot, size=26)
             for city, mascot in lobby_teams.league_teams(conn, league_id)
         ]
+
+    # A custom team's players replace that team's (single-player leagues,
+    # services/league_custom_teams.py).
+    generated = league_custom_teams.apply(conn, league_id, generated, rng)
 
     # ── 2. Save the teams + first season ──────────────────────────────────────
     start_date = datetime.date(year, 4, 1)

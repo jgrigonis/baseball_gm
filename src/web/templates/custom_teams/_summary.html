@@ -1,0 +1,5 @@
+{# custom_teams/_summary.html — roster counts and what's missing. #}
+<p class="ct-summary">
+  {{ summary.size }}/{{ summary.max }} players: {{ summary.hitters }} hitters, {{ summary.pitchers }} pitchers ({{ summary.starters }} starters).
+  {% if summary.needs %}<span class="ct-needs">Needs {{ summary.needs|join(', ') }}.</span>{% else %}<span class="ct-ready">Ready to play.</span>{% endif %}
+</p>

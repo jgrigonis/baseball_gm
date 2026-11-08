@@ -65,7 +65,8 @@ class LeagueRepository:
 
     def get_by_join_code(self, code: str) -> dict | None:
         row = self.conn.execute(
-            "SELECT id, name, state FROM leagues WHERE join_code = %s", (code,)
+            "SELECT id, name, state, single_player FROM leagues WHERE join_code = %s",
+            (code,),
         ).fetchone()
         return dict(row) if row else None
 

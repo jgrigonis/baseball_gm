@@ -33,6 +33,12 @@
      "Every club's 40 players from the real " ~ info.real_season ~ " season, rated from their stats, playing as the league's teams."),
   ] %}
 {% endif %}
+{% if info.single_player %}
+  {% set settings = settings + [
+    ("Single player", "Custom teams",
+     "The commissioner put custom teams in this league, so nobody else can join it."),
+  ] %}
+{% endif %}
 {% if started %}
   {% set settings = settings + [
     ("GMs", info.human_gms ~ " human · " ~ info.ai_gms ~ " AI",

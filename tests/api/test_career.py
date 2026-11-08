@@ -111,6 +111,17 @@ class TestRecord:
         assert not row["final"]
         assert row["playoff_result"] is None
 
+    def test_marks_a_league_with_custom_teams(self, db_conn, league):
+        _game(db_conn, league["season"], league["mine"], league["a"])
+        career.record_league(db_conn, league["league"].id)
+        assert not _rows(db_conn, league["user_id"])[0]["custom_teams"]
+        db_conn.execute(
+            "UPDATE leagues SET single_player = TRUE WHERE id = %s",
+            (league["league"].id,),
+        )
+        career.record_league(db_conn, league["league"].id)
+        assert _rows(db_conn, league["user_id"])[0]["custom_teams"]
+
     def test_updates_as_the_season_goes_on(self, db_conn, league):
         _game(db_conn, league["season"], league["mine"], league["a"])
         career.record_league(db_conn, league["league"].id)
