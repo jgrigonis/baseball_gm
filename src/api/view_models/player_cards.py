@@ -198,6 +198,11 @@ def ratings_to_grade_map(grades, skills: dict, ratings: dict) -> list:
                 "label": "Contact hitter",
                 "grade": rg("contact_hitter"),
             },
+            {
+                "key": "overall_offense",
+                "label": "Off. rating",
+                "grade": rg("overall_offense"),
+            },
         ],
     }
 
@@ -224,11 +229,6 @@ def ratings_to_grade_map(grades, skills: dict, ratings: dict) -> list:
                 "key": "durability",
                 "label": "Durability",
                 "grade": g(skills.get("durability")),
-            },
-            {
-                "key": "overall_offense",
-                "label": "Off. rating",
-                "grade": rg("overall_offense"),
             },
         ],
     }
