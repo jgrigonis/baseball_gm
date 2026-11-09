@@ -1472,6 +1472,7 @@ class BudgetRepository:
                         gate_per_game=per_game,
                         costs=self._fixed_costs(average, cap),
                         ticket_price=mine["ticket_price"],
+                        average_revenue=average,
                         **line,
                     ),
                     "deal": self.deal_in(league_id, team_id, y),
