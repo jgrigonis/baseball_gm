@@ -605,13 +605,15 @@ window.setInjuryNews = setInjuryNews;
 // neither is that player coming back the next day.
 var DAY_TO_DAY = 1;
 
-// Show the new_injuries / returned lists from a sim response or /news.
-// Returns true if there was news that stops a sim run until an injury:
-// any injury or return longer than a day, or a roster move.
+// Show the new_injuries / returned / rust_cleared lists from a sim response
+// or /news. Returns true if there was news that stops a sim run until an
+// injury: any injury or return longer than a day, a player's rust wearing
+// off (only sent when the Strategy tab rests rusty players), or a roster move.
 function showInjuryNews(d) {
   var items = [];
   var stops = (d.new_injuries || []).some(i => i.days > DAY_TO_DAY)
            || (d.returned || []).some(i => i.length !== DAY_TO_DAY)
+           || (d.rust_cleared || []).length > 0
            || (d.roster_moves || []).length > 0;
   (d.new_injuries || []).forEach(function (i) {
     items.push({
@@ -624,6 +626,12 @@ function showInjuryNews(d) {
       text: `✅ ${i.name} returned${i.effect ? ' — ' + i.effect : ''}`,
       // Not on the 40-man → roster tab, to be placed first
       dest: !i.on_40man ? 'roster' : i.is_pitcher ? 'pitching' : 'batting',
+    });
+  });
+  (d.rust_cleared || []).forEach(function (i) {
+    items.push({
+      text: `✅ Rust fell off ${i.name}`,
+      dest: i.is_pitcher ? 'pitching' : 'batting',
     });
   });
   (d.roster_moves || []).forEach(function (m) {

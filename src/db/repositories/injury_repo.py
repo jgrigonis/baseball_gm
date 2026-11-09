@@ -166,6 +166,23 @@ class InjuryRepository:
         "outs", "ab"}} for all active injuries on a team. length is the whole
         injury in days (days is what's left of it). outs and ab are the player's regular-season
         pitching outs and at-bats in the league's current season (0 if none)."""
+        return self._team_injury_rows(team_id, "pi.return_date::date > %s::date", as_of)
+
+    def get_rusty_for_team(self, team_id: str, as_of=None) -> dict[str, dict]:
+        """The players on a team still rusty from an injury on `as_of`, in the
+        shape get_active_for_team uses (days is negative: days since he came
+        back)."""
+        back = self._team_injury_rows(
+            team_id,
+            "pi.return_date::date <= %s::date AND pi.rust IS NOT NULL",
+            as_of,
+        )
+        rust = self.get_rust(list(back), as_of=as_of)
+        return {pid: v for pid, v in back.items() if pid in rust}
+
+    def _team_injury_rows(self, team_id: str, where: str, as_of) -> dict[str, dict]:
+        """Injury rows for the players on a team that match `where`, which
+        takes the as_of date as its one parameter."""
         if not team_id:
             return {}
         as_of = self._as_of(as_of)
@@ -192,7 +209,9 @@ class InjuryRepository:
                          WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1)
                    GROUP BY pss.player_id
                ) st ON st.player_id = pi.player_id
-               WHERE pi.return_date::date > %s::date
+               WHERE """
+            + where
+            + """
                  AND (pi.league_id = %s OR pi.league_id = '')""",
             (as_of, team_id, self.league_id, as_of, self.league_id),
         ).fetchall()
