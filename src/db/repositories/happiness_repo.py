@@ -638,16 +638,20 @@ class HappinessRepository:
                     gm_ids=names.gm_ids(team_id),
                 )  # fmt: skip
 
-    def prepare_resign(self, player_ids) -> None:
-        """Load the moods and loyalty of players about to re-sign."""
+    def prepare_resign(self, player_ids, seasons: dict | None = None) -> None:
+        """Load the moods and loyalty of players about to re-sign, and how
+        many seasons each has been in the league (for the hometown
+        discount)."""
         ids = list(player_ids)
         self._resign_moods = self.latest_moods(ids)
         self._resign_pers = self.personalities(ids) if ids else {}
+        self._resign_seasons = dict(seasons or {})
 
     def resign_terms(self, player_id: str) -> tuple[float, int | None, bool]:
         pers = getattr(self, "_resign_pers", {}).get(player_id)
         mood = getattr(self, "_resign_moods", {}).get(player_id)
-        return hp.resign_terms(mood, pers.traits["loyalty"] if pers else 50)
+        seasons = getattr(self, "_resign_seasons", {}).get(player_id, 0)
+        return hp.resign_terms(mood, pers.traits["loyalty"] if pers else 50, seasons)
 
     def request_trades(self, players: list[tuple[str, str]], year: int) -> None:
         """Miserable players who re-signed for a year and want out: the

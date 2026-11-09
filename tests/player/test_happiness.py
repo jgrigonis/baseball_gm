@@ -175,6 +175,15 @@ def test_resign_terms_run_from_discount_to_one_year_and_out():
     assert hp.resign_terms(None, 50) == (1.0, None, False)
 
 
+def test_the_hometown_discount_grows_with_seasons_in_the_league():
+    assert hp.resign_terms(0.6, 100, seasons=0)[0] == 0.85
+    assert hp.resign_terms(0.6, 100, seasons=6)[0] == 0.7
+    assert hp.resign_terms(0.6, 100, seasons=12)[0] == 0.7
+    assert hp.resign_terms(0.6, 50, seasons=6)[0] == 0.85
+    # Only happy players give one.
+    assert hp.resign_terms(0.0, 100, seasons=6)[0] == 1.0
+
+
 def test_mood_moves_clutch_most_and_the_rest_only_at_the_extremes():
     assert hp.game_effects(0.0) == {"clutch": 0.0}
     content = hp.game_effects(0.1)

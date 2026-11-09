@@ -49,6 +49,7 @@ def roomy_owners(monkeypatch):
     monkeypatch.setattr(BudgetRepository, "refusal", lambda *a, **k: None)
     monkeypatch.setattr(ai_free_agents, "_budget_room", lambda *a: float("inf"))
     monkeypatch.setattr(offseason_fa, "_room", _roomy)
+    monkeypatch.setattr(offseason_fa, "_bank", lambda *a: 0)
 
 
 def _roomy(conn, league_id, team_id, year, human):
@@ -140,7 +141,7 @@ def test_re_signs_are_judged_on_next_season(lg, monkeypatch):
     # Over the limit this season, but the $10M coming off covers one more.
     _room_this_season(monkeypatch, max(deals.values()) - 10_000_000)
     offseason_fa.choose(lg.db, lg.league.id, lg.mine.id, a, "resign")
-    with pytest.raises(OffseasonFAError, match="left under their limit"):
+    with pytest.raises(OffseasonFAError, match="dipping into their bank"):
         offseason_fa.choose(lg.db, lg.league.id, lg.mine.id, b, "resign")
     money = offseason_fa.next_season_money(lg.db, lg.league.id, lg.mine.id)
     assert money["left"] == max(deals.values()) - deals[a]
@@ -152,6 +153,24 @@ def test_re_signs_are_judged_on_next_season(lg, monkeypatch):
     # Letting the first go makes room for the second.
     offseason_fa.choose(lg.db, lg.league.id, lg.mine.id, a, "let_go")
     offseason_fa.choose(lg.db, lg.league.id, lg.mine.id, b, "resign")
+
+
+def test_your_own_re_signs_can_dip_into_the_owners_bank(lg, monkeypatch):
+    a = _expiring(lg, lg.mine, 2024, 3, level=75)
+    b = _expiring(lg, lg.mine, 2024, 3, level=75)
+    deals = _deals(lg)
+    # No room at all next season; the bank covers the first only.
+    _room_this_season(monkeypatch, -10_000_000)
+    monkeypatch.setattr(offseason_fa, "_bank", lambda *_: deals[a] + 1)
+    offseason_fa.choose(lg.db, lg.league.id, lg.mine.id, a, "resign")
+    with pytest.raises(OffseasonFAError, match="bank"):
+        offseason_fa.choose(lg.db, lg.league.id, lg.mine.id, b, "resign")
+    money = offseason_fa.next_season_money(lg.db, lg.league.id, lg.mine.id)
+    assert money["over"] and money["left"] == -deals[a]
+    # The default tender still can't: only your own call goes past the limit.
+    offseason_fa.close_window(lg.db, lg.league.id)
+    assert lg.contracts.active(a, 2027) is not None
+    assert lg.status.get_status(b) == "free_agent"
 
 
 def test_a_pay_cut_isnt_free_when_over_the_limit(lg, monkeypatch):

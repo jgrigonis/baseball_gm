@@ -48,13 +48,17 @@
     stretches; anyone it can't cover goes to free agency. Either way the price is the one shown.
     Your owner judges re-signs on next season: these salaries come off, and each player
     you keep costs his whole new salary, so letting one go makes room for another.
+    Players you re-sign yourself can go past the limit, paid from your owner's bank,
+    but the losses will cost you with your owner.
   </div>
   {% if next_money %}
   <div class="fa-note fa-room{% if next_money.over %} over{% endif %}">
     {% if next_money.over %}
-    Next season, your re-signs so far put you <b>{{ next_money.left_text }} over</b> your owner's limit.
+    Next season, your re-signs so far put you <b>{{ next_money.left_text }} over</b> your owner's limit,
+    paid from their bank ({{ next_money.bank_left_text }} left there to go further).
     {% else %}
-    Next season, after your re-signs so far: <b>{{ next_money.left_text }}</b> left under your owner's limit.
+    Next season, after your re-signs so far: <b>{{ next_money.left_text }}</b> left under your owner's limit,
+    plus {{ next_money.bank_left_text }} in their bank for players you re-sign yourself.
     {% endif %}
   </div>
   {% endif %}
@@ -220,7 +224,8 @@ function expiringRow(p) {
   if (p.kind === 'arbitration') trail.push(`<span class="fa-waiver" title="Arbitration: one season at part of his market price, more each season until he reaches free agency">Arbitration</span>`);
   if (p.market === 'veteran') trail.push(`<span class="fa-waiver" title="${p.seasons} seasons under contract: he can test free agency">Free agent if not re-signed</span>`);
   if (p.market === 'unhappy') trail.push(`<span class="fa-waiver" title="He's unhappy here and will test free agency">Unhappy · free agent if not re-signed</span>`);
-  const on = c => (p.fate === c ? ` on ${c}` : '');
+  // Lit: what happens if you do nothing more (no room goes to free agency too).
+  const on = c => (p.fate === c || (c === 'go' && p.fate === 'no_room') ? ` on ${c}` : '');
   el.innerHTML = `
     <span class="${gradeClass(p.overall)} lu-grade">${p.overall}</span>
     ${faceImgHtml(p, false)}
