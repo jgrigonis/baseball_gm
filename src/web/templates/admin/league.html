@@ -98,6 +98,12 @@
       <label class="admin-check"><input type="checkbox" name="is_public" value="true" {% if league.is_public %}checked{% endif %}> Public league</label>
       <label class="admin-check"><input type="checkbox" name="late_joins" value="true" {% if league.late_joins %}checked{% endif %}> Late joiners (take over AI teams between seasons)</label>
       <label class="admin-check"><input type="checkbox" name="reentry_enabled" value="true" {% if league.reentry_enabled %}checked{% endif %}> Re-entry enabled</label>
+      {# The same settings a solo commissioner can change on the League page
+         (src/api/services/league_settings.py says what each change does). #}
+      <label class="admin-check"><input type="checkbox" name="injuries_enabled" value="true" {% if injuries_on %}checked{% endif %}> Injuries</label>
+      <label class="admin-check"><input type="checkbox" name="trades_enabled" value="true" {% if trades_on %}checked{% endif %}> Trades (turning off expires open offers)</label>
+      <label class="admin-check"><input type="checkbox" name="pick_trades" value="true" {% if league.pick_trades %}checked{% endif %}> Draft pick trades (turning off calls off offers with picks)</label>
+      <label class="admin-check"><input type="checkbox" name="weighted_schedule" value="true" {% if league.weighted_schedule %}checked{% endif %}> Weighted schedule{% if started %} (from next season){% endif %}</label>
       <div class="wide">
         <span class="hint admin-dim" style="font-size:10px;">Changing the pace or a window starts the current period's window over.</span>
       </div>

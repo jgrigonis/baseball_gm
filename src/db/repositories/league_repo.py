@@ -364,6 +364,10 @@ class LeagueRepository:
         "reentry_enabled",
         "is_public",
         "late_joins",
+        "injuries_enabled",
+        "trades_enabled",
+        "pick_trades",
+        "weighted_schedule",
     )
 
     def update_settings(self, league_id: str, settings: dict) -> None:

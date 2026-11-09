@@ -1078,3 +1078,39 @@ class TestOwners:
         db_conn.execute("DELETE FROM team_owners WHERE owner_id = %s", (o["id"],))
         assert client.post(f"/admin/owners/{o['id']}/delete").status_code == 303
         assert self._get(db_conn, name) is None
+
+
+class TestSoloSettingsToo:
+    """The admin changes what a solo commissioner can (league_settings.py)."""
+
+    def test_saves_injuries_trades_picks_and_schedule(
+        self, client, db_conn, factory, admin
+    ):
+        league = _league(db_conn, factory)
+
+        r = client.post(
+            f"/admin/leagues/{league.id}/settings",
+            data=_settings_form(
+                injuries_enabled="true", pick_trades="true", weighted_schedule="true"
+            ),
+        )
+
+        assert r.status_code == 303
+        row = LeagueRepository(db_conn).get_by_id(league.id)
+        assert row["injuries_enabled"] is True
+        assert row["trades_enabled"] is False
+        assert row["pick_trades"] is True
+        assert row["weighted_schedule"] is True
+
+    def test_page_has_the_checkboxes(self, client, db_conn, factory, admin):
+        league = _league(db_conn, factory)
+
+        html = client.get(f"/admin/leagues/{league.id}").text
+
+        for name in (
+            "injuries_enabled",
+            "trades_enabled",
+            "pick_trades",
+            "weighted_schedule",
+        ):
+            assert f'name="{name}"' in html

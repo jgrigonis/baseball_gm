@@ -13,10 +13,11 @@ from __future__ import annotations
 
 import uuid
 
+from src.api.services import league_settings
 from src.api.services.leave_league import leave_league
 from src.api.services.passwords import hash_password
 from src.api.services.ready_check import READY_CHECK_STATES
-from src.db.locks import league_lock
+from src.db.locks import LeagueBusy, league_lock
 from src.db.migration_files import migration_010_admin
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.league_repo import LeagueRepository
@@ -86,7 +87,13 @@ def settings_error(league: dict, settings: dict, season_count: int) -> str | Non
         and league["state"] != "lobby"
     ):
         return "The years of history can only change before the league starts."
-    if UNLIMITED_SEASONS < settings["num_seasons"] < season_count:
+    low = league_settings.fewest_seasons(league["state"], season_count)
+    if (
+        settings["num_seasons"] != league["num_seasons"]
+        and UNLIMITED_SEASONS < settings["num_seasons"] < low
+    ):
+        if low > season_count:
+            return f"Season {season_count} is over, so the league needs at least {low}."
         return f"The league has already started season {season_count}."
     return None
 
@@ -111,7 +118,14 @@ def update_league_settings(conn, league_id: str, settings: dict) -> str | None:
         gm_repo.set_commissioner(commissioner, league_id)
 
     settings["name"] = settings["name"].strip()
-    league_repo.update_settings(league_id, settings)
+    try:
+        with league_lock(conn, league_id):
+            league_repo.update_settings(league_id, settings)
+            # Trades turned off expire open offers, and so on.
+            league_settings.apply_changes(conn, dict(league), settings)
+    except LeagueBusy:
+        conn.rollback()
+        return "A sim is running in this league. Try again in a minute."
     timing_changed = any(settings[k] != league[k] for k in _WINDOW_SETTINGS)
     if timing_changed:
         _restart_window(conn, league_id)

@@ -3,6 +3,7 @@
    who runs each team. Open to the league's GMs and to viewers of a public
    league. Takes `league_info` (src/api/view_models/league_info.py). #}
 {% set info = league_info %}
+{% from "_sliders.html" import slider, step_slider %}
 <div class="tab-head" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
   <div>
     <h1 class="page-title">League</h1>
@@ -76,15 +77,60 @@
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-header"><span class="card-title">League Settings</span></div>
-      <div class="card-body table-scroll">
+    {# A one-person league's commissioner can change most settings (the
+       Edit button swaps the rows for a form). They lock again once a second
+       person joins. See src/api/services/league_settings.py. #}
+    {% set se = solo_edit %}
+    <div class="card" id="league-settings">
+      <div class="card-header">
+        <span class="card-title">League Settings</span>
+        {% if se %}
+        <button type="button" class="btn btn-secondary solo-edit-btn" id="solo-edit-open"
+                {% if se.error %}hidden{% endif %}
+                onclick="var c=document.getElementById('league-settings');c.querySelector('.solo-settings').hidden=false;c.querySelector('.settings-rows').hidden=true;this.hidden=true;">Edit</button>
+        {% endif %}
+      </div>
+      <div class="card-body table-scroll settings-rows" {% if se and se.error %}hidden{% endif %}>
         <table class="data-table">
           <tbody>
             {% include "dashboard/partials/_league_settings_rows.html" %}
           </tbody>
         </table>
       </div>
+      {% if se %}
+      {% if se.saved %}<span hidden data-toast="✓ Settings saved" data-toast-kind="ok"></span>{% endif %}
+      <form method="POST" action="/leagues/{{ league_id }}/league/settings" class="card-body solo-settings" {% if not se.error %}hidden{% endif %}>
+        {% if se.error %}<div class="solo-settings-error">{{ se.error }}</div>{% endif %}
+        <p class="solo-note">You're the only person in this league, so you can change these. They lock once someone else joins.</p>
+        <div class="field">
+          <label for="ss-name">League name</label>
+          <input name="name" id="ss-name" value="{{ league_name }}" required maxlength="80">
+        </div>
+        {% call step_slider("num_seasons", "ss-seasons", "Seasons", se.season_choices, info.num_seasons) %}
+          <span class="solo-hint">{% if info.state in ("offseason", "evaluation") %}Season {{ info.season_number }} is over, so the fewest is {{ info.season_number + 1 }}.{% else %}Can't go below the season you're in.{% endif %} Slide all the way right for unlimited.</span>
+        {% endcall %}
+        {% call slider("sim_period_days", "ss-days", "Days per sim period", info.sim_period_days, se.sim_period_range[0], [se.sim_period_range[1], info.sim_period_days] | max) %}
+          <span class="solo-hint">On your own you sim at your own pace, so this only sets how long a released player sits on waivers: two periods of game days.</span>
+        {% endcall %}
+        <label class="toggle-row"><input type="checkbox" name="weighted_schedule" value="true" {% if info.weighted_schedule %}checked{% endif %}>
+          <span>Weighted schedule <span class="solo-hint">Division rivals meet most often, the other league least. Off: every team plays every other about the same. This season's games are already set, so a change starts next season.</span></span></label>
+        <label class="toggle-row"><input type="checkbox" name="injuries_enabled" value="true" {% if info.injuries_enabled %}checked{% endif %}>
+          <span>Injuries <span class="solo-hint">Off: nobody gets hurt from the next game on. Anyone already hurt heals as usual.</span></span></label>
+        {% if se.trades %}
+        <label class="toggle-row"><input type="checkbox" name="trades_enabled" value="true" {% if info.trades_enabled %}checked{% endif %}>
+          <span>Trades <span class="solo-hint">Off: open trade offers expire.</span></span></label>
+        <label class="toggle-row"><input type="checkbox" name="pick_trades" value="true" {% if info.pick_trades %}checked{% endif %}>
+          <span>Draft pick trades <span class="solo-hint">Off: open offers with picks are called off. Picks already traded stay traded.</span></span></label>
+        {% endif %}
+        <label class="toggle-row"><input type="checkbox" name="reentry_enabled" value="true" {% if info.reentry_enabled %}checked{% endif %}>
+          <span>Re-entry <span class="solo-hint">No effect yet: GM firing isn't in the game.</span></span></label>
+        <div class="solo-actions">
+          <button type="submit" class="btn btn-primary">Save settings</button>
+          <a class="btn btn-secondary" href="/leagues/{{ league_id }}/league">Cancel</a>
+        </div>
+      </form>
+      <script src="{{ static_url('js/sliders.js') }}"></script>
+      {% endif %}
     </div>
 
     {% if league_teams %}

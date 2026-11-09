@@ -761,6 +761,11 @@ def _complete(conn, league_id: str, offer: dict, by_vote: bool = False) -> None:
         )
 
 
+def void(conn, league_id: str, offer: dict, reason: str) -> None:
+    """Call off an open offer and tell both GMs why."""
+    _void(conn, league_id, offer, reason)
+
+
 def _void(conn, league_id: str, offer: dict, reason: str) -> None:
     _decide(conn, offer["id"], "void", reason)
     for team, other in (
