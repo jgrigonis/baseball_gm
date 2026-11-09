@@ -1610,7 +1610,7 @@ CREATE TABLE IF NOT EXISTS player_contracts (
     years       INTEGER NOT NULL CHECK (years >= 1),
     pick_number INTEGER,
     created_at  TEXT NOT NULL DEFAULT (NOW()),
-    guaranteed  BOOLEAN NOT NULL DEFAULT FALSE,  -- owed in full: been on the 40-man, or a free agent signing (migration 072)
+    guaranteed  BOOLEAN NOT NULL DEFAULT FALSE,  -- owed in full: played a game on the 40-man, or a free agent signing (migration 072)
     released_year    INTEGER,                    -- season a team released him; the deal ends for him then
     released_team_id TEXT REFERENCES teams(id) ON DELETE SET NULL, -- who still owes the rest, if guaranteed
     offset_salary    INTEGER NOT NULL DEFAULT 0,  -- off the old team's bill a season, once he signs elsewhere (migration 084)

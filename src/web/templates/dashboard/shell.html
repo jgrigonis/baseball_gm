@@ -117,7 +117,7 @@ window.releasePlayer = async function(pid, name) {
       (cost.seasons > 1 ? `${cost.salary_text} a season through ${cost.through} (${cost.total_text} in all)`
                         : `his ${cost.salary_text} for this season`) +
       `, even after he's gone.`
-    : `His deal isn't guaranteed (he hasn't been on the 40-man), so it costs nothing.`;
+    : `His deal isn't guaranteed (he hasn't played a game on the 40-man), so it costs nothing.`;
   const next = cost.waivers
     ? 'He goes on waivers for two sim periods. If another team claims him, they take over his deal and you owe nothing. If not, he becomes a free agent.'
     : 'He becomes a free agent any team can sign.';

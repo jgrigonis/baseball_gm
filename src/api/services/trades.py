@@ -716,7 +716,7 @@ def owner_refusal(
 ) -> str | None:
     """Why this team's owner refuses a trade that brings in these players
     and sends out those (past their hard limit, src/league/budget.py), or
-    None. Only guaranteed deals count, as in payroll; picks cost nothing."""
+    None. Only deals on the payroll count; picks cost nothing."""
     budgets = BudgetRepository(conn)
     year = ContractRepository(conn).current_year(league_id)
     if year is None or not budgets.enabled(league_id):
@@ -726,7 +726,7 @@ def owner_refusal(
 
     def pay(items) -> int:
         return sum(
-            deals[i]["salary"] for i in items if i in deals and deals[i]["guaranteed"]
+            deals[i]["salary"] for i in items if i in deals and deals[i]["on_payroll"]
         )
 
     return budgets.refusal(league_id, team_id, year, pay(gets) - pay(gives))
@@ -1105,7 +1105,7 @@ def _assets(
     # Players who asked out: his team will take less to move him
     # (src/player/happiness.py).
     wants_out = HappinessRepository(conn, "").trade_requests(p.id for p in records)
-    # What each is owed this season, if guaranteed: what he adds to payroll.
+    # What each is owed this season, if on the payroll: what he adds to it.
     pay = {}
     year = _season_year(conn, season_id) if season_id else None
     if year is not None:
@@ -1114,7 +1114,7 @@ def _assets(
             for pid, c in ContractRepository(conn)
             .active_for([p.id for p in records], year)
             .items()
-            if c.get("guaranteed")
+            if c.get("on_payroll")
         }
     assets = [
         Asset.from_record(

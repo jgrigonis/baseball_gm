@@ -63,10 +63,12 @@ def lg(db_conn, factory):
 
 
 def _released(lg, team=None, **kw):
-    """A 40-man player released by `team` (mine by default)."""
+    """A 40-man player released by `team` (mine by default), after a game
+    that guaranteed his deal."""
     team = team or lg.mine
     pid = lg.factory.rated_player(team, lg.league, level=65, **kw).id
     lg.contracts.sign_unsigned(lg.league.id, 2026)
+    lg.contracts.guarantee_teams([team.id])
     free_agents.release(lg.db, lg.league.id, team.id, pid)
     return pid
 

@@ -11,8 +11,8 @@ A contract isn't tied to a team: a traded player keeps his deal, and a team's
 payroll is the deals of the players on its roster.
 
 Releases (migration 072): a released deal is no longer his from the season
-he's released. A guaranteed one (he's been on the 40-man under it, or he
-signed it as a free agent) stays on the releasing team's payroll as dead
+he's released. A guaranteed one (he's played a game on the 40-man under it,
+or he signed it as a free agent) stays on the releasing team's payroll as dead
 money for the seasons it had left. A deal that was never guaranteed costs
 nothing to release, and isn't on the payroll in the first place: only
 guaranteed money is.
@@ -28,7 +28,9 @@ from src.player.player_value import role_rating
 
 # Statuses that play under a contract: everyone a team holds.
 SIGNED_STATUSES = ("26man", "40man", "minors")
-# Being on the 40-man under a deal guarantees it.
+# Playing a game on the 40-man under a deal guarantees it (just being put
+# there doesn't, Josh 2026-11-09). Until then the deal is on the payroll
+# while he's on the 40-man, but releasing him costs nothing.
 FORTY_MAN_STATUSES = ("26man", "40man")
 
 # A deal still his in a season: not released, or released after it.
@@ -76,18 +78,25 @@ class ContractRepository:
         return self.active_for([player_id], year).get(player_id)
 
     def active_for(self, player_ids, year: int) -> dict[str, dict]:
+        """Each player's deal this season, by player id. `on_payroll`: what
+        it adds to his team's payroll, a guaranteed deal or one of a player
+        on the 40-man (guaranteed once he plays a game there)."""
         ids = list(player_ids)
         if not ids:
             return {}
         rows = self.conn.execute(
             f"""
-            SELECT * FROM player_contracts c
+            SELECT c.*,
+                   (c.guaranteed OR COALESCE(ps.status = ANY(%s), FALSE))
+                       AS on_payroll
+            FROM player_contracts c
+            LEFT JOIN player_status ps ON ps.player_id = c.player_id
             WHERE c.player_id = ANY(%s)
               AND c.start_year <= %s AND c.start_year + c.years > %s
               AND {IN_FORCE}
             ORDER BY c.start_year
             """,
-            (ids, year, year, year),
+            (list(FORTY_MAN_STATUSES), ids, year, year, year),
         ).fetchall()
         return {r["player_id"]: dict(r) for r in rows}
 
@@ -120,25 +129,34 @@ class ContractRepository:
         return [dict(r) for r in rows]
 
     def payroll(self, team_id: str, year: int) -> int:
-        """What the team owes this season: the guaranteed deals of the
-        players it holds, plus dead money for players it released."""
+        """What the team owes this season: the deals of its 40-man and the
+        guaranteed deals of the rest it holds, plus dead money for players
+        it released."""
         row = self.conn.execute(
             f"""
             SELECT COALESCE(SUM(c.salary), 0) AS total
             FROM team_players tp
             JOIN player_status ps ON ps.player_id = tp.player_id
             JOIN player_contracts c ON c.player_id = tp.player_id
-            WHERE tp.team_id = %s AND ps.status = ANY(%s) AND c.guaranteed
+            WHERE tp.team_id = %s AND ps.status = ANY(%s)
+              AND (c.guaranteed OR ps.status = ANY(%s))
               AND c.start_year <= %s AND c.start_year + c.years > %s
               AND {IN_FORCE}
             """,
-            (team_id, list(SIGNED_STATUSES), year, year, year),
+            (
+                team_id,
+                list(SIGNED_STATUSES),
+                list(FORTY_MAN_STATUSES),
+                year,
+                year,
+                year,
+            ),
         ).fetchone()
         return int(row["total"]) + self.dead_money(team_id, year)
 
     def minor_league_pay(self, team_ids, year: int) -> dict[str, int]:
         """What each team pays this season to the minor leaguers who aren't
-        on its payroll (deals never guaranteed: never on the 40-man), by
+        on its payroll (deals never guaranteed: never played on the 40-man), by
         team id. Not payroll or the cap, but it counts against the owner's
         budget (src/league/budget.py)."""
         ids = list(team_ids)
@@ -232,9 +250,21 @@ class ContractRepository:
         ).fetchone()
         return dict(row) if row else None
 
+    def guarantee_teams(self, team_ids) -> None:
+        """These teams just played a game: the deals of everyone on their
+        40-mans are now guaranteed."""
+        ids = list(team_ids)
+        if not ids:
+            return
+        rows = self.conn.execute(
+            "SELECT player_id FROM team_players WHERE team_id = ANY(%s)", (ids,)
+        ).fetchall()
+        self.guarantee([r["player_id"] for r in rows])
+
     def guarantee(self, player_ids) -> None:
         """Make the deals of any of these players now on a 40-man
-        guaranteed: his newest deal still in force."""
+        guaranteed: his newest deal still in force. Called once he's played
+        a game there (guarantee_teams), or re-signed while on it."""
         ids = list(player_ids)
         if not ids:
             return
@@ -459,8 +489,10 @@ class ContractRepository:
             self._insert(pid, league_id, r["team_id"], deal, start)
             signed += 1
         happy.request_trades(unhappy_out, year)
-        # Those already on a 40-man have guaranteed deals.
-        self.guarantee([r["player_id"] for r in rows])
+        # A 40-man player re-signing keeps a guaranteed deal, like the
+        # offseason re-signs (src/api/services/offseason_fa.py). New deals
+        # wait for a game on the 40-man.
+        self.guarantee([r["player_id"] for r in rows if r["signed_before"]])
         return signed
 
     def renewal(
