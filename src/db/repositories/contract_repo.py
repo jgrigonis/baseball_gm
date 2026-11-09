@@ -482,6 +482,7 @@ class ContractRepository:
         def scale(at: int) -> float:
             return 1.0 if first is None else bg.salary_scale(at - first)
 
+        shifts = self.price_shifts(league_id, year)
         renewing = [r["player_id"] for r in rows if r["signed_before"]]
         happy.prepare_resign(renewing, self.seasons_signed(renewing, year - 1))
         arb = self.arbitration_seasons(renewing, year)
@@ -512,11 +513,12 @@ class ContractRepository:
             start = year
             if not r["signed_before"]:
                 kind = "pitcher" if p.is_pitcher() else "hitter"
-                deal = ct.standard_deal(p.age, role_rating(p), kind, rng, scale(year))
+                value = ct.shifted(role_rating(p), kind, shifts)
+                deal = ct.standard_deal(p.age, value, kind, rng, scale(year))
                 start -= ct.years_already_served(deal.years, rng)
             else:
                 deal, wants_out = self.renewal(
-                    p, year, happy, scale(year), arb.get(pid)
+                    p, year, happy, scale(year), arb.get(pid), shifts
                 )
                 if wants_out:
                     unhappy_out.append((pid, r["team_id"]))
@@ -530,7 +532,13 @@ class ContractRepository:
         return signed
 
     def renewal(
-        self, p, year: int, happy, scale: float = 1.0, arb_season: int | None = None
+        self,
+        p,
+        year: int,
+        happy,
+        scale: float = 1.0,
+        arb_season: int | None = None,
+        shifts: dict | None = None,
     ) -> tuple[ct.Deal, bool]:
         """The new deal a player whose last one ran out signs from `year`,
         his mood worked in, and whether he wants a trade. The same price in
@@ -539,13 +547,82 @@ class ContractRepository:
         that has had prepare_resign for him. arb_season: which season in the
         league the deal is for, when he came up on a rookie deal
         (arbitration_seasons); an arbitration season prices it as a share
-        of his market price (src/player/contracts.py arbitration_deal)."""
+        of his market price (src/player/contracts.py arbitration_deal).
+        shifts: the season's price_shifts."""
         rng = random.Random(f"contract:{p.id}:{year}")
         kind = "pitcher" if p.is_pitcher() else "hitter"
-        deal = ct.standard_deal(p.age, role_rating(p), kind, rng, scale)
+        value = ct.shifted(role_rating(p), kind, shifts)
+        deal = ct.standard_deal(p.age, value, kind, rng, scale)
         if arb_season is not None:
             deal = ct.arbitration_deal(deal, arb_season, scale) or deal
         return self._mood_terms(happy, p.id, None, deal, scale)
+
+    def price_level(self, league_id: str, year: int) -> dict[str, float]:
+        """The season's price level by kind (src/player/contracts.py
+        price_level): stored the first time it's asked for, from the
+        league's 26-man players as they are then."""
+        rows = self.conn.execute(
+            "SELECT kind, level FROM league_price_levels"
+            " WHERE league_id = %s AND year = %s",
+            (league_id, year),
+        ).fetchall()
+        if rows:
+            return {r["kind"]: float(r["level"]) for r in rows}
+        # Imported here: player_repo -> team_repo -> ... imports repositories.
+        from src.db.repositories.player_repo import PlayerRepository
+
+        ids = {
+            r["player_id"]
+            for r in self.conn.execute(
+                """SELECT tp.player_id FROM team_players tp
+                   JOIN player_status ps ON ps.player_id = tp.player_id
+                   WHERE ps.status = '26man' AND tp.team_id IN (
+                       SELECT team_id FROM league_season_teams WHERE league_id = %s)""",
+                (league_id,),
+            ).fetchall()
+        }
+        teams = {
+            r["team_id"]
+            for r in self.conn.execute(
+                "SELECT DISTINCT team_id FROM league_season_teams WHERE league_id = %s",
+                (league_id,),
+            ).fetchall()
+        }
+        ratings: dict[str, list[float]] = {"hitter": [], "pitcher": []}
+        players = PlayerRepository(self.conn)
+        for team_id in teams:
+            for p in players.get_players_by_team(team_id):
+                if p.id in ids:
+                    kind = "pitcher" if p.is_pitcher() else "hitter"
+                    ratings[kind].append(role_rating(p))
+        levels = {k: ct.price_level(v) for k, v in ratings.items()}
+        levels = {k: v for k, v in levels.items() if v is not None}
+        for kind, level in levels.items():
+            self.conn.execute(
+                """INSERT INTO league_price_levels (league_id, year, kind, level)
+                   VALUES (%s, %s, %s, %s) ON CONFLICT DO NOTHING""",
+                (league_id, year, kind, level),
+            )
+        return levels
+
+    def price_shifts(self, league_id: str, year: int) -> dict[str, float]:
+        """How far the league's price level has moved since its first
+        season, by kind: what comes off a rating before it's priced
+        (src/player/contracts.py shifted). Nothing for its first season or
+        before."""
+        first = self.conn.execute(
+            "SELECT MIN(year) AS y FROM league_price_levels WHERE league_id = %s",
+            (league_id,),
+        ).fetchone()["y"]
+        if first is None:
+            # The league's first priced season sets the base.
+            self.price_level(league_id, year)
+            return {}
+        if year <= first:
+            return {}
+        base = self.price_level(league_id, first)
+        now = self.price_level(league_id, year)
+        return {k: now[k] - base[k] for k in now if k in base}
 
     def arbitration_seasons(self, player_ids, year: int) -> dict[str, int]:
         """For players who came up on a rookie deal in this league: which

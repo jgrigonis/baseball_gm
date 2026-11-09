@@ -21,6 +21,14 @@ salary paid each season for a run of seasons. There are three kinds.
   grade on the pro curve) and how old he is. Stars get longer deals, old
   players and fringe players short ones.
 
+Prices follow how a player ranks in his league, not his raw rating (Josh,
+2026-11-09): ratings climb over a league's seasons, and prices pinned to the
+fixed grade cutoffs climbed with them. Each season has a price level
+(price_level, the rating at the top PRICE_LINE of the league's big
+leaguers), and a rating is priced after taking off how far that level has
+risen since the league's first season (shifted). So the same rank in the
+league costs the same, grown only by the cap (scale).
+
 A deal that runs out is re-signed at the player's new value until free agency
 exists. A league's starting rosters get standard deals already partway
 through, so they don't all run out the same winter.
@@ -55,6 +63,9 @@ ROOKIE_YEARS_MIN, ROOKIE_YEARS_MAX = 2, 4
 # season he's a veteran who goes to market instead
 # (src/api/services/offseason_fa.py MARKET_SEASONS).
 ARBITRATION_SHARE = {3: 0.40, 4: 0.55, 5: 0.70, 6: 0.85}
+# A season's price level: the rating at this share from the top of the
+# league's 26-man players of a kind (about where a B starts on the pro curve).
+PRICE_LINE = 0.2
 
 # What a player in his prime is paid each season at each grade, A+ to F.
 # Shaped like MLB free agent pay: a handful of $30M stars, a B a solid
@@ -103,6 +114,22 @@ def round_salary(amount: float, scale: float = 1.0) -> int:
     amount = max(lo, min(hi, amount))
     step = 10_000 if amount < 1_000_000 else 50_000
     return max(round(lo / 10_000) * 10_000, int(round(amount / step) * step))
+
+
+def price_level(ratings: list[float]) -> float | None:
+    """A season's price level for one kind of player: the rating at the top
+    PRICE_LINE of these (the league's 26-man players). None for nobody."""
+    if not ratings:
+        return None
+    ranked = sorted(ratings, reverse=True)
+    return float(ranked[min(len(ranked) - 1, int(len(ranked) * PRICE_LINE))])
+
+
+def shifted(value: float, kind: str, shifts: dict | None) -> float:
+    """A rating as the market prices it: less how far the league's price
+    level for his kind has risen since its first season (shifts, from
+    ContractRepository.price_shifts; none: as it is)."""
+    return value - (shifts or {}).get(kind, 0.0)
 
 
 def grade_position(value: float, kind: str) -> float:

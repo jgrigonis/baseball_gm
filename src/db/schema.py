@@ -1738,6 +1738,17 @@ CREATE TABLE IF NOT EXISTS ballpark_projects (
     PRIMARY KEY (league_id, team_id, project)
 );
 CREATE INDEX IF NOT EXISTS idx_ballpark_projects_team ON ballpark_projects(team_id);
+-- league_price_levels: each season's contract price level (migration 110,
+--   src/player/contracts.py price_level): the rating at the top PRICE_LINE of
+--   the league's big leaguers, by kind, stored the first time a deal for that
+--   season is priced. Deals are priced against the league's first season's.
+CREATE TABLE IF NOT EXISTS league_price_levels (
+    league_id TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    year      INTEGER NOT NULL,
+    kind      TEXT NOT NULL,                -- 'hitter' or 'pitcher'
+    level     REAL NOT NULL,
+    PRIMARY KEY (league_id, year, kind)
+);
 -- owner_personas: the site-wide library of team owners (src/league/owners.py).
 --   Never edited once created, except chance. Seeded by migration 075.
 CREATE TABLE IF NOT EXISTS owner_personas (

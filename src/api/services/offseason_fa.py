@@ -143,13 +143,16 @@ def expiring(conn, league_id: str, year: int, team_ids=None) -> list[dict]:
     moods = happy.latest_moods(ids)
     scale = BudgetRepository(conn).salary_scale(league_id, year + 1)
     arb = contracts.arbitration_seasons(ids, year + 1)
+    shifts = contracts.price_shifts(league_id, year + 1)
     repo = PlayerRepository(conn)
     out = []
     for r in rows:
         p = repo.look_up(r["player_id"])
         if p is None:
             continue
-        deal, wants_out = contracts.renewal(p, year + 1, happy, scale, arb.get(p.id))
+        deal, wants_out = contracts.renewal(
+            p, year + 1, happy, scale, arb.get(p.id), shifts
+        )
         mood = moods.get(p.id)
         if seasons.get(p.id, 0) >= MARKET_SEASONS:
             market = "veteran"
@@ -170,6 +173,7 @@ def expiring(conn, league_id: str, year: int, team_ids=None) -> list[dict]:
                 "seasons": seasons.get(p.id, 0),
                 "choice": r["choice"],
                 "scale": scale,
+                "shifts": shifts,
             }
         )
     return out
@@ -407,7 +411,8 @@ def _keeps(
         if r["market"] and r["status"] not in FORTY_MAN_STATUSES:
             continue
         minimum = ct.round_salary(ct.MIN_SALARY * r["scale"], r["scale"])
-        if free_agents.is_fringe(r["player"]) and r["deal"].salary > minimum:
+        fringe = free_agents.is_fringe(r["player"], r.get("shifts"))
+        if fringe and r["deal"].salary > minimum:
             continue
         if fits(r):
             keep.add(r["player_id"])
@@ -634,7 +639,10 @@ def _biddable(conn, league_id: str, player_id: str) -> object:
 
 def asking(conn, league_id: str, player, year: int) -> ct.Deal:
     return free_agents.asking_deal(
-        player, year, free_agents.price_scale(conn, league_id, year)
+        player,
+        year,
+        free_agents.price_scale(conn, league_id, year),
+        shifts=free_agents.price_shifts(conn, league_id, year),
     )
 
 

@@ -72,6 +72,7 @@ def free_agents_tab(
     names = TeamRepository(db).get_names(list(set(last_team.values())))
     players = []
     scale = free_agents.price_scale(db, league_id, year) if year is not None else 1.0
+    shifts = free_agents.price_shifts(db, league_id, year) if year is not None else {}
     discount = free_agents.market_discount(db, league_id)
     for card, row in shown:
         record = player_repo.record_from_row(row)
@@ -91,7 +92,7 @@ def free_agents_tab(
                 "mine": w["from_team_id"] == team_id,
             }
         elif year is not None:
-            deal = free_agents.asking_deal(record, year, scale, discount)
+            deal = free_agents.asking_deal(record, year, scale, discount, shifts)
             card["salary"] = deal.salary
             card["salary_text"] = format_salary(deal.salary)
             card["ask_years"] = deal.years

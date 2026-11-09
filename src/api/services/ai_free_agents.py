@@ -216,6 +216,7 @@ def sign_free_agents(
     if not pool:
         return []
     scale = free_agents.price_scale(conn, league_id, year)
+    shifts = free_agents.price_shifts(conn, league_id, year)
     discount = free_agents.market_discount(conn, league_id)
     minimum = ct.round_salary(ct.MIN_SALARY * scale, scale)
     asks, bargain = {}, {}
@@ -231,8 +232,8 @@ def sign_free_agents(
             if rec.id in taken:
                 continue
             if rec.id not in asks:
-                ask = free_agents.asking_deal(rec, year, scale, discount)
-                full = free_agents.asking_deal(rec, year, scale)
+                ask = free_agents.asking_deal(rec, year, scale, discount, shifts)
+                full = free_agents.asking_deal(rec, year, scale, shifts=shifts)
                 asks[rec.id] = ask
                 bargain[rec.id] = (
                     ask.salary <= minimum or ask.salary <= BARGAIN_SHARE * full.salary

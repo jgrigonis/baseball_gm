@@ -1143,6 +1143,8 @@ def _with_owed(conn, season_id: str, year: int, assets: list[Asset]) -> list[Ass
     scale = BudgetRepository(conn).salary_scale(league["league_id"], year)
     ids = [a.id for a in assets]
     contracts = ContractRepository(conn)
+    # Priced by league rank, like new deals (src/player/contracts.py shifted).
+    shifts = contracts.price_shifts(league["league_id"], year)
     deals = contracts.deals_through(ids, year, year + ai_evaluator.FUTURE_YEARS)
     arb = contracts.arbitration_seasons(ids, year)
     out = []
@@ -1151,7 +1153,7 @@ def _with_owed(conn, season_id: str, year: int, assets: list[Asset]) -> list[Ass
         shift = ai_evaluator.age_shift(a.age)
 
         def fair(y, a=a, kind=kind, shift=shift):
-            rating = a.rating + (shift if y > year else 0)
+            rating = ct.shifted(a.rating + (shift if y > year else 0), kind, shifts)
             return (
                 ct.prime_salary(rating, kind) * ct.age_factor(a.age + y - year) * scale
             )
