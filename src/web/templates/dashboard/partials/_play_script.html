@@ -129,6 +129,43 @@ function schedSyncBoxes() {
 window.schedSyncBoxes = schedSyncBoxes;
 schedSyncBoxes();
 
+// The GM's own team over a run, for the line under the sim buttons: the
+// run's record, the season record, the standing, the playoff race late on,
+// and the run's biggest story about the team (src/api/services/sim_summary.py).
+function newRunSummary() {
+  return {w: 0, l: 0, last: null, story: null, injury: null};
+}
+function addToRun(run, d) {
+  var t = d.my_team;
+  if (t && t.wins !== undefined) {
+    run.w += t.day_wins || 0;
+    run.l += t.day_losses || 0;
+    run.last = t;
+    // The biggest story wins; a later one wins a tie.
+    if (t.story && (!run.story || t.story.weight >= run.story.weight)) run.story = t.story;
+  }
+  // The longest injury of the run, when it's more than a few days.
+  (d.new_injuries || []).forEach(function (i) {
+    if (i.days >= 10 && (!run.injury || i.days > run.injury.days)) run.injury = i;
+  });
+}
+// "3-1 (42-31) · 1st in East by 2.5", plus the race and games left late on.
+function runRecordText(run) {
+  var t = run.last;
+  if (!t) return '';
+  var span = run.w + run.l ? run.w + '-' + run.l : 'Off';
+  var parts = [span + ' (' + t.wins + '-' + t.losses + ')', t.standing];
+  if (t.race) parts.push(t.race);
+  if (t.games_left > 0 && t.games_left <= 20) parts.push(t.games_left + (t.games_left === 1 ? ' game left' : ' games left'));
+  return parts.join(' · ');
+}
+// One notable thing from the run: the biggest story, or a long injury.
+function runNotable(run) {
+  if (run.story) return run.story.headline;
+  if (run.injury) return '🚑 ' + run.injury.name + ' to the IL (' + run.injury.days + 'd)';
+  return '';
+}
+
 async function schedSimRun(count) {
   window._simStop = false;
   setSimMode(count !== 1);
@@ -147,6 +184,7 @@ async function schedSimRun(count) {
   var totalGames = 0;
   var remaining  = null;
   var daysSimmed = 0;
+  var run = newRunSummary();
 
   while (!window._simStop) {
     setStatus('Simming day ' + (daysSimmed + 1) + '…' + (totalGames ? '  (' + totalGames + ' league games played)' : ''));
@@ -181,9 +219,10 @@ async function schedSimRun(count) {
       totalGames += d.games_played;
       remaining   = d.games_remaining;
       daysSimmed++;
+      addToRun(run, d);
 
-      var statusMsg = '▶ Day ' + daysSimmed + ' done · ' + totalGames + ' games · ' + remaining + ' remaining';
-      setStatus(statusMsg);
+      var record = runRecordText(run);
+      setStatus('▶ Day ' + daysSimmed + ' done' + (record ? ' · ' + record : ''));
 
       var hasNews = showInjuryNews(d);
 
@@ -243,12 +282,12 @@ async function schedSimRun(count) {
 
       if (atDeadline) {
         setSimMode(false);
-        setStatus('⏰ Trade deadline · trades close once the next day is played · ' + remaining + ' games remaining');
+        setStatus('⏰ Trade deadline · trades close once the next day is played' + (runRecordText(run) ? ' · ' + runRecordText(run) : ''));
         return;
       }
       if (newOffer) {
         setSimMode(false);
-        setStatus('📨 Trade offer · answer it on the Trades tab · ' + remaining + ' games remaining');
+        setStatus('📨 Trade offer · answer it on the Trades tab' + (runRecordText(run) ? ' · ' + runRecordText(run) : ''));
         return;
       }
       if (remaining <= 0) break;
@@ -264,8 +303,14 @@ async function schedSimRun(count) {
   // Done
   setSimMode(false);
   if (remaining !== null) {
-    setStatus('✓ ' + daysSimmed + ' days · ' + totalGames + ' games · ' + remaining + ' remaining'
-              + (weekendPlayed ? ' · ★ All-Star Weekend played (All-Stars tab)' : ''));
+    var parts = ['✓ ' + daysSimmed + (daysSimmed === 1 ? ' day' : ' days')];
+    var record = runRecordText(run);
+    // A GM without a team (shouldn't happen) gets the league's totals.
+    parts.push(record || totalGames + ' games · ' + remaining + ' remaining');
+    var notable = runNotable(run);
+    if (notable) parts.push(notable);
+    if (weekendPlayed) parts.push('★ All-Star Weekend played (All-Stars tab)');
+    setStatus(parts.join(' · '));
   } else {
     setStatus('');
   }
