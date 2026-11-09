@@ -467,6 +467,28 @@ def test_the_bank_carries_profit_into_next_seasons_budget(lg):
     assert history[1]["bank_after"] == bank["start"] + profit
 
 
+def test_the_bank_card_shows_each_season(lg, client_for):
+    """Season by season under the bank: what it started with, the profit and
+    where it ended, with this season's projected profit on top."""
+    x = lg()
+    _owned(x, spending=95)
+    x.budgets.for_league(x.league.id, 2026)
+    start = x.budgets.banks(x.league.id)[x.mine.id]["start"]
+    x.budgets.assess(x.league.id, 2026)
+    profit = x.budgets.finances(x.league.id, 2026)[x.mine.id]["profit"]
+    x.budgets.for_league(x.league.id, 2027)
+    history = x.budgets.history(x.league.id, x.mine.id)
+    assert history[1]["bank_before"] == start and history[1]["bank_spent"] == 0
+    assert history[0]["bank_before"] == start + profit
+    assert history[0]["bank_after"] is None
+    html = client_for(x).get(f"/leagues/{x.league.id}/budget").text
+    assert "Season by season" in html
+    rows = html[html.index("Season by season") : html.index("Past seasons")]
+    assert "<td>2026</td>" in rows
+    assert bg.format_salary(start) in rows
+    assert bg.format_salary(start + profit) in rows
+
+
 def test_the_owner_refuses_a_signing_past_the_limit(lg):
     x = lg()
     pid = x.factory.rated_player(x.theirs, x.league, level=70, status="free_agent").id
@@ -1409,7 +1431,8 @@ def test_a_new_stadium_takes_seasons_and_replaces_a_renovation():
     from src.league import finances as fn
 
     tiers = [p for p in fn.BALLPARK if p.group == "stadium"]
-    assert [p.build for p in tiers] == [2, 3, 4]
+    assert [p.build for p in tiers] == [3, 4, 4]
+    assert all(p.upfront == 0.5 for p in tiers)
     assert [p.cost for p in tiers] == sorted(p.cost for p in tiers)
     assert [p.revenue for p in tiers] == sorted(p.revenue for p in tiers)
     m = 1_000_000
@@ -1439,18 +1462,19 @@ def test_a_rich_owner_builds_a_new_stadium_over_seasons(lg):
     x.budgets.for_league(x.league.id, 2026)
     assert x.budgets.build(x.league.id, x.mine.id, 2026, "stadium_basic") is None
     [row] = x.budgets.ballpark(x.league.id, x.mine.id)
-    assert row["ordered"] == 2026 and row["year"] == 2028
+    assert row["ordered"] == 2026 and row["year"] == 2029
     cost = row["cost"]
-    # Half paid now, nothing earned while it goes up.
+    # A third paid now, nothing earned while it goes up.
     from src.league import finances as fn
 
-    first = fn.installments(cost, 2026, 2028)[0][1]
+    paid = fn.installments(cost, 2026, 2029)
+    first = paid[0][1]
     assert x.budgets.banks(x.league.id)[x.mine.id]["spent"] == first
     assert x.budgets.ballparks(x.league.id, 2027) == {}
     x.budgets.assess(x.league.id, 2026)
     assert x.budgets.history(x.league.id, x.mine.id)[0]["ballpark_revenue"] == 0
     x.budgets.for_league(x.league.id, 2027)
-    assert x.budgets.banks(x.league.id, 2027)[x.mine.id]["spent"] == cost
+    assert x.budgets.banks(x.league.id, 2027)[x.mine.id]["spent"] == first + paid[1][1]
     offers = {
         o["key"]: o for o in x.budgets.ballpark_offers(x.league.id, x.mine.id, 2027)
     }
@@ -1458,7 +1482,8 @@ def test_a_rich_owner_builds_a_new_stadium_over_seasons(lg):
     assert "rules this one out" in x.budgets.build(
         x.league.id, x.mine.id, 2027, "renovation"
     )
-    assert x.budgets.ballparks(x.league.id, 2028) == {x.mine.id: ["stadium_basic"]}
+    assert x.budgets.ballparks(x.league.id, 2028) == {}
+    assert x.budgets.ballparks(x.league.id, 2029) == {x.mine.id: ["stadium_basic"]}
 
 
 def test_stadium_payments_still_to_come_are_set_aside(lg):
@@ -1496,3 +1521,15 @@ def test_suites_the_plaza_and_a_renovation_take_time_to_build(lg):
     assert x.budgets.banks(x.league.id)[x.mine.id]["spent"] == row["cost"]
     assert x.budgets.ballparks(x.league.id, 2026) == {}
     assert x.budgets.ballparks(x.league.id, 2027) == {x.mine.id: ["suites"]}
+
+
+def test_a_new_stadium_needs_half_its_price_over_the_reserve():
+    from src.league import finances as fn
+
+    cap = 160_000_000
+    cost = fn.project_cost("stadium_basic", cap)
+    assert fn.can_build(cap + cost // 2, cost, cap, "stadium_basic") == 0
+    assert fn.can_build(cap + cost // 2 - 1, cost, cap, "stadium_basic") == 1
+    # Everything else still needs its whole price.
+    suites = fn.project_cost("suites", cap)
+    assert fn.can_build(cap + suites // 2, suites, cap, "suites") > 0
