@@ -39,8 +39,47 @@ def _times(mult: float) -> str:
     return f"\u00d7{mult:.2f}"
 
 
-def _books_view(b: dict) -> dict:
+def _seasons(n: int) -> str:
+    return f"{n} season{'' if n == 1 else 's'}"
+
+
+def _broadcast_note(b: dict) -> str:
+    deal = b.get("deal")
+    if not deal:
+        return "A local TV deal, priced from your market, fans and recent winning"
+    if not b["projected"]:
+        return f"Local TV deal signed in {deal['start_year']} for {_seasons(deal['years'])}"
+    left = deal["left"]
+    return f"Local TV deal for {_seasons(deal['years'])}, " + (
+        "this is its last season" if left == 1 else f"{_seasons(left)} left"
+    )
+
+
+def _merch_note(b: dict, names: dict) -> str:
+    sellers = b.get("sellers") or []
+    hall = sum(amount for s, amount in sellers if s.hall)
+    players = [(s, amount) for s, amount in sellers if not s.hall]
+    parts = []
+    if players:
+        parts.append(
+            "Top sellers: "
+            + ", ".join(
+                f"{names.get(s.player_id, 'a player')} {_money(amount)}"
+                for s, amount in players[:3]
+            )
+        )
+    if hall:
+        parts.append(f"Hall of Famers {_money(hall)}")
+    if parts:
+        return "; ".join(parts)
+    if b["merchandise"]:
+        return "What your players' jerseys and gear sold"
+    return "Players graded B+ or better sell jerseys, stars far more"
+
+
+def _books_view(b: dict, names: dict | None = None) -> dict:
     """One season's money in and out (BudgetRepository.books), as text."""
+    names = names or {}
     games = b["home_playoff_games"]
     money_in = [
         {
@@ -78,6 +117,16 @@ def _books_view(b: dict) -> dict:
                 if b["popularity"]
                 else f"Earned once fan interest is over {b['popularity_from']}"
             ),
+        },
+        {
+            "label": "Broadcast deal",
+            "amount": _money(b["broadcast"]) if b["broadcast"] else None,
+            "note": _broadcast_note(b),
+        },
+        {
+            "label": "Merchandise",
+            "amount": _money(b["merchandise"]) if b["merchandise"] else None,
+            "note": _merch_note(b, names),
         },
         {
             "label": "Luxury tax share",
@@ -203,6 +252,90 @@ def set_tickets(
     )  # fmt: skip
 
 
+@router.post("/leagues/{league_id}/budget/broadcast", response_class=HTMLResponse)
+def set_broadcast(
+    request: Request,
+    htmx: IsHTMX,
+    league_id: str,
+    db: DB,
+    user: User,
+    gm: GM,
+    _active: ActiveLeague,
+    years: int = Form(...),
+):
+    """Pick the length of a new broadcast deal. Only between seasons, and
+    only in the season the deal is signed."""
+    team_id = gm.get("team_id")
+    error = None
+    with league_lock(db, league_id):
+        league = LeagueRepository(db).get_by_id(league_id)
+        budgets = BudgetRepository(db)
+        year = ContractRepository(db).current_year(league_id)
+        deal = budgets.broadcast_deal(league_id, team_id, year) if year else None
+        if not deal:
+            error = "This league has no broadcast deals."
+        elif league["state"] not in FRONT_OFFICE_STATES:
+            error = "A new deal's length is picked between seasons, from the draft to Opening Day."
+        elif not deal["new"]:
+            error = "Your deal is locked until it runs out."
+        elif years not in fn.BROADCAST_YEARS:
+            error = "Pick one of the lengths offered."
+        else:
+            budgets.set_broadcast_years(league_id, team_id, year, years)
+        db.commit()
+    return _render(
+        request, htmx, league_id, db, user, gm,
+        broadcast_error=error, broadcast_saved=not error,
+    )  # fmt: skip
+
+
+def _broadcast_view(deal: dict, year: int, open_: bool) -> dict:
+    last = deal["start_year"] + deal["years"] - 1
+    return {
+        "amount_text": _money(deal["amount"]),
+        "years": deal["years"],
+        "left": deal["left"],
+        "left_text": (
+            "This is its last season"
+            if deal["left"] == 1
+            else f"{_seasons(deal['left'])} left, through {last}"
+        ),
+        "signed": deal["start_year"],
+        "fans": deal["fans"],
+        "win_text": f"{deal['win_pct']:.3f}".lstrip("0"),
+        "choosing": deal["new"],
+        "open": open_ and deal["new"],
+        "renews": last + 1,
+        "options": [
+            {
+                "years": y,
+                "amount_text": _money(fn.broadcast_amount(deal["base"], y)),
+                "through": deal["start_year"] + y - 1,
+            }
+            for y in fn.BROADCAST_YEARS
+        ],
+    }
+
+
+def _seller_names(db, books: list[dict]) -> dict[str, str]:
+    ids = list(
+        {
+            s.player_id
+            for b in books
+            for s, _ in [p for p in (b.get("sellers") or []) if not p[0].hall][:3]
+        }
+    )
+    if not ids:
+        return {}
+    return {
+        r["id"]: f"{r['first_name'][:1]}. {r['last_name']}"
+        for r in db.execute(
+            "SELECT id, first_name, last_name FROM players WHERE id = ANY(%s)",
+            (ids,),
+        ).fetchall()
+    }
+
+
 def _ticket_options() -> list[dict]:
     out = []
     for level in fn.TICKET_LEVELS:
@@ -275,8 +408,11 @@ def _league_pay(db, seasons: list[dict], my_team: str | None) -> list[dict]:
 def _render(
     request, htmx, league_id, db, user, gm, error=None, saved=False,
     ticket_error=None, ticket_saved=False,
+    broadcast_error=None, broadcast_saved=False,
 ):  # fmt: skip
     ctx = _shell_ctx(request, db, gm, league_id, "budget", user)
+    ctx["broadcast_error"] = broadcast_error
+    ctx["broadcast_saved"] = broadcast_saved
     ctx["fo_error"] = error
     ctx["fo_saved"] = saved
     ctx["ticket_error"] = ticket_error
@@ -324,6 +460,8 @@ def _render(
         ctx["fo_open"] = ctx.get("league_state") in FRONT_OFFICE_STATES
         level = budgets.ticket_price(league_id, team_id, year)
         ctx["tickets"] = {"level": level, "options": _ticket_options()}
+        deal = budgets.broadcast_deal(league_id, team_id, year)
+        ctx["broadcast"] = _broadcast_view(deal, year, ctx["fo_open"]) if deal else None
     ctx["rules"] = {
         "tax_pct": round(bg.LUXURY_TAX_RATE * 100),
         "pull_pct": round(bg.BANK_PULL * 100),
@@ -341,6 +479,9 @@ def _render(
                 if r["revenue"] is None or r["profit"] is None
                 else fn.ticket_revenue(r["revenue"], r["ticket_price"])
                 + (r["playoff_revenue"] or 0)
+                + (r["popularity_revenue"] or 0)
+                + (r["broadcast_revenue"] or 0)
+                + (r["merch_revenue"] or 0)
             ),
             "tax": _money(r["luxury_tax"]) if r["luxury_tax"] else None,
             "front_office": _money(r["front_office"]),
@@ -354,10 +495,9 @@ def _render(
         for r in (budgets.history(league_id, team_id) if standing else [])
         if r["profit"] is not None
     ]
-    ctx["books"] = [
-        _books_view(b)
-        for b in (budgets.books(league_id, team_id, year) if standing else [])
-    ]
+    books = budgets.books(league_id, team_id, year) if standing else []
+    names = _seller_names(db, books)
+    ctx["books"] = [_books_view(b, names) for b in books]
     ctx["league_pay"] = (
         _league_pay(db, budgets.league_payrolls(league_id, year), team_id)
         if standing

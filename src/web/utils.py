@@ -437,6 +437,17 @@ def _shell_ctx(
     # doing it.
     if page is None:
         page = request.url.path.rstrip("/").rsplit("/", 1)[-1]
+    # The offseason: once the GM has opened the season's summary, the
+    # next-move button moves on to Expiring Deals and Begin Offseason, and
+    # the summary stays a sidebar link.
+    if (
+        ctx["league_state"] == "offseason"
+        and not ctx["is_viewer"]
+        and gm.get("id")
+        and ctx["season_id"]
+    ):
+        # The season summary page marks it (routers/seasons.py).
+        ctx["summary_seen"] = GMRepository(db).summary_seen(gm["id"], ctx["season_id"])
     weekend_ready = (
         as_phase == "done"
         and ctx["league_state"] == "season"

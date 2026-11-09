@@ -557,3 +557,33 @@ def test_summary_page_shows_the_derby_champion(client, db_conn, league):
     lid, sid = league["league"].id, league["past"].id
     r = client.get(f"/leagues/{lid}/season-summary?season_id={sid}")
     assert "Home Run Derby Champion" in r.text and 'id="all-stars"' in r.text
+
+
+def test_in_the_offseason_opening_the_summary_moves_the_button_on(
+    client, db_conn, league
+):
+    """Once the GM has read the summary, every page's next-move button goes
+    on to Expiring Deals, and the summary stays a sidebar link."""
+    lid = league["league"].id
+    db_conn.execute("UPDATE leagues SET state = 'offseason' WHERE id = %s", (lid,))
+    move = client.get(f"/leagues/{lid}/next-move?page=standings").text
+    assert "Season Summary →" in move
+    # Another season's summary doesn't count (the fixture's 2025 is the one
+    # whose playoffs just ended).
+    client.get(f"/leagues/{lid}/season-summary?season_id={league['current'].id}")
+    assert (
+        "Season Summary →"
+        in client.get(f"/leagues/{lid}/next-move?page=standings").text
+    )
+    page = client.get(f"/leagues/{lid}/season-summary").text
+    assert "Expiring Deals →" in page
+    move = client.get(f"/leagues/{lid}/next-move?page=standings").text
+    assert "Expiring Deals →" in move and "Season Summary →" not in move
+    side = client.get(f"/leagues/{lid}/standings").text
+    assert f'href="/leagues/{lid}/season-summary"' in side
+
+
+def test_no_summary_link_in_the_sidebar_during_the_season(client, league):
+    lid = league["league"].id
+    page = client.get(f"/leagues/{lid}/standings").text
+    assert f'href="/leagues/{lid}/season-summary"' not in page

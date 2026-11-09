@@ -310,6 +310,7 @@ CREATE TABLE IF NOT EXISTS gms (
     persona_id     TEXT,                  -- AI GMs: who they are (gm_personas)
     welcomed_at    TIMESTAMPTZ,           -- first saw the welcome screen
     welcomed_season_id TEXT,              -- season whose preview they last saw (migration 065)
+    summary_seen_season_id TEXT,          -- season whose summary they last opened (migration 101)
     roster_saved_at TIMESTAMPTZ,          -- first roster save; ends the getting-started bar
     lobby_city     TEXT,                  -- lobby: the team they'll run, by name (migration 042)
     lobby_mascot   TEXT,
@@ -1636,8 +1637,10 @@ CREATE TABLE IF NOT EXISTS team_budgets (     -- migration 074 (src/league/budge
     revenue     BIGINT,                       -- regular-season revenue the owner set the budget from (migration 076)
     playoff_revenue BIGINT,                   -- home playoff gate, set when the season ends
     popularity_revenue BIGINT,                -- popularity money from fan interest, set when the season ends (migration 094)
+    broadcast_revenue BIGINT,                 -- its broadcast deal's money, set when the season ends (migration 100)
+    merch_revenue BIGINT,                     -- merchandise its players sold, set when the season ends (migration 100)
     payroll     BIGINT,                       -- final payroll, set when the season ends
-    profit      BIGINT,                       -- revenue at ticket prices + gate + popularity + tax share - payroll - tax - fixed costs - front office - minor leagues
+    profit      BIGINT,                       -- revenue at ticket prices + gate + popularity + broadcast + merchandise + tax share - payroll - tax - fixed costs - front office - minor leagues
     tax_share   BIGINT,                       -- its cut of the league's luxury tax, if under the cap (migration 081)
     coaching    SMALLINT,                     -- front office levels, 0 Bare bones to 4 Elite, NULL Standard (migration 083)
     facilities  SMALLINT,
@@ -1651,6 +1654,22 @@ CREATE TABLE IF NOT EXISTS team_budgets (     -- migration 074 (src/league/budge
     PRIMARY KEY (league_id, team_id, year)
 );
 CREATE INDEX IF NOT EXISTS idx_team_budgets_team ON team_budgets(team_id);
+
+-- Broadcast deals (migration 100, src/league/finances.py): a team's local TV
+--   deals. base is a season's money at the default length, locked when the
+--   deal is signed from the market, fan interest and recent win %; the
+--   deal pays base times its length's multiplier each season it runs.
+CREATE TABLE IF NOT EXISTS broadcast_deals (
+    league_id  TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    team_id    TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    start_year INTEGER NOT NULL,
+    years      SMALLINT NOT NULL CHECK (years >= 1),
+    base       BIGINT NOT NULL,
+    fans       INTEGER NOT NULL,              -- fan interest when it was signed
+    win_pct    REAL NOT NULL,                 -- win % over the seasons before
+    PRIMARY KEY (league_id, team_id, start_year)
+);
+CREATE INDEX IF NOT EXISTS idx_broadcast_deals_team ON broadcast_deals(team_id);
 -- owner_personas: the site-wide library of team owners (src/league/owners.py).
 --   Never edited once created, except chance. Seeded by migration 075.
 CREATE TABLE IF NOT EXISTS owner_personas (

@@ -168,3 +168,13 @@ def test_no_break_toggle_once_the_break_is_behind():
     assert not move["through_break"]
     # Without stops it still defaults to the playoffs.
     assert pick(_ctx(), "roster")["menu"][-1]["note"] == "to the playoffs"
+
+
+def test_once_the_summary_is_seen_every_page_points_on_to_expiring_deals():
+    ctx = _ctx(league_state="offseason", summary_seen=True)
+    for page in ("roster", "standings", "budget", "playoffs"):
+        move = pick(ctx, page)
+        assert move["label"] == "✍️ Expiring Deals →"
+        assert move["href"] == "/leagues/L1/free-agents"
+    assert pick(ctx, "season-summary")["href"] == "/leagues/L1/free-agents"
+    assert pick(ctx, "free-agents")["fn"] == "beginOffseason"
