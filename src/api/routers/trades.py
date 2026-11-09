@@ -73,7 +73,7 @@ def team_cards(db, league_id: str, season_id: str | None, team_id: str) -> list[
 
 def attach_pay(db, league_id: str, cards: list[dict]) -> None:
     """Each player's salary this season, and `pay`: what he adds to a
-    payroll (only a guaranteed deal counts), for the budget warnings."""
+    payroll (only a deal on the payroll counts), for the budget warnings."""
     contracts = ContractRepository(db)
     year = contracts.current_year(league_id)
     deals = (
@@ -84,12 +84,12 @@ def attach_pay(db, league_id: str, cards: list[dict]) -> None:
     for c in cards:
         deal = deals.get(c["player_id"])
         c["salary_text"] = format_salary(deal["salary"]) if deal else None
-        c["pay"] = deal["salary"] if deal and deal["guaranteed"] else 0
+        c["pay"] = deal["salary"] if deal and deal["on_payroll"] else 0
 
 
 def offer_pay_change(db, league_id: str, offer: dict) -> int:
     """How much the offer adds to the receiving team's payroll: the
-    guaranteed salaries it gets, less the ones it gives up."""
+    payroll salaries it gets, less the ones it gives up."""
     ids = [
         i["player_id"] for i in offer["sent"] + offer["received"] if i.get("player_id")
     ]
@@ -103,7 +103,7 @@ def offer_pay_change(db, league_id: str, offer: dict) -> int:
         return sum(
             deals[i["player_id"]]["salary"]
             for i in items
-            if i.get("player_id") in deals and deals[i["player_id"]]["guaranteed"]
+            if i.get("player_id") in deals and deals[i["player_id"]]["on_payroll"]
         )
 
     return pay(offer["sent"]) - pay(offer["received"])

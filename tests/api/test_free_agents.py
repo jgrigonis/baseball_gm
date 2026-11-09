@@ -57,10 +57,13 @@ def lg(db_conn, factory):
     )
 
 
-def _signed(lg, **kw):
-    """A player on my team with his deal for 2026."""
+def _signed(lg, played=True, **kw):
+    """A player on my team with his deal for 2026, and (played) a game
+    since, which guarantees the deals of my 40-man."""
     pid = lg.factory.rated_player(lg.mine, lg.league, **kw).id
     lg.contracts.sign_unsigned(lg.league.id, 2026)
+    if played:
+        lg.contracts.guarantee_teams([lg.mine.id])
     return pid
 
 
@@ -80,13 +83,35 @@ def test_a_40_man_players_deal_is_guaranteed_and_a_minors_ones_isnt(lg):
     assert lg.contracts.payroll(lg.mine.id, 2026) == deals[up]["salary"]
 
 
-def test_moving_up_to_the_40_man_guarantees_the_deal(lg):
+def test_moving_up_to_the_40_man_doesnt_guarantee_the_deal_a_game_does(lg):
     pid = _signed(lg, status="minors")
     lg.status.set_status(pid, "40man")
+    deal = lg.contracts.active(pid, 2026)
+    assert not deal["guaranteed"]
+    # On the 40-man he's on the payroll, but releasing him is still free.
+    assert deal["on_payroll"]
+    assert lg.contracts.release_cost(pid, 2026)["total"] == 0
+    # Back down before a game: nothing owed, off the payroll.
+    lg.status.bulk_set({pid: "minors"})
+    assert not lg.contracts.active(pid, 2026)["on_payroll"]
+    # Up again and a game played: guaranteed, and it stays guaranteed when
+    # he goes back down.
+    lg.status.bulk_set({pid: "40man"})
+    lg.contracts.guarantee_teams([lg.mine.id])
     assert lg.contracts.active(pid, 2026)["guaranteed"]
-    # It stays guaranteed when he goes back down.
     lg.status.bulk_set({pid: "minors"})
     assert lg.contracts.active(pid, 2026)["guaranteed"]
+
+
+def test_a_new_40_man_deal_waits_for_a_game(lg):
+    pid = _signed(lg, played=False, level=60)
+    deal = lg.contracts.active(pid, 2026)
+    assert not deal["guaranteed"]
+    # Still on the payroll: he's on the 40-man.
+    assert lg.contracts.payroll(lg.mine.id, 2026) == deal["salary"]
+    owed = free_agents.release(lg.db, lg.league.id, lg.mine.id, pid)
+    assert owed["total"] == 0
+    assert lg.contracts.dead_money(lg.mine.id, 2026) == 0
 
 
 # ── Release ───────────────────────────────────────────────────────────────────
@@ -180,6 +205,7 @@ def test_nothing_moves_in_a_finished_league(lg):
 def test_signing_a_free_agent_at_his_asking_price(lg):
     pid = lg.factory.rated_player(lg.theirs, lg.league, level=62).id
     lg.contracts.sign_unsigned(lg.league.id, 2026)
+    lg.contracts.guarantee_teams([lg.theirs.id])  # a game played
     free_agents.release(lg.db, lg.league.id, lg.theirs.id, pid)
     waivers.clear_all(lg.db, lg.league.id)  # nobody claimed him
     owed = lg.contracts.dead_money(lg.theirs.id, 2026)

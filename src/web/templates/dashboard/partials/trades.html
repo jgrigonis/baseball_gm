@@ -712,7 +712,7 @@ function renderDump() {
           (o.room_text ? ' <span class="tr-room">' + esc(o.room_text) + '</span>' : '') + '</div>' +
         (o.adds.length ? '<div class="tr-dump-label">If you add</div>' + o.adds.map(shopRow).join('') : '') +
         '<div class="tr-dump-label">They send back</div>' + o.players.map(shopRow).join('') +
-        '<div class="tr-dump-saved">' + (o.saved > 0 ? 'Saves you ' + esc(o.saved_text) + ' in payroll this season' : 'Doesn\'t lower your payroll: his deal isn\'t guaranteed yet') + '</div>' +
+        '<div class="tr-dump-saved">' + (o.saved > 0 ? 'Saves you ' + esc(o.saved_text) + ' in payroll this season' : 'Doesn\'t lower your payroll: he isn\'t on it') + '</div>' +
       '</div>' +
       '<div class="tr-offer-btns">' +
         '<button class="btn btn-secondary" title="Open it in the builder to change it" onclick="trDumpTweak(' + i + ')">Tweak</button>' +

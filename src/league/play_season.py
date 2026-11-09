@@ -17,6 +17,7 @@ from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.happiness_repo import HappinessRepository
 from src.player import happiness
 from src.db.repositories.budget_repo import BudgetRepository
+from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.injury_repo import InjuryRepository
 from src.league import budget as bg
 from src.player.injury_types import roll_days_missed
@@ -811,6 +812,11 @@ def _play_game(
         result.away_score,
     )
     save_player_stats(conn, game_info["game_id"], home_team, away_team)
+    # A game on the 40-man guarantees a player's deal; just being put there
+    # doesn't (src/db/repositories/contract_repo.py).
+    ContractRepository(conn).guarantee_teams(
+        [game_info["home_team_id"], game_info["away_team_id"]]
+    )
 
     for player_id in game.batters_this_game:
         state = player_energy_states.get(player_id)

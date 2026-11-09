@@ -511,7 +511,7 @@ def budget_card(
     deals = [
         (mine[pid], c)
         for pid, c in contracts.active_for(mine, year).items()
-        if c["guaranteed"]
+        if c["on_payroll"]
     ]
     deals.sort(key=lambda d: d[1]["salary"], reverse=True)
     biggest = [

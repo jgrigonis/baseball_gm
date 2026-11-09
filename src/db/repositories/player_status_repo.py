@@ -5,14 +5,6 @@ from datetime import date
 from src.db.repositories.jersey_repo import JerseyRepository
 
 
-def _guarantee(conn, player_ids: list[str]) -> None:
-    """Joining the 40-man guarantees a player's deal (contract_repo)."""
-    # Imported here: contract_repo -> player_value -> ... is a long chain.
-    from src.db.repositories.contract_repo import ContractRepository
-
-    ContractRepository(conn).guarantee(player_ids)
-
-
 # ------------------------------------------------------------------
 # Repository
 # ------------------------------------------------------------------
@@ -41,7 +33,8 @@ class PlayerStatusRepository:
         )
         # Joining or leaving the 40-man gives or takes a jersey number.
         JerseyRepository(self.conn).sync([player_id])
-        _guarantee(self.conn, [player_id])
+        # Joining the 40-man doesn't guarantee his deal: playing a game on
+        # it does (src/league/play_season.py).
 
     def get_status(self, player_id: str) -> str | None:
         """Return the current status for a player, or None if not found."""
@@ -126,4 +119,3 @@ class PlayerStatusRepository:
             ],
         )
         JerseyRepository(self.conn).sync(assignments)
-        _guarantee(self.conn, list(assignments))

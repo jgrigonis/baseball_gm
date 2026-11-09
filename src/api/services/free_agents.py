@@ -3,7 +3,7 @@
 Releasing players and signing free agents.
 
 - Release: a GM lets one of his players go. He becomes a free agent anyone
-  can sign. A guaranteed deal (he's been on the 40-man under it) stays on the
+  can sign. A guaranteed deal (he's played a game on the 40-man under it) stays on the
   team's payroll as dead money for the seasons it had left; a minors player
   who never made the 40-man costs nothing. Released off the 40-man, he goes
   on waivers first (src/api/services/waivers.py). When he signs elsewhere,
