@@ -426,7 +426,19 @@ def _ballpark_view(offers: list[dict], year: int, open_: bool) -> dict:
             payback = None
         else:
             seasons = max(1, round(o["payback"]))
-            payback = f"Pays for itself in about {_seasons(seasons)}"
+            payback = f"Pays for itself in about {_seasons(seasons)}" + (
+                " once it opens" if o["build"] else ""
+            )
+        if o["built"] is not None:
+            status = (
+                "Opens this season"
+                if o["built"] == year
+                else f"Building, opens {o['built']}"
+                if o["built"] > year
+                else f"Opened {o['built']}"
+            )
+        else:
+            status = None
         rows.append(
             {
                 **o,
@@ -437,8 +449,15 @@ def _ballpark_view(offers: list[dict], year: int, open_: bool) -> dict:
                 "can": open_
                 and o["built"] is None
                 and not o["short"]
-                and not o["waiting"],
+                and not o["waiting"]
+                and not o["blocked"],
                 "new": o["built"] == year,
+                "status": status,
+                "build_text": (
+                    f"{_seasons(o['build'])} to build, opens {o['opens']}"
+                    if o["build"]
+                    else None
+                ),
             }
         )
     return {
@@ -609,6 +628,17 @@ def _render(
             "up": bank["change"] >= 0,
             "empty": bank["balance"] <= 0,
             "spent_text": _money(bank["spent"]) if bank["spent"] else None,
+            # What the owner will put into the ballpark: all but a cap.
+            "free_text": _money(
+                max(
+                    0,
+                    bank["balance"]
+                    - bank["owed"]
+                    - round(standing["cap"] * fn.BALLPARK_FLOOR),
+                )
+            ),
+            "owed_text": _money(bank["owed"]) if bank["owed"] else None,
+            "floor_text": _money(round(standing["cap"] * fn.BALLPARK_FLOOR)),
         }
     if standing and ctx.get("league_state") in FRONT_OFFICE_STATES:
         # The GM has had their chance to set the budget before it locks:
@@ -683,6 +713,13 @@ def _render(
     books = budgets.books(league_id, team_id, year) if standing else []
     names = _seller_names(db, books)
     ctx["books"] = [_books_view(b, names) for b in books]
+    if bank and books and books[0]["projected"]:
+        # This season's projected profit, and where it leaves the bank.
+        profit = books[0]["profit"]
+        ctx["bank"]["profit_text"] = _money(profit)
+        ctx["bank"]["profit_loss"] = profit < 0
+        ctx["bank"]["after_text"] = _money(bank["balance"] + profit)
+        ctx["bank"]["year"] = books[0]["year"]
     ctx["league_pay"] = (
         _league_pay(db, budgets.league_payrolls(league_id, year), team_id)
         if standing

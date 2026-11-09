@@ -1732,7 +1732,8 @@ CREATE TABLE IF NOT EXISTS ballpark_projects (
     league_id TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
     team_id   TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     project   TEXT NOT NULL,                -- a finances.BALLPARK key
-    year      INTEGER NOT NULL,             -- the season it opened (paid for just before)
+    year      INTEGER NOT NULL,             -- the season it opens (paid for just before)
+    ordered   INTEGER,                      -- the season it was ordered, NULL the same as year (migration 108); paid a season at a time from then
     cost      BIGINT NOT NULL,              -- what the owner paid from their bank
     PRIMARY KEY (league_id, team_id, project)
 );
