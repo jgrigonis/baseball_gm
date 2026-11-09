@@ -23,6 +23,11 @@
 # AI team says what it would take the player for, sending back one cheap
 # throw-in, with a sweetener from the GM when he alone isn't worth it to
 # them (ai_proposer.dump_offer_or_why). Cheapest for the GM first.
+#
+# The Trades tab keeps the last shop or dump in the browser, so leaving the
+# tab and coming back shows it again. It's kept with stamp(): once the day,
+# the league's state, any roster or any contract changes, the stamp does too
+# and the page drops the old list.
 
 from __future__ import annotations
 
@@ -198,6 +203,33 @@ def _statuses(conn, team_id: str) -> dict[str, str]:
         (team_id,),
     ).fetchall()
     return {r["player_id"]: r["status"] for r in rows}
+
+
+def stamp(conn, league_id: str) -> str:
+    """What a shop's answers hang on, as one string: the league day and
+    state, and a fingerprint of every roster spot, roster status and
+    contract in the league. A kept shop list is shown again only while this
+    is unchanged."""
+    league = LeagueRepository(conn).get_by_id(league_id)
+    season_id = SeasonRepository(conn).get_current_id_for_league(league_id)
+    if not league or not season_id:
+        return ""
+    row = conn.execute(
+        """
+        SELECT md5(COALESCE(string_agg(
+                   tp.team_id || ':' || tp.player_id || ':' || COALESCE(ps.status, ''),
+                   ',' ORDER BY tp.team_id, tp.player_id), '')) AS rosters,
+               (SELECT COALESCE(MAX(id), 0) FROM player_contracts
+                 WHERE league_id = %s) AS contracts
+        FROM league_season_teams lst
+        JOIN team_players tp ON tp.team_id = lst.team_id
+        LEFT JOIN player_status ps ON ps.player_id = tp.player_id
+        WHERE lst.league_id = %s AND lst.season_id = %s
+        """,
+        (league_id, league_id, season_id),
+    ).fetchone()
+    today = trades._league_date(conn, season_id) or ""
+    return f"{league['state']}|{today}|{row['rosters']}|{row['contracts']}"
 
 
 def shop(conn, league_id: str, gm: dict, player_id: str) -> dict:
