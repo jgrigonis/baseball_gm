@@ -27,7 +27,8 @@
           <td class="team-name"><a href="/teams/{{ t.id }}">{{ t.name }}</a></td>
           <td class="num">{{ t.summary.size }}/{{ t.summary.max }}</td>
           <td>{% if t.summary.ready %}<span class="ct-ready">Ready</span>{% else %}<span class="ct-needs" title="Needs {{ t.summary.needs|join(', ') }}">Needs players</span>{% endif %}</td>
-          <td class="admin-dim" style="font-family:var(--font-mono);">{{ t.share_code }}</td>
+          <td class="admin-dim" style="font-family:var(--font-mono);"><span class="ct-row">{{ t.share_code }}
+            <button type="button" class="btn btn-secondary admin-small" data-copy="{{ share_base }}{{ t.share_code }}">Copy link</button></span></td>
         </tr>
         {% endfor %}
       </tbody>
@@ -47,4 +48,14 @@
     </form>
   </div></div>
 </div></div>
+<script>
+document.addEventListener('click', function(e) {
+  var btn = e.target.closest('[data-copy]');
+  if (!btn) return;
+  e.stopPropagation();
+  navigator.clipboard.writeText(btn.dataset.copy).then(function() {
+    if (window.gmToast) gmToast('Link copied');
+  });
+});
+</script>
 {% endblock %}

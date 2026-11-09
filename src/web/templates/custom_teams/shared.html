@@ -6,10 +6,15 @@
 <div class="page-content"><div class="content-inner" style="max-width:1100px;">
   <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
     <h1 class="page-title">{{ team.name }}</h1>
-    {% if mine %}
-      <a href="/teams/{{ team.id }}" class="btn btn-secondary">Edit your team</a>
-    {% elif can_build %}
-      <form method="POST" action="/teams/shared/{{ team.share_code }}/copy"><button type="submit" class="btn btn-primary">Save a copy</button></form>
+    {% if mine or can_build %}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <a href="/teams/" class="btn btn-secondary">← My Teams</a>
+      {% if mine %}
+        <a href="/teams/{{ team.id }}" class="btn btn-secondary">Edit your team</a>
+      {% else %}
+        <form method="POST" action="/teams/shared/{{ team.share_code }}/copy" style="margin:0;"><button type="submit" class="btn btn-primary">Save a copy</button></form>
+      {% endif %}
+    </div>
     {% endif %}
   </div>
   <p style="margin:0 0 12px;">

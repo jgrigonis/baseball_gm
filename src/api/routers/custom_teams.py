@@ -88,6 +88,11 @@ def _back(
 # ── My Teams ───────────────────────────────────────────────────────────
 
 
+def _share_url(request: Request, code: str) -> str:
+    base = (settings.public_base_url or str(request.base_url)).rstrip("/")
+    return f"{base}/teams/shared/{code}"
+
+
 @router.get("/teams/", response_class=HTMLResponse)
 def my_teams(request: Request, db: DB, user: User, error: str = ""):
     teams = CustomTeamRepository(db).list_for(user["id"])
@@ -96,7 +101,13 @@ def my_teams(request: Request, db: DB, user: User, error: str = ""):
     return templates.TemplateResponse(
         request,
         "custom_teams/index.html",
-        _ctx(user, teams=teams, error=error, name_max=ct.NAME_MAX),
+        _ctx(
+            user,
+            teams=teams,
+            error=error,
+            name_max=ct.NAME_MAX,
+            share_base=_share_url(request, ""),
+        ),
     )
 
 
@@ -174,8 +185,7 @@ def _team_page(request, user, team, q="", club="", error="", status_code=200):
             summary=ct.summary(rows),
             error=error,
             name_max=ct.NAME_MAX,
-            share_url=(settings.public_base_url or str(request.base_url)).rstrip("/")
-            + f"/teams/shared/{team['share_code']}",
+            share_url=_share_url(request, team["share_code"]),
             clubs=_club_choices(),
             **search,
         ),

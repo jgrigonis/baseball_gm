@@ -5,7 +5,7 @@
 <div class="card ct-card" style="overflow-x:auto;">
   <div class="ct-card-title">{{ title }} <span class="admin-dim">{{ members|length }}</span></div>
   {% if members %}
-  <table class="data-table ct-table" data-sortable>
+  <table class="data-table ct-table" data-sortable data-sort-remember="ct-roster">
     <thead><tr>
       <th data-sort="text">Player</th><th class="num" data-sort="num">Year</th><th data-sort="text">Pos</th><th class="num" data-sort="num">Age</th><th data-sort="text">B/T</th><th data-sort="num" data-sort-first="desc">Ovr</th>
       {% for s in cols %}<th class="num" data-sort="num" data-sort-first="desc" title="{{ s|replace('_', ' ') }}">{{ abbr[s] }}</th>{% endfor %}

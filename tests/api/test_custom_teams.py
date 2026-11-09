@@ -2,6 +2,7 @@
 """My Teams: custom teams of real player-seasons, shared by code
 (routers/custom_teams.py, services/custom_teams.py)."""
 
+import re
 import uuid
 
 import pytest
@@ -92,6 +93,8 @@ def test_my_teams_lists_them(as_user, josh):
     html = client.get("/teams/").text
     assert "Old Timers" in html and "0/26" in html
     assert 'href="/teams/"' in html  # menu link for contributors
+    # Each row copies its full share link.
+    assert re.search(r'data-copy="http[^"]+/teams/shared/[A-Z0-9]{8}"', html)
 
 
 def test_no_duplicates_and_a_full_roster(as_user, db_conn, josh):
@@ -183,10 +186,15 @@ def test_share_code_view_and_copy(as_user, db_conn, josh, pat):
     client.post(f"/teams/{team_id}/players/0", data={"power": "100"})
     code = _team(db_conn, team_id)["share_code"]
 
+    # The owner's view links back to My Teams.
+    html = client.get(f"/teams/shared/{code}").text
+    assert 'href="/teams/"' in html and "Edit your team" in html
+
     # Anyone signed in can look; only contributors can save a copy.
     viewer = as_user(pat)
     html = viewer.get(f"/teams/shared/{code.lower()}").text
     assert "Ken Griffey" in html and "Save a copy" not in html
+    assert "← My Teams" not in html  # no My Teams without the paid flag
     r = viewer.post(f"/teams/shared/{code}/copy", follow_redirects=False)
     assert "paid%20contributors" in r.headers["location"]
 
