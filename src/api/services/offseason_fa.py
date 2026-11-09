@@ -283,7 +283,9 @@ def next_season_money(conn, league_id: str, team_id: str) -> dict | None:
         "left": left,
         "left_text": ct.format_salary(abs(left)),
         "over": left < 0,
-        "bank_left_text": ct.format_salary(max(0, bank + min(left, 0))),
+        "bank_left_text": (
+            ct.format_salary(bank + min(left, 0)) if bank + min(left, 0) > 0 else "$0"
+        ),
     }
 
 

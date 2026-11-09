@@ -403,3 +403,20 @@ def test_the_offseason_tab_shows_next_seasons_room(lg, client):
         or "left under your owner's limit" in html
     )
     assert '"fate": "auto"' in html
+
+
+def test_a_re_sign_call_returns_every_rows_fate_and_the_room(lg, client):
+    lg.db.execute(
+        "UPDATE leagues SET state = 'offseason' WHERE id = %s", (lg.league.id,)
+    )
+    pid = lg.factory.rated_player(lg.mine, lg.league, level=60, name="Expiring").id
+    lg.contracts.insert_deal(
+        pid, lg.league.id, lg.mine.id, ct.Deal(5_000_000, 3, "standard"), 2024
+    )
+    r = client.post(
+        f"/leagues/{lg.league.id}/players/{pid}/expiring", json={"choice": "let_go"}
+    )
+    assert r.status_code == 200
+    d = r.json()
+    assert d["rows"][pid] == {"choice": "let_go", "fate": "go"}
+    assert "left_text" in d["money"]

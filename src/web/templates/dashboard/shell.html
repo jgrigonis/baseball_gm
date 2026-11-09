@@ -232,9 +232,11 @@ window.withdrawBid = async function(pid, name) {
   reloadTab();
 };
 window.expiringChoice = async function(pid, choice) {
-  try { await postJson(`/leagues/{{ league_id }}/players/${pid}/expiring`, {choice}); }
+  let d;
+  try { d = await postJson(`/leagues/{{ league_id }}/players/${pid}/expiring`, {choice}); }
   catch (e) { gmAlert(e.message); return; }
-  reloadTab();
+  // On the Free Agents tab the rows update in place; elsewhere, reload.
+  if (!(window.faExpiringUpdate && window.faExpiringUpdate(d))) reloadTab();
 };
 window.pinForCompare = function(pid, name) { _pinned = [{id: pid}]; closeAndBrowse(name); };
 window.closeAndBrowse = function(name) {
