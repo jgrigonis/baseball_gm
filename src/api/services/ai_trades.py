@@ -231,6 +231,7 @@ def _sides(
     statuses = _statuses(conn, team_ids)
     humans = set(GMRepository(conn).get_human_team_ids(league_id))
     rooms = owners.pay_rooms(conn, league_id, season_id)
+    terms = owners.money_terms(conn, league_id, season_id)
     out = {}
     for t in team_ids:
         hurt = injuries.get_team_injuries(t, game_date)
@@ -246,6 +247,9 @@ def _sides(
             horizon=lean.horizon,
             # People get a warning, not a veto: only AI teams answer to it.
             pay_room=None if t in humans else rooms.get(t),
+            money=0.0
+            if t in humans
+            else owners.money_rate(terms, rooms.get(t), states[t]),
         )
     return out
 

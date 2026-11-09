@@ -644,3 +644,51 @@ def test_a_counter_drops_the_popup_for_the_offer_it_replaces(gms):
         lg.db, lg.league.id, lg.other, lg.mine.id, [b.id], [a.id], counter_of=offer_id
     )
     assert _news(lg, lg.other) == []
+
+
+# ── Contracts in the AI's price ───────────────────────────────────────────────
+
+
+def _signed(lg, team, level, salary, years=3):  # noqa: F811
+    from src.db.repositories.budget_repo import BudgetRepository
+    from src.db.repositories.contract_repo import ContractRepository
+    from src.player import contracts as ct
+
+    p = lg.factory.rated_player(team, lg.league, level)
+    contracts = ContractRepository(lg.db)
+    contracts.sign_unsigned(lg.league.id, 2025)
+    lg.db.execute("DELETE FROM player_contracts WHERE player_id = %s", (p.id,))
+    contracts.insert_deal(
+        p.id, lg.league.id, team.id, ct.Deal(salary, years, "standard"), 2025, True
+    )
+    BudgetRepository(lg.db).for_league(lg.league.id, 2025)
+    return p
+
+
+def _ai_says(lg, give, get):  # noqa: F811
+    return trades.ai_answer(
+        lg.db, lg.league.id, lg.season.id, lg.theirs.id, lg.mine.id,
+        [p.id for p in give], [p.id for p in get], "2025-06-01",
+    )  # fmt: skip
+
+
+def test_the_ai_turns_down_a_player_for_his_contract(lg):  # noqa: F811
+    from src.player import contracts as ct
+
+    theirs = lg.factory.rated_player(lg.theirs, lg.league, 58)
+    fair = _signed(lg, lg.mine, 61, ct.prime_salary(61, "hitter"))
+    over = _signed(lg, lg.mine, 61, 14_000_000, years=5)
+    # Just room enough for his salary, so only the money differs.
+    from src.api.services import owners
+
+    room = owners.pay_rooms(lg.db, lg.league.id, lg.season.id)[lg.theirs.id]
+    lg.db.execute(
+        "UPDATE team_budgets SET budget = budget + %s WHERE team_id = %s",
+        (max(0, 12_000_000 - room), lg.theirs.id),
+    )
+    yes = _ai_says(lg, [theirs], [fair])
+    no = _ai_says(lg, [theirs], [over])
+    assert yes.details["d_money"] > no.details["d_money"]
+    assert no.score < yes.score
+    assert yes.accept and not no.accept
+    assert "contract" in no.reason

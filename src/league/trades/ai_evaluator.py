@@ -25,6 +25,14 @@
 # horizon tilts the now/future blend, its risk appetite scales the margin, and
 # its stats-vs-scouting dial blends each player's ratings with how he's
 # played (src/league/performance.py) before any of it is worked out.
+#
+# Contracts cost something too. Each player carries what he's owed above the
+# minimum: the rest of this season, and a typical season of the next
+# FUTURE_YEARS (his deal while it runs, then the arbitration share or market
+# price he'd get). The AI charges a share of that against his worth, the
+# money rate (money_rate): more when its owner has little room, less for a
+# contender going for it. So an overpaid veteran can be worth less than
+# nothing, and a cheap young star more than a fairly paid one.
 
 from __future__ import annotations
 
@@ -106,6 +114,12 @@ class Asset:
     # What he's owed this season on a guaranteed deal: what taking him on
     # adds to payroll.
     salary: int = 0
+    # What he's owed above the league minimum (src/player/contracts.py):
+    # this season, and a typical season of the next FUTURE_YEARS. Unlike
+    # salary these count every deal, guaranteed or not; what the trade's
+    # money is priced on.
+    owed_now: int = 0
+    owed_later: int = 0
 
     @classmethod
     def from_record(
@@ -115,6 +129,7 @@ class Asset:
         form: tuple[float, float] = (0.0, 0.0),
         wants_out: bool = False,
         salary: int = 0,
+        owed: tuple[int, int] = (0, 0),
     ) -> Asset:
         r = PlayerEvaluator.rate_player(p.skills, p.throws)
         return cls(
@@ -129,6 +144,8 @@ class Asset:
             form=form,
             wants_out=wants_out,
             salary=salary,
+            owed_now=owed[0],
+            owed_later=owed[1],
         )
 
     def seen(self, stats_weight: float) -> Asset:
@@ -241,6 +258,55 @@ WANTS_OUT_DISCOUNT = 0.2
 
 
 OVER_BUDGET_REASON = "Our owner won't pay for that much more salary."
+OVERPAID_REASON = "We can't take on {name}'s contract for what he'd give us."
+
+# Pricing contracts. A season of value (value()) costs about this much on
+# the market (src/player/contracts.py prime_salary over value() is close to
+# $120K a point at every grade, above the minimum).
+DOLLARS_PER_POINT = 120_000
+# Seasons after this one a contract is priced over.
+FUTURE_YEARS = 3
+# Days in a regular season, to prorate what's left of this season's pay
+# (src/api/services/trades.py OFFSEASON_DAYS_LEFT counts a whole one).
+SEASON_DAYS = 180
+# The share of a player's fair pay the AI counts against him, by how much
+# room its owner leaves it: MONEY_TIGHT at no room (or less), falling
+# MONEY_SLOPE per share of the cap in room to MONEY_LOOSE.
+MONEY_TIGHT, MONEY_LOOSE, MONEY_SLOPE = 0.6, 0.15, 1.8
+# And by team state: a team going for it worries less about the bill.
+STATE_MONEY = {
+    "all-in": 0.8,
+    "contending": 0.9,
+    "retooling": 1.0,
+    "ramping-up": 1.0,
+    "rebuilding": 1.15,
+    "aging-out": 1.1,
+}
+
+
+def money_share(pay_room: int, cap: int, state: str) -> float:
+    """The share of fair pay an AI team charges against a player."""
+    room = pay_room / cap if cap > 0 else 0.0
+    share = max(MONEY_LOOSE, min(MONEY_TIGHT, MONEY_TIGHT - MONEY_SLOPE * room))
+    return share * STATE_MONEY.get(state, 1.0)
+
+
+def money_rate(pay_room: int | None, cap: int, scale: float, state: str) -> float:
+    """Value points an AI team charges per dollar owed: 0 when money
+    doesn't matter to it (no budgets). scale is how far salaries have grown
+    with the cap (src/league/budget.py salary_scale)."""
+    if pay_room is None or cap <= 0:
+        return 0.0
+    return money_share(pay_room, cap, state) / (DOLLARS_PER_POINT * scale)
+
+
+def money_cost(a: Asset, rate: float, days_left: int, w_now: float, w_future: float):
+    """What a player's contract costs the AI, in value points, weighted
+    like his play (now for the rest of this season, future a season)."""
+    if not rate:
+        return 0.0
+    left = min(1.0, days_left / SEASON_DAYS)
+    return rate * (w_now * left * a.owed_now + w_future * a.owed_later)
 
 
 def evaluate(
@@ -253,6 +319,7 @@ def evaluate(
     base: tuple[float, float] | None = None,
     horizon: float = 0.0,
     pay_room: int | None = None,
+    money: float = 0.0,
 ) -> Verdict:
     """Judge a deal from the AI team's side. roster is its whole organization
     today; giving is what it would send, getting what it would receive, all
@@ -260,7 +327,8 @@ def evaluate(
     strength, when the caller already has it. horizon is the GM's, from -1
     (builds for later) to 1 (wins now). pay_room is how much more payroll
     its owner will stand for (None: no limit); a deal that adds more salary
-    than that is off, however good."""
+    than that is off, however good. money is its money rate (money_rate):
+    value points it charges per dollar owed."""
     added = sum(a.salary for a in getting) - sum(a.salary for a in giving)
     if pay_room is not None and added > 0 and added > pay_room:
         return Verdict(False, OVER_BUDGET_REASON, 0.0, 0.0, {"added": added})
@@ -283,14 +351,32 @@ def evaluate(
     # everyone knows his team wants to move him.
     score -= WANTS_OUT_DISCOUNT * sum(alone(a) for a in getting if a.wants_out)
 
-    # What it gives up, player by player, is what the margin is measured on.
-    # A player who asked out counts for less: his team is ready to move him.
-    out = sum(alone(a) * (WANTS_OUT_SHARE if a.wants_out else 1.0) for a in giving)
+    # The money: what it takes on costs it, what it sends away saves it.
+    def cost(a: Asset) -> float:
+        return money_cost(a, money, days_left, w_now, w_future)
+
+    d_money = sum(cost(a) for a in giving) - sum(cost(a) for a in getting)
+    play = score
+    score += d_money
+
+    # What it gives up, player by player, is what the margin is measured on,
+    # net of his contract. A player who asked out counts for less: his team
+    # is ready to move him.
+    out = sum(
+        max(0.0, alone(a) * (WANTS_OUT_SHARE if a.wants_out else 1.0) - cost(a))
+        for a in giving
+    )
     threshold = margin_share * out
     accept = score > 0 and score >= threshold
-    details = {"d_now": d_now, "d_future": d_future, "out": out}
+    details = {"d_now": d_now, "d_future": d_future, "d_money": d_money, "out": out}
     if accept:
         return Verdict(True, "Deal.", score, threshold, details)
+    if d_money < 0 and play > 0 and play >= threshold:
+        # It would take the players; it's the money that stops it.
+        priciest = max(getting, key=cost)
+        return Verdict(
+            False, OVERPAID_REASON.format(name=priciest.name), score, threshold, details
+        )
     return Verdict(
         False,
         _reason(giving, getting, state, d_now, d_future, score, days_left),

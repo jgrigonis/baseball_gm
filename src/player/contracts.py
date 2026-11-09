@@ -196,6 +196,38 @@ def arbitration_deal(market: Deal, season: int, scale: float = 1.0) -> Deal | No
     return Deal(round_salary(market.salary * share, scale), 1, "arbitration")
 
 
+def owed(
+    deals: list[dict],
+    year: int,
+    fair,
+    rookie_start: int | None,
+    seasons: int,
+    scale: float = 1.0,
+) -> tuple[int, int]:
+    """What a player is owed above the minimum (what a replacement would
+    cost): this season, and a typical season of the next `seasons`. deals
+    are his contracts (start_year, years, salary); a season none covers is
+    priced at fair(season), his market price then (prime_salary times
+    age_factor times scale), or the arbitration share of it for a player
+    who came up on a rookie deal that started in rookie_start. For trades
+    (src/league/trades/ai_evaluator.py)."""
+    floor = MIN_SALARY * scale
+
+    def pay(y: int) -> float:
+        for d in deals:
+            if d["start_year"] <= y < d["start_year"] + d["years"]:
+                return d["salary"]
+        if rookie_start is not None:
+            share = ARBITRATION_SHARE.get(y - rookie_start + 1)
+            if share is not None:
+                return fair(y) * share
+        return fair(y)
+
+    now = max(0.0, pay(year) - floor)
+    later = [max(0.0, pay(y) - floor) for y in range(year + 1, year + 1 + seasons)]
+    return round(now), round(sum(later) / len(later)) if later else 0
+
+
 def years_already_served(years: int, rng: random.Random) -> int:
     """For a league's starting rosters: how far into his deal a player
     already is, so the deals don't all run out together."""

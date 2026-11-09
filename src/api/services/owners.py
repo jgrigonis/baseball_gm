@@ -25,6 +25,7 @@ from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.owner_repo import OwnerRepository
 from src.league import budget as bg
 from src.league import divisions, owners, team_pool
+from src.league.trades import ai_evaluator
 
 FALLBACK_MARKET = 3
 
@@ -146,6 +147,28 @@ def league_table(conn, league_id: str) -> list[dict]:
 def archetype_guide() -> list[dict]:
     """Each starting archetype and what its owners want, for the help list."""
     return [{"name": a.name, "wants": a.wants} for a in owners.ARCHETYPES]
+
+
+def money_terms(conn, league_id: str, season_id: str) -> tuple[int, float] | None:
+    """The league's payroll cap and salary scale this season, for pricing
+    contracts in trades (src/league/trades/ai_evaluator.py money_rate);
+    None without budgets, when money doesn't count."""
+    row = conn.execute(
+        "SELECT year FROM seasons WHERE id = %s", (season_id,)
+    ).fetchone()
+    if not row:
+        return None
+    repo = BudgetRepository(conn)
+    if not repo.for_league(league_id, row["year"]):
+        return None
+    return repo.cap(league_id, row["year"]), repo.salary_scale(league_id, row["year"])
+
+
+def money_rate(terms: tuple[int, float] | None, pay_room: int | None, state: str):
+    """An AI team's money rate (ai_evaluator.money_rate) from money_terms."""
+    if terms is None:
+        return 0.0
+    return ai_evaluator.money_rate(pay_room, terms[0], terms[1], state)
 
 
 def pay_rooms(

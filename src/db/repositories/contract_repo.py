@@ -91,6 +91,27 @@ class ContractRepository:
         ).fetchall()
         return {r["player_id"]: dict(r) for r in rows}
 
+    def deals_through(self, player_ids, year: int, last: int) -> dict[str, list]:
+        """Each player's deals in force that cover any season from year
+        through last, by player id, oldest first."""
+        ids = list(player_ids)
+        if not ids:
+            return {}
+        rows = self.conn.execute(
+            f"""
+            SELECT c.player_id, c.start_year, c.years, c.salary FROM player_contracts c
+            WHERE c.player_id = ANY(%s)
+              AND c.start_year <= %s AND c.start_year + c.years > %s
+              AND {IN_FORCE}
+            ORDER BY c.start_year
+            """,
+            (ids, last, year, year),
+        ).fetchall()
+        out: dict[str, list] = {}
+        for r in rows:
+            out.setdefault(r["player_id"], []).append(dict(r))
+        return out
+
     def history(self, player_id: str) -> list[dict]:
         rows = self.conn.execute(
             "SELECT * FROM player_contracts WHERE player_id = %s ORDER BY start_year",

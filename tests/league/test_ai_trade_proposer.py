@@ -100,6 +100,7 @@ from src.league.trades.ai_proposer import (  # noqa: E402
     NO_HELP,
     NO_MATCH,
     NO_ROOM,
+    NO_VALUE,
     ShopOffer,
     shop_offer,
     shop_offer_or_why,
@@ -192,6 +193,19 @@ def test_why_there_is_no_offer():
     buyer = _side("contending", untradeable=())
     buyer.tradeable = set()
     assert shop_offer_or_why(buyer, seller, veteran, 60) == NO_MATCH
+
+
+def test_a_player_whose_contract_costs_more_than_he_helps():
+    from dataclasses import replace
+
+    from src.league.trades import ai_evaluator
+
+    pricey = replace(_p(61, age=33), owed_now=24_000_000, owed_later=24_000_000)
+    seller = _side("retooling", [pricey], margin=0.0)
+    buyer = _side("retooling")
+    assert shop_offer_or_why(buyer, seller, pricey, 60) != NO_VALUE
+    buyer.money = ai_evaluator.money_rate(0, 150_000_000, 1.0, "retooling")
+    assert shop_offer_or_why(buyer, seller, pricey, 60) == NO_VALUE
 
 
 def test_when_no_deal_works_the_closest_package_comes_back_short():

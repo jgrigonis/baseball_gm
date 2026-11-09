@@ -43,6 +43,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date
 
 from src.api.services import front_office, owners, personas, team_states
@@ -65,6 +66,7 @@ from src.db.repositories.trade_repo import TradeRepository
 from src.league import performance, trade_deadline
 from src.league.trades import ai_evaluator, draft_picks
 from src.league.trades.ai_evaluator import Asset
+from src.player import contracts as ct
 from src.team.roster_limits import playing_count
 
 MAX_PER_SIDE = 5
@@ -959,11 +961,13 @@ def ai_answer(
     by_id = {a.id: a for a in roster + theirs}
     by_id.update(_pick_assets(conn, league_id, season_id, giving + getting))
     w = lean.stats_weight
+    state = team_states.state_of(conn, league_id, season_id, ai_team_id, today)
+    room = owners.pay_rooms(conn, league_id, season_id, [ai_team_id]).get(ai_team_id)
     return ai_evaluator.evaluate(
         roster=ai_evaluator.seen(roster, w),
         giving=ai_evaluator.seen([by_id[pid] for pid in giving], w),
         getting=ai_evaluator.seen([by_id[pid] for pid in getting], w),
-        state=team_states.state_of(conn, league_id, season_id, ai_team_id, today),
+        state=state,
         days_left=_season_days_left(conn, league_id, season_id, today),
         margin_share=ai_evaluator.margin(
             ai_team_id, other_team_id, today, lean.margin_factor
@@ -971,8 +975,9 @@ def ai_answer(
         if margin_share is None
         else margin_share,
         horizon=lean.horizon,
-        pay_room=owners.pay_rooms(conn, league_id, season_id, [ai_team_id]).get(
-            ai_team_id
+        pay_room=room,
+        money=owners.money_rate(
+            owners.money_terms(conn, league_id, season_id), room, state
         ),
     )
 
@@ -1111,7 +1116,7 @@ def _assets(
             .items()
             if c.get("guaranteed")
         }
-    return [
+    assets = [
         Asset.from_record(
             p,
             injuries.get(p.id, 0),
@@ -1121,6 +1126,47 @@ def _assets(
         )
         for p in records
     ]
+    if year is None:
+        return assets
+    return _with_owed(conn, season_id, year, assets)
+
+
+def _with_owed(conn, season_id: str, year: int, assets: list[Asset]) -> list[Asset]:
+    """The players with what they're owed above the minimum, this season
+    and over the next few, so the AI can price their contracts
+    (ai_evaluator.money_cost)."""
+    league = conn.execute(
+        "SELECT league_id FROM league_seasons WHERE season_id = %s", (season_id,)
+    ).fetchone()
+    if not league:
+        return assets
+    scale = BudgetRepository(conn).salary_scale(league["league_id"], year)
+    ids = [a.id for a in assets]
+    contracts = ContractRepository(conn)
+    deals = contracts.deals_through(ids, year, year + ai_evaluator.FUTURE_YEARS)
+    arb = contracts.arbitration_seasons(ids, year)
+    out = []
+    for a in assets:
+        kind = "pitcher" if a.is_pitcher else "hitter"
+        shift = ai_evaluator.age_shift(a.age)
+
+        def fair(y, a=a, kind=kind, shift=shift):
+            rating = a.rating + (shift if y > year else 0)
+            return (
+                ct.prime_salary(rating, kind) * ct.age_factor(a.age + y - year) * scale
+            )
+
+        rookie_start = year - arb[a.id] + 1 if a.id in arb else None
+        owed = ct.owed(
+            deals.get(a.id, []),
+            year,
+            fair,
+            rookie_start,
+            ai_evaluator.FUTURE_YEARS,
+            scale,
+        )
+        out.append(replace(a, owed_now=owed[0], owed_later=owed[1]))
+    return out
 
 
 def _season_year(conn, season_id: str) -> int | None:
