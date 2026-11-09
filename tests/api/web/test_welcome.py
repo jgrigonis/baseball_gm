@@ -456,6 +456,40 @@ def test_no_budget_card_without_budgets(client, league):
     assert "Your budget" not in client.get(f"/leagues/{lg.id}/welcome").text
 
 
+def test_welcome_page_shows_a_word_from_the_owner(client, db_conn, factory, league):
+    from src.api.services import owners
+
+    lg, gm, team = league
+    season_id = db_conn.execute(
+        "SELECT season_id FROM drafts WHERE league_id = %s", (lg.id,)
+    ).fetchone()["season_id"]
+    season = SimpleNamespace(id=season_id)
+    factory.league_season(lg, season)
+    for row in db_conn.execute(
+        "SELECT DISTINCT team_id FROM gms WHERE league_id = %s", (lg.id,)
+    ).fetchall():
+        factory.league_season_team(lg, season, SimpleNamespace(id=row["team_id"]))
+    # Before Opening Day, so the owner judges this season.
+    db_conn.execute("UPDATE games SET completed = 0 WHERE season_id = %s", (season_id,))
+
+    html = client.get(f"/leagues/{lg.id}/welcome").text
+
+    owner = owners.card(db_conn, lg.id, team.id)
+    memo = db_conn.execute(
+        "SELECT body FROM owner_messages WHERE gm_id = %s AND key = %s",
+        (gm.id, f"pre:{season_id}"),
+    ).fetchone()
+    assert "A word from your owner" in html
+    assert owner["name"] in html
+    assert memo and memo["body"].split(".")[0] in html
+    assert f'href="/leagues/{lg.id}/owner"' in html
+
+
+def test_no_owner_card_without_an_owner(client, league):
+    lg, _, _ = league
+    assert "A word from your owner" not in client.get(f"/leagues/{lg.id}/welcome").text
+
+
 def test_welcome_page_shows_the_citys_market_and_climate(client, db_conn, league):
     lg, _, team = league
     db_conn.execute("UPDATE teams SET city = 'Boston' WHERE id = %s", (team.id,))

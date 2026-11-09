@@ -205,6 +205,31 @@ def test_the_owner_writes_a_preseason_memo_once(lg, client_for):
     assert "setOwnerBadge(0)" in tab.text
 
 
+def test_the_first_memo_to_a_gm_welcomes_them(lg):
+    import random
+
+    from src.api.services import owner_office
+    from src.league import owner_messages as om
+
+    x = lg(n=2)
+    x.db.execute("UPDATE leagues SET state = 'preseason' WHERE id = %s", (x.league.id,))
+    owner_office.catch_up(x.db, x.league.id)
+    body = x.db.execute(
+        "SELECT body FROM owner_messages WHERE gm_id = %s", (x.gm.id,)
+    ).fetchone()["body"]
+    # Each welcome opener up to its first field.
+    welcomes = [o.split("{")[0] for o in om.PRESEASON_WELCOME]
+    assert any(body.startswith(w) for w in welcomes)
+    # Later memos to the same GM open as usual.
+    fields = {"gm": "Pat", "team": "City0 Club", "rival": None, "budget": None}
+    for seed in range(10):
+        later = om.preseason({}, fields, random.Random(seed))
+        assert not any(later.startswith(w) for w in welcomes)
+    assert owner_office.preseason_memo(
+        x.db, x.league.id, x.teams[0].id, x.gm.id, x.season.id
+    ) == {"body": body, "mood": "content"}
+
+
 def test_the_season_review_message(lg, factory):
     from src.api.services import owner_office, owner_review
 

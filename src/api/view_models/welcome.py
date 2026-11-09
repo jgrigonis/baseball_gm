@@ -19,6 +19,7 @@ from statistics import mean
 
 from src.api.grade_curves import overall_to_grade
 from src.api.schemas import skill_to_grade
+from src.api.services import owner_office, owners
 from src.api.services.draft_needs import needs_for_draft
 from src.api.view_models.draft import last_season
 from src.api.view_models.league_info import league_gms
@@ -564,6 +565,26 @@ def budget_card(
     }
 
 
+def owner_card(
+    db, league_id: str, team_id: str, gm_id: str, season_id: str
+) -> dict | None:
+    """The team's owner and their word going into the season: name,
+    archetype, mood and this season's preseason memo (written if it's due).
+    None without an owner or a memo."""
+    card = owners.card(db, league_id, team_id)
+    if not card:
+        return None
+    memo = owner_office.preseason_memo(db, league_id, team_id, gm_id, season_id)
+    if not memo:
+        return None
+    return {
+        "name": card["name"],
+        "archetype": card["archetype"],
+        "mood": memo["mood"],
+        "memo": memo["body"],
+    }
+
+
 def welcome(db, league: dict, gm: dict) -> dict | None:
     """Everything the welcome screen shows, or None when the GM has no team
     or the league has no draft yet."""
@@ -650,4 +671,5 @@ def welcome(db, league: dict, gm: dict) -> dict | None:
         "movers": movers(db, [p for p, _ in mine], last_id),
         "retirees": retirees(db, team_id, last_id),
         "budget": budget_card(db, league["id"], team_id, rosters),
+        "owner": owner_card(db, league["id"], team_id, gm["id"], draft["season_id"]),
     }

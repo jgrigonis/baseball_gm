@@ -80,6 +80,18 @@
   .wl-fo b { color:var(--text); font-weight:600; }
   .wl-fo .lv-0, .wl-fo .lv-1 { color:var(--red); }
   .wl-fo .lv-3, .wl-fo .lv-4 { color:var(--green); }
+  .wl-owner { display:flex; gap:12px; align-items:flex-start; }
+  .wl-owner-hat { font-size:28px; line-height:1; }
+  .wl-owner-name { font-weight:700; font-size:15px; }
+  .wl-owner-arch { display:inline-block; margin-left:6px; padding:1px 7px; border-radius:10px; font-family:var(--font-mono);
+                   font-size:10px; color:var(--amber); border:1px solid var(--amber); vertical-align:1px; }
+  .wl-owner-memo { margin:10px 0 0; padding-left:12px; border-left:3px solid {{ c.accent }}; font-size:13px; line-height:1.6;
+                   color:var(--text); font-style:italic; }
+  .wl-mood b { text-transform:uppercase; letter-spacing:.05em; }
+  .wl-mood-thrilled, .wl-mood-pleased { color:var(--green); }
+  .wl-mood-content { color:var(--text); }
+  .wl-mood-uneasy { color:var(--amber); }
+  .wl-mood-frustrated, .wl-mood-furious { color:var(--red); }
   @media (max-width: 600px) {
     .wl-hero { padding:20px 16px; }
     .wl-title { font-size:32px; }
@@ -123,6 +135,25 @@
         {% endfor %}
         <figure><img src="{{ static_url(u.patch) }}" alt="{{ w.city }} {{ w.mascot }} sleeve patch" loading="lazy"><figcaption>Patch</figcaption></figure>
       </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if w.owner %}
+  {% set o = w.owner %}
+  <div class="card">
+    <div class="card-header"><span class="card-title">{% if w.first %}A word from your owner{% else %}Your owner{% endif %}</span></div>
+    <div class="card-body">
+      <div class="wl-owner">
+        <div class="wl-owner-hat" aria-hidden="true">🎩</div>
+        <div style="min-width:0;">
+          <div><span class="wl-owner-name">{{ o.name }}</span>{% if o.archetype %}<span class="wl-owner-arch">{{ o.archetype }}</span>{% endif %}</div>
+          {% if not w.first %}<div class="wl-meta wl-mood">Mood: <b class="wl-mood-{{ o.mood }}">{{ o.mood }}</b></div>{% endif %}
+        </div>
+      </div>
+      <p class="wl-owner-memo">“{{ o.memo }}”</p>
+      <a href="/leagues/{{ league_id }}/owner" hx-get="/leagues/{{ league_id }}/owner" hx-target="#tab-content" hx-push-url="true"
+         class="wl-meta wl-link" style="display:inline-block;margin-top:4px;">Open the Owner tab →</a>
     </div>
   </div>
   {% endif %}
