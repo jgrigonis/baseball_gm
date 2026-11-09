@@ -15,7 +15,7 @@ from src.player.player_skills import PlayerSkills
 from src.player.positions import SKILLS
 
 
-def _pitcher(player_id="P1"):
+def _pitcher(player_id="P1", durability=50):
     return PlayerInGame(
         PlayerRecord(
             id=player_id,
@@ -23,7 +23,9 @@ def _pitcher(player_id="P1"):
             last_name=player_id,
             bats="R",
             throws="R",
-            skills=PlayerSkills({skill: 50 for skill in SKILLS}),
+            skills=PlayerSkills(
+                {skill: 50 for skill in SKILLS} | {"durability": durability}
+            ),
             position="p",
         )
     )
@@ -81,3 +83,10 @@ def test_pitcher_fatigue_only_counts_while_pitching(game):
     pitcher.pitcher_fatigue.energy = 0.0
     expected = INJURY_BASE_PROB * INJURY_ACTIVITY_WEIGHT["running"]
     assert game._injury_probability(pitcher, "running") == pytest.approx(expected)
+
+
+@pytest.mark.parametrize("durability, mult", [(100, 0.7), (50, 1.0), (1, 1.294)])
+def test_durable_pitchers_get_hurt_less_pitching(game, durability, mult):
+    pitcher = _pitcher(durability=durability)
+    expected = INJURY_BASE_PROB * INJURY_ACTIVITY_WEIGHT["pitching"] * mult
+    assert game._injury_probability(pitcher, "pitching") == pytest.approx(expected)

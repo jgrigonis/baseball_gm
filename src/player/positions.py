@@ -214,7 +214,7 @@ SKILL_TEMPLATE: MappingProxyType[str, dict[str, int]] = MappingProxyType(
             "infield": 40,
             "outfield": 40,
             "arm": 60,  # Strong arms
-            "durability": 10,
+            # durability defaults to 50: it sets a pitcher's injury risk
         },
         "rp": {
             "accuracy": 55,
@@ -228,7 +228,6 @@ SKILL_TEMPLATE: MappingProxyType[str, dict[str, int]] = MappingProxyType(
             "infield": 40,
             "outfield": 40,
             "arm": 60,
-            "durability": 10,
         },
         "c": {
             # Pitching skills very low

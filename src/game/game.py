@@ -937,12 +937,11 @@ class Game:
             pos_mult = INJURY_POSITION_WEIGHT.get(pos, 1.0)
             activity_mult *= pos_mult
 
-        if activity != "pitching":
-            durability = (
-                player.skills.get("durability", 50) if hasattr(player, "skills") else 50
-            )
-            durability_mult = 1.0 - ((durability - 50) / 50) * DURABILITY_MOD
-            activity_mult *= durability_mult
+        # Durable players (pitchers too, when pitching) get hurt less often.
+        durability = (
+            player.skills.get("durability", 50) if hasattr(player, "skills") else 50
+        )
+        activity_mult *= 1.0 - ((durability - 50) / 50) * DURABILITY_MOD
 
         # Tired position players get hurt more often. Pitchers have no
         # player_energy (their fatigue is handled separately), so this

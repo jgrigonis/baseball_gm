@@ -179,8 +179,7 @@ def roll_rust(
     - Each rating drops by half to all of its catalog amount.
     - The length is 50-150% of the catalog's, longer when the injury itself
       ran long for its kind, longer for players past 30 and shorter for
-      young ones, and shorter for durable hitters. Pass durability only for
-      hitters: it never applies to pitchers.
+      young ones, and shorter for durable players.
     """
     rust = RUST.get(injury_type or "")
     if not rust:
@@ -360,14 +359,14 @@ _HITTER_SKILL = {"strikes": "arm", "stamina": "arm", "accuracy": "arm"}
 _PITCHER_SKILL = {"power": "stamina"}
 
 # Chance a lasting loss also lowers the player's talent cap, so he can't
-# simply develop it back. Scaled by age and (hitters only) durability.
+# simply develop it back. Scaled by age and durability.
 CAP_DROP_CHANCE = 0.10
 
 
 def outcome_shift(age: int | None, durability: int | None) -> float:
     """Share of the odds that moves from the best outcome to the worst:
     ~3% per year past 30, ~3% the other way per year under 25, and up to
-    5% either way for durability. Pass durability only for hitters."""
+    5% either way for durability."""
     shift = 0.0
     if age is not None:
         if age > 30:
@@ -405,7 +404,7 @@ def outcome_odds(
 def cap_drop_chance(age: int | None, durability: int | None) -> float:
     """Chance a lasting loss lowers the talent cap too: 10% at 30, half
     that at 25 and under, up to double for old players, and less for
-    durable hitters. Pass durability only for hitters."""
+    durable players."""
     chance = CAP_DROP_CHANCE
     if age is not None:
         chance *= min(2.0, max(0.5, 1 + 0.1 * (age - 30)))
@@ -429,9 +428,8 @@ def roll_lasting(
     rng: random.Random | None = None,
 ) -> LastingResult | None:
     """Roll what an injury leaves for good when the player comes back. None
-    for an injury with no outcome table. Durability is ignored for pitchers
-    (it's never used for them), both as a nudge and as an effect."""
-    odds = outcome_odds(injury_type or "", age, None if pitcher else durability)
+    for an injury with no outcome table."""
+    odds = outcome_odds(injury_type or "", age, durability)
     if not odds:
         return None
     rng = rng or random
@@ -445,8 +443,6 @@ def roll_lasting(
     remap = _PITCHER_SKILL if pitcher else _HITTER_SKILL
     effects: dict[str, int] = {}
     for skill, (lo, hi) in chosen.effects.items():
-        if pitcher and skill == "durability":
-            continue
         n = rng.randint(lo, hi)
         if n == 0:
             continue
@@ -457,7 +453,7 @@ def roll_lasting(
             effects[skill] = n
     cap_drop = False
     if any(v < 0 for v in effects.values()):
-        chance = cap_drop_chance(age, None if pitcher else durability)
+        chance = cap_drop_chance(age, durability)
         cap_drop = rng.random() < chance
     return LastingResult(chosen.key, effects, cap_drop)
 

@@ -200,16 +200,19 @@ def test_tommy_john_outcomes_over_many_rolls():
             assert -8 <= r.effects["strikes"] <= -3
 
 
-def test_pitchers_never_lose_durability_and_back_trouble_hits_stamina():
+def test_pitchers_back_trouble_hits_stamina_and_can_cost_durability():
     rng = random.Random(3)
+    seen = set()
     for _ in range(500):
-        r = roll_lasting("back_surgery", pitcher=True, age=33, durability=10, rng=rng)
-        assert "durability" not in r.effects
+        r = roll_lasting("back_surgery", pitcher=True, age=33, durability=50, rng=rng)
         assert "power" not in r.effects
-    # And durability doesn't move a pitcher's odds
-    assert roll_lasting("torn_acl", True, 30, 1, random.Random(5)) == roll_lasting(
-        "torn_acl", True, 30, 99, random.Random(5)
-    )
+        seen |= set(r.effects)
+    assert seen == {"stamina", "durability"}
+
+
+def test_durability_moves_a_pitchers_odds_like_a_hitters():
+    assert outcome_odds("torn_acl", 30, 99) != outcome_odds("torn_acl", 30, 1)
+    assert cap_drop_chance(30, 99) < cap_drop_chance(30, 1)
 
 
 def test_a_position_players_arm_takes_the_pitching_damage():

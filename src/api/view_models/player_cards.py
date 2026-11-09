@@ -248,8 +248,9 @@ def ratings_to_grade_map(grades, skills: dict, ratings: dict) -> list:
     # Off-role sections are what the player is rarely used for: the panel
     # tucks them behind a toggle.
     if grades.player_type == "pitcher":
-        on_role = [pitching_section]
-        off_role = [general_section, defense_section, hitting_section]
+        # General stays open: a pitcher's durability sets his injury risk.
+        on_role = [pitching_section, general_section]
+        off_role = [defense_section, hitting_section]
     else:
         on_role = [hitting_section, general_section, defense_section]
         off_role = [pitching_section]
