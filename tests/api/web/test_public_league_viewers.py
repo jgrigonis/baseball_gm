@@ -653,7 +653,7 @@ def test_game_panel_shows_kept_play_by_play(client, db_conn, factory):
 
     html = client.get(f"/leagues/{league.id}/games/{game['id']}/panel").text
 
-    assert "Play-by-Play" in html
+    assert ">Play-by-play</button>" in html
     assert "Top 1st" in html
     assert "A. Bat doubles; C. Run scores." in html
 
@@ -666,4 +666,4 @@ def test_game_panel_without_plays_keeps_the_game_log(client, db_conn, factory):
 
     html = client.get(f"/leagues/{league.id}/games/{game_id}/panel").text
 
-    assert "Play-by-Play" not in html
+    assert "Play-by-play" not in html

@@ -1,4 +1,4 @@
-# src/db/migration_files/migration_106_game_plays.py
+# src/db/migration_files/migration_107_game_plays.py
 """
 Play-by-play for the game panel (Josh, 2026-11-09): one JSON row per game,
 the list of plays src/game/play_log.py builds. Not for keeping: a new
@@ -7,7 +7,7 @@ league holds at most one season of them, about 6 KB a game before
 Postgres compresses it.
 """
 
-VERSION = 106
+VERSION = 107
 
 
 def upgrade(conn):

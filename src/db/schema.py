@@ -1126,7 +1126,7 @@ CREATE TABLE IF NOT EXISTS game_events (
 );
 
 -- game_plays: the game panel's play-by-play, one JSON list per game
---   (src/game/play_log.py, migration 106). Only the league's current
+--   (src/game/play_log.py, migration 107). Only the league's current
 --   season is kept: a new season deletes the older rows.
 CREATE TABLE IF NOT EXISTS game_plays (
     game_id   TEXT PRIMARY KEY REFERENCES games(id) ON DELETE CASCADE,

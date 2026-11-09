@@ -110,18 +110,11 @@
 {% endfor %}
 
 {% if events or pbp %}
-<div style="margin-top:8px;" data-pbp>
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-    <div style="font-family:var(--font-mono);font-size:11px;font-weight:600;
-                color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase;flex:1;">
-      {% if pbp %}Play-by-Play{% else %}Game Log{% endif %}
-    </div>
-    {% if pbp %}
-    <button type="button" class="btn btn-secondary as-btn-sm" aria-pressed="false"
-            onclick="var on=this.closest('[data-pbp]').classList.toggle('pbp-scoring');this.setAttribute('aria-pressed',on);this.textContent=on?'All plays':'Scoring plays';">Scoring plays</button>
-    {% endif %}
+<div style="margin-top:8px;">
+  <div style="font-family:var(--font-mono);font-size:11px;font-weight:600;
+              color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;">
+    Game Log
   </div>
-  {# With play-by-play, the in-game moves are shown between the plays below #}
   {% for e in events if not pbp or e.event_type in ('lineup_set', 'pitcher_start') %}
   {% set is_mine = e.team_id == my_team_id %}
   <div style="border-bottom:1px solid var(--border);padding:4px 0;font-family:var(--font-mono);font-size:11px;
@@ -155,6 +148,15 @@
   {% endfor %}
 
   {% if pbp %}
+  {# Closed until asked for: a whole game is a lot for the pop-in #}
+  <div data-pbp style="margin-top:14px;">
+  <div style="display:flex;align-items:center;gap:10px;">
+    <button type="button" class="btn btn-secondary as-btn-sm" aria-expanded="false"
+            onclick="var box=this.closest('[data-pbp]'),open=box.classList.toggle('pbp-open');this.setAttribute('aria-expanded',open);this.textContent=open?'Hide play-by-play':'Play-by-play';">Play-by-play</button>
+    <button type="button" class="btn btn-secondary as-btn-sm pbp-only-open" aria-pressed="false"
+            onclick="var on=this.closest('[data-pbp]').classList.toggle('pbp-scoring');this.setAttribute('aria-pressed',on);this.textContent=on?'All plays':'Scoring plays';">Scoring plays</button>
+  </div>
+  <div class="pbp-only-open">
   <style>
     .pbp-half { margin-top:12px; }
     .pbp-head { display:flex; gap:8px; align-items:baseline; font-family:var(--font-mono); font-size:11px;
@@ -167,6 +169,7 @@
     .pbp-score { font-family:var(--font-mono); font-weight:700; flex-shrink:0; }
     .pbp-ev { font-family:var(--font-mono); font-size:11px; color:var(--text-dim); }
     .pbp-scoring .pbp-row:not(.scored), .pbp-scoring .pbp-half:not(.has-runs) { display:none; }
+    [data-pbp]:not(.pbp-open) .pbp-only-open { display:none; }
   </style>
   {% for h in pbp %}
   {% set mine = h.team_id == my_team_id %}
@@ -195,6 +198,8 @@
     {% endfor %}
   </div>
   {% endfor %}
+  </div>
+  </div>
   {% endif %}
 </div>
 {% else %}

@@ -68,7 +68,7 @@ def _create_next_season(
 
     new_season_id = sr.create_season(next_year, new_name)
     lr.assign_season_to_league(league_id, new_season_id)
-    # Play-by-play is only for this season's games (migration 106).
+    # Play-by-play is only for this season's games (migration 107).
     GameRepository(conn).clear_old_plays(league_id, new_season_id)
 
     # Copy teams from current season
