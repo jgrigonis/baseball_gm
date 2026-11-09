@@ -793,12 +793,10 @@ class BudgetRepository:
                 played[p] = {t: 1}
         if only is not None:
             played = {p: bt for p, bt in played.items() if set(bt) & only}
-        if not played:
-            return {}
         before: dict[str, set[str]] = {}
         for (p, t), _n in self._games(self._season_any(league_id, year - 1)).items():
             before.setdefault(p, set()).add(t)
-        grades = _grades(self.conn, list(played))
+        grades = _grades(self.conn, list(played)) if played else {}
         stars: set[str] = set()
         winners: set[str] = set()
         if season_id:
@@ -819,6 +817,23 @@ class BudgetRepository:
                 ).fetchall()
             }
         out: dict[str, list[fn.Seller]] = {}
+        # Hall of Famers sell retro jerseys for the team they went in for,
+        # from the season after they're elected (src/league/finances.py).
+        for r in self.conn.execute(
+            """SELECT hb.player_id, hb.team_id, he.year FROM hall_ballot hb
+               JOIN hall_elections he ON he.season_id = hb.season_id
+               WHERE hb.league_id = %s AND hb.outcome = 'elected'
+                 AND he.year < %s AND hb.team_id = ANY(%s)""",
+            (league_id, year, list(only) if only is not None else teams),
+        ).fetchall():
+            out.setdefault(r["team_id"], []).append(
+                fn.Seller(
+                    player_id=r["player_id"],
+                    grade=fn.HALL_GRADE,
+                    share=1.0,
+                    new=r["year"] == year - 1,
+                )
+            )
         for p, by_team in played.items():
             grade = grades.get(p)
             if grade not in fn.MERCH_BY_GRADE:

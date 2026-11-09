@@ -57,12 +57,21 @@ def _broadcast_note(b: dict) -> str:
 
 def _merch_note(b: dict, names: dict) -> str:
     sellers = b.get("sellers") or []
-    if sellers:
-        top = ", ".join(
-            f"{names.get(s.player_id, 'a player')} {_money(amount)}"
-            for s, amount in sellers[:3]
+    hall = sum(amount for s, amount in sellers if s.hall)
+    players = [(s, amount) for s, amount in sellers if not s.hall]
+    parts = []
+    if players:
+        parts.append(
+            "Top sellers: "
+            + ", ".join(
+                f"{names.get(s.player_id, 'a player')} {_money(amount)}"
+                for s, amount in players[:3]
+            )
         )
-        return f"Top sellers: {top}"
+    if hall:
+        parts.append(f"Hall of Famers {_money(hall)}")
+    if parts:
+        return "; ".join(parts)
     if b["merchandise"]:
         return "What your players' jerseys and gear sold"
     return "Players graded B+ or better sell jerseys, stars far more"
@@ -309,7 +318,13 @@ def _broadcast_view(deal: dict, year: int, open_: bool) -> dict:
 
 
 def _seller_names(db, books: list[dict]) -> dict[str, str]:
-    ids = list({s.player_id for b in books for s, _ in (b.get("sellers") or [])[:3]})
+    ids = list(
+        {
+            s.player_id
+            for b in books
+            for s, _ in [p for p in (b.get("sellers") or []) if not p[0].hall][:3]
+        }
+    )
     if not ids:
         return {}
     return {

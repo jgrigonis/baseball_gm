@@ -134,3 +134,13 @@ def test_the_books_count_broadcast_and_merchandise_in():
     more = fn.books(**kw, broadcast=30 * M, merchandise=12 * M)
     assert more["total_in"] == plain["total_in"] + 42 * M
     assert more["profit"] == plain["profit"] + 42 * M
+
+
+def test_hall_of_famers_sell_retro_jerseys_most_after_induction():
+    cap = fn.MERCH_CAP
+    assert fn.jersey_money(fn.HALL_GRADE, cap) == fn.HALL_JERSEY
+    assert fn.jersey_money(fn.HALL_GRADE, cap, new=True) == 3 * fn.HALL_JERSEY
+    legend = fn.Seller("old", fn.HALL_GRADE, share=1.0)
+    assert legend.hall
+    total, _ = fn.merchandise([legend], cap, 3, 50)
+    assert total == 1_500_000

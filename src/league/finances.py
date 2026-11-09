@@ -90,6 +90,13 @@ MERCH_ALL_STAR = 1.5
 MERCH_AWARD = 2.0
 MERCH_NEW = 1.5
 MERCH_AWARDS = ("mvp", "cy_young")
+# Retro jerseys (Josh, 2026-11-09): every Hall of Famer sells HALL_JERSEY a
+# season (at a MERCH_CAP cap) for the team he went in for, HALL_INDUCTION
+# times that the season after he's elected. Times the same market, fans and
+# marketing as the rest.
+HALL_GRADE = "HOF"
+HALL_JERSEY = 1_500_000
+HALL_INDUCTION = 3.0
 # The team's total is times its market (MARKET_MULT) and its fans: fan
 # interest 0 is MERCH_FAN_LOW, 100 is MERCH_FAN_LOW + MERCH_FAN_SPAN.
 MERCH_FAN_LOW = 0.6
@@ -250,7 +257,11 @@ def jersey_money(
     new: bool = False,
 ) -> float:
     """What one player's jerseys sell in a season, before his team's market,
-    fans and marketing (not rounded: a team adds up its players)."""
+    fans and marketing (not rounded: a team adds up its players). A Hall of
+    Famer (grade HALL_GRADE) sells retro jerseys; new is his induction."""
+    if grade == HALL_GRADE:
+        value = HALL_JERSEY * cap / MERCH_CAP
+        return value * HALL_INDUCTION if new else value
     value = MERCH_BY_GRADE.get(grade or "", 0) * cap / MERCH_CAP
     if all_star:
         value *= MERCH_ALL_STAR
@@ -277,10 +288,14 @@ class Seller:
 
     player_id: str
     grade: str | None
-    share: float  # of his games, played for this team
+    share: float  # of his games, played for this team (1 for a Hall of Famer)
     all_star: bool = False
     award: bool = False
     new: bool = False
+
+    @property
+    def hall(self) -> bool:
+        return self.grade == HALL_GRADE
 
 
 def merchandise(

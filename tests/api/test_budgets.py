@@ -1123,3 +1123,32 @@ def test_the_season_end_records_broadcast_and_merchandise(lg, monkeypatch):
     assert row["profit"] == before
     books = x.budgets.books(x.league.id, x.mine.id, 2026)[0]
     assert books["broadcast"] == row["broadcast_revenue"]
+
+
+def test_hall_of_famers_sell_retro_jerseys_for_their_team(lg, monkeypatch):
+    from src.api.services import icons
+
+    x = lg()
+    monkeypatch.setattr(icons, "_grades", lambda conn, ids: {p: "C" for p in ids})
+    legend = x.factory.rated_player(x.mine, x.league, level=60, status="retired")
+    past = x.factory.season(year=2025)
+    x.factory.league_season(x.league, past)
+    x.db.execute(
+        "INSERT INTO hall_elections (season_id, league_id, year, ballots)"
+        " VALUES (%s, %s, 2025, 10)",
+        (past.id, x.league.id),
+    )
+    x.db.execute(
+        """INSERT INTO hall_ballot (season_id, player_id, league_id, votes, share,
+               outcome, team_id)
+           VALUES (%s, %s, %s, 9, 0.9, 'elected', %s)""",
+        (past.id, legend.id, x.league.id, x.mine.id),
+    )
+    for year in (2026, 2027):
+        x.budgets.for_league(x.league.id, year)
+    first = x.budgets.merchandise(x.league.id, 2026)
+    later = x.budgets.merchandise(x.league.id, 2027)
+    ((seller, amount),) = first[x.mine.id]["sellers"]
+    assert seller.hall and seller.new and amount > 0
+    assert not first[x.theirs.id]["sellers"]
+    assert 0 < later[x.mine.id]["total"] < first[x.mine.id]["total"]
