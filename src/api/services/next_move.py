@@ -119,6 +119,22 @@ def _pill(ctx: dict, page: str) -> dict | None:
     return None
 
 
+def _budget_pill(ctx: dict, page: str) -> dict | None:
+    """With several GMs the button is the ready toggle, so the budget
+    reminder rides beside it instead."""
+    if ctx.get("league_state") != "preseason" or not ctx.get("budget_due"):
+        return None
+    if page == "budget":
+        return None
+    return {
+        "label": "💰 Budget",
+        "short": "💰",
+        "href": f"/leagues/{ctx['league_id']}/budget",
+        "title": "Set your front office and ticket prices before Opening Day; "
+        "they're locked for the season after that.",
+    }
+
+
 def pick(
     ctx: dict,
     page: str,
@@ -162,7 +178,7 @@ def pick(
             "id": "ready-btn",
             "menu": [_item("Mark me away", "readyToggleAway", btn_id="ready-away-btn")],
         }
-        move["pill"] = _pill(ctx, page)
+        move["pill"] = _pill(ctx, page) or _budget_pill(ctx, page)
         return move
 
     if state == "draft":
@@ -179,6 +195,11 @@ def pick(
         if page == "retirement" and ctx.get("team_page_label") == "Season preview":
             return _go("preview", "Season preview →", "Preview →", f"{base}/welcome")
         return _go("go-draft", "Go to the draft →", "Draft →", f"{base}/draft")
+
+    # The front office and ticket prices lock on Opening Day, so the GM
+    # gets one look at the Budget tab first (Josh, 2026-11-09).
+    if state == "preseason" and ctx.get("budget_due") and page != "budget":
+        return _go("set-budget", "💰 Set Your Budget →", "Budget →", f"{base}/budget")
 
     if state in ("preseason", "season"):
         stops = stops or [{"kind": "playoffs", "note": STOP_NOTES["playoffs"]}]

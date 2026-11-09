@@ -14,7 +14,7 @@
   .bud-section { margin-top:20px; padding-top:14px; border-top:1px solid var(--border); }
   .bud-good { color:var(--green); }
   .bud-line { font-size:13px; color:var(--text); line-height:1.6; margin-top:12px; }
-  .bud-table td.num.bud-bad { color:var(--red); }
+  .bud-table td.num.bud-bad, .bud-line.bud-bad { color:var(--red); }
   .bud-dept { display:flex; align-items:center; gap:12px; padding:8px 0; border-bottom:1px solid var(--border); }
   .bud-dept:last-of-type { border-bottom:none; }
   .bud-dept-name { flex:1; min-width:0; font-size:13px; color:var(--text); }
@@ -116,7 +116,7 @@
       </select>
     </form>
     {% endfor %}
-    <div class="bud-line">Your owner's budget pays for the front office as well as payroll, so a stronger department leaves less for players. Levels are set between seasons, from the draft to Opening Day, and only you see yours.</div>
+    <div class="bud-line">Your owner's budget pays for the front office as well as payroll, so a stronger department leaves less for players. Standard is always allowed; above Standard has to fit inside your owner's limit. Levels are set between seasons, from the draft to Opening Day, and only you see yours.</div>
   </div>
 </div>
 {% if fo_saved %}<script>if (window.gmToast) gmToast('Front office saved');</script>{% endif %}
@@ -141,7 +141,7 @@
         <div class="bud-stat">
           <div class="bud-label">Regular season revenue</div>
           <div class="bud-value" id="bud-tix-rev">{{ tickets.options[tickets.level - 1].revenue }}</div>
-          <div class="bud-note">This season, against Standard (5)</div>
+          <div class="bud-note">This season, against Standard prices</div>
         </div>
         <div class="bud-stat">
           <div class="bud-label">Fan interest</div>

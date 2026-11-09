@@ -133,9 +133,9 @@ TICKET_NAMES = (
     "Pricey", "Steep", "Premium", "Luxury", "Gouging",
 )  # fmt: skip
 # Regular season revenue multiplier by level.
-TICKET_REVENUE = (0.85, 0.90, 0.94, 0.97, 1.00, 1.03, 1.05, 1.06, 1.065, 1.07)
+TICKET_REVENUE = (0.80, 0.86, 0.91, 0.96, 1.00, 1.04, 1.07, 1.095, 1.115, 1.13)
 # Points added to the fans' end-of-season target by level.
-TICKET_FANS = (8, 6, 4, 2, 0, -2, -4, -7, -10, -14)
+TICKET_FANS = (12, 9, 6, 3, 0, -3, -6, -10, -14, -19)
 
 
 def _round(value: float) -> int:

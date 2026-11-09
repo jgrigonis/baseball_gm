@@ -168,3 +168,23 @@ def test_no_break_toggle_once_the_break_is_behind():
     assert not move["through_break"]
     # Without stops it still defaults to the playoffs.
     assert pick(_ctx(), "roster")["menu"][-1]["note"] == "to the playoffs"
+
+
+def test_preseason_sends_the_gm_to_set_the_budget_first():
+    # Josh, 2026-11-09: the front office and ticket prices lock on Opening
+    # Day, so the button asks for one look at the Budget tab first.
+    move = pick(_ctx(league_state="preseason", budget_due=True), "roster")
+    assert move["key"] == "set-budget" and move["href"] == "/leagues/L1/budget"
+    # On the Budget tab itself it plays Opening Day.
+    move = pick(_ctx(league_state="preseason", budget_due=True), "budget")
+    assert move["label"] == "▶ Play Opening Day"
+    # Once it's seen, the button plays on as before.
+    move = pick(_ctx(league_state="preseason", budget_due=False), "roster")
+    assert move["label"] == "▶ Play Opening Day"
+    # Several GMs: a pill beside the ready button instead.
+    move = pick(
+        _ctx(league_state="preseason", budget_due=True, multiplayer=True), "roster"
+    )
+    assert move["key"] == "ready" and move["pill"]["href"] == "/leagues/L1/budget"
+    move = pick(_ctx(league_state="season", budget_due=True), "roster")
+    assert move["label"] == "▶ Play Day"

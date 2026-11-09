@@ -217,6 +217,27 @@ class BudgetRepository:
             (bg.clean_level(level), league_id, team_id, year),
         )
 
+    def budget_seen(self, league_id: str, team_id: str, year: int) -> bool:
+        """Whether the GM has opened the Budget tab between seasons this
+        year, while the front office and ticket prices could still change.
+        True without budgets (nothing to set)."""
+        row = self.conn.execute(
+            """SELECT budget_seen FROM team_budgets
+               WHERE league_id = %s AND team_id = %s AND year = %s""",
+            (league_id, team_id, year),
+        ).fetchone()
+        if row is None:
+            return not self.enabled(league_id)
+        return bool(row["budget_seen"])
+
+    def mark_budget_seen(self, league_id: str, team_id: str, year: int) -> None:
+        self.conn.execute(
+            """UPDATE team_budgets SET budget_seen = TRUE
+               WHERE league_id = %s AND team_id = %s AND year = %s
+                 AND budget_seen IS NOT TRUE""",
+            (league_id, team_id, year),
+        )
+
     # ── Ticket prices ────────────────────────────────────────────────────────
 
     def ticket_price(self, league_id: str, team_id: str, year: int) -> int | None:
