@@ -213,3 +213,12 @@ def test_you_give_can_filter_to_players_who_want_a_trade(client_for, db_conn):
     assert f'"player_id": "{unhappy.id}"' in html
     wants = html.split(f'"player_id": "{unhappy.id}"', 1)[1].split("}", 1)[0]
     assert '"wants_trade": true' in wants
+
+
+def test_shop_show_more_calls_a_global_handler(client_for):
+    """The page script is wrapped in a function, so an inline onclick can only
+    reach names put on window (Show more used to reference SHOP directly)."""
+    client, league, _, _ = client_for("blitz", players=2)
+    html = client.get(f"/leagues/{league.id}/trades").text
+    assert 'onclick="trShopMore()"' in html
+    assert "window.trShopMore = function" in html
