@@ -1139,8 +1139,12 @@ async function _saveHand(hand) {
   return `vs ${HAND_LABEL[hand]}: ${d.detail || 'Error'}`;
 }
 
-async function saveBatting() {
-  const { hands, reason } = battingSaveStatus();
+// `only` (from Save All) limits the save to those hands, so the toast names
+// just the lineups that changed.
+async function saveBatting(only) {
+  const status = battingSaveStatus();
+  const reason = status.reason;
+  const hands = only ? status.hands.filter(h => only.includes(h)) : status.hands;
   if (!hands.length) { if (reason) showFeedback('✗ ' + reason, 'var(--red)'); return; }
   const btn = document.getElementById('save-batting-btn');
   btn.disabled = true; btn.textContent = 'Saving…';
@@ -1796,10 +1800,18 @@ async function saveBullpen() {
 }
 
 /* ── Save all ─────────────────────────────────────────────────────────────────── */
+// Anything that matches what's saved isn't sent again; its toast says
+// "unchanged" instead of "saved".
 async function saveAll() {
-  await saveBatting();
-  await saveRotation();
-  await saveBullpen();
+  syncPitchingSaved();
+  const battingDirty = unsavedHands();
+  const rotDirty = !pitchingSaved, bpDirty = !bullpenSaved;
+  if (battingDirty.length) await saveBatting(battingDirty);
+  else showFeedback('Batting unchanged', 'var(--text-dim)');
+  if (rotDirty) await saveRotation();
+  else showFeedback('Rotation unchanged', 'var(--text-dim)');
+  if (bpDirty) await saveBullpen();
+  else showFeedback('Bullpen unchanged', 'var(--text-dim)');
 }
 
 /* ── Rebuild all ──────────────────────────────────────────────────────────────── */
