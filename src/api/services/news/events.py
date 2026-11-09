@@ -293,48 +293,8 @@ def all_stars(conn, names: Names, league_id: str, season_id: str) -> None:
                 f"allstar:team:{season_id}:{team}", headline,
                 body, weight=2, team_ids=[team], player_ids=pids, gm_ids=[gm["id"]],
             )  # fmt: skip
-    g = conn.execute(
-        """SELECT * FROM all_star_games WHERE season_id = %s AND state = 'played'""",
-        (season_id,),
-    ).fetchone()
-    if g and not news.has(league_id, f"allstar:game:{season_id}"):
-        winner = swing_off.winner(g)
-        cap_w = g[f"captain{winner}_team_id"]
-        cap_l = g[f"captain{3 - winner}_team_id"]
-        hi, lo = (
-            max(g["score1"] or 0, g["score2"] or 0),
-            min(g["score1"] or 0, g["score2"] or 0),
-        )
-        if g["swingoff"]:
-            so = g["swingoff"]
-            headline = (
-                f"Team {names.city(cap_w)} wins the All-Star Game"
-                " in a home run swing-off"
-            )
-            body = (
-                f"Team {names.city(cap_w)} and Team {names.city(cap_l)} were"
-                f" tied {hi}-{lo} after nine. Team {names.city(cap_w)} won the"
-                f" swing-off {swing_off.total(so, winner)}-"
-                f"{swing_off.total(so, 3 - winner)}."
-            )
-        else:
-            headline = f"Team {names.city(cap_w)} wins the All-Star Game {hi}-{lo}"
-            body = f"Team {names.city(cap_w)} beat Team {names.city(cap_l)}."
-        players = []
-        if g["mvp_player_id"]:
-            mvp = g["mvp_player_id"]
-            players.append(mvp)
-            team = _team_of(conn, mvp, season_id)
-            body += f" {names.player(mvp)} of the {names.team(team)} was named MVP."
-            how, _ = names.origin(mvp, team) if team else ("", [])
-            if how:
-                body += f" {names.last(mvp)} was {how}."
-        news.add(
-            league_id, season_id, g["game_date"] or on, "all_star",
-            f"allstar:game:{season_id}", headline, body, weight=2,
-            team_ids=[cap_w, cap_l], player_ids=players,
-            gm_ids=names.gm_ids(cap_w, cap_l),
-        )  # fmt: skip
+    _game_story(conn, news, names, league_id, season_id, on, "rookie")
+    g = _game_story(conn, news, names, league_id, season_id, on, "all_star")
     derby = conn.execute(
         """SELECT player_id, team_id, homers FROM hr_derby_results
            WHERE season_id = %s AND won
@@ -355,9 +315,67 @@ def all_stars(conn, names: Names, league_id: str, season_id: str) -> None:
         )  # fmt: skip
 
 
-def _team_of(conn, player_id: str, season_id: str) -> str | None:
+# The All-Star break's games: table, story key prefix, name.
+GAME_STORIES = {
+    "all_star": ("all_star_games", "allstar:game:", "All-Star Game"),
+    "rookie": ("rookie_games", "rookie:game:", "Rookie Game"),
+}
+
+
+def _game_story(
+    conn, news, names: Names, league_id: str, season_id: str, on: str, event: str
+) -> dict | None:
+    """The story of the season's All-Star Game or Rookie Game once it's
+    played: the score, the winning side and the MVP. Returns the game."""
+    table, key, game = GAME_STORIES[event]
+    g = conn.execute(
+        f"SELECT * FROM {table} WHERE season_id = %s AND state = 'played'",
+        (season_id,),
+    ).fetchone()
+    if not g or news.has(league_id, key + season_id):
+        return g
+    winner = swing_off.winner(g)
+    cap_w = g[f"captain{winner}_team_id"]
+    cap_l = g[f"captain{3 - winner}_team_id"]
+    hi, lo = (
+        max(g["score1"] or 0, g["score2"] or 0),
+        min(g["score1"] or 0, g["score2"] or 0),
+    )
+    if g["swingoff"]:
+        so = g["swingoff"]
+        headline = f"Team {names.city(cap_w)} wins the {game} in a home run swing-off"
+        body = (
+            f"Team {names.city(cap_w)} and Team {names.city(cap_l)} were"
+            f" tied {hi}-{lo} after nine. Team {names.city(cap_w)} won the"
+            f" swing-off {swing_off.total(so, winner)}-"
+            f"{swing_off.total(so, 3 - winner)}."
+        )
+    else:
+        headline = f"Team {names.city(cap_w)} wins the {game} {hi}-{lo}"
+        body = f"Team {names.city(cap_w)} beat Team {names.city(cap_l)}."
+    players = []
+    if g["mvp_player_id"]:
+        mvp = g["mvp_player_id"]
+        names.load_players([mvp])
+        players.append(mvp)
+        team = _team_of(conn, mvp, season_id, event)
+        body += f" {names.player(mvp)} of the {names.team(team)} was named MVP."
+        how, _ = names.origin(mvp, team) if team else ("", [])
+        if how:
+            body += f" {names.last(mvp)} was {how}."
+    news.add(
+        league_id, season_id, g["game_date"] or on, "all_star",
+        key + season_id, headline, body, weight=2,
+        team_ids=[cap_w, cap_l], player_ids=players,
+        gm_ids=names.gm_ids(cap_w, cap_l),
+    )  # fmt: skip
+    return g
+
+
+def _team_of(conn, player_id: str, season_id: str, event: str = "all_star"):
+    table = "rookie_game_players" if event == "rookie" else "all_stars"
     row = conn.execute(
-        "SELECT team_id FROM all_stars WHERE season_id = %s AND player_id = %s",
+        f"SELECT team_id FROM {table} WHERE season_id = %s AND player_id = %s",
         (season_id, player_id),
     ).fetchone()
     if row:
