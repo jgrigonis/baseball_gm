@@ -359,11 +359,30 @@
 }
 .lu-arrow:hover:not(:disabled) { color: var(--text); }
 .lu-arrow:disabled { opacity: .2; cursor: default; }
-.lu-pos-select {
-  background: var(--bg-3); border: 1px solid var(--border); color: var(--text);
-  font-family: var(--font-mono); font-size: 10px; padding: 2px 4px; width: 52px;
+/* Position: a scoreboard tile with his fielding grade at that spot. The
+   real menu sits invisibly on top. Height matches the face so rows don't grow. */
+.lu-pos-tile {
+  position: relative; width: 56px; height: 36px; box-sizing: border-box;
+  background: var(--tile); border: 1px solid var(--border-hi); border-radius: 3px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  line-height: 1;
 }
-.lu-pos-select.dupe { border-color: var(--red); }
+.lu-pos-tile:hover { border-color: var(--amber-dim); }
+.lu-pos-tile:focus-within { border-color: var(--amber); }
+.lu-pos-tile.dupe { border-color: var(--red); }
+.lu-pos-tile.empty { border-style: dashed; }
+.lu-pos-code {
+  font-family: var(--font-display); font-weight: 800; font-size: 20px;
+  letter-spacing: .04em; color: var(--amber);
+}
+.lu-pos-tile.empty .lu-pos-code { color: var(--muted); }
+.lu-pos-fit { font-family: var(--font-mono); font-size: 8px; color: var(--text-dim); margin-top: 1px; }
+.lu-pos-fit b { font-weight: 600; }
+.lu-pos-caret { position: absolute; right: 3px; top: 3px; font-size: 6px; color: var(--muted); }
+.lu-pos-select {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  opacity: 0; cursor: pointer; font-size: 16px;
+}
 .lu-remove {
   background: none; border: none; color: var(--muted); cursor: pointer;
   font-size: 14px; padding: 0 2px;
@@ -509,7 +528,8 @@
   .lu-arrows { gap: 6px; }
   .lu-arrow, .rot-arrow { font-size: 13px; padding: 2px 6px; color: var(--text-dim); }
   .lu-remove { font-size: 18px; padding: 4px; }
-  .lu-pos-select { width: 50px; font-size: 11px; padding: 5px 2px; }
+  .lu-pos-tile { width: 50px; }
+  .lu-pos-code { font-size: 19px; }
   .lu-roster-card { padding: 8px; }
   .lu-add-btn { font-size: 16px; padding: 6px 11px; }
   .rot-slot { grid-template-columns: 16px 16px 22px 30px minmax(0, 1fr) auto 0 26px; gap: 0 5px; padding: 8px 6px; }
@@ -675,6 +695,19 @@ function pitcherStatsHtml(p) {
     : '';
 }
 
+// The position tile on a batting order row: big code, his fielding grade
+// there, and an invisible menu on top to change it.
+function posTileHtml(p, pos, dupe, onchange, opts) {
+  const fit = pos && pos !== 'dh' ? p['pos_' + pos] : null;
+  const cls = 'lu-pos-tile' + (dupe ? ' dupe' : '') + (pos ? '' : ' empty');
+  return `<label class="${cls}" title="Change position">
+    <span class="lu-pos-caret">▼</span>
+    <span class="lu-pos-code">${pos ? pos.toUpperCase() : '—'}</span>
+    ${fit ? `<span class="lu-pos-fit">DEF <b class="${gradeClass(fit)}">${fit}</b></span>` : ''}
+    <select class="lu-pos-select" aria-label="Position" onchange="${onchange}">${opts}</select>
+  </label>`;
+}
+
 /* ── Batting: helpers ────────────────────────────────────────────────────────── */
 function findHitter(pid)  { return ALL_HITTERS.find(p => p.player_id === pid); }
 function findPitcher(pid) { return ALL_PITCHERS.find(p => p.player_id === pid); }
@@ -752,8 +785,7 @@ function renderBattingOrder() {
           {# Always show batting grades; hitter stats sit next to the name #}
           ${_battingSlotGrades(true, p, slot.position)}
         </div>
-        <select class="lu-pos-select${dupes.has(slot.position)?' dupe':''}"
-                onchange="setPosition(${i},this.value)">${posOpts}</select>
+        ${posTileHtml(p, slot.position, dupes.has(slot.position), `setPosition(${i},this.value)`, posOpts)}
         <div></div>
         <button class="lu-remove" onclick="removeFromLineup(${i})">×</button>`;
 
