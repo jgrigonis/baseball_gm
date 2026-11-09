@@ -124,14 +124,14 @@
   <div class="card-body">
     {% if park_error %}<div class="bud-line bud-bad" style="margin-top:0;margin-bottom:10px;">{{ park_error }}</div>{% endif %}
     {% for p in ballpark.rows %}
-    {% if p.build and loop.previtem is defined and not loop.previtem.build %}
+    {% if p.stadium and loop.previtem is defined and not loop.previtem.stadium %}
     <div class="bud-label" style="margin-top:14px;">A new stadium</div>
     <div class="bud-note" style="margin-bottom:4px;">The big one: pick a price. Your owner pays for it a season at a time while it goes up, and it takes over from a renovation. One per team.</div>
     {% endif %}
     <form class="bud-dept bud-park" data-quiet-swap hx-post="/leagues/{{ league_id }}/budget/ballpark"
           hx-target="#tab-content" hx-swap="innerHTML"
           data-confirm="Build {{ p.name|lower }} for {{ p.cost_text }}?"
-          data-confirm-text="{% if p.build %}Your owner pays from their bank a season at a time while it's built, and it opens in {{ p.opens }}.{% else %}Your owner pays from their bank, and it opens on Opening Day.{% endif %}{% if p.earns_text %} It should earn about {{ p.earns_text }} a season.{% endif %}"
+          data-confirm-text="{% if p.build %}Your owner pays from their bank{% if p.build > 1 %} a season at a time while it's built{% endif %}, and it opens in {{ p.opens }}.{% else %}Your owner pays from their bank, and it opens on Opening Day.{% endif %}{% if p.earns_text %} It should earn about {{ p.earns_text }} a season.{% endif %}"
           data-confirm-ok="Build" data-confirm-tone="go">
       <input type="hidden" name="project" value="{{ p.key }}">
       <div class="bud-dept-name">
@@ -154,7 +154,7 @@
       {% endif %}
     </form>
     {% endfor %}
-    <div class="bud-line">Upgrades are your owner's to pay for, from their bank, so they don't come off your budget or this season's profit; what they earn goes into profit every season after. Your owner only builds with savings to spare: the bank has to hold {% if ballpark.floor_caps == 1 %}a full season's cap{% else %}{{ ballpark.floor_caps }} caps{% endif %} after paying. One project a season, ordered from the draft to Opening Day.</div>
+    <div class="bud-line">Upgrades are your owner's to pay for, from their bank, so they don't come off your budget or this season's profit; what they earn goes into profit every season after. Your owner only builds with savings to spare: the bank has to hold {% if ballpark.floor_caps == 1 %}a full season's cap{% else %}{{ ballpark.floor_caps }} caps{% endif %} after paying. Club seats open right away; the rest take a season or more to build. One project ordered a season, from the draft to Opening Day.</div>
   </div>
 </div>
 {% if park_saved %}<script>if (window.gmToast) gmToast('Ballpark project ordered');</script>{% endif %}

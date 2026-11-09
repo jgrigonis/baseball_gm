@@ -173,7 +173,11 @@ TICKET_FANS = (12, 9, 6, 3, 0, -3, -6, -10, -14, -19)
 # revenue (a renovation). Paybacks run about 4 to 7 seasons, inside a
 # 10-season league.
 #
-# The big one is a new stadium (Josh, 2026-11-09): three price tiers, each
+# Club seats go in over one offseason; suites and the plaza take a season
+# to build and a renovation two (Josh, 2026-11-09), paid for as they go up.
+#
+# The big one is a new stadium (Josh, 2026-11-09): three price tiers, $1B,
+# $1.5B and $2B at a $160M cap, paying back in about 6 seasons once open, each
 # raising regular season revenue and fan interest more, and taking seasons
 # to build (build): ordered between seasons, it opens that many seasons
 # later, and the owner pays for it a season at a time while it goes up
@@ -202,35 +206,35 @@ BALLPARK = (
     ),
     Project(
         "suites", "Luxury suites",
-        "Glassed-in boxes leased to companies. Big markets pay the most.",
-        cost=0.75, earns=0.072,
+        "Glassed-in boxes leased to companies. Big markets pay the most. A season to build.",
+        cost=0.75, earns=0.072, build=1,
     ),
     Project(
         "plaza", "Fan plaza and video board",
-        "A plaza outside the gates and a giant screen. Fans warm to the team every season.",
-        cost=0.25, fans=3,
+        "A plaza outside the gates and a giant screen. Fans warm to the team every season. A season to build.",
+        cost=0.25, fans=3, build=1,
     ),
     Project(
         "renovation", "Full renovation",
-        "New concourses, food and seats all round. Every regular season ticket earns more.",
-        cost=1.5, revenue=0.10,
+        "New concourses, food and seats all round. Every regular season ticket earns more. Two seasons of work.",
+        cost=1.5, revenue=0.10, build=2,
     ),
     Project(
         "stadium_basic", "New stadium: Basic",
         "A plain, modern park with more good seats. Takes two seasons to build.",
-        cost=2.0, revenue=0.20, fans=3, build=2, group="stadium",
+        cost=6.25, revenue=0.50, fans=5, build=2, group="stadium",
         replaces=("renovation",),
     ),
     Project(
         "stadium_modern", "New stadium: Modern",
         "Wide concourses, great sight lines and food worth the trip. Three seasons to build.",
-        cost=3.5, revenue=0.35, fans=5, build=3, group="stadium",
+        cost=9.375, revenue=0.75, fans=8, build=3, group="stadium",
         replaces=("renovation",),
     ),
     Project(
         "stadium_showpiece", "New stadium: Showpiece",
         "A landmark the whole city shows off: a roof, a skyline view, the works. Four seasons to build.",
-        cost=5.5, revenue=0.55, fans=8, build=4, group="stadium",
+        cost=12.5, revenue=1.00, fans=12, build=4, group="stadium",
         replaces=("renovation",),
     ),
 )  # fmt: skip
@@ -238,7 +242,7 @@ BALLPARK_KEYS = tuple(p.key for p in BALLPARK)
 # The owner only builds with savings to spare: their bank has to hold at
 # least this many caps after paying.
 BALLPARK_FLOOR = 1.0
-# One project a season: it's built between seasons and opens on Opening Day.
+# One project ordered a season, between seasons.
 BALLPARK_PER_SEASON = 1
 # What the AI reckons a point of fan interest is worth a season, as a share
 # of its regular season revenue (fan_mult: 0.4 of revenue over 100 points).

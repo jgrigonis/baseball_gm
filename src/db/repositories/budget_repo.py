@@ -972,6 +972,7 @@ class BudgetRepository:
                     "payback": fn.payback(cost, earns),
                     "built": built[p.key]["year"] if p.key in built else None,
                     "build": p.build,
+                    "stadium": p.group == "stadium",
                     "opens": year + p.build,
                     "blocked": fn.project(blocker).name if blocker else None,
                     "short": fn.can_build(balance, cost, cap)

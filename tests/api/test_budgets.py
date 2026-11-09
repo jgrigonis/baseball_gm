@@ -1359,7 +1359,7 @@ def test_ai_owners_build_when_they_can_afford_it(lg):
     for year in (2026, 2027, 2028, 2029):
         x.budgets.for_league(x.league.id, year)
     built = x.budgets.ballpark(x.league.id, x.theirs.id)
-    assert built and len({p["year"] for p in built}) == len(built)
+    assert built and len({p["ordered"] for p in built}) == len(built)
     assert x.budgets.ballpark(x.league.id, x.mine.id) == []
 
 
@@ -1467,3 +1467,25 @@ def test_stadium_payments_still_to_come_are_set_aside(lg):
     [row] = x.budgets.ballpark(x.league.id, x.mine.id)
     bank = x.budgets.banks(x.league.id)[x.mine.id]
     assert bank["spent"] + bank["owed"] == row["cost"] and bank["owed"] > 0
+
+
+def test_suites_the_plaza_and_a_renovation_take_time_to_build(lg):
+    from src.league import finances as fn
+
+    assert [
+        fn.project(k).build for k in ("club_seats", "suites", "plaza", "renovation")
+    ] == [0, 1, 1, 2]
+    x = lg()
+    _owned(x, spending=95)
+    x.db.execute(
+        "UPDATE team_owners SET bank_start = 10000000000, bank_year = 2026"
+        " WHERE league_id = %s AND team_id = %s",
+        (x.league.id, x.mine.id),
+    )
+    x.budgets.for_league(x.league.id, 2026)
+    assert x.budgets.build(x.league.id, x.mine.id, 2026, "suites") is None
+    [row] = x.budgets.ballpark(x.league.id, x.mine.id)
+    assert row["ordered"] == 2026 and row["year"] == 2027
+    assert x.budgets.banks(x.league.id)[x.mine.id]["spent"] == row["cost"]
+    assert x.budgets.ballparks(x.league.id, 2026) == {}
+    assert x.budgets.ballparks(x.league.id, 2027) == {x.mine.id: ["suites"]}
