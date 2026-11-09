@@ -342,11 +342,15 @@ class AllStarRepository:
             )
 
     def lines(self, season_id: str) -> list[dict]:
-        """Every player's line in the season's All-Star Game, with names."""
+        """Every player's line in the season's All-Star Game, with names and
+        the team he was picked from (team_id)."""
         rows = self.conn.execute(
-            f"""SELECT s.*, p.first_name || ' ' || p.last_name AS name
+            f"""SELECT s.*, p.first_name || ' ' || p.last_name AS name,
+                      a.team_id
                FROM {self.stats} s
                JOIN players p ON p.id = s.player_id
+               LEFT JOIN {self.players} a
+                 ON a.season_id = s.season_id AND a.player_id = s.player_id
                WHERE s.season_id = %s
                ORDER BY s.side, s.batting_order NULLS LAST, s.pitch_order""",
             (season_id,),

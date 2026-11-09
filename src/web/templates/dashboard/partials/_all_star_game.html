@@ -81,7 +81,7 @@
         <th class="num">HR</th><th class="num">RBI</th><th class="num">BB</th><th class="num">K</th></tr></thead>
       <tbody>
         {% for r in x.batting[s] %}
-        <tr class="{% if r.player_id == x.game.mvp_player_id %}as-mvp-row{% endif %}">
+        <tr class="{% if r.player_id == x.game.mvp_player_id %}as-mvp-row{% endif %}{% if team_id and r.team_id == team_id %} my-team{% endif %}">
           <td><span class="as-player" onclick="openPlayerPanel('{{ r.player_id }}')">{{ r.name }}</span></td>
           <td>{{ r.position | upper }}</td>
           <td class="num">{{ r.bat_ab }}</td><td class="num">{{ r.bat_runs }}</td><td class="num">{{ r.bat_hits }}</td>
@@ -96,7 +96,7 @@
         <th class="num">ER</th><th class="num">BB</th><th class="num">K</th><th class="num">HR</th></tr></thead>
       <tbody>
         {% for r in x.pitching[s] %}
-        <tr class="{% if r.player_id == x.game.mvp_player_id %}as-mvp-row{% endif %}">
+        <tr class="{% if r.player_id == x.game.mvp_player_id %}as-mvp-row{% endif %}{% if team_id and r.team_id == team_id %} my-team{% endif %}">
           <td><span class="as-player" onclick="openPlayerPanel('{{ r.player_id }}')">{{ r.name }}</span></td>
           <td class="as-dim">{% if r.pitch_win %}W{% elif r.pitch_loss %}L{% elif r.pitch_save %}S{% endif %}</td>
           <td class="num">{{ r.pitch_outs // 3 }}.{{ r.pitch_outs % 3 }}</td>
