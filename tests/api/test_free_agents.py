@@ -398,10 +398,8 @@ def test_the_offseason_tab_shows_next_seasons_room(lg, client):
     )
     html = client.get(f"/leagues/{lg.league.id}/free-agents").text
     assert "Your expiring deals" in html
-    assert (
-        "left under your owner&#39;s limit" in html
-        or "left under your owner's limit" in html
-    )
+    assert "Room left next season:" in html
+    assert "from their bank to keep your own players." in html
     assert '"fate": "auto"' in html
 
 
