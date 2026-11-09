@@ -1948,3 +1948,15 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
 .slider-field input[type=range] { width: 100%; padding: 0; border: none; background: none; accent-color: var(--amber); }
 .slider-value { float: right; font-family: var(--font-mono); color: var(--amber); text-transform: none; letter-spacing: 0; }
 .slider-ends { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); }
+
+/* ── League page: a solo commissioner's Edit settings form ─────────────────── */
+#league-settings .card-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.solo-edit-btn { font-size: 11px; padding: 5px 12px; }
+.solo-settings { display: flex; flex-direction: column; gap: 14px; max-width: 560px; }
+.solo-settings[hidden], .settings-rows[hidden], .solo-edit-btn[hidden] { display: none; }
+.solo-note { margin: 0; font-size: 12px; color: var(--text-dim); }
+.solo-hint { display: block; font-size: 11px; color: var(--text-dim); font-style: italic; }
+.solo-settings .toggle-row { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 13px; }
+.solo-settings .toggle-row input { margin-top: 3px; accent-color: var(--amber); }
+.solo-settings-error { color: var(--red); font-size: 12px; }
+.solo-actions { display: flex; gap: 10px; flex-wrap: wrap; }

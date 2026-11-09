@@ -31,7 +31,8 @@ from src.db.repositories.persona_repo import PersonaRepository
 from src.league import owners, personas
 from src.db.repositories.user_repo import UserRepository
 from src.league.league_constants import MAX_SEASONS, UNLIMITED_SEASONS
-from src.league.league_modes import LEAGUE_MODES
+from src.league.league_modes import LEAGUE_MODES, injuries_allowed
+from src.league.trade_deadline import trades_enabled_for
 from src.player.contracts import format_salary
 from src.web.utils import templates
 
@@ -119,6 +120,9 @@ def _league_page(request, db, user, league_id: str, status_code=200, **ctx):
             "modes": [LEAGUE_MODES[k] for k in admin_service.MODES],
             "ranges": admin_service.NUMBER_RANGES,
             "season_choices": _season_choices(league["num_seasons"]),
+            # Leagues made before these settings go by their mode's default.
+            "injuries_on": injuries_allowed(league),
+            "trades_on": trades_enabled_for(league),
             "owners": _league_owners(db, league),
             "owner_cap": _league_cap(db, league),
             **ctx,
@@ -247,6 +251,10 @@ def league_settings(
     reentry_enabled: bool = Form(False),
     is_public: bool = Form(False),
     late_joins: bool = Form(False),
+    injuries_enabled: bool = Form(False),
+    trades_enabled: bool = Form(False),
+    pick_trades: bool = Form(False),
+    weighted_schedule: bool = Form(False),
     commissioner_gm_id: str = Form(""),
 ):
     league = _league_or_404(db, league_id)
@@ -268,6 +276,10 @@ def league_settings(
             "reentry_enabled": reentry_enabled,
             "is_public": is_public,
             "late_joins": late_joins,
+            "injuries_enabled": injuries_enabled,
+            "trades_enabled": trades_enabled,
+            "pick_trades": pick_trades,
+            "weighted_schedule": weighted_schedule,
             "commissioner_gm_id": commissioner_gm_id or None,
         },
     )

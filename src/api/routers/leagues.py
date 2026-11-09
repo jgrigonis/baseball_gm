@@ -27,6 +27,7 @@ from src.api.dependencies import (
 from src.api.services import (
     custom_teams,
     league_custom_teams,
+    league_settings,
     lobby_teams,
     personas,
     sim_jobs,
@@ -51,7 +52,13 @@ from src.league.league_constants import (
     MAX_SEASONS,
     UNLIMITED_SEASONS,
 )
-from src.league.league_modes import BLITZ, DEFAULT_MODE, SPEED_BLITZ, get_mode
+from src.league.league_modes import (
+    BLITZ,
+    DEFAULT_MODE,
+    SPEED_BLITZ,
+    get_mode,
+    is_blitz_style,
+)
 from src.web.utils import _shell_ctx, render, tab_response, templates
 
 router = APIRouter(tags=["web"])
@@ -764,6 +771,8 @@ def league_page(
     db: DB,
     user: User,
     gm: GMOrViewer,
+    saved: bool = False,
+    settings_error: str = "",
 ):
     """The league's settings and who runs each team, for GMs and viewers once
     the league has started. The lobby shows the same before then."""
@@ -776,6 +785,21 @@ def league_page(
     )
     ctx["settings_next"] = f"/leagues/{league_id}/league"
     ctx["late_joins"] = bool(league["late_joins"])
+    # The commissioner of a one-person league can change most settings.
+    info = ctx.get("league_info") or league_info(db, league)
+    ctx["league_info"] = info
+    if not ctx["is_viewer"] and league_settings.can_edit(
+        league, gm.get("id"), info["human_gms"]
+    ):
+        ctx["solo_edit"] = {
+            "season_choices": league_settings.season_choices(
+                league["state"], info["season_number"], league["num_seasons"]
+            ),
+            "sim_period_range": league_settings.SIM_PERIOD_RANGE,
+            "trades": is_blitz_style(league["mode"]),
+            "saved": saved,
+            "error": settings_error,
+        }
     # Every team's market size and climate: the Teams card.
     ctx["league_teams"] = team_facts.league_teams(
         db, league_id, None if ctx["is_viewer"] else gm.get("team_id")
@@ -787,6 +811,51 @@ def league_page(
             league_id, besides_gm_id=gm["id"]
         )
     return tab_response(request, htmx, "dashboard/partials/league_info.html", ctx)
+
+
+@router.post("/leagues/{league_id}/league/settings")
+def solo_settings(
+    league_id: str,
+    db: DB,
+    gm: GM,
+    _active: ActiveLeague,
+    name: str = Form(...),
+    num_seasons: int = Form(...),
+    sim_period_days: int = Form(...),
+    weighted_schedule: bool = Form(False),
+    injuries_enabled: bool = Form(False),
+    trades_enabled: bool = Form(False),
+    pick_trades: bool = Form(False),
+    reentry_enabled: bool = Form(False),
+):
+    """The commissioner of a one-person league saves the League page's Edit
+    settings form (src/api/services/league_settings.py)."""
+    back = f"/leagues/{league_id}/league"
+    try:
+        error = league_settings.save_solo(
+            db,
+            league_id,
+            gm["id"],
+            {
+                "name": name,
+                "num_seasons": num_seasons,
+                "sim_period_days": sim_period_days,
+                "weighted_schedule": weighted_schedule,
+                "injuries_enabled": injuries_enabled,
+                "trades_enabled": trades_enabled,
+                "pick_trades": pick_trades,
+                "reentry_enabled": reentry_enabled,
+            },
+        )
+    except LeagueBusy:
+        db.rollback()
+        error = "A sim is running. Try again once it's done."
+    if error:
+        # Nothing was written: save_solo checks before it saves.
+        return RedirectResponse(
+            f"{back}?settings_error={quote(error)}", status_code=303
+        )
+    return RedirectResponse(f"{back}?saved=1", status_code=303)
 
 
 @router.get("/leagues/{league_id}/next-move", response_class=HTMLResponse)
