@@ -627,11 +627,16 @@ class BudgetRepository:
         if bank:
             balance = bank["start"]
         for r in rows:
-            if bank and r["year"] >= bank["since"] and r["profit"] is not None:
-                balance += r["profit"] - spent.get(r["year"], 0)
+            r["bank_before"] = r["bank_spent"] = r["bank_after"] = None
+            if not bank or r["year"] < bank["since"]:
+                continue
+            # The season's ballpark payments come out of the bank too; this
+            # season's are already out while its profit is still to come.
+            r["bank_before"] = balance
+            r["bank_spent"] = spent.get(r["year"], 0)
+            if r["profit"] is not None:
+                balance += r["profit"] - r["bank_spent"]
                 r["bank_after"] = balance
-            else:
-                r["bank_after"] = None
         return list(reversed(rows))
 
     def assess(self, league_id: str, year: int) -> dict[str, int]:

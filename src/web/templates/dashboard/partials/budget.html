@@ -31,6 +31,12 @@
   .bud-tix-top { display:flex; align-items:baseline; gap:10px; }
   .bud-tix-range { width:100%; margin:10px 0 2px; accent-color:var(--green); }
   .bud-table td.num.bud-good { color:var(--green); }
+  .bud-years { margin-top:12px; }
+  .bud-years summary { cursor:pointer; font-size:12px; font-weight:600; color:var(--text); }
+  .bud-years-wrap { overflow-x:auto; margin-top:8px; }
+  .bud-years table { width:100%; }
+  .bud-years .bud-proj td { color:var(--muted); font-style:italic; }
+  @media (max-width: 640px) { .bud-years .bud-years-start { display:none; } }
   .bud-tix-ends { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); }
 </style>
 
@@ -110,6 +116,30 @@
         <div class="bud-note">Your owner keeps {{ bank.floor_text }} (a season's cap) in reserve{% if bank.owed_text %}, and {{ bank.owed_text }} for the stadium payments still to come{% endif %}</div>
       </div>
     </div>
+    {% if bank.seasons %}
+    <details class="bud-years">
+      <summary>Season by season</summary>
+      <div class="bud-years-wrap">
+        {% set any_spent = bank.seasons | selectattr('spent_text') | list %}
+        <table class="data-table bud-table">
+          <thead><tr><th>Year</th><th class="num bud-years-start">Start</th><th class="num">Profit</th>{% if any_spent %}<th class="num">Ballpark</th>{% endif %}<th class="num">Change</th><th class="num">End</th></tr></thead>
+          <tbody>
+            {% for s in bank.seasons %}
+            <tr{% if s.projected %} class="bud-proj" title="This season so far: the profit is a projection"{% endif %}>
+              <td>{{ s.year }}{% if s.projected %}*{% endif %}</td>
+              <td class="num bud-years-start">{{ s.start_text }}</td>
+              <td class="num {% if not s.projected %}{{ 'bud-bad' if s.loss else 'bud-good' }}{% endif %}">{{ s.profit_text }}</td>
+              {% if any_spent %}<td class="num">{{ s.spent_text or '—' }}</td>{% endif %}
+              <td class="num {% if not s.projected %}{{ 'bud-bad' if s.down else 'bud-good' }}{% endif %}">{{ s.change_text }}</td>
+              <td class="num">{{ s.end_text }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% if bank.seasons[0].projected %}<div class="bud-note">* This season, with its projected profit.</div>{% endif %}
+      </div>
+    </details>
+    {% endif %}
     <div class="bud-line" style="margin-top:8px;">
       The owner's own savings, not money you spend. Each season's profit or loss goes in, and a bank that's grown since {{ bank.since }} loosens next season's budget (a shrinking one tightens it) by up to {{ rules.swing_pct }}% of the cap.{% if bank.spent_text %} {{ bank.spent_text }} of it has gone into the ballpark.{% endif %}
     </div>
