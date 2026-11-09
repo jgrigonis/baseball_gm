@@ -46,6 +46,9 @@
           <button class="lu-filter" id="vs-hand-L" onclick="switchHand('L')"
                   title="The lineup for games against left-handed starters">vs LHP</button>
         </span>
+        <button class="lu-filter" id="show-def-btn" onclick="toggleShowDef()"
+                style="margin-left:12px;white-space:nowrap;" aria-pressed="false"
+                title="Show each hitter's arm and fielding grades in the batting order">Show Def</button>
         <div class="spacer"></div>
         <button class="btn btn-secondary" onclick="autoFill()"
                 title="Fill the empty and injured spots in both lineups, vs RHP and vs LHP, keeping the players already in them"
@@ -79,7 +82,7 @@
       <div class="lu-col-body">
         <div id="vs-hand-note" style="display:none;padding:8px 14px 0;font-family:var(--font-mono);
              font-size:11px;color:var(--text-dim);"></div>
-        <div id="batting-order"></div>
+        <div id="batting-order" class="hide-def"></div>
         <div style="padding:12px 14px 4px;font-family:var(--font-mono);font-size:10px;
                     letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);
                     border-top:1px solid var(--border);margin-top:4px;">
@@ -553,6 +556,7 @@ window.handleBullpenRoleChange = handleBullpenRoleChange;
 window.setBullpenRole      = setBullpenRole;
 window.saveLineupToStorage = saveToStorage;
 window.switchHand          = switchHand;
+window.toggleShowDef       = toggleShowDef;
 window.revertBatting       = revertBatting;
 window.revertRotation      = revertRotation;
 window.revertBullpen       = revertBullpen;
@@ -1068,6 +1072,29 @@ async function rebuildLineup() {
   const ok = await Promise.all(['R', 'L'].map(h => _fetchLineup(h, true)));
   if (ok.some(Boolean)) _afterLineupFetch();
 }
+
+/* ── Batting: Show Def toggle ───────────────────────────────────────────────── */
+// Off by default: the batting order hides each hitter's fielding line. The
+// choice is kept in this browser so it survives tab swaps and reloads.
+const SHOW_DEF_KEY = 'lineupShowDef';
+function applyShowDef(on) {
+  document.getElementById('batting-order')?.classList.toggle('hide-def', !on);
+  const btn = document.getElementById('show-def-btn');
+  if (btn) {
+    btn.classList.toggle('active', on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  }
+}
+function toggleShowDef() {
+  const on = !document.getElementById('show-def-btn')?.classList.contains('active');
+  try { localStorage.setItem(SHOW_DEF_KEY, on ? '1' : '0'); } catch (e) {}
+  applyShowDef(on);
+}
+(function () {
+  let on = false;
+  try { on = localStorage.getItem(SHOW_DEF_KEY) === '1'; } catch (e) {}
+  applyShowDef(on);
+})();
 
 /* ── Batting: vs RHP / vs LHP ────────────────────────────────────────────────── */
 function switchHand(hand) {

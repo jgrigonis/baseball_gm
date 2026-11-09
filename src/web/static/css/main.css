@@ -1865,6 +1865,7 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
 .lu-jersey { font-family: var(--font-mono); font-weight: 500; font-size: 11px; color: var(--text-dim); margin-right: 5px; }
 .lu-skills { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); margin-top: 2px; display: flex; gap: 6px; flex-wrap: wrap; }
 .lu-skills .gl { color: var(--muted); margin-right: 1px; }
+.hide-def .lu-def { display: none; }
 /* Stats, B/T and age after the name, on the same line */
 .lu-trail { font-family: var(--font-mono); font-size: 10px; font-weight: 400; color: var(--text-dim); }
 .lu-trail .lu-dot { margin: 0 1px; }

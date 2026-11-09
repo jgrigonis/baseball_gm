@@ -90,3 +90,12 @@ def test_each_player_has_a_face_image(client, db_conn, setup):
     for h in hitters:
         assert f"/faces/{h.id}.svg?age=" in r.text
     assert urlencode({"team": f"{t['city']}|{t['mascot']}"}) in r.text
+
+
+def test_show_def_toggle_starts_hidden(client, setup):
+    league, _, _, _ = setup
+    r = client.get(f"/leagues/{league.id}/lineup")
+
+    # The batting order hides fielding lines until Show Def is turned on.
+    assert 'id="show-def-btn"' in r.text
+    assert '<div id="batting-order" class="hide-def"></div>' in r.text
