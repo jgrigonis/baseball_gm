@@ -57,8 +57,10 @@ function hitterGradesHtml(p, assignedPos) {
         ? `<span><span class="gl">${k}</span><span class="${gradeClass(v)}" style="color:var(--sky);font-weight:700;">${v}</span></span>`
         : `<span><span class="gl">${k}</span><span class="${gradeClass(v)}">${v}</span></span>`;
     }).join('');
-  return [hitHtml, defHtml].filter(Boolean)
-    .map(h => `<div class="lu-skills">${h}</div>`).join('');
+  // The fielding line carries .lu-def so a list can hide it (Lineup tab's
+  // Show Def toggle).
+  return (hitHtml ? `<div class="lu-skills">${hitHtml}</div>` : '')
+    + (defHtml ? `<div class="lu-skills lu-def">${defHtml}</div>` : '');
 }
 
 function pitcherGradesHtml(p) {
