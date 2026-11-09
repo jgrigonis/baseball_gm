@@ -82,3 +82,55 @@ def test_the_books_count_popularity_money_in():
     popular = fn.books(**kw, popularity=20 * M)
     assert popular["total_in"] == plain["total_in"] + 20 * M
     assert popular["profit"] == plain["profit"] + 20 * M
+
+
+# ── Broadcast deals and merchandise (Josh, 2026-11-09) ────────────────────────
+
+
+def test_jerseys_sell_by_grade_with_star_and_new_team_bumps():
+    cap = fn.MERCH_CAP
+    assert fn.jersey_money("B", cap) == 0
+    assert fn.jersey_money("B+", cap) == 1 * M
+    assert fn.jersey_money("A+", cap) == 10 * M
+    assert fn.jersey_money("A", cap, all_star=True) == 9 * M
+    assert fn.jersey_money("A", cap, award=True, new=True) == 18 * M
+    # Prices grow with the cap.
+    assert fn.jersey_money("A", cap * 2) == 12 * M
+
+
+def test_merchandise_follows_market_fans_marketing_and_games():
+    star = fn.Seller("p1", "A", share=1.0)
+    half = fn.Seller("p2", "A+", share=0.5)
+    nobody = fn.Seller("p3", "C", share=1.0)
+    total, parts = fn.merchandise([star, half, nobody], fn.MERCH_CAP, 3, 50)
+    # Market 3 and fans 50 are x1; the A+ played half his games here.
+    assert total == 11 * M
+    assert [s.player_id for s, _ in parts] == ["p1", "p2"]
+    big, _ = fn.merchandise([star], fn.MERCH_CAP, 5, 100, marketing=4)
+    small, _ = fn.merchandise([star], fn.MERCH_CAP, 1, 0, marketing=0)
+    assert big > 2 * small > 0
+
+
+def test_broadcast_deals_pay_popular_winners_in_big_markets():
+    avg = 265 * M
+    worst = fn.broadcast_base(avg, 1, 0, 0.30)
+    middle = fn.broadcast_base(avg, 3, 50, 0.50)
+    best = fn.broadcast_base(avg, 5, 100, 0.70)
+    assert worst == round(avg * 0.06 * 0.8 / 100_000) * 100_000
+    assert worst < middle < best
+    assert 12 * M < worst < 15 * M and 50 * M < best < 55 * M
+    assert fn.broadcast_amount(middle, 5) > fn.broadcast_amount(middle, 3)
+    assert fn.broadcast_amount(middle, 2) == middle
+    assert fn.broadcast_years(4) == fn.BROADCAST_DEFAULT_YEARS
+
+
+def test_the_books_count_broadcast_and_merchandise_in():
+    kw = dict(
+        revenue=250 * M, market=3, fans=50, playoff_gate=0, home_playoff_games=0,
+        gate_per_game=9 * M, tax_share=0, payroll=150 * M, front_office=20 * M,
+        luxury_tax=0, costs=80 * M,
+    )  # fmt: skip
+    plain = fn.books(**kw)
+    more = fn.books(**kw, broadcast=30 * M, merchandise=12 * M)
+    assert more["total_in"] == plain["total_in"] + 42 * M
+    assert more["profit"] == plain["profit"] + 42 * M
