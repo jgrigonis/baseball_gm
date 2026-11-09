@@ -567,6 +567,13 @@ var  LEAGUE_ID        = "{{ league_id }}";
 const ALL_HITTERS     = {{ hitters          | tojson }};
 const ALL_PITCHERS    = {{ pitchers         | tojson }};
 const ROTATION_SIZE   = {{ rotation_size | default(5) | tojson }};  // Strategy tab
+const REST_RUSTY      = {{ rest_rusty | default(false) | tojson }};  // Strategy tab
+// Who the auto builds (Auto-fill, Rebuild, bullpen roles) leave out: the
+// injured, and with Rest rusty players on, anyone still rusty.
+const sitsOut = p => !!(p.injured || (REST_RUSTY && p.rust));
+// A pitcher's grade as the auto builds see him: with any rust taken off,
+// the way he pitches today (rusty_grades, src/api/view_models/lineup.py).
+const autoGrade = (p, key) => (p.rusty_grades && p.rusty_grades[key]) || p[key];
 const FIELDING_STATS  = {{ fielding_stats_map | tojson }};  // {player_id: {pos: {po,a,e,pb,fpct}}}
 const SAVED_LINEUP  = {{ saved_lineup  | tojson }};  // {R: [...], L: [...]}
 const SAVED_ROT     = {{ saved_rotation | tojson }};
@@ -1591,12 +1598,12 @@ function autoFillRotation() {
 
   // A replacement takes the injured pitcher's slot (and the next-starter dot,
   // if it was his); everyone else keeps his place. Open slots fill at the end.
-  const healthy = pid => { const p = findPitcher(pid); return p && !p.injured; };
+  const healthy = pid => { const p = findPitcher(pid); return p && !sitsOut(p); };
   const current = rotation.filter(Boolean);
   const inRot = new Set(current.filter(healthy));
   const candidates = ALL_PITCHERS
-    .filter(p => !p.injured && !inRot.has(p.player_id))
-    .sort((a, b) => gradeVal(a.sp_grade || a.overall) - gradeVal(b.sp_grade || b.overall))
+    .filter(p => !sitsOut(p) && !inRot.has(p.player_id))
+    .sort((a, b) => gradeVal(autoGrade(a, 'sp_grade') || autoGrade(a, 'overall')) - gradeVal(autoGrade(b, 'sp_grade') || autoGrade(b, 'overall')))
     .map(p => p.player_id);
   // Never grow the rotation past ROTATION_SIZE (Strategy tab).
   let spare = Math.max(0, ROTATION_SIZE - inRot.size);
@@ -1637,8 +1644,8 @@ function rebuildRotation() {
   clearedPointer = null;
 
   rotation = ALL_PITCHERS
-    .filter(p => !p.injured)
-    .sort((a, b) => gradeVal(a.sp_grade || a.overall) - gradeVal(b.sp_grade || b.overall))
+    .filter(p => !sitsOut(p))
+    .sort((a, b) => gradeVal(autoGrade(a, 'sp_grade') || autoGrade(a, 'overall')) - gradeVal(autoGrade(b, 'sp_grade') || autoGrade(b, 'overall')))
     .slice(0, ROTATION_SIZE)
     .map(p => p.player_id);
   pointerPid = rotation.includes(prevPointer) ? prevPointer : null;
@@ -1659,12 +1666,12 @@ function rebuildRotation() {
 function autoAssignBullpen() {
   const inRot = new Set(rotation.filter(Boolean));
   const allBp = ALL_PITCHERS.filter(p => !inRot.has(p.player_id));
-  const healthy = allBp.filter(p => !p.injured);
+  const healthy = allBp.filter(p => !sitsOut(p));
 
   // Sort helpers
-  const byStuff   = (a, b) => gradeVal(a.stuff   || a.overall) - gradeVal(b.stuff   || b.overall);
-  const bySP      = (a, b) => gradeVal(a.sp_grade || a.overall) - gradeVal(b.sp_grade || b.overall);
-  const byOverall = (a, b) => gradeVal(a.overall) - gradeVal(b.overall);
+  const byStuff   = (a, b) => gradeVal(autoGrade(a, 'stuff') || autoGrade(a, 'overall')) - gradeVal(autoGrade(b, 'stuff') || autoGrade(b, 'overall'));
+  const bySP      = (a, b) => gradeVal(autoGrade(a, 'sp_grade') || autoGrade(a, 'overall')) - gradeVal(autoGrade(b, 'sp_grade') || autoGrade(b, 'overall'));
+  const byOverall = (a, b) => gradeVal(autoGrade(a, 'overall')) - gradeVal(autoGrade(b, 'overall'));
 
   const assigned = new Set();
   const newBullpen = {};
@@ -1689,7 +1696,8 @@ function autoAssignBullpen() {
   healthy.forEach(p => {
     if (!assigned.has(p.player_id)) newBullpen[p.player_id] = 'Utility';
   });
-  // Injured players: leave unassigned (no role entry)
+  // Injured players (and rusty ones, with Rest rusty players on): leave
+  // unassigned (no role entry)
 
   const before = JSON.stringify(Object.entries(bullpen).sort());
   bullpen = newBullpen;
@@ -1803,7 +1811,7 @@ function updateScheduleBtn() {
 // Same green as Go to Schedule. Save All Lineups glows while any unsaved bar
 // is up; Rebuild All glows while something has a hole Rebuild All would fill.
 function needsRebuild() {
-  const ok = p => p && !p.injured;
+  const ok = p => p && !sitsOut(p);
   // Either batting order: an empty spot, or a player who's hurt or gone
   for (const h of ['R', 'L']) {
     const slots = lineups[h].slice(0, 9);
@@ -1811,12 +1819,12 @@ function needsRebuild() {
   }
   // Rotation: short of the Strategy tab's size, or a starter who's hurt or gone
   const rot = rotation.filter(Boolean);
-  const healthyArms = ALL_PITCHERS.filter(p => !p.injured).length;
+  const healthyArms = ALL_PITCHERS.filter(p => !sitsOut(p)).length;
   if (rot.length < Math.min(ROTATION_SIZE, healthyArms)) return true;
   if (rot.some(pid => !ok(findPitcher(pid)))) return true;
   // Bullpen: a healthy reliever with no role
   const inRot = new Set(rot);
-  return ALL_PITCHERS.some(p => !p.injured && !inRot.has(p.player_id) && !bullpen[p.player_id]);
+  return ALL_PITCHERS.some(p => !sitsOut(p) && !inRot.has(p.player_id) && !bullpen[p.player_id]);
 }
 function updateHeaderGlow() {
   const anyBar = unsavedHands().length > 0 || !pitchingSaved || !bullpenSaved;

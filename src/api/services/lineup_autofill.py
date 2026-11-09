@@ -8,9 +8,12 @@
 #   - Rebuild starts over from the whole eligible roster.
 # Both use the platoon setting against the hand the lineup is for (the Lineup
 # tab's vs RHP / vs LHP toggle), and weigh each hitter's season stats against
-# his ratings by the Strategy tab's stats-vs-scouting setting.
+# his ratings by the Strategy tab's stats-vs-scouting setting. A hitter
+# still rusty from an injury is rated with the rust taken off his skills.
 # Eligible is who can play in a game: the 26-man, plus the 40-man in Blitz
-# leagues, minus the injured and pitchers.
+# leagues, minus the injured and pitchers. With the Strategy tab's Rest rusty
+# players on, hitters still rusty from an injury are left out too, unless
+# that would leave fewer than nine.
 
 from __future__ import annotations
 
@@ -58,6 +61,19 @@ def autofill(
     current is the lineup on screen, one entry (or None) per slot. Raises
     ValueError if there aren't enough healthy hitters."""
     hitters = eligible_hitters(db, league_id, team_id)
+    profile = ManagerProfile.from_row(
+        GMRepository(db).get_team_profile(team_id, league_id)
+    )
+    # Rusty hitters are rated with their rust taken off, the way the sim
+    # plays them today, or left out with Rest rusty players on.
+    rusty = InjuryRepository(db, league_id).get_rust([p.id for p in hitters])
+    for p in hitters:
+        if p.id in rusty:
+            p.apply_rust(rusty[p.id]["skills"])
+    if profile.rest_rusty:
+        fresh = [p for p in hitters if p.id not in rusty]
+        if len(fresh) >= 9:
+            hitters = fresh
     by_id = {p.id: p for p in hitters}
 
     locked = [None] * 9
@@ -67,9 +83,6 @@ def autofill(
             if player:
                 locked[i] = (player, slot.get("position"))
 
-    profile = ManagerProfile.from_row(
-        GMRepository(db).get_team_profile(team_id, league_id)
-    )
     lineup = LineupOptimizer.fill(
         locked,
         hitters,

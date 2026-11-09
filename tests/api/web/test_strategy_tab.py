@@ -113,3 +113,19 @@ def test_page_has_unsaved_bar_with_draft_key(client, gm):
     assert 'id="strategy-unsaved-banner"' in html
     assert "Save now" in html and "strategyRevert()" in html
     assert f'data-draft-key="strategy_draft_{gm.league_id}_{gm.id}"' in html
+
+
+def test_rest_rusty_checkbox_saves_and_shows(client, db_conn, gm):
+    url = f"/leagues/{gm.league_id}/strategy"
+    html = client.get(url, headers={"HX-Request": "true"}).text
+    assert "Injuries" in html and "Rest rusty players" in html
+    assert 'name="rest_rusty" value="1"\n           onchange' in html  # off
+
+    client.post(url, data={"baserunning": 2, "rest_rusty": "1"})
+    assert GMRepository(db_conn).get_profile(gm.id)["rest_rusty"] is True
+    html = client.get(url, headers={"HX-Request": "true"}).text
+    assert 'name="rest_rusty" value="1" checked' in html
+
+    # An unticked box isn't posted: that's off.
+    client.post(url, data={"baserunning": 2})
+    assert GMRepository(db_conn).get_profile(gm.id)["rest_rusty"] is False

@@ -87,6 +87,10 @@ class ManagerProfile:
     # How much a player's season stats count against his ratings, 0 to 100
     # (src/league/performance.py). 50 weighs them equally.
     stats_vs_scouting: int = 50
+    # Players still rusty from an injury sit until it fades: left out of
+    # Rebuild and Auto-fill, given no bullpen role, and treated like the
+    # injured on game day. Off plays them through it.
+    rest_rusty: bool = False
 
     @classmethod
     def from_row(cls, row: dict | None) -> ManagerProfile:
@@ -110,6 +114,8 @@ class ManagerProfile:
         values = {k: row[k] for k, ok in allowed.items() if row.get(k) in ok}
         if row.get("skip_fifth_starter") is not None:
             values["skip_fifth_starter"] = bool(row["skip_fifth_starter"])
+        if row.get("rest_rusty") is not None:
+            values["rest_rusty"] = bool(row["rest_rusty"])
         stats = row.get("stats_vs_scouting")
         if isinstance(stats, int) and 0 <= stats <= 100:
             values["stats_vs_scouting"] = stats

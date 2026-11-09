@@ -253,6 +253,37 @@ def _had_off_day(conn, team_id: str, season_id: str, game_date) -> bool:
     return (date.fromisoformat(str(game_date)[:10]) - last).days >= 2
 
 
+# Resting rusty players never leaves a team short: it keeps at least this
+# many available hitters, and pitchers, or that side plays through the rust.
+REST_RUSTY_MIN_HITTERS = 10
+REST_RUSTY_MIN_PITCHERS = 8
+
+
+def _rested_rusty(team, eligible, rust: dict, unavailable: set) -> set:
+    """The rusty players this team sits today: none unless its Strategy tab
+    has Rest rusty players on. Hitters and pitchers are checked apart; if
+    sitting a side's rusty players would leave too few of them available, that
+    side plays through it."""
+    if not team.profile.rest_rusty:
+        return set()
+    out = set()
+    for pitchers, floor in (
+        (False, REST_RUSTY_MIN_HITTERS),
+        (True, REST_RUSTY_MIN_PITCHERS),
+    ):
+        pool = [
+            p
+            for p in team.players
+            if bool(p.pitcher_fatigue) == pitchers
+            and p.id not in unavailable
+            and (not eligible or p.id in eligible)
+        ]
+        rusty = {p.id for p in pool if p.id in rust}
+        if rusty and len(pool) - len(rusty) >= floor:
+            out |= rusty
+    return out
+
+
 def _pick_starter(
     rotations_repo: TeamRotationsRepository,
     pitcher_repo: PitcherStateRepository,
@@ -558,6 +589,9 @@ def _play_game(
     # may be sitting out (src/player/happiness.py).
     happy_repo = HappinessRepository(conn, league_id)
     injured_ids = injured_ids | happy_repo.refusing(all_player_ids, game_date)
+    # Strategy tab "Rest rusty players": that team's rusty players sit too.
+    for team, eligible in ((home_team, home_eligible), (away_team, away_eligible)):
+        injured_ids = injured_ids | _rested_rusty(team, eligible, rust, injured_ids)
     moods = happy_repo.moods(all_player_ids, season_id)
     for player in home_team.players + away_team.players:
         row = moods.get(player.id)
