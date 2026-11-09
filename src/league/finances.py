@@ -12,7 +12,9 @@ A light money model, just enough for owners to set budgets and judge profit:
   (the team pool's 1 to 5), times how interested its fans are, plus a gate
   for every home playoff game and popularity money when fans are keen.
   Two more lines on top: a broadcast deal, its price locked when it's
-  signed, and merchandise, what the team's good players sell.
+  signed, and merchandise, what the team's good players sell. And the
+  ballpark: upgrades the owner pays for from their bank (BALLPARK) earn
+  money every season after they open.
 - **Budget**: what the owner will spend on payroll and the front office
   (src/league/budget.py DEPARTMENTS). The league sets one payroll cap for every team
   (src/league/budget.py: the average payroll, then last season's average
@@ -144,6 +146,58 @@ TICKET_REVENUE = (0.80, 0.86, 0.91, 0.96, 1.00, 1.04, 1.07, 1.095, 1.115, 1.13)
 TICKET_FANS = (12, 9, 6, 3, 0, -3, -6, -10, -14, -19)
 
 
+# Ballpark upgrades (Josh, 2026-11-09: stadium upgrades for rich owners).
+# Each is built once, paid from the owner's bank (not the season's profit)
+# and earns from the season it opens on. Costs are a share of the cap;
+# money is a share of the league's average revenue times the market (and
+# fan interest, for club seats), or a share of the team's own regular season
+# revenue (a renovation). Paybacks run about 4 to 7 seasons, inside a
+# 10-season league.
+@dataclass(frozen=True)
+class Project:
+    key: str
+    name: str
+    what: str
+    cost: float  # share of the cap
+    earns: float = 0.0  # share of the league's average revenue, times the market
+    by_fans: bool = False  # and times fan interest (fan_mult)
+    revenue: float = 0.0  # share of the team's regular season revenue
+    fans: int = 0  # points on the fans' end-of-season target, every season
+
+
+BALLPARK = (
+    Project(
+        "club_seats", "Club seats",
+        "Padded seats with their own bar, sold by the season. Keen fans pay more.",
+        cost=0.375, earns=0.036, by_fans=True,
+    ),
+    Project(
+        "suites", "Luxury suites",
+        "Glassed-in boxes leased to companies. Big markets pay the most.",
+        cost=0.75, earns=0.072,
+    ),
+    Project(
+        "plaza", "Fan plaza and video board",
+        "A plaza outside the gates and a giant screen. Fans warm to the team every season.",
+        cost=0.25, fans=3,
+    ),
+    Project(
+        "renovation", "Full renovation",
+        "New concourses, food and seats all round. Every regular season ticket earns more.",
+        cost=1.5, revenue=0.10,
+    ),
+)  # fmt: skip
+BALLPARK_KEYS = tuple(p.key for p in BALLPARK)
+# The owner only builds with savings to spare: their bank has to hold at
+# least this many caps after paying.
+BALLPARK_FLOOR = 1.0
+# One project a season: it's built between seasons and opens on Opening Day.
+BALLPARK_PER_SEASON = 1
+# What the AI reckons a point of fan interest is worth a season, as a share
+# of its regular season revenue (fan_mult: 0.4 of revenue over 100 points).
+FAN_POINT_VALUE = FAN_MULT_SPAN / 100
+
+
 def _round(value: float) -> int:
     return round(value / ROUNDING) * ROUNDING
 
@@ -185,6 +239,86 @@ def ticket_revenue(revenue: int, level) -> int:
     return _round(revenue * ticket_mult(level))
 
 
+def project(key) -> Project | None:
+    return next((p for p in BALLPARK if p.key == key), None)
+
+
+def project_cost(key, cap: int) -> int:
+    p = project(key)
+    return _round(cap * p.cost) if p else 0
+
+
+def project_money(
+    key,
+    average_revenue: float,
+    market: int,
+    fans: float,
+    revenue: int,
+    ticket_price=None,
+) -> int:
+    """What one ballpark project earns in a season for this team: revenue
+    is its regular season revenue before ticket prices."""
+    p = project(key)
+    if p is None:
+        return 0
+    value = average_revenue * p.earns * market_mult(market)
+    if p.by_fans:
+        value *= fan_mult(fans)
+    value += ticket_revenue(revenue, ticket_price) * p.revenue
+    return _round(value)
+
+
+def ballpark_money(
+    built,
+    average_revenue: float,
+    market: int,
+    fans: float,
+    revenue: int,
+    ticket_price=None,
+) -> int:
+    """What the team's open ballpark projects earn this season."""
+    return sum(
+        project_money(k, average_revenue, market, fans, revenue, ticket_price)
+        for k in set(built)
+    )
+
+
+def ballpark_fans(built) -> int:
+    """Points the open ballpark projects add to the fans' target."""
+    return sum(p.fans for p in BALLPARK if p.key in set(built))
+
+
+def project_value(
+    key,
+    average_revenue: float,
+    market: int,
+    fans: float,
+    revenue: int,
+    ticket_price=None,
+) -> float:
+    """A season of the project as money, fan interest at FAN_POINT_VALUE a
+    point (what AI owners weigh)."""
+    p = project(key)
+    if p is None:
+        return 0.0
+    return project_money(
+        key, average_revenue, market, fans, revenue, ticket_price
+    ) + p.fans * FAN_POINT_VALUE * ticket_revenue(revenue, ticket_price)
+
+
+def payback(cost: int, per_season: float) -> float | None:
+    """Seasons until a project pays for itself (None when it earns nothing)."""
+    return cost / per_season if per_season > 0 else None
+
+
+def can_build(bank: int | None, cost: int, cap: int) -> int:
+    """How much more the owner needs in the bank to pay for this: 0 when
+    they can."""
+    if bank is None:
+        return cost
+    return max(0, round(cap * BALLPARK_FLOOR) + cost - bank)
+
+
 def fan_target(
     win_pct: float,
     made_playoffs: bool,
@@ -207,11 +341,15 @@ def fans_after(
     all_stars: int,
     ticket_price=None,
     marketing=None,
+    ballpark: int = 0,
 ) -> int:
     """Fan interest after a season, with this season's ticket prices and
-    marketing department level (None: the defaults)."""
-    nudge = ticket_fans(ticket_price) + (
-        0 if marketing is None else bg.marketing_fans(marketing)
+    marketing department level (None: the defaults), and ballpark points
+    (ballpark_fans)."""
+    nudge = (
+        ticket_fans(ticket_price)
+        + (0 if marketing is None else bg.marketing_fans(marketing))
+        + ballpark
     )
     target = fan_target(win_pct, made_playoffs, champion, all_stars, nudge)
     after = fans + FAN_STEP * (target - fans)
@@ -400,6 +538,7 @@ def books(
     popularity: int = 0,
     broadcast: int = 0,
     merchandise: int = 0,
+    ballpark: int = 0,
     profit: int | None = None,
 ) -> dict:
     """A team's season as money in and money out, for the Budget tab.
@@ -422,6 +561,7 @@ def books(
         + popularity
         + broadcast
         + merchandise
+        + ballpark
         + tax_share
         + farm_help
     )
@@ -447,6 +587,7 @@ def books(
         "popularity_from": POPULARITY_FROM,
         "broadcast": broadcast,
         "merchandise": merchandise,
+        "ballpark": ballpark,
         "home_playoff_games": home_playoff_games,
         "gate_per_game": gate_per_game,
         "tax_share": tax_share,

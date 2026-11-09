@@ -10,6 +10,7 @@ Uses tables:
                 is over the luxury tax, playoff gate, payroll, profit and fan
                 interest after
 - broadcast_deals  each team's local TV deals (price locked when signed)
+- ballpark_projects  each team's ballpark upgrades, paid from the owner's bank
 - team_owners, owner_personas  for each owner's Spending
 - player_season_stats, all_stars, season_awards, player_status  for who
                 sells jerseys for each team (merchandise)
@@ -23,11 +24,14 @@ league needs no setup step and older leagues pick budgets up on their own.
 
 from __future__ import annotations
 
+import random
+
 from src.db.repositories.contract_repo import ContractRepository
 from src.league import budget as bg
 from src.league import finances as fn
 from src.league import team_pool
 from src.league.league_modes import get_mode
+from src.player.contracts import format_salary
 
 
 class BudgetRepository:
@@ -90,6 +94,7 @@ class BudgetRepository:
                     levels.get("analytics"), levels.get("marketing"),
                 ),
             )  # fmt: skip
+        self._ai_ballparks(league_id, year, [t for t in made if t in ai], cap)
         return self._with_farm(league_id, year, {**have, **made})
 
     def custom_team_ids(self, league_id: str) -> set[str]:
@@ -489,20 +494,28 @@ class BudgetRepository:
             """SELECT t.team_id, t.bank_start, t.bank_year,
                       COALESCE(SUM(b.profit) FILTER (
                           WHERE b.year >= t.bank_year
-                            AND (%s::INT IS NULL OR b.year < %s::INT)), 0) AS made
+                            AND (%s::INT IS NULL OR b.year < %s::INT)), 0) AS made,
+                      COALESCE((SELECT SUM(p.cost) FROM ballpark_projects p
+                                WHERE p.league_id = t.league_id
+                                  AND p.team_id = t.team_id
+                                  AND (%s::INT IS NULL OR p.year <= %s::INT)), 0)
+                          AS spent
                FROM team_owners t
                LEFT JOIN team_budgets b
                  ON b.league_id = t.league_id AND b.team_id = t.team_id
                WHERE t.league_id = %s AND t.bank_start IS NOT NULL
-               GROUP BY t.team_id, t.bank_start, t.bank_year""",
-            (year, year, league_id),
+               GROUP BY t.team_id, t.bank_start, t.bank_year, t.league_id""",
+            (year, year, year, year, league_id),
         ).fetchall()
+        # A ballpark project is paid for between seasons, before the season
+        # it opens, so it's out of the bank coming into that season.
         return {
             r["team_id"]: {
                 "start": int(r["bank_start"]),
                 "since": r["bank_year"],
-                "balance": int(r["bank_start"]) + int(r["made"]),
-                "change": int(r["made"]),
+                "balance": int(r["bank_start"]) + int(r["made"]) - int(r["spent"]),
+                "change": int(r["made"]) - int(r["spent"]),
+                "spent": int(r["spent"]),
             }
             for r in rows
         }
@@ -549,6 +562,7 @@ class BudgetRepository:
             for r in self.conn.execute(
                 """SELECT year, cap, budget, payroll, revenue, playoff_revenue,
                           popularity_revenue, broadcast_revenue, merch_revenue,
+                          ballpark_revenue,
                           luxury_tax, tax_share, front_office, minor_league,
                           profit,
                           fans_before, fans_after, ticket_price
@@ -558,12 +572,15 @@ class BudgetRepository:
             ).fetchall()
         ]
         bank = self.banks(league_id).get(team_id)
+        spent: dict[int, int] = {}
+        for p in self.ballpark(league_id, team_id):
+            spent[p["year"]] = spent.get(p["year"], 0) + p["cost"]
         balance = None
         if bank:
             balance = bank["start"]
         for r in rows:
             if bank and r["year"] >= bank["since"] and r["profit"] is not None:
-                balance += r["profit"]
+                balance += r["profit"] - spent.get(r["year"], 0)
                 r["bank_after"] = balance
             else:
                 r["bank_after"] = None
@@ -602,6 +619,7 @@ class BudgetRepository:
         shares = bg.tax_shares(payrolls, cap)
         deals = self.broadcast_deals(league_id, year)
         merch = self.merchandise(league_id, year)
+        parks = self.ballparks(league_id, year)
         taxes = {}
         for team_id in budgets:
             payroll = payrolls[team_id]
@@ -620,19 +638,28 @@ class BudgetRepository:
                 r.get("all_stars", 0),
                 rows[team_id]["ticket_price"],
                 levels.get(team_id, {}).get("marketing"),
+                fn.ballpark_fans(parks.get(team_id, ())),
             )
             gate = fn.playoff_gate(average, r.get("home_playoff_games", 0))
             tickets = fn.ticket_revenue(revenue[team_id], rows[team_id]["ticket_price"])
             popular = fn.popularity_money(average, before)
             broadcast = deals[team_id]["amount"] if team_id in deals else 0
             sold = merch[team_id]["total"] if team_id in merch else 0
-            total = tickets + gate + popular + broadcast + sold
+            park = fn.ballpark_money(
+                parks.get(team_id, ()),
+                average,
+                money[team_id].market,
+                before,
+                revenue[team_id],
+                rows[team_id]["ticket_price"],
+            )
+            total = tickets + gate + popular + broadcast + sold + park
             self.conn.execute(
                 """UPDATE team_budgets
                    SET luxury_tax = %s, revenue = %s, fans_before = %s,
                        fans_after = %s, playoff_revenue = %s,
                        popularity_revenue = %s, broadcast_revenue = %s,
-                       merch_revenue = %s, payroll = %s,
+                       merch_revenue = %s, ballpark_revenue = %s, payroll = %s,
                        tax_share = %s, front_office = %s, minor_league = %s,
                        profit = %s
                    WHERE league_id = %s AND team_id = %s AND year = %s""",
@@ -645,6 +672,7 @@ class BudgetRepository:
                     popular,
                     broadcast,
                     sold,
+                    park,
                     payroll,
                     share,
                     office,
@@ -801,6 +829,167 @@ class BudgetRepository:
             (fn.broadcast_years(years), league_id, team_id, year),
         )
         return True
+
+    # ── The ballpark ─────────────────────────────────────────────────────────
+
+    def ballpark(self, league_id: str, team_id: str) -> list[dict]:
+        """The team's ballpark projects, oldest first: {"project", "year"
+        it opened, "cost"}."""
+        return [
+            {"project": r["project"], "year": r["year"], "cost": int(r["cost"])}
+            for r in self.conn.execute(
+                """SELECT project, year, cost FROM ballpark_projects
+                   WHERE league_id = %s AND team_id = %s ORDER BY year, project""",
+                (league_id, team_id),
+            ).fetchall()
+        ]
+
+    def ballparks(self, league_id: str, year: int | None) -> dict[str, list[str]]:
+        """Each team's ballpark projects open this season (with year None,
+        all of them), by team id."""
+        out: dict[str, list[str]] = {}
+        for r in self.conn.execute(
+            """SELECT team_id, project FROM ballpark_projects
+               WHERE league_id = %s AND (%s::INT IS NULL OR year <= %s::INT)""",
+            (league_id, year, year),
+        ).fetchall():
+            out.setdefault(r["team_id"], []).append(r["project"])
+        return out
+
+    def ballpark_offers(self, league_id: str, team_id: str, year: int) -> list[dict]:
+        """Every ballpark project for the team this season, for the Budget
+        tab: what it costs, what it would earn a season, its payback, and
+        whether it's built, or what the owner still needs to pay for it.
+        Empty without budgets."""
+        if self.budget(league_id, team_id, year) is None:
+            return []
+        cap = self.cap(league_id, year)
+        row = self.conn.execute(
+            """SELECT revenue, fans_before, ticket_price FROM team_budgets
+               WHERE league_id = %s AND team_id = %s AND year = %s""",
+            (league_id, team_id, year),
+        ).fetchone()
+        money = self._team_money(league_id, year, [team_id])[team_id]
+        fans = money.fans if row["fans_before"] is None else row["fans_before"]
+        average = self._average_revenue(league_id, year)
+        revenue = int(row["revenue"] or average)
+        built = {p["project"]: p for p in self.ballpark(league_id, team_id)}
+        this_season = sum(1 for p in built.values() if p["year"] == year)
+        bank = self.banks(league_id).get(team_id)
+        balance = bank["balance"] if bank else None
+        out = []
+        for p in fn.BALLPARK:
+            cost = (
+                int(built[p.key]["cost"])
+                if p.key in built
+                else fn.project_cost(p.key, cap)
+            )
+            earns = fn.project_money(
+                p.key, average, money.market, fans, revenue, row["ticket_price"]
+            )
+            out.append(
+                {
+                    "key": p.key,
+                    "name": p.name,
+                    "what": p.what,
+                    "cost": cost,
+                    "earns": earns,
+                    "fans": p.fans,
+                    "payback": fn.payback(cost, earns),
+                    "built": built[p.key]["year"] if p.key in built else None,
+                    "short": fn.can_build(balance, cost, cap)
+                    if p.key not in built
+                    else 0,
+                    "waiting": p.key not in built
+                    and this_season >= fn.BALLPARK_PER_SEASON,
+                }
+            )
+        return out
+
+    def build(self, league_id: str, team_id: str, year: int, key: str) -> str | None:
+        """The owner builds a ballpark project, opening this season, from
+        their bank (the caller checks it's between seasons). Returns why
+        not, or None when it's built."""
+        offer = next(
+            (
+                o
+                for o in self.ballpark_offers(league_id, team_id, year)
+                if o["key"] == key
+            ),
+            None,
+        )
+        if offer is None:
+            return "That isn't a ballpark project."
+        if offer["built"] is not None:
+            return f"Your {offer['name'].lower()} opened in {offer['built']}."
+        if offer["waiting"]:
+            return "One ballpark project a season: this one waits until next offseason."
+        if offer["short"]:
+            return (
+                "Your owner won't dip that far into savings: they need "
+                f"{format_salary(offer['short'])} more in the bank first."
+            )
+        self._add_project(league_id, team_id, year, key, offer["cost"])
+        return None
+
+    def _add_project(
+        self, league_id: str, team_id: str, year: int, key: str, cost: int
+    ) -> None:
+        self.conn.execute(
+            """INSERT INTO ballpark_projects (league_id, team_id, project, year, cost)
+               VALUES (%s, %s, %s, %s, %s)
+               ON CONFLICT (league_id, team_id, project) DO NOTHING""",
+            (league_id, team_id, key, year, cost),
+        )
+
+    def _ai_ballparks(
+        self, league_id: str, year: int, team_ids: list[str], cap: int
+    ) -> None:
+        """AI GMs ask for a ballpark project when their owner can pay for
+        it: the best payback for their market, more often for owners who
+        spend."""
+        if not team_ids:
+            return
+        rows = {
+            r["team_id"]: r
+            for r in self.conn.execute(
+                """SELECT team_id, revenue, fans_before, ticket_price FROM team_budgets
+                   WHERE league_id = %s AND year = %s""",
+                (league_id, year),
+            ).fetchall()
+        }
+        if not rows:
+            return
+        banks = self.banks(league_id)
+        built = self.ballparks(league_id, None)
+        spending = self._spending(league_id)
+        money = self._team_money(league_id, year, team_ids)
+        average = self._average_revenue(league_id, year)
+        for t in team_ids:
+            r = rows.get(t)
+            bank = banks.get(t)
+            if r is None or bank is None:
+                continue
+            chance = 0.25 + 0.5 * spending.get(t, 50) / 100
+            if random.Random(f"park:{league_id}:{t}:{year}").random() > chance:
+                continue
+            fans = money[t].fans if r["fans_before"] is None else r["fans_before"]
+            revenue = int(r["revenue"] or average)
+            best = None
+            for p in fn.BALLPARK:
+                if p.key in built.get(t, ()):
+                    continue
+                cost = fn.project_cost(p.key, cap)
+                if fn.can_build(bank["balance"], cost, cap):
+                    continue
+                value = fn.project_value(
+                    p.key, average, money[t].market, fans, revenue, r["ticket_price"]
+                )
+                seasons = fn.payback(cost, value)
+                if seasons is not None and (best is None or seasons < best[0]):
+                    best = (seasons, p.key, cost)
+            if best:
+                self._add_project(league_id, t, year, best[1], best[2])
 
     # ── Merchandise ──────────────────────────────────────────────────────────
 
@@ -1002,7 +1191,7 @@ class BudgetRepository:
             """SELECT team_id, year, cap, revenue, playoff_revenue, payroll,
                       luxury_tax, tax_share, front_office, minor_league, profit,
                       fans_before, ticket_price, popularity_revenue,
-                      broadcast_revenue, merch_revenue
+                      broadcast_revenue, merch_revenue, ballpark_revenue
                FROM team_budgets WHERE league_id = %s AND year <= %s""",
             (league_id, year),
         ).fetchall()
@@ -1035,6 +1224,7 @@ class BudgetRepository:
                     popularity=int(mine["popularity_revenue"] or 0),
                     broadcast=int(mine["broadcast_revenue"] or 0),
                     merchandise=int(mine["merch_revenue"] or 0),
+                    ballpark=int(mine["ballpark_revenue"] or 0),
                     tax_share=int(mine["tax_share"] or 0),
                     payroll=int(mine["payroll"] or 0),
                     front_office=int(mine["front_office"] or 0),
@@ -1064,6 +1254,14 @@ class BudgetRepository:
                 sold = self.merchandise(league_id, y, [team_id]).get(team_id)
                 extra = {"sellers": sold["sellers"] if sold else []}
                 line = dict(
+                    ballpark=fn.ballpark_money(
+                        self.ballparks(league_id, y).get(team_id, ()),
+                        average,
+                        market,
+                        fans,
+                        revenue[team_id],
+                        mine["ticket_price"],
+                    ),
                     broadcast=deal["amount"] if deal else 0,
                     merchandise=sold["total"] if sold else 0,
                     minor_league=farms.get(team_id, 0),
@@ -1124,6 +1322,7 @@ class BudgetRepository:
         results = self._results(league_id, season_id) if season_id else {}
         deals = self.broadcast_deals(league_id, year)
         merch = self.merchandise(league_id, year)
+        parks = self.ballparks(league_id, year)
         out = {}
         for t, r in rows.items():
             fans = money[t].fans if r["fans_before"] is None else r["fans_before"]
@@ -1143,6 +1342,14 @@ class BudgetRepository:
                 popularity=fn.popularity_money(average, fans),
                 broadcast=deals[t]["amount"] if t in deals else 0,
                 merchandise=merch[t]["total"] if t in merch else 0,
+                ballpark=fn.ballpark_money(
+                    parks.get(t, ()),
+                    average,
+                    money[t].market,
+                    fans,
+                    revenue[t],
+                    r["ticket_price"],
+                ),  # fmt: skip
                 tax_share=shares.get(t, 0),
                 payroll=payrolls[t],
                 front_office=(

@@ -94,10 +94,48 @@
     <div class="bud-value {% if bank.empty %}bud-bad{% endif %}" style="margin-top:0;">{{ bank.balance_text }}</div>
     <div class="bud-note">{% if bank.change_text != '$0K' %}<span class="{{ 'bud-good' if bank.up else 'bud-bad' }}">{{ '+' if bank.up }}{{ bank.change_text }}</span> since {{ bank.since }}{% else %}Since {{ bank.since }}{% endif %}</div>
     <div class="bud-line" style="margin-top:8px;">
-      The owner's own savings, not money you spend. Each season's profit or loss goes in, and a bank that's grown since {{ bank.since }} loosens next season's budget (a shrinking one tightens it) by up to {{ rules.swing_pct }}% of the cap.
+      The owner's own savings, not money you spend. Each season's profit or loss goes in, and a bank that's grown since {{ bank.since }} loosens next season's budget (a shrinking one tightens it) by up to {{ rules.swing_pct }}% of the cap.{% if bank.spent_text %} {{ bank.spent_text }} of it has gone into the ballpark.{% endif %}
     </div>
   </div>
 </div>
+{% endif %}
+
+{% if ballpark %}
+<div class="card" style="margin-bottom:16px;" id="ballpark">
+  <div class="card-header"><span class="card-title">Ballpark</span>
+    <span class="admin-dim" style="margin-left:auto;font-size:11px;">{% if not ballpark.open %}projects ordered in the offseason{% endif %}</span></div>
+  <div class="card-body">
+    {% if park_error %}<div class="bud-line bud-bad" style="margin-top:0;margin-bottom:10px;">{{ park_error }}</div>{% endif %}
+    {% for p in ballpark.rows %}
+    <form class="bud-dept bud-park" data-quiet-swap hx-post="/leagues/{{ league_id }}/budget/ballpark"
+          hx-target="#tab-content" hx-swap="innerHTML"
+          data-confirm="Build {{ p.name|lower }} for {{ p.cost_text }}?"
+          data-confirm-text="Your owner pays from their bank, and it opens on Opening Day.{% if p.earns_text %} It should earn about {{ p.earns_text }} a season.{% endif %}"
+          data-confirm-ok="Build" data-confirm-tone="go">
+      <input type="hidden" name="project" value="{{ p.key }}">
+      <div class="bud-dept-name">
+        <strong>{{ p.name }}</strong> <span class="admin-dim" style="font-size:12px;">{{ p.cost_text }}</span>
+        <div class="bud-note">{{ p.what }}</div>
+        <div class="bud-note">
+          {%- if p.earns_text %}About {{ p.earns_text }} a season for you{% if p.payback_text %} · {{ p.payback_text }}{% endif %}{% endif %}
+          {%- if p.fans %}{% if p.earns_text %} · {% endif %}+{{ p.fans }} fan interest a season{% endif %}
+        </div>
+      </div>
+      {% if p.built is not none %}
+        <span class="bud-good" style="font-size:12px;white-space:nowrap;">{{ 'Opens this season' if p.new else 'Opened ' ~ p.built }}</span>
+      {% elif p.can %}
+        <button type="submit" class="btn btn-primary" style="font-size:12px;padding:5px 14px;">Build</button>
+      {% else %}
+        <span class="admin-dim" style="font-size:12px;text-align:right;max-width:160px;">
+          {%- if not ballpark.open %}Offseason only{% elif p.waiting %}Next offseason{% elif p.short_text %}Owner needs {{ p.short_text }} more{% endif -%}
+        </span>
+      {% endif %}
+    </form>
+    {% endfor %}
+    <div class="bud-line">Upgrades are your owner's to pay for, from their bank, so they don't come off your budget or this season's profit; what they earn goes into profit every season after. Your owner only builds with savings to spare: the bank has to hold {% if ballpark.floor_caps == 1 %}a full season's cap{% else %}{{ ballpark.floor_caps }} caps{% endif %} after paying. One project a season, ordered from the draft to Opening Day.</div>
+  </div>
+</div>
+{% if park_saved %}<script>if (window.gmToast) gmToast('Ballpark project ordered');</script>{% endif %}
 {% endif %}
 
 {% if front_office %}
