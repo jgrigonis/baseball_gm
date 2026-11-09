@@ -19,6 +19,7 @@ from src.api.dependencies import (
 from src.api.schemas import SimRequest
 from src.api.services import sim_jobs
 from src.api.services.injury_news import take_injury_news
+from src.api.services.sim_summary import my_day
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.sim_job_repo import SimJobRepository
@@ -115,6 +116,10 @@ def job_status(league_id: str, job_id: str, db: DB, gm: GM):
     if job["kind"] == "sim":
         season_id = SeasonRepository(db).get_current_id_for_league(league_id)
         body["current_date"] = _current_league_date(db, season_id, body["league_state"])
+        # The GM's own team after the day, for the line under the sim buttons.
+        body["my_team"] = my_day(
+            db, league_id, season_id, gm.get("team_id"), body.get("last_date")
+        )
     return JSONResponse(body)
 
 

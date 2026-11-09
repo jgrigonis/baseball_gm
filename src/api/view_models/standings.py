@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+from src.api.services import sim_summary
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.injury_repo import InjuryRepository
@@ -176,6 +177,10 @@ def standings_context(
         game_repo = GameRepository(db)
         inj_repo = InjuryRepository(db, league_id)
         teams = standings_rows(db, league_id, season_id, my_team_id)
+        # x / y / e: clinched a spot, clinched the division, eliminated.
+        marks = sim_summary.clinch_marks(db, league_id, season_id, teams)
+        for t in teams:
+            t["clinch"] = marks.get(t["team_id"])
 
         # ── My next 5 upcoming games ──────────────────────────────────────────
         upcoming = []

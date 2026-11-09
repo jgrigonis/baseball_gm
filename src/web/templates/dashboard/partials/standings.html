@@ -1,6 +1,11 @@
 {# templates/dashboard/partials/standings.html #}
 {% from "dashboard/partials/_rookie.html" import rk with context %}
 
+{# y / x / e beside a team: clinched its division, clinched a playoff
+   spot, eliminated (src/api/services/sim_summary.py clinch_marks). #}
+{% set CLINCH = {"division": ("y", "Clinched the division"), "spot": ("x", "Clinched a playoff spot"), "out": ("e", "Eliminated from the playoffs")} %}
+{% macro clinch_mark(status) %}{% if status %}<span class="clinch-mark clinch-{{ status }}" title="{{ CLINCH[status][1] }}">{{ CLINCH[status][0] }}</span>{% endif %}{% endmacro %}
+
 {% macro standings_table(rows, title=None) %}
 <div class="card">
   {% if title %}
@@ -28,7 +33,7 @@
     </thead>
     <tbody>
       {% for team in rows %}
-          <tr class="{% if team.is_mine %}my-team{% elif team.is_human %}human-team{% endif %}">
+          <tr class="{% if team.is_mine %}my-team{% elif team.is_human %}human-team{% endif %}{% if team.clinch == 'out' %} row-out{% endif %}">
             <td style="color:var(--muted);font-family:var(--font-mono);font-size:11px;">{{ team.rank }}</td>
             <td>
               {# The team's roster and stats, for that season #}
@@ -36,7 +41,7 @@
                  title="Roster and stats{% if is_admin %} · team_id: {{ team.team_id }}{% endif %}"
                  style="font-family:var(--font-sans);font-weight:600;text-decoration:none;
                         color:{% if team.is_mine %}var(--green){% elif team.is_human %}var(--sky){% else %}var(--text){% endif %};">
-                {{ team_badge(team.city, team.mascot) }}<span class="phone-hide">{{ team.city }} </span>{{ team.mascot }}
+                {{ team_badge(team.city, team.mascot) }}<span class="phone-hide">{{ team.city }} </span>{% if team.clinch %}<span style="white-space:nowrap;">{{ team.mascot }}{{ clinch_mark(team.clinch) }}</span>{% else %}{{ team.mascot }}{% endif %}
               </a>
               {% if team.is_mine %}<span style="font-family:var(--font-mono);font-size:10px;color:var(--green);margin-left:6px;">YOU</span>{% endif %}
             </td>
@@ -142,6 +147,13 @@
       {% else %}
         {{ standings_table(teams) }}
       {% endif %}
+      {% if teams|selectattr("clinch")|list %}
+      <div class="clinch-legend">
+        {% for key in ("division", "spot", "out") %}
+        <span>{{ clinch_mark(key) }} {{ CLINCH[key][1] }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
     </div>
 
     {# ── Right sidebar ────────────────────────────────────────────────── #}
@@ -241,6 +253,15 @@
 .mono { font-family: var(--font-mono); }
 .dim  { color: var(--text-dim); }
 /* Give the table more room; sidebar stays fixed */
+.clinch-mark { display: inline-block; margin-left: 6px; padding: 0 4px; border-radius: 3px;
+  font-family: var(--font-mono); font-size: 10px; font-weight: 600; line-height: 15px; cursor: default; }
+.clinch-division { background: var(--green); color: var(--bg); }
+.clinch-spot { border: 1px solid var(--green); color: var(--green); }
+.clinch-out { color: var(--muted); border: 1px solid var(--border); }
+tr.row-out td { opacity: .6; }
+.clinch-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-family: var(--font-mono);
+  font-size: 11px; color: var(--text-dim); }
+.clinch-legend .clinch-mark { margin-left: 0; margin-right: 2px; }
 .standings-grid { display: grid; grid-template-columns: 1fr 280px; gap: 16px; align-items: start; }
 /* Narrow screens: the sidebar goes below the standings. */
 @media (max-width: 1000px) { .standings-grid { grid-template-columns: minmax(0, 1fr); } }
