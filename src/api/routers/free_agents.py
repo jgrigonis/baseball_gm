@@ -11,12 +11,18 @@ from pydantic import BaseModel
 
 from src.api.dependencies import DB, GM, ActiveLeague, GMOrViewer, IsHTMX, User
 from src.api.services import free_agents, offseason_fa, waivers
-from src.api.view_models.player_cards import roster_card
+from src.api.view_models.player_cards import (
+    attach_injuries,
+    attach_roster_stats,
+    roster_card,
+)
 from src.db.locks import league_lock
 from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.contract_repo import ContractRepository
+from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.player_repo import PlayerRepository
+from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.waiver_repo import WaiverRepository
@@ -121,6 +127,22 @@ def free_agents_tab(
             card.update(e)
             ctx["expiring"].append(card)
         ctx["expiring"].sort(key=lambda c: -c.get("overall_score", -1.0))
+        # The season just played, and who's hurt (Josh, 2026-11-09).
+        exp = ctx["expiring"]
+        if exp and ctx.get("season_id"):
+            attach_roster_stats(
+                exp,
+                PlayerSeasonStatsRepository(db).get_team_stats_map(
+                    ctx["season_id"], team_id
+                ),
+            )
+        if exp:
+            inj = InjuryRepository(db, league_id)
+            attach_injuries(
+                exp,
+                inj.get_team_injuries(team_id),
+                inj.get_team_injury_types(team_id),
+            )
         if ctx["expiring"]:
             ctx["next_money"] = offseason_fa.next_season_money(db, league_id, team_id)
             ctx["resign_all"] = offseason_fa.resign_all_plan(db, league_id, team_id)

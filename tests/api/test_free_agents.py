@@ -429,6 +429,58 @@ def test_the_offseason_tab_shows_next_seasons_room(lg, client):
     assert '"fate": "auto"' in html
 
 
+def test_expiring_rows_show_the_season_line_and_who_is_hurt(lg, client):
+    """Josh, 2026-11-09: each expiring row has his season stat line, and an
+    injured player shows in red."""
+    lg.db.execute(
+        "UPDATE leagues SET state = 'offseason' WHERE id = %s", (lg.league.id,)
+    )
+    bat = lg.factory.rated_player(lg.mine, lg.league, level=60, name="Slugger").id
+    arm = lg.factory.rated_player(
+        lg.mine, lg.league, level=60, pitcher=True, name="Hurler"
+    ).id
+    lg.db.execute(
+        "UPDATE player_skills SET contact = 10, power = 10, eye = 10, speed = 10,"
+        " infield = 10, outfield = 10, catching = 10 WHERE player_id = %s",
+        (arm,),
+    )
+    for pid in (bat, arm):
+        lg.contracts.insert_deal(
+            pid, lg.league.id, lg.mine.id, ct.Deal(5_000_000, 3, "standard"), 2024
+        )
+    lg.db.execute(
+        """INSERT INTO player_season_stats
+             (player_id, season_id, team_id, bat_games_played, bat_ab, bat_hits,
+              bat_doubles, bat_triples, bat_home_runs, bat_rbi, bat_walks,
+              bat_hbp, bat_sac_flys)
+           VALUES (%s, %s, %s, 150, 500, 150, 30, 2, 25, 90, 50, 5, 5)""",
+        (bat, lg.season.id, lg.mine.id),
+    )
+    lg.db.execute(
+        """INSERT INTO player_season_stats
+             (player_id, season_id, team_id, pitch_games_played,
+              pitch_games_started, pitch_outs, pitch_earned_runs,
+              pitch_wins, pitch_losses, pitch_saves)
+           VALUES (%s, %s, %s, 30, 30, 540, 70, 14, 8, 0)""",
+        (arm, lg.season.id, lg.mine.id),
+    )
+    lg.db.execute(
+        "INSERT INTO player_injuries (player_id, league_id, return_date)"
+        " VALUES (%s, %s, '2099-01-01')",
+        (arm, lg.league.id),
+    )
+    html = client.get(f"/leagues/{lg.league.id}/free-agents").text
+    assert '"stat_avg": "0.300"' in html
+    assert '"stat_hr": 25' in html
+    assert '"stat_rbi": 90' in html
+    assert '"stat_ops": ".884"' in html  # .366 OBP + .518 SLG
+    assert '"stat_era": "3.50"' in html
+    assert '"stat_ip": "180.0"' in html
+    assert '"stat_w": 14' in html
+    assert '"injured": true' in html
+    assert "function seasonLineHtml" in html
+
+
 def test_a_re_sign_call_returns_every_rows_fate_and_the_room(lg, client):
     lg.db.execute(
         "UPDATE leagues SET state = 'offseason' WHERE id = %s", (lg.league.id,)

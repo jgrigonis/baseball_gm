@@ -365,6 +365,26 @@ def lineup_card(d: dict) -> dict:
     return g
 
 
+def _ops_text(s: dict) -> str | None:
+    """OPS as players see it (".842"), from a stats-map row; None when the
+    row doesn't carry the columns OPS needs."""
+    if s.get("bat_walks") is None:
+        return None
+    ab = s["bat_ab"] or 0
+    hits = s["bat_hits"] or 0
+    obp = formulas.on_base_pct(
+        hits, s["bat_walks"] or 0, s.get("bat_hbp") or 0, ab, s.get("bat_sac_flys") or 0
+    )
+    tb = formulas.total_bases(
+        hits,
+        s.get("bat_doubles") or 0,
+        s.get("bat_triples") or 0,
+        s["bat_home_runs"] or 0,
+    )
+    ops = obp + formulas.slugging_pct(tb, ab)
+    return f"{ops:.3f}".lstrip("0") if ops < 1 else f"{ops:.3f}"
+
+
 def attach_roster_stats(players: list[dict], stats_map: dict) -> None:
     """Add the season stat line shown on each roster card."""
     for p in players:
@@ -375,6 +395,7 @@ def attach_roster_stats(players: list[dict], stats_map: dict) -> None:
             p["stat_avg"] = f"{s['bat_hits'] / ab:.3f}" if ab else None
             p["stat_hr"] = s["bat_home_runs"] or 0
             p["stat_rbi"] = s["bat_rbi"] or 0
+            p["stat_ops"] = _ops_text(s) if ab else None
         elif s and p.get("player_type") == "pitcher":
             outs = s["pitch_outs"] or 0
             p["stat_gs"] = s["pitch_games_started"] or 0
@@ -385,6 +406,7 @@ def attach_roster_stats(players: list[dict], stats_map: dict) -> None:
             p["stat_w"] = s["pitch_wins"] or 0
             p["stat_l"] = s["pitch_losses"] or 0
             p["stat_sv"] = s["pitch_saves"] or 0
+            p["stat_g"] = s["pitch_games_played"] or 0
 
 
 # Hover names for skills the game shows under another word (as in news).
