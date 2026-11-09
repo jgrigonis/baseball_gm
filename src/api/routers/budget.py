@@ -154,6 +154,15 @@ def _books_view(b: dict, names: dict | None = None) -> dict:
             "note": _sponsor_note(b),
         },
         {
+            "label": "Ballpark",
+            "amount": _money(b["ballpark"]) if b["ballpark"] else None,
+            "note": (
+                "What your ballpark upgrades earn"
+                if b["ballpark"]
+                else "Upgrades your owner pays for earn money every season"
+            ),
+        },
+        {
             "label": "Luxury tax share",
             "amount": _money(b["tax_share"]) if b["tax_share"] else None,
             "note": (
@@ -378,6 +387,68 @@ def _sponsor_view(deal: dict, open_: bool) -> dict:
     }
 
 
+@router.post("/leagues/{league_id}/budget/ballpark", response_class=HTMLResponse)
+def build_ballpark(
+    request: Request,
+    htmx: IsHTMX,
+    league_id: str,
+    db: DB,
+    user: User,
+    gm: GM,
+    _active: ActiveLeague,
+    project: str = Form(...),
+):
+    """Ask the owner to build a ballpark project from their bank. Only
+    between seasons; it opens on Opening Day."""
+    team_id = gm.get("team_id")
+    error = None
+    with league_lock(db, league_id):
+        league = LeagueRepository(db).get_by_id(league_id)
+        budgets = BudgetRepository(db)
+        year = ContractRepository(db).current_year(league_id)
+        if not year or budgets.budget(league_id, team_id, year) is None:
+            error = "This league has no ballpark upgrades."
+        elif league["state"] not in FRONT_OFFICE_STATES:
+            error = "Ballpark projects are ordered between seasons, from the draft to Opening Day."
+        else:
+            error = budgets.build(league_id, team_id, year, project)
+        db.commit()
+    return _render(
+        request, htmx, league_id, db, user, gm,
+        park_error=error, park_saved=not error,
+    )  # fmt: skip
+
+
+def _ballpark_view(offers: list[dict], year: int, open_: bool) -> dict:
+    rows = []
+    for o in offers:
+        if o["payback"] is None:
+            payback = None
+        else:
+            seasons = max(1, round(o["payback"]))
+            payback = f"Pays for itself in about {_seasons(seasons)}"
+        rows.append(
+            {
+                **o,
+                "cost_text": _money(o["cost"]),
+                "earns_text": _money(o["earns"]) if o["earns"] else None,
+                "payback_text": payback,
+                "short_text": _money(o["short"]) if o["short"] else None,
+                "can": open_
+                and o["built"] is None
+                and not o["short"]
+                and not o["waiting"],
+                "new": o["built"] == year,
+            }
+        )
+    return {
+        "rows": rows,
+        "open": open_,
+        "built_count": sum(1 for o in offers if o["built"] is not None),
+        "floor_caps": fn.BALLPARK_FLOOR,
+    }
+
+
 def _broadcast_view(deal: dict, year: int, open_: bool) -> dict:
     last = deal["start_year"] + deal["years"] - 1
     return {
@@ -499,8 +570,11 @@ def _render(
     ticket_error=None, ticket_saved=False,
     broadcast_error=None, broadcast_saved=False,
     sponsor_error=None, sponsor_saved=False,
+    park_error=None, park_saved=False,
 ):  # fmt: skip
     ctx = _shell_ctx(request, db, gm, league_id, "budget", user)
+    ctx["park_error"] = park_error
+    ctx["park_saved"] = park_saved
     ctx["sponsor_error"] = sponsor_error
     ctx["sponsor_saved"] = sponsor_saved
     ctx["broadcast_error"] = broadcast_error
@@ -528,6 +602,7 @@ def _render(
             "since": bank["since"],
             "up": bank["change"] >= 0,
             "empty": bank["balance"] <= 0,
+            "spent_text": _money(bank["spent"]) if bank["spent"] else None,
         }
     if standing and ctx.get("league_state") in FRONT_OFFICE_STATES:
         # The GM has had their chance to set the budget before it locks:
@@ -560,6 +635,10 @@ def _render(
         ctx["broadcast"] = _broadcast_view(deal, year, ctx["fo_open"]) if deal else None
         sponsor = budgets.sponsors(league_id, year, [team_id]).get(team_id)
         ctx["sponsor"] = _sponsor_view(sponsor, ctx["fo_open"]) if sponsor else None
+        offers = budgets.ballpark_offers(league_id, team_id, year)
+        ctx["ballpark"] = (
+            _ballpark_view(offers, year, ctx["fo_open"]) if offers and bank else None
+        )
     ctx["rules"] = {
         "tax_pct": round(bg.LUXURY_TAX_RATE * 100),
         "pull_pct": round(bg.BANK_PULL * 100),
@@ -581,6 +660,7 @@ def _render(
                 + (r["broadcast_revenue"] or 0)
                 + (r["merch_revenue"] or 0)
                 + (r["sponsor_revenue"] or 0)
+                + (r["ballpark_revenue"] or 0)
             ),
             "tax": _money(r["luxury_tax"]) if r["luxury_tax"] else None,
             "front_office": _money(r["front_office"]),

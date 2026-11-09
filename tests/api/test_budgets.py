@@ -1251,3 +1251,96 @@ def test_a_custom_team_gets_an_owner_rich_enough_for_its_payroll(lg):
     # Later seasons keep the floor, grown with prices.
     nxt = x.budgets.for_league(x.league.id, 2027)
     assert nxt[x.mine.id] > nxt[x.theirs.id]
+
+
+# ── The ballpark ──────────────────────────────────────────────────────────────
+
+
+def test_ballpark_projects_pay_back_inside_a_league():
+    from src.league import finances as fn
+
+    cap = 160_000_000
+    average = cap * 2.08  # about the league's average revenue at this cap
+    for key in ("club_seats", "suites", "renovation"):
+        cost = fn.project_cost(key, cap)
+        earns = fn.project_money(key, average, 3, 50, round(average))
+        assert 4 <= fn.payback(cost, earns) <= 7.5, key
+    # Suites pay a huge market more than a small one.
+    assert fn.project_money("suites", average, 5, 50, 0) > fn.project_money(
+        "suites", average, 1, 50, 0
+    )
+    assert fn.project_money("plaza", average, 3, 50, 0) == 0
+    assert fn.ballpark_fans(["plaza", "suites"]) == 3
+    # The owner keeps a cap in the bank after paying.
+    assert fn.can_build(cap * 2, cap, cap) == 0
+    assert fn.can_build(cap + 10, 20, cap) == 10
+
+
+def test_a_rich_owner_builds_from_the_bank(lg):
+    x = lg()
+    _owned(x, spending=95)
+    x.budgets.for_league(x.league.id, 2026)
+    cap = x.budgets.cap(x.league.id, 2026)
+    start = x.budgets.banks(x.league.id)[x.mine.id]["balance"]
+    offers = {
+        o["key"]: o for o in x.budgets.ballpark_offers(x.league.id, x.mine.id, 2026)
+    }
+    assert offers["club_seats"]["short"] == 0 and offers["club_seats"]["earns"] > 0
+    assert offers["renovation"]["short"] > 0
+    assert x.budgets.build(x.league.id, x.mine.id, 2026, "renovation")
+    assert x.budgets.build(x.league.id, x.mine.id, 2026, "club_seats") is None
+    bank = x.budgets.banks(x.league.id)[x.mine.id]
+    cost = offers["club_seats"]["cost"]
+    assert bank["balance"] == start - cost and bank["spent"] == cost
+    assert bank["balance"] >= cap
+    # One a season.
+    assert "One ballpark project a season" in x.budgets.build(
+        x.league.id, x.mine.id, 2026, "plaza"
+    )
+    before = x.budgets.projected(x.league.id, 2026)[x.mine.id]["profit"]
+    x.budgets.assess(x.league.id, 2026)
+    row = x.budgets.history(x.league.id, x.mine.id)[0]
+    assert row["ballpark_revenue"] == offers["club_seats"]["earns"]
+    assert row["profit"] == before
+    assert row["bank_after"] == start - cost + row["profit"]
+    books = x.budgets.books(x.league.id, x.mine.id, 2026)[0]
+    assert (
+        books["ballpark"] == row["ballpark_revenue"]
+        and books["profit"] == row["profit"]
+    )
+
+
+def test_ai_owners_build_when_they_can_afford_it(lg):
+    x = lg()
+    x.db.execute(
+        """INSERT INTO owner_personas (id, name, archetype, bio, weights, traits)
+           VALUES ('own2', 'Big Spender', 'The Tycoon', '', '{}', '{"spending": 100}')"""
+    )
+    x.db.execute(
+        """INSERT INTO team_owners (league_id, team_id, owner_id, since_year, bank_start, bank_year)
+           VALUES (%s, %s, 'own2', 2026, 10000000000, 2026)""",
+        (x.league.id, x.theirs.id),
+    )
+    for year in (2026, 2027, 2028, 2029):
+        x.budgets.for_league(x.league.id, year)
+    built = x.budgets.ballpark(x.league.id, x.theirs.id)
+    assert built and len({p["year"] for p in built}) == len(built)
+    assert x.budgets.ballpark(x.league.id, x.mine.id) == []
+
+
+def test_ordering_a_ballpark_project_on_the_budget_tab(lg, client_for):
+    x = lg()
+    _owned(x, spending=95)
+    x.budgets.for_league(x.league.id, 2026)
+    client = client_for(x)
+    page = client.get(f"/leagues/{x.league.id}/budget").text
+    assert "Ballpark" in page and "Club seats" in page and "Offseason only" in page
+    url = f"/leagues/{x.league.id}/budget/ballpark"
+    assert "between seasons" in client.post(url, data={"project": "club_seats"}).text
+    x.db.execute("UPDATE leagues SET state = 'preseason' WHERE id = %s", (x.league.id,))
+    r = client.post(url, data={"project": "club_seats"})
+    assert r.status_code == 200 and "Ballpark project ordered" in r.text
+    assert "Opens this season" in r.text and "into the ballpark" in r.text
+    assert [p["project"] for p in x.budgets.ballpark(x.league.id, x.mine.id)] == [
+        "club_seats"
+    ]
