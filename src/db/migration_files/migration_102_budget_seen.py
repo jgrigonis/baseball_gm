@@ -1,4 +1,4 @@
-# src/db/migration_files/migration_101_budget_seen.py
+# src/db/migration_files/migration_102_budget_seen.py
 """
 Set the budget before it locks (Josh, 2026-11-09): the front office and
 ticket prices can only change from the draft to Opening Day, and the
@@ -8,7 +8,7 @@ tab between seasons; until then the preseason's next move is "Set Your
 Budget".
 """
 
-VERSION = 101
+VERSION = 102
 
 
 def upgrade(conn):

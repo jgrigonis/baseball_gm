@@ -8,6 +8,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
 from src.api.dependencies import DB, GMOrViewer, IsHTMX, User
+from src.db.repositories.gm_repo import GMRepository
 from src.api.view_models.seasons import retirement_context, season_summary_context
 from src.web.utils import _shell_ctx, tab_response
 
@@ -41,6 +42,18 @@ def season_summary(
         and joined > (ctx.get("season_year") or joined)
         else None
     )
+    # The GM has seen how the season ended: from here the next-move button
+    # points on to Expiring Deals on every page (next_move.pick).
+    if (
+        ctx.get("league_state") == "offseason"
+        and gm
+        and gm.get("id")
+        and not gm.get("is_viewer")
+        and ctx.get("summary_season_id") == ctx["season_id"]
+        and not ctx.get("summary_seen")
+    ):
+        GMRepository(db).mark_summary_seen(gm["id"], ctx["season_id"])
+        db.commit()
     return tab_response(request, htmx, "dashboard/partials/season_summary.html", ctx)
 
 

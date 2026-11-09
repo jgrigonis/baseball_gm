@@ -310,6 +310,7 @@ CREATE TABLE IF NOT EXISTS gms (
     persona_id     TEXT,                  -- AI GMs: who they are (gm_personas)
     welcomed_at    TIMESTAMPTZ,           -- first saw the welcome screen
     welcomed_season_id TEXT,              -- season whose preview they last saw (migration 065)
+    summary_seen_season_id TEXT,          -- season whose summary they last opened (migration 101)
     roster_saved_at TIMESTAMPTZ,          -- first roster save; ends the getting-started bar
     lobby_city     TEXT,                  -- lobby: the team they'll run, by name (migration 042)
     lobby_mascot   TEXT,
@@ -1648,7 +1649,7 @@ CREATE TABLE IF NOT EXISTS team_budgets (     -- migration 074 (src/league/budge
     front_office BIGINT,                      -- what the front office cost, set when the season ends
     minor_league BIGINT,                      -- what its never-guaranteed minor leaguers cost, set when the season ends (migration 089)
     ticket_price SMALLINT,                    -- ticket prices 1 to 10, NULL the default 5; revenue is before them (migration 090)
-    budget_seen BOOLEAN,                      -- the GM opened the Budget tab between seasons, before it locked (migration 101)
+    budget_seen BOOLEAN,                      -- the GM opened the Budget tab between seasons, before it locked (migration 102)
     fans_before INTEGER,                      -- fan interest coming into the season (0-100)
     fans_after  INTEGER,                      -- and after it
     PRIMARY KEY (league_id, team_id, year)

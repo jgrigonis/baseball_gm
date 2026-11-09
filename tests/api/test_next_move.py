@@ -188,3 +188,13 @@ def test_preseason_sends_the_gm_to_set_the_budget_first():
     assert move["key"] == "ready" and move["pill"]["href"] == "/leagues/L1/budget"
     move = pick(_ctx(league_state="season", budget_due=True), "roster")
     assert move["label"] == "▶ Play Day"
+
+
+def test_once_the_summary_is_seen_every_page_points_on_to_expiring_deals():
+    ctx = _ctx(league_state="offseason", summary_seen=True)
+    for page in ("roster", "standings", "budget", "playoffs"):
+        move = pick(ctx, page)
+        assert move["label"] == "✍️ Expiring Deals →"
+        assert move["href"] == "/leagues/L1/free-agents"
+    assert pick(ctx, "season-summary")["href"] == "/leagues/L1/free-agents"
+    assert pick(ctx, "free-agents")["fn"] == "beginOffseason"
