@@ -19,7 +19,7 @@ import psycopg
 from src.api.services import waivers
 from src.api.services.injury_news import InjuryNews
 from src.db.connection import rollback_quietly
-from src.api.services import owner_office, owner_review, owners
+from src.api.services import firing, owner_office, owner_review, owners
 from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.games_repo import GameRepository
@@ -204,11 +204,17 @@ def end_playoffs(conn, league: dict, season_id: str) -> None:
     # Every team has an owner before next season's budgets are set, and each
     # owner judges the season their GM just had.
     owners.ensure(conn, league["id"])
+    over = False
     if year is not None:
         owner_review.review_season(conn, league["id"], season_id, year)
         owner_office.review(conn, league["id"], season_id)
+        # The GMs the owners just let go (when the league fires).
+        firing.carry_out(conn, league["id"], season_id, year)
+        # One and done, and every person has been fired: nobody can run a
+        # team, so the league ends here.
+        over = firing.nobody_left(conn, league["id"])
     lr = LeagueRepository(conn)
-    if is_last_season(league["num_seasons"], lr.count_seasons(league["id"])):
+    if over or is_last_season(league["num_seasons"], lr.count_seasons(league["id"])):
         OffseasonPipeline(conn).run_final(season_id, league["id"])
         lr.set_state(league["id"], "complete")
     else:

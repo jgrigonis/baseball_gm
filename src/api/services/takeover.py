@@ -17,10 +17,15 @@
 # standings and history. Its open trade offers are called off, since the
 # AI made them. The person's career record starts with the first season they
 # run the team (gms.joined_year, see career.py).
+#
+# A person their owner fired (src/api/services/firing.py) in a league with
+# re-entry on comes back the same way, whatever the Late joiners setting:
+# any AI team but the one that fired them, between seasons. Their fired row
+# gives way to the team's.
 
 from __future__ import annotations
 
-from src.api.services import sim_jobs, trades
+from src.api.services import firing, sim_jobs, trades
 from src.db.locks import league_lock
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.league_repo import LeagueRepository
@@ -35,31 +40,45 @@ class TakeoverClosed(Exception):
     """The league can't take a new GM right now; the message says why."""
 
 
-def closed_reason(conn, league: dict) -> str | None:
+def closed_reason(conn, league: dict, user_id: str | None = None) -> str | None:
     """Why a person can't take over a team in this started league now, or
-    None if they can."""
+    None if they can. With user_id, a person the league's owners fired
+    gets the re-entry rules instead of the late joiners ones."""
     name = league["name"]
+    fired = bool(user_id) and is_fired(conn, league["id"], user_id)
     if league.get("is_practice"):
         return f"{name} is a tutorial league, so it can't take new GMs."
-    if league.get("single_player"):
+    if league.get("single_player") and not fired:
         return f"{name} has a custom team, so it's single player."
     if league["state"] == "complete":
         return f"{name} is over."
-    if not league.get("late_joins"):
+    if fired and not league.get("reentry_enabled"):
+        return f"{name} is one and done: a fired GM watches from then on."
+    if not fired and not league.get("late_joins"):
         return f"{name} isn't taking new GMs once it has started."
     if league["state"] not in BETWEEN_SEASONS:
         return (
             f"{name} is in the middle of a season. New GMs can take over a team"
             " between seasons, from the end of the playoffs until Opening Day."
         )
-    if not open_teams(conn, league["id"]):
+    if not open_teams(conn, league["id"], user_id):
         return f"Every team in {name} already has a person running it."
     return None
 
 
-def open_teams(conn, league_id: str) -> list[dict]:
+def is_fired(conn, league_id: str, user_id: str) -> bool:
+    """Whether this person's row in the league is a fired one."""
+    row = conn.execute(
+        "SELECT fired_at FROM gms WHERE league_id = %s AND user_id = %s",
+        (league_id, user_id),
+    ).fetchone()
+    return bool(row and row["fired_at"])
+
+
+def open_teams(conn, league_id: str, user_id: str | None = None) -> list[dict]:
     """The teams an AI GM runs, with the GM and the team's last finished
-    season, for the page where a person picks one."""
+    season, for the page where a person picks one. With user_id, not the
+    teams that fired them."""
     last = conn.execute(
         """SELECT s.id FROM seasons s JOIN league_seasons ls ON ls.season_id = s.id
            WHERE ls.league_id = %s
@@ -80,6 +99,9 @@ def open_teams(conn, league_id: str) -> list[dict]:
         (league_id,),
     ).fetchall()
     teams = [dict(r) for r in rows]
+    if user_id:
+        gone = set(firing.fired_from(conn, league_id, user_id))
+        teams = [t for t in teams if t["team_id"] not in gone]
     if last and teams:
         repo = TeamGameRepository(conn)
         for t in teams:
@@ -110,7 +132,8 @@ def take_over(conn, league_id: str, user: dict, team_id: str) -> str:
         league = LeagueRepository(conn).get_by_id(league_id)
         if not league or league["state"] == "lobby":
             raise TakeoverClosed("That league isn't running.")
-        if gm_repo.get_by_user_and_league(user["id"], league_id):
+        mine = gm_repo.get_by_user_and_league(user["id"], league_id)
+        if mine and not mine["fired_at"]:
             raise TakeoverClosed(f"You're already in {league['name']}.")
         # A sim job holds the lock only while it runs; one waiting in the
         # queue may be about to start the season.
@@ -118,11 +141,16 @@ def take_over(conn, league_id: str, user: dict, team_id: str) -> str:
             raise TakeoverClosed(
                 f"{league['name']} is moving on right now. Try again in a minute."
             )
-        reason = closed_reason(conn, league)
+        reason = closed_reason(conn, league, user["id"])
         if reason:
             raise TakeoverClosed(reason)
         ai = next(
-            (t for t in open_teams(conn, league_id) if t["team_id"] == team_id), None
+            (
+                t
+                for t in open_teams(conn, league_id, user["id"])
+                if t["team_id"] == team_id
+            ),
+            None,
         )
         if not ai:
             raise TakeoverClosed("Someone else already runs that team.")
@@ -130,6 +158,13 @@ def take_over(conn, league_id: str, user: dict, team_id: str) -> str:
         trades.team_leaving(
             conn, league_id, team_id, ai["gm_id"], reason="the team has a new GM."
         )
+        if mine:
+            # Back from a firing: their fired row gives way to the team's,
+            # and a commissioner role kept for them comes along.
+            gm_repo.delete_gm(mine["id"])
+            if league["commissioner_gm_id"] == mine["id"]:
+                gm_repo.set_commissioner(ai["gm_id"], league_id)
+            firing.rehired(conn, league_id, user["id"], team_id)
         gm_repo.take_over_team(
             ai["gm_id"], user["id"], user["display_name"], joined_year(conn, league)
         )

@@ -1,0 +1,30 @@
+{# templates/dashboard/partials/_fired_banner.html
+   A person their owner fired (src/api/services/firing.py): who let them go
+   and what the owner said. With re-entry on, between seasons, a button to
+   take over another team (takeover.py); one and done, they watch. #}
+{% set f = fired %}
+<div class="join-banner fired-banner" role="note">
+  <span class="join-banner-text">
+    <strong>You're fired.</strong>
+    {% if f %}
+      {% if f.owner_name %}{{ f.owner_name }}{% if f.archetype %} ({{ f.archetype }}){% endif %}{% else %}The owner{% endif %}
+      let you go as GM of the {{ f.city }} {{ f.mascot }} after a {{ f.wins }}-{{ f.losses }} season.
+      {% if f.message %}<span class="fired-quote">“{{ f.message }}”</span>{% endif %}
+    {% endif %}
+    {% if can_take_over %}
+      You can take over any of the {{ open_team_count }} team{{ "s" if open_team_count != 1 }} an AI GM runs until Opening Day.
+    {% elif fired_reentry %}
+      Between seasons you can take over a team an AI GM runs. Until then, you're watching.
+    {% else %}
+      {{ league_name }} is one and done, so you're watching from here on.
+    {% endif %}
+  </span>
+  {% if can_take_over %}
+  <a class="btn btn-primary join-banner-btn" href="/leagues/{{ league_id }}/take-over">Find a new job →</a>
+  {% endif %}
+</div>
+<style>
+.fired-banner { background: var(--red-dim); border-bottom-color: var(--red); }
+.fired-banner strong { color: var(--red); }
+.fired-quote { display: block; margin-top: 4px; color: var(--text-dim); font-style: italic; }
+</style>

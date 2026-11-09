@@ -389,6 +389,13 @@ REVIEW_CLOSE = {
         "You're on thin ice. I mean that.",
         "I'm running out of patience with you.",
     ),
+    # The owner fires the GM (src/api/services/firing.py).
+    "fired": (
+        "I'm making a change. Thank you for your work, {gm}, but you're done here.",
+        "We're going in a different direction. Clean out your desk.",
+        "This was your last season as GM of the {team}.",
+        "I've run out of patience. You're fired.",
+    ),
 }
 
 REVIEW_OPEN = {

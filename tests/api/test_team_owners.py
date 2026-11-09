@@ -160,7 +160,7 @@ def test_owners_review_the_season(lg, factory):
         "SELECT * FROM gm_season_evaluations WHERE gm_id = %s", (x.gm.id,)
     ).fetchone()
     assert row["wins"] == 3 and row["losses"] == 0
-    assert row["verdict"] in ("retained", "warned")  # never fired, yet
+    assert row["verdict"] in ("retained", "warned")  # firing is off
     assert row["detail"]["scores"]["wins"] == 1.0
     assert 0 <= row["job_security"] <= 100
     assert out[a.id]["score"] > out[b.id]["score"]
@@ -178,7 +178,8 @@ def test_a_new_gm_starts_fresh(lg):
     x = lg(n=2)
     owner = service.ensure(x.db, x.league.id)[x.teams[0].id]
     grace = sc.grace(owners.clean_traits(owner["traits"])["patience"])
-    assert owner_review._security_before(x.db, x.gm.id, "someone", owner, 2027) == grace
+    before, tenure = owner_review._tenure(x.db, x.gm.id, "someone", owner, 2027)
+    assert before == grace and tenure.seasons == 0
 
 
 # ── The owner's office (src/api/services/owner_office.py) ─────────────────────

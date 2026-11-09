@@ -6,17 +6,26 @@
 {% block title %}Take Over a Team — Baseball GM{% endblock %}
 {% block main %}
 <div class="page-content"><div class="content-inner" style="max-width:640px;">
-  <div class="page-header"><h1 class="page-title">Join {{ league.name }}</h1></div>
+  <div class="page-header"><h1 class="page-title">{% if fired %}Find a new job in {{ league.name }}{% else %}Join {{ league.name }}{% endif %}</h1></div>
 
   {% if closed %}
     <div role="alert" class="takeover-note">{{ closed }}</div>
-    <a href="/leagues/" class="btn btn-secondary">Back to Leagues</a>
+    <a href="{% if fired %}/leagues/{{ league.id }}/{% else %}/leagues/{% endif %}" class="btn btn-secondary">{% if fired %}Back to {{ league.name }}{% else %}Back to Leagues{% endif %}</a>
   {% else %}
+    {% if fired %}
+    <p class="takeover-note">
+      The {{ fired.city }} {{ fired.mascot }} let you go, but {{ league.name }}
+      has re-entry on, so you can take over any team an AI GM runs, except
+      theirs. It keeps its players, contracts and draft picks, and you start
+      fresh with its owner. Your record there starts with the {{ joined_year }} season.
+    </p>
+    {% else %}
     <p class="takeover-note">
       This league has already started, so you'd take over a team an AI GM runs.
       It keeps its players, contracts and draft picks. Your record starts with
       the {{ joined_year }} season.
     </p>
+    {% endif %}
     {% if error %}<div role="alert" class="takeover-note" style="color:var(--red);">{{ error }}</div>{% endif %}
     <div class="card">
       <div class="card-header"><span class="card-title">Teams you can take over ({{ teams | length }})</span>{% if teams | length > 1 %}<span class="takeover-dim" style="margin-left:auto;">Tap Team or Last season to sort</span>{% endif %}</div>
@@ -53,7 +62,7 @@
         </table>
       </div>
     </div>
-    <div style="margin-top:16px;"><a href="/leagues/" class="btn btn-secondary">Cancel</a></div>
+    <div style="margin-top:16px;"><a href="{% if fired %}/leagues/{{ league.id }}/{% else %}/leagues/{% endif %}" class="btn btn-secondary">Cancel</a></div>
   {% endif %}
 </div></div>
 <style>

@@ -6,8 +6,11 @@
 # the verdict, each dimension's score, the facts it was judged on and the job
 # security after it. Admins see all of it; GMs never see a number.
 #
-# Firing isn't on yet: a GM who'd be fired is stored as warned, with
-# would_fire in the detail, so the numbers can be tuned on real leagues first.
+# A GM whose security falls past the line is stored as fired only when the
+# league has owner firing on (leagues.owner_firing; never in Speed Blitz or a
+# tutorial) and the owner's rules allow it (owner_scoring.judge: honeymoon,
+# warning first). Otherwise they're warned, with would_fire in the detail, so
+# the numbers can be tuned. src/api/services/firing.py carries firings out.
 #
 # Job security belongs to one GM under one owner. A person taking over a team,
 # or an AI GM taking over from a person who left, starts at the owner's grace
@@ -29,11 +32,13 @@ from src.league.league_modes import get_mode
 def review_season(conn, league_id: str, season_id: str, year: int) -> dict[str, dict]:
     """Judge every team's season. Returns the stored rows by team id."""
     league = conn.execute(
-        "SELECT mode FROM leagues WHERE id = %s", (league_id,)
+        "SELECT mode, owner_firing, is_practice FROM leagues WHERE id = %s",
+        (league_id,),
     ).fetchone()
     if not league:
         return {}
     money = get_mode(league["mode"]).budgets
+    can_fire = firing_on(league)
     by_team = owner_service.ensure(conn, league_id)
     facts = gather(conn, league_id, season_id, year, by_team)
     gms = {
@@ -55,15 +60,20 @@ def review_season(conn, league_id: str, season_id: str, year: int) -> dict[str, 
         scores = sc.score_dimensions(season, owner["traits"], money)
         score = sc.season_score(scores, owner["weights"])
         who = gm["user_id"] or gm["persona_id"] or gm["id"]
-        before = _security_before(conn, gm["id"], who, owner, year)
-        after = sc.next_security(before, score, owner["traits"], season.champion)
-        verdict = sc.verdict(after)
+        before, tenure = _tenure(conn, gm["id"], who, owner, year)
+        rules = sc.firing_rules(owner.get("archetype"))
+        after, verdict, would_fire = sc.judge(
+            before, score, owner["traits"], season.champion, tenure, rules
+        )
+        if verdict == "fired" and not can_fire:
+            verdict = "warned"
         detail = {
             "who": who,
             "scores": scores,
             "facts": season.as_dict(),
             "security_before": before,
-            "would_fire": verdict == "fired",
+            "would_fire": would_fire,
+            "seasons_under_owner": tenure.seasons + 1,
             "win_target": round(
                 sc.win_target(
                     season.rank_before, owners.clean_traits(owner["traits"])["ambition"]
@@ -94,36 +104,61 @@ def review_season(conn, league_id: str, season_id: str, year: int) -> dict[str, 
                 round(detail["win_target"] * games, 1),
                 season.made_playoffs,
                 season.champion,
-                # Not firing yet (see the top of this file).
-                "warned" if verdict == "fired" else verdict,
+                verdict,
                 owner["owner_id"],
                 round(score, 4),
                 after,
                 Jsonb(detail),
             ),
         )
-        out[team_id] = {"gm_id": gm["id"], "score": score, "job_security": after}
+        out[team_id] = {
+            "gm_id": gm["id"],
+            "score": score,
+            "job_security": after,
+            "verdict": verdict,
+        }
     return out
 
 
-def _security_before(conn, gm_id: str, who: str, owner: dict, year: int) -> int:
-    """Job security coming into the season: the last review's, if this GM
-    (the same person or AI persona) had one under this owner, else the
-    owner's grace level."""
-    row = conn.execute(
-        """SELECT e.job_security, e.detail, e.owner_id FROM gm_season_evaluations e
+def firing_on(league: dict) -> bool:
+    """Whether owners in this league can fire GMs: the league's toggle, and
+    never in Speed Blitz (too short) or a tutorial."""
+    return (
+        bool(league.get("owner_firing"))
+        and not league.get("is_practice")
+        and get_mode(league["mode"]).budgets
+    )
+
+
+def _tenure(
+    conn, gm_id: str, who: str, owner: dict, year: int
+) -> tuple[int, sc.Tenure]:
+    """Job security coming into the season, and what the owner remembers of
+    this GM: the seasons this GM (the same person or AI persona) has had
+    under this owner on this team, in a row, newest first. A new GM starts at
+    the owner's grace level."""
+    rows = conn.execute(
+        """SELECT e.job_security, e.score, e.detail, e.owner_id
+           FROM gm_season_evaluations e
            JOIN seasons s ON s.id = e.season_id
            WHERE e.gm_id = %s AND s.year < %s AND e.job_security IS NOT NULL
-           ORDER BY s.year DESC LIMIT 1""",
+           ORDER BY s.year DESC""",
         (gm_id, year),
-    ).fetchone()
-    if (
-        row
-        and row["owner_id"] == owner["owner_id"]
-        and (row["detail"] or {}).get("who") == who
-    ):
-        return row["job_security"]
-    return sc.grace(owners.clean_traits(owner["traits"])["patience"])
+    ).fetchall()
+    mine = []
+    for r in rows:
+        if r["owner_id"] != owner["owner_id"] or (r["detail"] or {}).get("who") != who:
+            break
+        mine.append(r)
+    if not mine:
+        grace = sc.grace(owners.clean_traits(owner["traits"])["patience"])
+        return grace, sc.Tenure()
+    last = mine[0]
+    return last["job_security"], sc.Tenure(
+        seasons=len(mine),
+        last_score=last["score"],
+        last_security=last["job_security"],
+    )
 
 
 def security_now(conn, league_id: str) -> dict[str, dict]:

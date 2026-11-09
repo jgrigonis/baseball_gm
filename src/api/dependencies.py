@@ -72,7 +72,9 @@ def get_current_gm(league_id: str, db: DB, user: Any = Depends(get_current_user)
         "SELECT * FROM gms WHERE user_id = %s AND league_id = %s",
         (user["id"], league_id),
     ).fetchone()
-    if not gm:
+    # A GM their owner fired (src/api/services/firing.py) has no team to act
+    # for: they can only watch, or take a new job.
+    if not gm or gm["fired_at"]:
         raise NotLeagueGM()
     return gm
 
@@ -87,6 +89,18 @@ def get_gm_or_viewer(league_id: str, db: DB, user: Any = Depends(get_current_use
         "SELECT * FROM gms WHERE user_id = %s AND league_id = %s",
         (user["id"], league_id),
     ).fetchone()
+    if gm and gm["fired_at"]:
+        # Fired (src/api/services/firing.py): they watch the league like any
+        # viewer, and between seasons in a re-entry league can take a new job.
+        return {
+            "id": None,
+            "team_id": None,
+            "display_name": gm["display_name"],
+            "is_viewer": True,
+            "has_code": True,
+            "fired": True,
+            "user_id": user["id"],
+        }
     if gm:
         return gm
     league = db.execute(

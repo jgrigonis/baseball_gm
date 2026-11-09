@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS leagues (
     decision_window_sec  INTEGER NOT NULL DEFAULT 120,
     reentry_enabled      BOOLEAN NOT NULL DEFAULT FALSE,
     late_joins           BOOLEAN NOT NULL DEFAULT TRUE,  -- people can take over AI teams between seasons (migration 069)
+    owner_firing         BOOLEAN NOT NULL DEFAULT FALSE, -- owners can fire GMs (src/api/services/firing.py, migration 105)
     pace_control         TEXT NOT NULL DEFAULT 'timer'
                              CHECK (pace_control IN ('timer', 'confirmed', 'scheduled')),
     state                TEXT NOT NULL DEFAULT 'lobby'
@@ -1062,6 +1063,29 @@ CREATE TABLE IF NOT EXISTS gm_season_evaluations (
 
     FOREIGN KEY (gm_id)     REFERENCES gms(id)     ON DELETE CASCADE,
     FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE CASCADE
+);
+
+-- gm_firings: each GM an owner fired (src/api/services/firing.py, migration
+--   105). The GM row stays with the team and goes to a new AI GM, so who was
+--   fired (person or persona), the record and the owner's words live here.
+--   rehired_team_id: a fired person who took another job (re-entry).
+CREATE TABLE IF NOT EXISTS gm_firings (
+    id           SERIAL PRIMARY KEY,
+    league_id    TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    season_id    TEXT REFERENCES seasons(id) ON DELETE SET NULL,
+    year         INTEGER NOT NULL,
+    team_id      TEXT REFERENCES teams(id) ON DELETE SET NULL,
+    gm_id        TEXT REFERENCES gms(id) ON DELETE SET NULL,
+    user_id      TEXT REFERENCES users(id) ON DELETE SET NULL,
+    persona_id   TEXT,
+    display_name TEXT NOT NULL,
+    owner_id     TEXT,
+    wins         INTEGER NOT NULL DEFAULT 0,
+    losses       INTEGER NOT NULL DEFAULT 0,
+    message      TEXT,
+    fired_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    rehired_team_id TEXT REFERENCES teams(id) ON DELETE SET NULL,
+    rehired_at   TIMESTAMPTZ
 );
 
 CREATE TABLE IF NOT EXISTS game_events (

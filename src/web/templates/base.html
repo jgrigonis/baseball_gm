@@ -127,7 +127,7 @@
     {% if can_take_over %}
       {# A viewer who could join: where a GM's team badge sits. #}
       <a class="btn btn-primary topbar-join" href="/leagues/{{ league_id }}/take-over"
-         title="Take over a team an AI GM runs. Open until Opening Day.">Join league →</a>
+         title="Take over a team an AI GM runs. Open until Opening Day.">{% if fired is defined and fired %}New job →{% else %}Join league →{% endif %}</a>
     {% endif %}
     {% if team_name %}
       {% if league_id %}<a class="topbar-team" href="/leagues/{{ league_id }}/welcome" title="{{ team_page_label or 'Meet your team' }}">{% else %}<div class="topbar-team">{% endif %}
