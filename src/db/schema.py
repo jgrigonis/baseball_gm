@@ -1649,6 +1649,7 @@ CREATE TABLE IF NOT EXISTS team_budgets (     -- migration 074 (src/league/budge
     front_office BIGINT,                      -- what the front office cost, set when the season ends
     minor_league BIGINT,                      -- what its never-guaranteed minor leaguers cost, set when the season ends (migration 089)
     ticket_price SMALLINT,                    -- ticket prices 1 to 10, NULL the default 5; revenue is before them (migration 090)
+    budget_seen BOOLEAN,                      -- the GM opened the Budget tab between seasons, before it locked (migration 102)
     fans_before INTEGER,                      -- fan interest coming into the season (0-100)
     fans_after  INTEGER,                      -- and after it
     PRIMARY KEY (league_id, team_id, year)

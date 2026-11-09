@@ -196,7 +196,7 @@ def set_front_office(
     level: int = Form(...),
 ):
     """Fund one department at a level. Only between seasons, and the owner
-    won't pay for a raise past their hard limit."""
+    won't pay for a raise above Standard past their hard limit."""
     team_id = gm.get("team_id")
     error = None
     with league_lock(db, league_id):
@@ -209,9 +209,13 @@ def set_front_office(
         elif league["state"] not in FRONT_OFFICE_STATES:
             error = "The front office is set between seasons, from the draft to Opening Day."
         else:
+            # Standard or less is always allowed, even past the owner's hard
+            # limit (Josh, 2026-11-09); only funding above Standard has to
+            # fit inside it.
             cap = budgets.cap(league_id, year)
             added = bg.level_cost(cap, level) - bg.level_cost(cap, levels[department])
-            error = budgets.refusal(league_id, team_id, year, added)
+            if bg.clean_level(level) > bg.STANDARD:
+                error = budgets.refusal(league_id, team_id, year, added)
             if not error:
                 budgets.set_level(league_id, team_id, year, department, level)
         db.commit()
@@ -437,6 +441,10 @@ def _render(
             "up": bank["change"] >= 0,
             "empty": bank["balance"] <= 0,
         }
+    if standing and ctx.get("league_state") in FRONT_OFFICE_STATES:
+        # The GM has had their chance to set the budget before it locks:
+        # the preseason's next move stops asking (next_move.pick).
+        budgets.mark_budget_seen(league_id, team_id, year)
     if standing:
         cap = standing["cap"]
         levels = budgets.levels(league_id, team_id, year)

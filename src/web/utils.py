@@ -22,6 +22,8 @@ from src.api.services.coach import coach_ctx, mark_visit
 from src.api.services.ready_check import is_multiplayer
 from src.api.view_models.league_info import league_info
 from src.db.repositories.all_star_repo import AllStarRepository
+from src.db.repositories.budget_repo import BudgetRepository
+from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.happiness_repo import HappinessRepository
@@ -474,6 +476,19 @@ def _shell_ctx(
             else all_star.phase(db, ctx["season_id"]),
             all_star.window(db, ctx["season_id"]),
             deadline_date(db, ctx["season_id"]) if ctx.get("trades_enabled") else None,
+        )
+    # The preseason's last chance to set the front office and ticket prices
+    # before they lock: until the GM opens the Budget tab, the next move
+    # sends them there.
+    if (
+        ctx["league_state"] == "preseason"
+        and not ctx["is_viewer"]
+        and ctx["team_id"]
+        and "budget" in (ctx.get("visible_tabs") or [])
+    ):
+        year = ContractRepository(db).current_year(league_id)
+        ctx["budget_due"] = year is not None and not BudgetRepository(db).budget_seen(
+            league_id, ctx["team_id"], year
         )
     ctx["next_move"] = next_move.pick(ctx, page, weekend_ready, stops)
     ctx["all_star_ids"] = (

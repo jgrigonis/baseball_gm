@@ -614,6 +614,33 @@ def test_setting_the_front_office_on_the_budget_tab(lg, client_for):
     # Cutting back is always fine.
     r = client.post(url, data={"department": "coaching", "level": 0})
     assert x.budgets.levels(x.league.id, x.mine.id, 2026)["coaching"] == 0
+    # And back up to Standard is always fine too, even past the limit
+    # (Josh, 2026-11-09); only above Standard has to fit.
+    r = client.post(url, data={"department": "coaching", "level": bg.STANDARD})
+    assert "Your owner won't allow it" not in r.text
+    assert x.budgets.levels(x.league.id, x.mine.id, 2026)["coaching"] == bg.STANDARD
+    r = client.post(url, data={"department": "coaching", "level": bg.STANDARD + 1})
+    assert "won't allow" in r.text
+    assert x.budgets.levels(x.league.id, x.mine.id, 2026)["coaching"] == bg.STANDARD
+
+
+def test_the_preseason_asks_for_the_budget_until_its_seen(lg, client_for):
+    # Josh, 2026-11-09: the budget locks on Opening Day, so the next move
+    # sends the GM to the Budget tab once first.
+    x = lg()
+    x.budgets.for_league(x.league.id, 2026)
+    client = client_for(x)
+    assert not x.budgets.budget_seen(x.league.id, x.mine.id, 2026)
+    # Opening it during the season doesn't count: it's locked then.
+    client.get(f"/leagues/{x.league.id}/budget")
+    assert not x.budgets.budget_seen(x.league.id, x.mine.id, 2026)
+    x.db.execute("UPDATE leagues SET state = 'preseason' WHERE id = %s", (x.league.id,))
+    r = client.get(f"/leagues/{x.league.id}/roster")
+    assert "Set Your Budget" in r.text
+    client.get(f"/leagues/{x.league.id}/budget")
+    assert x.budgets.budget_seen(x.league.id, x.mine.id, 2026)
+    r = client.get(f"/leagues/{x.league.id}/roster")
+    assert "Set Your Budget" not in r.text
 
 
 def test_coaching_helps_the_young_most():

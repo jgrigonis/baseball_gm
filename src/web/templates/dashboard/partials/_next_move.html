@@ -14,7 +14,7 @@
      data-sig="{% if nm %}{{ nm.key }}|{{ nm.label }}|{{ nm.pill.label if nm.pill else '' }}{% endif %}">
 {% if nm %}
   {% if nm.pill %}
-  <a class="nm-pill" href="{{ nm.pill.href }}" title="{{ nm.pill.title }}" aria-label="{{ nm.pill.label }}"><span class="nm-long">{{ nm.pill.label }}</span><span class="nm-short" aria-hidden="true">★</span></a>
+  <a class="nm-pill" href="{{ nm.pill.href }}" title="{{ nm.pill.title }}" aria-label="{{ nm.pill.label }}"><span class="nm-long">{{ nm.pill.label }}</span><span class="nm-short" aria-hidden="true">{{ nm.pill.short or "★" }}</span></a>
   {% endif %}
   {% if nm.stop %}
   <button type="button" class="btn nm-stop" id="sched-stop-btn" onclick="schedStop()">■ Stop</button>
