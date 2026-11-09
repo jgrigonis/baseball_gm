@@ -113,7 +113,7 @@
         <select id="tr-shop-player" class="tr-team" onchange="document.getElementById('tr-shop-btn').disabled = document.getElementById('tr-dump-btn').disabled = !this.value">
           <option value="">Pick one of your players…</option>
           {% for p in shop_players %}
-          <option value="{{ p.player_id }}">{{ p.name }} ({{ p.position }}{% if p.overall %}, {{ p.overall }}{% endif %}){% if p.wants_trade %} · wants a trade{% endif %}{% if not p.forty %} · org{% endif %}</option>
+          <option value="{{ p.player_id }}">{{ p.name }} ({{ p.position|pos_label }}{% if p.overall %}, {{ p.overall }}{% endif %}){% if p.wants_trade %} · wants a trade{% endif %}{% if not p.forty %} · org{% endif %}</option>
           {% endfor %}
         </select>
         <button class="btn btn-primary" id="tr-shop-btn" onclick="trShop()" disabled>Shop him</button>
@@ -310,7 +310,7 @@ function render(key) {
       '<span class="' + gradeClass(p.overall) + ' tr-grade">' + esc(p.overall) + '</span>' +
       '<span class="tr-name"><a href="#" onclick="openPlayerPanel(\'' + p.player_id + '\');return false;">' +
         esc(p.first_name + ' ' + p.last_name) + '</a>' + rookieTag(p.player_id) + iconTag(p) +
-        '<span class="tr-meta">' + esc(p.position || '') + ' · ' + p.age + (p.salary_text ? ' · ' + esc(p.salary_text) : '') + (statLine(p) ? ' · ' + esc(statLine(p)) : '') + '</span></span>' +
+        '<span class="tr-meta">' + esc(posLabel(p.position)) + ' · ' + p.age + (p.salary_text ? ' · ' + esc(p.salary_text) : '') + (statLine(p) ? ' · ' + esc(statLine(p)) : '') + '</span></span>' +
       (p.wants_trade && key === 'mine' ? '<span class="badge tr-wants" title="He has asked to be traded">WANTS TRADE</span>' : '') +
       (p.injured ? '<span class="badge badge-injured"' + (p.injury_name ? ' title="' + p.injury_name + '"' : '') + '>🚑 ' + p.injury_days + 'd</span>' : '') +
       '<span class="badge ' + (onForty(p) ? 'badge-40man">40' : 'badge-minors">ORG') + '</span>' +
@@ -573,7 +573,7 @@ function shopRow(p) {
     '<span class="' + gradeClass(p.overall) + ' tr-grade">' + esc(p.overall) + '</span>' +
     '<span class="tr-name"><a href="#" onclick="openPlayerPanel(\'' + p.player_id + '\');return false;">' +
       esc(p.first_name + ' ' + p.last_name) + '</a>' + rookieTag(p.player_id) +
-      '<span class="tr-meta">' + esc(p.position || '') + ' · ' + p.age +
+      '<span class="tr-meta">' + esc(posLabel(p.position)) + ' · ' + p.age +
         (p.salary_text ? ' · ' + esc(p.salary_text) : '') + (statLine(p) ? ' · ' + esc(statLine(p)) : '') +
       '</span></span>' +
   '</div>';

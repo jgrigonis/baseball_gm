@@ -189,7 +189,7 @@
       <div class="ss-award-winner ss-clickable" onclick="openPlayerPanel('{{ r.player_id }}')">
         <div class="ss-award-name">Elected · {{ r.pct }}</div>
         <span class="ss-award-who" style="color:{% if r.is_mine %}var(--green){% else %}var(--text){% endif %};">{{ r.name }}</span>
-        <div class="ss-award-detail">{{ r.position }} · {{ r.team }} · {{ r.line }}</div>
+        <div class="ss-award-detail">{{ r.position|pos_label }} · {{ r.team }} · {{ r.line }}</div>
       </div>
       {% endfor %}
       {% if not hof_class %}
@@ -398,7 +398,7 @@
           <td data-sort="{{ inj.sort_name }}">
             <div class="ss-ellipsis" style="font-size:12px;font-weight:600;">{{ inj.name }}</div>
             <div class="ss-ellipsis" style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">
-              {{ inj.position|upper }}{% if injuries_league_wide and inj.team %} · {{ inj.team }}{% endif %}</div>
+              {{ inj.position|pos_label }}{% if injuries_league_wide and inj.team %} · {{ inj.team }}{% endif %}</div>
           </td>
           <td data-sort="{{ severity_rank.get(inj.severity, 0) }}" style="font-size:12px;">
             <span class="ss-sev-{{ inj.severity }}">{{ injury_label(inj.injury_type, inj.severity) }}</span>
@@ -459,7 +459,7 @@
                     color:{% if pick.is_mine %}var(--green){% elif pick.is_human %}var(--sky){% else %}var(--text){% endif %};">
           {{ pick.player_name }}</div>
         <div class="ss-ellipsis" style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">
-          {{ pick.position }} · {{ pick.team_name }}</div>
+          {{ pick.position|pos_label }} · {{ pick.team_name }}</div>
       </div>
       <span></span>
     </div>

@@ -647,6 +647,12 @@ GOOD_LINES = {
     ("fame", "market"): "Enjoys the big-city spotlight.",
     ("fame", "all-star"): "Enjoys the spotlight.",
 }
+# A pitcher's lean, always shown with his happiness: players see every
+# pitcher as "P" (positions.display_position), since a generated starter can
+# rate better in relief and the other way round, but the lean is still what
+# he'd rather do, and the "position" drive judges him by it.
+ROLE_PREFERENCE = {"sp": "prefers to start", "rp": "prefers relief"}
+
 # "Wants to play {pos}."
 PLAY_POSITION = {
     "c": "catcher",

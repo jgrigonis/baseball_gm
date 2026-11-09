@@ -45,6 +45,7 @@ from src.player.player_record import PlayerRecord
 from src.player.player_skills import PlayerSkills
 from src.player.player_value import role_rating
 from src.team.colors import colors_for
+from src.player.positions import display_position
 
 MAJORS = ("26man", "40man")
 STARS = 5  # best players shown under Your stars
@@ -217,7 +218,7 @@ def star_card(p: PlayerRecord, r: dict) -> dict:
     return {
         "player_id": p.id,
         "name": f"{p.first_name} {p.last_name}",
-        "position": p.position.upper(),
+        "position": display_position(p.position),
         "age": p.age,
         "grade": overall_to_grade(
             role_rating(p), "pitcher" if p.is_pitcher() else "hitter"
@@ -364,7 +365,7 @@ def movers(db, players: list[PlayerRecord], season_id: str | None) -> dict | Non
             changes.append(
                 {
                     **_named(p),
-                    "position": p.position.upper(),
+                    "position": display_position(p.position),
                     "change": now - before,
                     "was": overall_to_grade(before, kind),
                     "now": overall_to_grade(now, kind),
@@ -396,7 +397,7 @@ def retirees(db, team_id: str, season_id: str | None) -> list[dict]:
         {
             "player_id": r["id"],
             "name": f"{r['first_name']} {r['last_name']}",
-            "position": r["position"].upper(),
+            "position": display_position(r["position"]),
             "age": r["age"],
         }
         for r in rows
@@ -519,7 +520,7 @@ def budget_card(
         {
             "player_id": p.id,
             "name": f"{p.first_name} {p.last_name}",
-            "position": p.position.upper(),
+            "position": display_position(p.position),
             "salary_text": format_salary(c["salary"]),
             "through": c["start_year"] + c["years"] - 1,
         }

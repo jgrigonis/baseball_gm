@@ -48,7 +48,7 @@
               {{ pick.player_name }}
             </div>
             <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">
-              {{ pick.position }} · {{ pick.team_name }}{% if pick.auto_picked %} · <span style="color:var(--muted);">auto</span>{% endif %}
+              {{ pick.position|pos_label }} · {{ pick.team_name }}{% if pick.auto_picked %} · <span style="color:var(--muted);">auto</span>{% endif %}
             </div>
           </div>
         </div>

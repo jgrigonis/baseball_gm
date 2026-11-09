@@ -996,7 +996,7 @@ function renderRoster() {
     card.innerHTML = `
       <span class="${gradeClass(p.bat_overall)} lu-grade">${p.bat_overall}</span>
       <div style="min-width:0;">
-        <div class="lu-name" style="color:${p.returning?'#f5c518':p.injured?'var(--red)':''};">${jerseyTag(p)}${p.first_name} ${p.last_name}${rookieTag(p.player_id)}${nameTrailHtml(p, [p.position||'?', `${p.bats}/${p.throws}`, `Age ${p.age}`])}
+        <div class="lu-name" style="color:${p.returning?'#f5c518':p.injured?'var(--red)':''};">${jerseyTag(p)}${p.first_name} ${p.last_name}${rookieTag(p.player_id)}${nameTrailHtml(p, [posLabel(p.position)||'?', `${p.bats}/${p.throws}`, `Age ${p.age}`])}
           ${p.injured?`<span style="font-size:10px;color:var(--red);"${p.injury_name?` title="${p.injury_name}"`:''}>IL${p.injury_days?' ('+p.injury_days+'d)':''}</span>`:''}${rustTag(p)}${iconTag(p)}${moodTag(p)}
         </div>
         ${hitterGradesHtml(p, null)}

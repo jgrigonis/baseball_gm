@@ -130,7 +130,7 @@
             {% for p in draft.best %}
             <tr>
               <td><span class="gp-team">{{ team_badge(p.city, p.mascot) }}<span class="team-name">{{ p.name }}</span></span></td>
-              <td class="gp-dim gp-hide-sm">{{ p.position }}</td>
+              <td class="gp-dim gp-hide-sm">{{ p.position|pos_label }}</td>
               <td class="gp-dim gp-nowrap gp-hide-sm">{{ p.when }}</td>
               <td class="{{ 'gp-amber' if draft.any_stars else 'gp-dim' }}">{{ p.became }}</td>
             </tr>

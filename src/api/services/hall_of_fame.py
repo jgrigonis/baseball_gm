@@ -25,6 +25,7 @@ from src.api.services import season_value
 from src.league import hall_of_fame as hof
 from src.name_generator.names import SimpleNameGenerator
 from src.player.face import face_url
+from src.player.positions import display_position
 
 log = logging.getLogger(__name__)
 
@@ -331,7 +332,7 @@ def _row(r: dict, my_team_id: str | None = None) -> dict:
     return {
         "player_id": r["player_id"],
         "name": f"{r['first_name']} {r['last_name']}",
-        "position": (r["position"] or "").upper(),
+        "position": display_position(r["position"]),
         "team": f"{r['city']} {r['mascot']}" if r["city"] else "",
         "team_id": r["team_id"],
         "is_mine": bool(my_team_id and r["team_id"] == my_team_id),

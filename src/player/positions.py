@@ -666,6 +666,17 @@ def format_position(position: str) -> str:
     return f"{name.title()} ({position.upper()})"
 
 
+def display_position(position: str | None) -> str:
+    """A player's position as players see it: "P" for any pitcher, so a
+    generated starter's or reliever's lean (sp/rp) never shows; that lean is
+    only a preference, and it comes up in his happiness instead. Everything
+    else is upper case ("2B"). Empty for no position."""
+    pos = (position or "").lower()
+    if not pos:
+        return ""
+    return "P" if pos in PITCHER_POSITIONS else pos.upper()
+
+
 # ---------- Validation Sets ----------
 
 ALL_POSITIONS_SET: set[str] = ALL_POSITIONS  # Already a set

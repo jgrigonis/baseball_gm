@@ -444,7 +444,7 @@ let phoneCol       = 'strategy';  // the column phones show
 function skillVal(p, key) { return gradeVal(p[key] || null); }
 
 function playerMetaHtml(p) {
-  return `${p.position||'?'} · ${p.bats}/${p.throws} · Age ${p.age}`;
+  return `${posLabel(p.position)||'?'} · ${p.bats}/${p.throws} · Age ${p.age}`;
 }
 
 /* ── Explore sort ───────────────────────────────────────────────────────────── */

@@ -31,7 +31,7 @@
         <div class="hof-plaque-id">
           <div class="hof-class">Class of {{ p.year }}</div>
           <div class="hof-name">{{ p.name }}</div>
-          <div class="hof-meta">{{ p.position }}{% if p.team %} · {{ p.team }}{% endif %}</div>
+          <div class="hof-meta">{{ p.position|pos_label }}{% if p.team %} · {{ p.team }}{% endif %}</div>
           <div class="hof-meta">{{ p.summary.first_year }}–{{ p.summary.last_year }} · {{ p.summary.seasons }} seasons</div>
         </div>
       </div>
@@ -82,7 +82,7 @@
             {% elif r.outcome == 'final' %}<span class="hof-tag off" title="His 10th and last year on the ballot">Last year</span>{% endif %}
             <div class="hof-who-team">{{ r.team }}</div>
           </td>
-          <td class="hof-mono">{{ r.position }}</td>
+          <td class="hof-mono">{{ r.position|pos_label }}</td>
           <td class="hof-mono">{{ r.year_on_ballot }}</td>
           <td class="hof-num">{{ r.votes }}</td>
           <td class="hof-bar-col">

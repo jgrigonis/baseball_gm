@@ -40,6 +40,7 @@ from src.league.trade_deadline import (
     trades_enabled_for,
 )
 from src.player.face import player_face
+from src.player.positions import display_position
 from src.team.colors import team_badge
 
 # Templates are in src/web/templates/ relative to the project root
@@ -51,6 +52,8 @@ templates = Jinja2Templates(directory=_TEMPLATES_DIR)
 templates.env.globals["team_badge"] = team_badge
 # An illustrated face from the player's id, team and age (src/player/face.py)
 templates.env.globals["player_face"] = player_face
+# "P" for any pitcher, so a generated sp/rp lean never shows ("2B" otherwise)
+templates.env.filters["pos_label"] = display_position
 
 
 def grade_class(grade: str | None) -> str:

@@ -78,6 +78,16 @@ function rustTag(p) {
   return ` <span class="lu-rust" title="${tip}">RUST</span>`;
 }
 
+// A player's position as players see it, matching display_position() in
+// src/player/positions.py: "P" for any pitcher, since a generated pitcher's
+// SP or RP is only a leaning (it shows in his happiness instead); "2B" for
+// the rest; '' for none.
+function posLabel(pos) {
+  const p = (pos || '').toLowerCase();
+  if (!p) return '';
+  return (p === 'sp' || p === 'rp' || p === 'p') ? 'P' : p.toUpperCase();
+}
+
 // The dim text that follows a player's name: "· .285 12HR · R/R · Age 27".
 // Each piece stays whole, so a narrow screen wraps only at the dots.
 // `stats` defaults to the hitting line; pass '' for none.
