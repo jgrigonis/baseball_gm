@@ -1639,8 +1639,10 @@ CREATE TABLE IF NOT EXISTS team_budgets (     -- migration 074 (src/league/budge
     popularity_revenue BIGINT,                -- popularity money from fan interest, set when the season ends (migration 094)
     broadcast_revenue BIGINT,                 -- its broadcast deal's money, set when the season ends (migration 100)
     merch_revenue BIGINT,                     -- merchandise its players sold, set when the season ends (migration 100)
+    sponsor_deal TEXT,                        -- 'steady' or 'incentive', NULL picked by last season's record (migration 103)
+    sponsor_revenue BIGINT,                   -- what its sponsor deal paid, set when the season ends (migration 103)
     payroll     BIGINT,                       -- final payroll, set when the season ends
-    profit      BIGINT,                       -- revenue at ticket prices + gate + popularity + broadcast + merchandise + tax share - payroll - tax - fixed costs - front office - minor leagues
+    profit      BIGINT,                       -- revenue at ticket prices + gate + popularity + broadcast + merchandise + sponsors + tax share - payroll - tax - fixed costs - front office - minor leagues
     tax_share   BIGINT,                       -- its cut of the league's luxury tax, if under the cap (migration 081)
     coaching    SMALLINT,                     -- front office levels, 0 Bare bones to 4 Elite, NULL Standard (migration 083)
     facilities  SMALLINT,
