@@ -52,8 +52,41 @@
   font-family:var(--font-sans);font-size:12px;font-weight:600;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px;
 }
-.sc-dots { display:flex;gap:3px;align-items:center; }
-.dot-win  { width:9px;height:9px;border-radius:50%;background:var(--green); }
+/* Fixed height so the latest day's bigger dots never shift the card. */
+.sc-dots { display:flex;gap:3px;align-items:center;height:14px; }
+.dot-win  { width:9px;height:9px;border-radius:50%;background:var(--green);position:relative;flex-shrink:0; }
+/* The last playoff day's games stay larger, with a soft halo. */
+.dot-win.dot-latest { width:13px;height:13px;
+  box-shadow:0 0 0 2px rgba(95,217,138,.22), 0 0 8px rgba(95,217,138,.45); }
+/* During a live sim (po-animate, added by the sim loop) the day's new dots
+   ripple in, yesterday's shrink back, and the series light up top to bottom
+   (--d). A series won that day flashes, its dots wave and the trophy pops;
+   the Finals flash gold. */
+.po-animate .dot-latest::before, .po-animate .dot-latest::after {
+  content:"";position:absolute;inset:-1px;border-radius:50%;
+  border:2px solid var(--green);pointer-events:none;
+  animation:po-ping 1.1s ease-out both;animation-delay:var(--d,0ms);
+}
+.po-animate .dot-latest::after { animation-delay:calc(var(--d,0ms) + 220ms); }
+@keyframes po-ping { 0%{transform:scale(1);opacity:.9} 100%{transform:scale(3.2);opacity:0} }
+.po-animate .dot-prev { animation:po-shrink .5s ease-in-out; }
+@keyframes po-shrink { from{width:13px;height:13px} to{width:9px;height:9px} }
+.po-animate .series-card.clinched { animation:po-cardflash 1.6s ease-out;animation-delay:var(--d,0ms); }
+@keyframes po-cardflash { 20%{border-color:var(--green);box-shadow:0 0 14px rgba(95,217,138,.45)} }
+.po-animate .clinched .winner .dot-win { animation:po-wave .6s ease-in-out;
+  animation-delay:calc(var(--d,0ms) + 450ms + var(--i,0) * 90ms); }
+@keyframes po-wave { 40%{transform:translateY(-4px) scale(1.25);background:#d6ffe4} }
+.po-trophy { display:inline-block; }
+.po-animate .clinched .po-trophy { animation:po-trophy .7s cubic-bezier(.3,1.7,.5,1) backwards;
+  animation-delay:calc(var(--d,0ms) + 800ms); }
+@keyframes po-trophy { 0%{transform:scale(0) rotate(-30deg)} 100%{transform:scale(1) rotate(0)} }
+.po-animate .series-card.clinched.final { animation:po-champ 2.4s ease-out; }
+@keyframes po-champ { 25%{border-color:var(--amber);box-shadow:0 0 22px rgba(242,193,78,.55)} }
+.po-animate .clinched.final .winner .sc-name { animation:po-goldname 2.4s ease-out; }
+@keyframes po-goldname { 25%,60%{color:var(--amber)} }
+@media (prefers-reduced-motion: reduce) {
+  .po-animate *, .po-animate *::before, .po-animate *::after { animation:none !important; }
+}
 .dot-win.clickable { cursor:pointer; transition:transform .1s, box-shadow .1s; }
 .dot-win.clickable:hover { transform:scale(1.4); box-shadow:0 0 5px var(--green); }
 .dot-loss { width:9px;height:9px;border-radius:50%;background:var(--red);opacity:.5; }
@@ -85,31 +118,34 @@
   .sc-team { padding: 10px 12px; }
   .sc-name { font-size: 14px; max-width: none; }
   .dot-win, .dot-loss, .dot-empty { width: 12px; height: 12px; }
-  .sc-dots { gap: 5px; }
+  .dot-win.dot-latest { width: 17px; height: 17px; }
+  @keyframes po-shrink { from{width:17px;height:17px} to{width:12px;height:12px} }
+  .sc-dots { gap: 5px; height: 18px; }
 }
 </style>
 
 {% macro series_card(s, my_team_id) %}
-<div class="series-card{% if s.decided %} decided{% endif %}{% if s.teams | selectattr('is_mine') | list %} mine{% endif %}">
+<div class="series-card{% if s.decided %} decided{% endif %}{% if s.teams | selectattr('is_mine') | list %} mine{% endif %}{% if s.get('clinched_today') %} clinched{% endif %}{% if s.name == 'Finals' %} final{% endif %}"{% if s.get('latest_order') is not none %} style="--d:{{ s.latest_order * 110 }}ms"{% endif %}>
   {# A semifinal has no label until its teams are known; don't show its raw
      "[1,8]v[4,5]" name. #}
   <div class="sc-header">{{ s.label or ('Semifinal' if s.name.startswith('[') else s.name) }} · BO{{ s.best_of }}</div>
   {% if s.teams %}
     {% for t in s.teams %}
-    {% set win_game_ids = s.completed_games | selectattr('winner_id', 'equalto', t.team_id) | map(attribute='id') | list %}
-    <div class="sc-team{% if s.decided and t.team_id != s.winner_id %} out{% endif %}">
+    {% set win_games = s.completed_games | selectattr('winner_id', 'equalto', t.team_id) | list %}
+    <div class="sc-team{% if s.decided and t.team_id != s.winner_id %} out{% endif %}{% if s.decided and t.team_id == s.winner_id %} winner{% endif %}">
       <span class="sc-name" style="color:{% if t.is_mine %}var(--green){% elif t.is_human %}var(--sky){% else %}var(--text){% endif %};">
-        {% if s.decided and t.team_id == s.winner_id %}🏆 {% endif %}{{ t.name }}
+        {% if s.decided and t.team_id == s.winner_id %}<span class="po-trophy">🏆</span> {% endif %}{{ t.name }}
       </span>
       <div class="sc-dots">
         {% if not t.pending %}
           {% for i in range(s.wins_needed) %}
             {% if i < t.wins %}
-              {% set gid = win_game_ids[i] if i < win_game_ids|length else None %}
-              {% if gid %}
-                <div class="dot-win clickable" onclick="openGamePanel('{{ gid }}')" title="View game"></div>
+              {% set g = win_games[i] if i < win_games|length else None %}
+              {% set day_cls = (' dot-latest' if g and g.get('latest') else '') ~ (' dot-prev' if g and g.get('prev') else '') %}
+              {% if g %}
+                <div class="dot-win clickable{{ day_cls }}" style="--i:{{ i }}" onclick="openGamePanel('{{ g.id }}')" title="View game"></div>
               {% else %}
-                <div class="dot-win"></div>
+                <div class="dot-win" style="--i:{{ i }}"></div>
               {% endif %}
             {% else %}
               <div class="dot-empty"></div>
@@ -201,6 +237,20 @@
 (function(){
 var LEAGUE_ID = "{{ league_id }}";
 
+// Animate the day's new dots in the bracket the next tab redraw brings in.
+// afterSwap fires as the new bracket goes in, before it is painted, so the
+// dots start from their animated state with no flicker.
+function _animateNextBracket() {
+  function onSwap(e) {
+    if (!e.detail.target || e.detail.target.id !== 'tab-content') return;
+    document.body.removeEventListener('htmx:afterSwap', onSwap);
+    var br = e.detail.target.querySelector('.po-bracket');
+    if (br) br.classList.add('po-animate');
+  }
+  document.body.addEventListener('htmx:afterSwap', onSwap);
+  return function() { document.body.removeEventListener('htmx:afterSwap', onSwap); };
+}
+
 // The sim buttons are the top bar's next move (_next_move.html). Sim Round
 // and Full Playoffs play one day at a time, redrawing the bracket after each
 // so its dots fill in as the games are played; the top bar's Stop ends them
@@ -239,8 +289,10 @@ async function _simPlayoffsRun(mode) {
 
       // Redraw the open tab (the bracket, or whichever live tab the GM went
       // to) in place, so the day's dots appear.
+      var disarm = _animateNextBracket();
       if (document.querySelector('.tab-link.active, .side-link.active') && window.liveRefreshTab) {
         try { await window.liveRefreshTab(); } catch (e) {}
+        disarm();
       } else {
         htmx.ajax('GET', '/leagues/' + LEAGUE_ID + '/playoffs', {target:'#tab-content', swap:'innerHTML'});
       }

@@ -71,3 +71,44 @@ def test_finals_show_a_semifinal_winner_before_games_exist(db_conn, factory):
     finals = ctx["bracket"][2]["series"][0]
     assert [t["team_id"] for t in finals["teams"]] == [a.id]
     assert finals["teams"][0]["pending"]
+
+
+def _game(db, sid, season, n, date, home, away, winner):
+    db.execute(
+        """INSERT INTO games
+        (id, game_date, season_id, series_id, home_team_id, away_team_id,
+         completed, winner_id)
+        VALUES (%s, %s, %s, %s, %s, %s, 1, %s)""",
+        (f"{sid}-g{n}", date, season.id, sid, home.id, away.id, winner.id),
+    )
+
+
+def test_bracket_marks_the_latest_playoff_day(db_conn, factory):
+    """The last day's games show larger and the day before shrinks back;
+    series that played that day get a top-to-bottom order, and one won that
+    day is marked clinched."""
+    league = factory.league(state="playoffs")
+    season = factory.season()
+    factory.league_season(league, season)
+    a, b, c, d = (factory.team() for _ in range(4))
+    sids = {}
+    for name in ("1v8", "4v5"):
+        sids[name] = f"{season.id}-{name}"
+        db_conn.execute(
+            "INSERT INTO series (id, season_id, name) VALUES (%s, %s, %s)",
+            (sids[name], season.id, name),
+        )
+    # 1v8: a sweeps on Oct 1-3, clinching on the latest day.
+    for n, day in enumerate(("2025-10-01", "2025-10-02", "2025-10-03")):
+        _game(db_conn, sids["1v8"], season, n, day, a, b, a)
+    # 4v5: split the first two days, idle on the latest day.
+    _game(db_conn, sids["4v5"], season, 0, "2025-10-01", c, d, c)
+    _game(db_conn, sids["4v5"], season, 1, "2025-10-02", c, d, d)
+
+    r1 = playoffs_context(db_conn, league.id, season.id, a.id)["bracket"][0]
+    s18, s45 = r1["series"][0], r1["series"][1]
+    assert [g["latest"] for g in s18["completed_games"]] == [False, False, True]
+    assert [g["prev"] for g in s18["completed_games"]] == [False, True, False]
+    assert s18["clinched_today"] and s18["latest_order"] == 0
+    assert not any(g["latest"] for g in s45["completed_games"])
+    assert s45["latest_order"] is None and not s45["clinched_today"]
