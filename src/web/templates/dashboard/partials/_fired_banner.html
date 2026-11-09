@@ -24,7 +24,19 @@
   {% endif %}
 </div>
 <style>
+/* The same shape as the join banner (_join_banner.html), in red. */
+.fired-banner {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 10px 24px; border-bottom: 1px solid var(--red);
+  font-family: var(--font-mono); font-size: 12px; color: var(--text);
+}
+.fired-banner .join-banner-text { flex: 1 1 260px; }
+.fired-banner .join-banner-btn { font-size: 11px; padding: 6px 14px; white-space: nowrap; }
+@media (max-width: 600px) {
+  .fired-banner { padding: 10px 16px; gap: 10px; }
+  .fired-banner .join-banner-btn { width: 100%; text-align: center; }
+}
 .fired-banner { background: var(--red-dim); border-bottom-color: var(--red); }
-.fired-banner strong { color: var(--red); }
+.fired-banner strong { color: var(--red); margin-right: 4px; }
 .fired-quote { display: block; margin-top: 4px; color: var(--text-dim); font-style: italic; }
 </style>
