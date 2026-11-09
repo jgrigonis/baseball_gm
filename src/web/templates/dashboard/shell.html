@@ -733,6 +733,30 @@ window.nextMoveAct = function(el) {
   var arg = el.dataset.arg || '';
   if (arg === '') fn(); else fn(/^\d+$/.test(arg) ? Number(arg) : arg);
 };
+// Begin Offseason: the next move on the Free Agents tab once the champion
+// is crowned (next_move.py). Once it's run, on to the retirements.
+function beginOffseason() {
+  window.nextMoveBusy('begin-offseason-btn', 'Running offseason…');
+  var running = 'Aging players, generating prospects, preparing the draft…';
+  window.nextMoveStatus(running);
+  runLeagueJob('/leagues/' + LEAGUE_ID + '/offseason/begin', {method: 'POST'},
+               function(job){ window.nextMoveStatus(leagueJobWaitingText(job) || running); })
+    .then(function(d){
+      if (d.ok) {
+        window.nextMoveStatus('✓ Offseason complete: ' + d.game_count + ' games scheduled for ' + d.new_year + ' · loading the retirements…');
+        window.location.href = '/leagues/' + LEAGUE_ID + '/retirement';
+      } else {
+        window.nextMoveStatus('✗ ' + (d.detail || 'Something went wrong.') + ' Try again.', 'red');
+        window.nextMoveIdle('begin-offseason-btn');
+      }
+    })
+    .catch(function(){
+      window.nextMoveStatus('✗ Network error. Try again.', 'red');
+      window.nextMoveIdle('begin-offseason-btn');
+    });
+}
+
+window.beginOffseason = beginOffseason;
 // A move that runs a while shows it on its button: busy, then back.
 window.nextMoveBusy = function(id, text) {
   var b = document.getElementById(id);

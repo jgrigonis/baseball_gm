@@ -121,6 +121,8 @@ def free_agents_tab(
             card.update(e)
             ctx["expiring"].append(card)
         ctx["expiring"].sort(key=lambda c: -c.get("overall_score", -1.0))
+        if ctx["expiring"]:
+            ctx["next_money"] = offseason_fa.next_season_money(db, league_id, team_id)
 
     ctx["players"] = players
     ctx["market_step_pct"] = round(free_agents.MARKET_STEP * 100)

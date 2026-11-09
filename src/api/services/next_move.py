@@ -243,8 +243,17 @@ def pick(
             "go-playoffs", "🥇 Go to Playoffs →", "Playoffs →", f"{base}/playoffs"
         )
 
-    # offseason: the champion is crowned and the offseason hasn't run.
+    # offseason: the champion is crowned and the offseason hasn't run. The
+    # summary, then the Free Agents tab to decide on expiring deals (Josh,
+    # 2026-11-09), then the offseason runs.
     if page == "season-summary":
+        return _go(
+            "go-free-agents",
+            "✍️ Expiring Deals →",
+            "Deals →",
+            f"{base}/free-agents",
+        )
+    if page == "free-agents":
         return _act(
             "begin-offseason",
             "Begin Offseason →",

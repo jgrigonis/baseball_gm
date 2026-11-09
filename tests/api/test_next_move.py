@@ -74,11 +74,13 @@ def test_playoffs_go_there_then_sim_there():
     assert move["stop"]
 
 
-def test_after_the_champion_the_summary_then_begin_offseason():
+def test_after_the_champion_the_summary_then_free_agents_then_begin_offseason():
     move = pick(_ctx(league_state="offseason"), "playoffs")
     assert move["label"] == "📜 Season Summary →"
     assert move["href"] == "/leagues/L1/season-summary"
     move = pick(_ctx(league_state="offseason"), "season-summary")
+    assert move["href"] == "/leagues/L1/free-agents"
+    move = pick(_ctx(league_state="offseason"), "free-agents")
     assert move["label"] == "Begin Offseason →" and move["fn"] == "beginOffseason"
 
 

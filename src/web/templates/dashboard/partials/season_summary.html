@@ -27,8 +27,9 @@
         The offseason runs once every GM is ready. After it come the
         retirements, then your {{ new_gm_year }} season preview and the draft.
       {% else %}
-        Begin Offseason, at the top, ages players and retires veterans. Then
-        you'll see the retirements, your {{ new_gm_year }} season preview and the draft.
+        Next, Expiring Deals at the top takes you to the Free Agents tab to
+        re-sign or let go the players whose deals are up. Begin Offseason there
+        ages players and retires veterans. Then you'll see the retirements, your {{ new_gm_year }} season preview and the draft.
       {% endif %}
     </div>
   </div>
@@ -571,33 +572,6 @@
 
 <script>
 (function(){
-var LEAGUE_ID = "{{ league_id }}";
-
-// Begin Offseason is the top bar's next move here (_next_move.html). Once
-// it's run, on to the retirements, then the season preview and the draft.
-function beginOffseason() {
-  window.nextMoveBusy('begin-offseason-btn', 'Running offseason…');
-  var running = 'Aging players, generating prospects, preparing the draft…';
-  window.nextMoveStatus(running);
-  runLeagueJob('/leagues/' + LEAGUE_ID + '/offseason/begin', {method: 'POST'},
-               function(job){ window.nextMoveStatus(leagueJobWaitingText(job) || running); })
-    .then(function(d){
-      if (d.ok) {
-        window.nextMoveStatus('✓ Offseason complete: ' + d.game_count + ' games scheduled for ' + d.new_year + ' · loading the retirements…');
-        window.location.href = '/leagues/' + LEAGUE_ID + '/retirement';
-      } else {
-        window.nextMoveStatus('✗ ' + (d.detail || 'Something went wrong.') + ' Try again.', 'red');
-        window.nextMoveIdle('begin-offseason-btn');
-      }
-    })
-    .catch(function(){
-      window.nextMoveStatus('✗ Network error. Try again.', 'red');
-      window.nextMoveIdle('begin-offseason-btn');
-    });
-}
-
-window.beginOffseason = beginOffseason;
-
 // Click an injury header to sort by it; click it again to reverse.
 function sortInjuries(th) {
   var table = document.getElementById('injury-table');
