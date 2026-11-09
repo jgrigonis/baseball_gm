@@ -77,6 +77,26 @@ def _merch_note(b: dict, names: dict) -> str:
     return "Players graded B+ or better sell jerseys, stars far more"
 
 
+def _sponsor_note(b: dict) -> str:
+    deal = b.get("sponsor_deal")
+    if not deal:
+        return "Sponsors pay a steady deal, or more the better you do"
+    name = fn.SPONSOR_NAMES.get(deal["kind"], "Steady")
+    if deal["kind"] != "incentive":
+        return f"{name} sponsor deal: the same whatever happens"
+    if not b["projected"] or "base" not in deal:
+        return f"{name} sponsor deal: paid on how the season went"
+    parts = [f"{_money(deal['base'])} up front"]
+    if deal["wins"]:
+        parts.append(f"{_money(deal['wins'])} for winning")
+    if deal["playoffs"]:
+        parts.append(f"{_money(deal['playoffs'])} for the playoffs")
+    if deal["rounds"]:
+        n = deal["rounds"]
+        parts.append(f"{_money(deal['rounds'])} for {n} series won")
+    return f"{name} sponsor deal so far: " + ", ".join(parts)
+
+
 def _books_view(b: dict, names: dict | None = None) -> dict:
     """One season's money in and out (BudgetRepository.books), as text."""
     names = names or {}
@@ -127,6 +147,11 @@ def _books_view(b: dict, names: dict | None = None) -> dict:
             "label": "Merchandise",
             "amount": _money(b["merchandise"]) if b["merchandise"] else None,
             "note": _merch_note(b, names),
+        },
+        {
+            "label": "Sponsors",
+            "amount": _money(b["sponsor"]) if b["sponsor"] else None,
+            "note": _sponsor_note(b),
         },
         {
             "label": "Ballpark",
@@ -300,6 +325,66 @@ def set_broadcast(
         request, htmx, league_id, db, user, gm,
         broadcast_error=error, broadcast_saved=not error,
     )  # fmt: skip
+
+
+@router.post("/leagues/{league_id}/budget/sponsor", response_class=HTMLResponse)
+def set_sponsor(
+    request: Request,
+    htmx: IsHTMX,
+    league_id: str,
+    db: DB,
+    user: User,
+    gm: GM,
+    _active: ActiveLeague,
+    kind: str = Form(...),
+):
+    """Take a sponsor offer for the season. Only between seasons, like
+    ticket prices."""
+    team_id = gm.get("team_id")
+    error = None
+    with league_lock(db, league_id):
+        league = LeagueRepository(db).get_by_id(league_id)
+        budgets = BudgetRepository(db)
+        year = ContractRepository(db).current_year(league_id)
+        deal = budgets.sponsors(league_id, year, [team_id]) if year else {}
+        if team_id not in deal:
+            error = "This league has no sponsors."
+        elif league["state"] not in FRONT_OFFICE_STATES:
+            error = "Sponsor deals are signed between seasons, from the draft to Opening Day."
+        elif kind not in fn.SPONSOR_KINDS:
+            error = "Pick one of the offers."
+        else:
+            budgets.set_sponsor(league_id, team_id, year, kind)
+        db.commit()
+    return _render(
+        request, htmx, league_id, db, user, gm,
+        sponsor_error=error, sponsor_saved=not error,
+    )  # fmt: skip
+
+
+def _sponsor_view(deal: dict, open_: bool) -> dict:
+    steady = deal["steady"]
+    per_10 = fn.SPONSOR_PER_WIN_PCT * 0.1 * steady
+    best = fn.sponsor_money(steady, "incentive", 0.62, True, 3)["total"]
+    return {
+        "kind": deal["kind"],
+        "name": fn.SPONSOR_NAMES[deal["kind"]],
+        "picked": deal["picked"],
+        "open": open_,
+        "amount_text": _money(deal["total"]),
+        "steady_text": _money(steady),
+        "base_text": _money(fn.sponsor_money(steady, "incentive")["base"]),
+        "per_10_text": _money(per_10),
+        "playoffs_text": _money(steady * fn.SPONSOR_PLAYOFFS),
+        "round_text": _money(steady * fn.SPONSOR_PER_ROUND),
+        "best_text": _money(best),
+        "last_text": (
+            f"{deal['last_win_pct']:.3f}".lstrip("0")
+            if deal["last_win_pct"] is not None
+            else None
+        ),
+        "ai_from_text": f"{fn.SPONSOR_AI_FROM:.3f}".lstrip("0"),
+    }
 
 
 @router.post("/leagues/{league_id}/budget/ballpark", response_class=HTMLResponse)
@@ -484,11 +569,14 @@ def _render(
     request, htmx, league_id, db, user, gm, error=None, saved=False,
     ticket_error=None, ticket_saved=False,
     broadcast_error=None, broadcast_saved=False,
+    sponsor_error=None, sponsor_saved=False,
     park_error=None, park_saved=False,
 ):  # fmt: skip
     ctx = _shell_ctx(request, db, gm, league_id, "budget", user)
     ctx["park_error"] = park_error
     ctx["park_saved"] = park_saved
+    ctx["sponsor_error"] = sponsor_error
+    ctx["sponsor_saved"] = sponsor_saved
     ctx["broadcast_error"] = broadcast_error
     ctx["broadcast_saved"] = broadcast_saved
     ctx["fo_error"] = error
@@ -545,6 +633,8 @@ def _render(
         ctx["tickets"] = {"level": level, "options": _ticket_options()}
         deal = budgets.broadcast_deal(league_id, team_id, year)
         ctx["broadcast"] = _broadcast_view(deal, year, ctx["fo_open"]) if deal else None
+        sponsor = budgets.sponsors(league_id, year, [team_id]).get(team_id)
+        ctx["sponsor"] = _sponsor_view(sponsor, ctx["fo_open"]) if sponsor else None
         offers = budgets.ballpark_offers(league_id, team_id, year)
         ctx["ballpark"] = (
             _ballpark_view(offers, year, ctx["fo_open"]) if offers and bank else None
@@ -569,6 +659,7 @@ def _render(
                 + (r["popularity_revenue"] or 0)
                 + (r["broadcast_revenue"] or 0)
                 + (r["merch_revenue"] or 0)
+                + (r["sponsor_revenue"] or 0)
                 + (r["ballpark_revenue"] or 0)
             ),
             "tax": _money(r["luxury_tax"]) if r["luxury_tax"] else None,

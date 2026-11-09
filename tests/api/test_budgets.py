@@ -1152,6 +1152,51 @@ def test_the_season_end_records_broadcast_and_merchandise(lg, monkeypatch):
     assert books["broadcast"] == row["broadcast_revenue"]
 
 
+# ── Sponsors (Josh, 2026-11-09) ───────────────────────────────────────────────
+
+
+def test_every_team_gets_a_sponsor_deal_recorded_at_season_end(lg):
+    x = lg()
+    x.budgets.for_league(x.league.id, 2026)
+    deals = x.budgets.sponsors(x.league.id, 2026)
+    assert set(deals) == {x.mine.id, x.theirs.id}
+    mine = deals[x.mine.id]
+    assert mine["kind"] == "steady" and not mine["picked"]
+    assert mine["total"] == mine["steady"] > 0
+    before = x.budgets.projected(x.league.id, 2026)[x.mine.id]["profit"]
+    x.budgets.assess(x.league.id, 2026)
+    row = x.db.execute(
+        """SELECT sponsor_revenue, sponsor_deal, profit FROM team_budgets
+           WHERE league_id = %s AND team_id = %s AND year = 2026""",
+        (x.league.id, x.mine.id),
+    ).fetchone()
+    assert row["sponsor_revenue"] == mine["total"]
+    assert row["sponsor_deal"] == "steady"
+    assert row["profit"] == before
+    books = x.budgets.books(x.league.id, x.mine.id, 2026)[0]
+    assert books["sponsor"] == row["sponsor_revenue"]
+
+
+def test_picking_a_sponsor_offer_on_the_budget_tab(lg, client_for):
+    x = lg()
+    x.budgets.for_league(x.league.id, 2026)
+    client = client_for(x)
+    html = client.get(f"/leagues/{x.league.id}/budget").text
+    assert 'id="sponsor"' in html and "Sponsors" in html
+    url = f"/leagues/{x.league.id}/budget/sponsor"
+    r = client.post(url, data={"kind": "incentive"})
+    assert "between seasons" in r.text
+    x.db.execute("UPDATE leagues SET state = 'preseason' WHERE id = %s", (x.league.id,))
+    r = client.post(url, data={"kind": "nonsense"})
+    assert "Pick one of the offers" in r.text
+    r = client.post(url, data={"kind": "incentive"})
+    assert r.status_code == 200 and "Sponsor deal saved" in r.text
+    deal = x.budgets.sponsors(x.league.id, 2026)[x.mine.id]
+    assert deal["kind"] == "incentive" and deal["picked"]
+    # Nothing played yet: only the money up front.
+    assert deal["total"] == deal["base"] < deal["steady"]
+
+
 def test_hall_of_famers_sell_retro_jerseys_for_their_team(lg, monkeypatch):
     from src.api.services import icons
 

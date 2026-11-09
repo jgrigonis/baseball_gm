@@ -562,8 +562,7 @@ class BudgetRepository:
             for r in self.conn.execute(
                 """SELECT year, cap, budget, payroll, revenue, playoff_revenue,
                           popularity_revenue, broadcast_revenue, merch_revenue,
-                          ballpark_revenue,
-                          luxury_tax, tax_share, front_office, minor_league,
+                          sponsor_revenue, ballpark_revenue, luxury_tax, tax_share, front_office, minor_league,
                           profit,
                           fans_before, fans_after, ticket_price
                    FROM team_budgets WHERE league_id = %s AND team_id = %s
@@ -619,6 +618,7 @@ class BudgetRepository:
         shares = bg.tax_shares(payrolls, cap)
         deals = self.broadcast_deals(league_id, year)
         merch = self.merchandise(league_id, year)
+        sponsors = self.sponsors(league_id, year)
         parks = self.ballparks(league_id, year)
         taxes = {}
         for team_id in budgets:
@@ -645,6 +645,7 @@ class BudgetRepository:
             popular = fn.popularity_money(average, before)
             broadcast = deals[team_id]["amount"] if team_id in deals else 0
             sold = merch[team_id]["total"] if team_id in merch else 0
+            sponsor = sponsors[team_id]["total"] if team_id in sponsors else 0
             park = fn.ballpark_money(
                 parks.get(team_id, ()),
                 average,
@@ -653,13 +654,14 @@ class BudgetRepository:
                 revenue[team_id],
                 rows[team_id]["ticket_price"],
             )
-            total = tickets + gate + popular + broadcast + sold + park
+            total = tickets + gate + popular + broadcast + sold + sponsor + park
             self.conn.execute(
                 """UPDATE team_budgets
                    SET luxury_tax = %s, revenue = %s, fans_before = %s,
                        fans_after = %s, playoff_revenue = %s,
                        popularity_revenue = %s, broadcast_revenue = %s,
-                       merch_revenue = %s, ballpark_revenue = %s, payroll = %s,
+                       merch_revenue = %s, sponsor_revenue = %s,
+                       sponsor_deal = %s, ballpark_revenue = %s, payroll = %s,
                        tax_share = %s, front_office = %s, minor_league = %s,
                        profit = %s
                    WHERE league_id = %s AND team_id = %s AND year = %s""",
@@ -672,6 +674,8 @@ class BudgetRepository:
                     popular,
                     broadcast,
                     sold,
+                    sponsor,
+                    sponsors[team_id]["kind"] if team_id in sponsors else None,
                     park,
                     payroll,
                     share,
@@ -991,6 +995,91 @@ class BudgetRepository:
             if best:
                 self._add_project(league_id, t, year, best[1], best[2])
 
+    # ── Sponsors ─────────────────────────────────────────────────────────────
+
+    def _series_won(self, season_id: str | None, results: dict) -> dict[str, int]:
+        """Playoff series each team has won in a season: every series it
+        played past its first, and the Finals for the champion (results:
+        _results for the season)."""
+        if not season_id:
+            return {}
+        out: dict[str, int] = {}
+        for r in self.conn.execute(
+            """SELECT team_id, COUNT(DISTINCT series_id) AS n FROM (
+                   SELECT home_team_id AS team_id, series_id FROM games
+                   WHERE season_id = %s AND series_id IS NOT NULL
+                   UNION ALL
+                   SELECT away_team_id, series_id FROM games
+                   WHERE season_id = %s AND series_id IS NOT NULL
+               ) x GROUP BY team_id""",
+            (season_id, season_id),
+        ).fetchall():
+            out[r["team_id"]] = max(0, int(r["n"]) - 1)
+        for t, r in results.items():
+            if r.get("champion"):
+                out[t] = out.get(t, 0) + 1
+        return out
+
+    def sponsors(
+        self, league_id: str, year: int, team_ids: list[str] | None = None
+    ) -> dict[str, dict]:
+        """Each team's sponsor deal this season, by team id
+        (src/league/finances.py sponsor_money): the offer it took, what Steady
+        pays, and what the deal pays on the season so far (an Incentive deal's
+        wins at today's win %). Empty without budgets."""
+        rows = {
+            r["team_id"]: r["sponsor_deal"]
+            for r in self.conn.execute(
+                """SELECT team_id, sponsor_deal FROM team_budgets
+                   WHERE league_id = %s AND year = %s""",
+                (league_id, year),
+            ).fetchall()
+        }
+        if not rows:
+            return {}
+        ids = [t for t in rows if team_ids is None or t in team_ids]
+        average = self._average_revenue(league_id, year)
+        money = self._team_money(league_id, year, ids)
+        last: dict[str, float] = {}
+        for season_id in self._past_seasons(league_id, year, 1):
+            for t, r in self._results(league_id, season_id).items():
+                if "win_pct" in r:
+                    last[t] = r["win_pct"]
+        season_id = self._season_id(league_id, year)
+        now = self._results(league_id, season_id) if season_id else {}
+        rounds = self._series_won(season_id, now)
+        out = {}
+        for t in ids:
+            steady = fn.sponsor_steady(average, money[t].market)
+            kind = fn.sponsor_kind(rows[t], last.get(t))
+            r = now.get(t, {})
+            out[t] = {
+                "kind": kind,
+                "picked": rows[t] in fn.SPONSOR_KINDS,
+                "steady": steady,
+                "last_win_pct": last.get(t),
+                "win_pct": r.get("win_pct", 0.5),
+                "playoffs": bool(r.get("playoffs")),
+                "rounds": rounds.get(t, 0),
+                **fn.sponsor_money(
+                    steady,
+                    kind,
+                    r.get("win_pct", 0.5),
+                    bool(r.get("playoffs")),
+                    rounds.get(t, 0),
+                ),
+            }
+        return out
+
+    def set_sponsor(self, league_id: str, team_id: str, year: int, kind: str) -> None:
+        """Take a sponsor offer for the season (the caller checks it's
+        allowed)."""
+        self.conn.execute(
+            """UPDATE team_budgets SET sponsor_deal = %s
+               WHERE league_id = %s AND team_id = %s AND year = %s""",
+            (fn.sponsor_kind(kind), league_id, team_id, year),
+        )
+
     # ── Merchandise ──────────────────────────────────────────────────────────
 
     def _season_any(self, league_id: str, year: int) -> str | None:
@@ -1191,7 +1280,8 @@ class BudgetRepository:
             """SELECT team_id, year, cap, revenue, playoff_revenue, payroll,
                       luxury_tax, tax_share, front_office, minor_league, profit,
                       fans_before, ticket_price, popularity_revenue,
-                      broadcast_revenue, merch_revenue, ballpark_revenue
+                      broadcast_revenue, merch_revenue, sponsor_revenue,
+                      sponsor_deal, ballpark_revenue
                FROM team_budgets WHERE league_id = %s AND year <= %s""",
             (league_id, year),
         ).fetchall()
@@ -1208,7 +1298,7 @@ class BudgetRepository:
             done = mine["profit"] is not None
             if not done and y != year:
                 continue
-            extra: dict = {"sellers": []}
+            extra: dict = {"sellers": [], "sponsor_deal": None}
             cap = int(mine["cap"]) if mine["cap"] else self.cap(league_id, y)
             money = self._team_money(league_id, y, list(league_rows))
             revenue = self._revenues(league_id, y, league_rows, money, cap)
@@ -1218,12 +1308,15 @@ class BudgetRepository:
             fans = money[team_id].fans if fans is None else fans
             if done:
                 gate = int(mine["playoff_revenue"] or 0)
+                if mine["sponsor_deal"]:
+                    extra["sponsor_deal"] = {"kind": mine["sponsor_deal"]}
                 line = dict(
                     playoff_gate=gate,
                     home_playoff_games=round(gate / per_game) if per_game else 0,
                     popularity=int(mine["popularity_revenue"] or 0),
                     broadcast=int(mine["broadcast_revenue"] or 0),
                     merchandise=int(mine["merch_revenue"] or 0),
+                    sponsor=int(mine["sponsor_revenue"] or 0),
                     ballpark=int(mine["ballpark_revenue"] or 0),
                     tax_share=int(mine["tax_share"] or 0),
                     payroll=int(mine["payroll"] or 0),
@@ -1252,7 +1345,11 @@ class BudgetRepository:
                 farms = self._minor_leagues(league_id, y, list(league_rows))
                 deal = self.broadcast_deal(league_id, team_id, y)
                 sold = self.merchandise(league_id, y, [team_id]).get(team_id)
-                extra = {"sellers": sold["sellers"] if sold else []}
+                sponsor = self.sponsors(league_id, y, [team_id]).get(team_id)
+                extra = {
+                    "sellers": sold["sellers"] if sold else [],
+                    "sponsor_deal": sponsor,
+                }
                 line = dict(
                     ballpark=fn.ballpark_money(
                         self.ballparks(league_id, y).get(team_id, ()),
@@ -1262,6 +1359,7 @@ class BudgetRepository:
                         revenue[team_id],
                         mine["ticket_price"],
                     ),
+                    sponsor=sponsor["total"] if sponsor else 0,
                     broadcast=deal["amount"] if deal else 0,
                     merchandise=sold["total"] if sold else 0,
                     minor_league=farms.get(team_id, 0),
@@ -1322,6 +1420,7 @@ class BudgetRepository:
         results = self._results(league_id, season_id) if season_id else {}
         deals = self.broadcast_deals(league_id, year)
         merch = self.merchandise(league_id, year)
+        sponsors = self.sponsors(league_id, year)
         parks = self.ballparks(league_id, year)
         out = {}
         for t, r in rows.items():
@@ -1342,6 +1441,7 @@ class BudgetRepository:
                 popularity=fn.popularity_money(average, fans),
                 broadcast=deals[t]["amount"] if t in deals else 0,
                 merchandise=merch[t]["total"] if t in merch else 0,
+                sponsor=sponsors[t]["total"] if t in sponsors else 0,
                 ballpark=fn.ballpark_money(
                     parks.get(t, ()),
                     average,

@@ -139,7 +139,7 @@ def test_new_league_form_has_sliders(client):
     assert '<input type="hidden" name="num_seasons" value="10">' in html
     assert '<select name="num_teams"' not in html
     assert "∞" in html
-    assert "Trades and injuries default to off." in html
+    assert "Trades and injuries default to off, and there are no team budgets" in html
 
 
 def _seasons(client, db_conn, value):

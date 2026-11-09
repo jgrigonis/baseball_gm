@@ -5,7 +5,7 @@ projects: what the owner paid from their bank and the season it opened.
 team_budgets records what each finished season's ballpark earned.
 """
 
-VERSION = 103
+VERSION = 104
 
 
 def upgrade(conn):
