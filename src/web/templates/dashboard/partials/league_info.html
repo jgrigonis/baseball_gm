@@ -181,15 +181,16 @@
         <label class="toggle-row"><input type="checkbox" name="injuries_enabled" value="true" {% if info.injuries_enabled %}checked{% endif %}>
           <span>Injuries <span class="solo-hint">Off: nobody gets hurt from the next game on. Anyone already hurt heals as usual.</span></span></label>
         {% if se.trades %}
-        <label class="toggle-row"><input type="checkbox" name="trades_enabled" value="true" {% if info.trades_enabled %}checked{% endif %}>
+        <label class="toggle-row"><input type="checkbox" name="trades_enabled" value="true" {% if info.trades_enabled %}checked{% endif %}
+          onchange="this.form.querySelectorAll('.needs-trades').forEach(function (r) { r.classList.toggle('trade-off', !this.checked); }, this);">
           <span>Trades <span class="solo-hint">Off: open trade offers expire.</span></span></label>
         {% if se.multi and info.human_gms >= 3 %}
         {# The checkbox comes after so its "true" wins when it's ticked. #}
         <input type="hidden" name="trade_vote" value="false">
-        <label class="toggle-row"><input type="checkbox" name="trade_vote" value="true" {% if info.trade_vote %}checked{% endif %}>
+        <label class="toggle-row needs-trades{% if not info.trades_enabled %} trade-off{% endif %}"><input type="checkbox" name="trade_vote" value="true" {% if info.trade_vote %}checked{% endif %}>
           <span>Trade vote <span class="solo-hint">The other human GMs vote on trades between two human GMs. Votes already open finish under the old rule.</span></span></label>
         {% endif %}
-        <label class="toggle-row"><input type="checkbox" name="pick_trades" value="true" {% if info.pick_trades %}checked{% endif %}>
+        <label class="toggle-row needs-trades{% if not info.trades_enabled %} trade-off{% endif %}"><input type="checkbox" name="pick_trades" value="true" {% if info.pick_trades %}checked{% endif %}>
           <span>Draft pick trades <span class="solo-hint">Off: open offers with picks are called off. Picks already traded stay traded.</span></span></label>
         {% endif %}
         <label class="toggle-row"><input type="checkbox" name="reentry_enabled" value="true" {% if info.reentry_enabled %}checked{% endif %}>
