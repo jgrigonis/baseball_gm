@@ -32,7 +32,7 @@ from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
-from src.player.contracts import format_salary
+from src.player.contracts import format_salary, minors_salary
 from src.player.face import face_url
 from src.team.roster_limits import MIN_PLAYING_ROSTER
 from src.web.utils import _current_league_date, _shell_ctx, tab_response
@@ -94,11 +94,17 @@ def roster(
     year = contracts.current_year(league_id)
     if team_id and year is not None:
         deals = contracts.active_for([p["player_id"] for p in players], year)
+        farm_pay = format_salary(
+            minors_salary(BudgetRepository(db).salary_scale(league_id, year))
+        )
         for p in players:
             deal = deals.get(p["player_id"])
             p["salary"] = deal["salary"] if deal else None
             p["salary_text"] = format_salary(deal["salary"]) if deal else None
             p["rookie_deal"] = bool(deal and deal["kind"] == "rookie")
+            # Off the payroll in the minors: paid the minor league salary
+            # until he plays a game on the 40-man.
+            p["farm_pay_text"] = farm_pay if deal and not deal["on_payroll"] else None
         ctx["payroll_text"] = format_salary(contracts.payroll(team_id, year))
         dead = contracts.dead_money(team_id, year)
         ctx["dead_money_text"] = format_salary(dead) if dead else None

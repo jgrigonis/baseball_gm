@@ -593,6 +593,12 @@ def _render(
     )
     ctx["year"] = year
     ctx["money"] = standing
+    if standing:
+        from src.player.contracts import minors_salary
+
+        ctx["farm_pay_text"] = _money(
+            minors_salary(budgets.salary_scale(league_id, year))
+        )
     bank = budgets.banks(league_id).get(team_id) if standing else None
     if bank:
         ctx["bank"] = {
