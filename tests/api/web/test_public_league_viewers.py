@@ -17,6 +17,8 @@ from src.api.database import get_db
 from src.api.dependencies import get_current_user
 from src.api.main import app
 from src.api.view_models.standings import standings_context
+from src.api.view_models.play_by_play import strip_debug
+from src.db.repositories.game_event_repo import GameEventRepository
 
 
 @pytest.fixture
@@ -667,3 +669,52 @@ def test_game_panel_without_plays_keeps_the_game_log(client, db_conn, factory):
     html = client.get(f"/leagues/{league.id}/games/{game_id}/panel").text
 
     assert "Play-by-play" not in html
+
+
+def _game_with_pitching_change(db_conn, home):
+    game_id = db_conn.execute(
+        "SELECT id FROM games WHERE home_team_id = %s", (home.id,)
+    ).fetchone()["id"]
+    GameEventRepository(db_conn).insert_game_event(
+        game_id=game_id,
+        team_id=home.id,
+        event_type="pitching_change",
+        inning=7,
+        half="top",
+        reason="Reliever Guy replaces Starter Guy — fatigue=tired",
+        detail="change=0.41",
+    )
+    return game_id
+
+
+def test_viewer_sees_no_debug_notes_in_game_log(client, db_conn, factory):
+    league, home = _league(db_conn, factory)
+    game_id = _game_with_pitching_change(db_conn, home)
+
+    html = client.get(f"/leagues/{league.id}/games/{game_id}/panel").text
+
+    assert "Reliever Guy replaces Starter Guy" in html
+    assert "fatigue=" not in html
+
+
+def test_admin_sees_debug_notes_in_game_log(admin_client, db_conn, factory):
+    league, home = _league(db_conn, factory)
+    game_id = _game_with_pitching_change(db_conn, home)
+
+    html = admin_client.get(f"/leagues/{league.id}/games/{game_id}/panel").text
+
+    assert "Reliever Guy replaces Starter Guy — fatigue=tired" in html
+
+
+@pytest.mark.parametrize(
+    "text,expected",
+    [
+        ("A replaces B — fatigue=fresh", "A replaces B"),
+        ("A replaces B — fatigue=unknown", "A replaces B"),
+        ("A replaces B at SS", "A replaces B at SS"),
+        ("Joe — Hamstring strain (running)", "Joe — Hamstring strain (running)"),
+        (None, None),
+    ],
+)
+def test_strip_debug(text, expected):
+    assert strip_debug(text) == expected
