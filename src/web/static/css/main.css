@@ -1973,3 +1973,6 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
 .vote-mark.no { color: var(--red); }
 .vote-mark.wait { color: var(--text-dim); }
 .settings-vote .solo-actions form { margin: 0; }
+/* Trade vote and Draft pick trades don't matter with Trades off: greyed, and
+   left as they are (still sent, so a vote doesn't propose changing them). */
+.solo-settings .toggle-row.trade-off { opacity: 0.4; pointer-events: none; }
