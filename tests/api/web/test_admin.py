@@ -698,6 +698,19 @@ class TestUsers:
         row = r.text.split(never["username"] + "</a>", 1)[1].split("</tr>", 1)[0]
         assert ">—</td>" in row
 
+    def test_lists_paid_contributors(self, client, db_conn, admin):
+        free = _user(db_conn)
+        paid = _user(db_conn)
+        db_conn.execute("UPDATE users SET is_contributor = TRUE WHERE id = %s", (paid["id"],))
+
+        r = client.get("/admin/users")
+
+        assert ">Paid</th>" in r.text
+        paid_row = r.text.split(paid["username"] + "</a>", 1)[1].split("</tr>", 1)[0]
+        free_row = r.text.split(free["username"] + "</a>", 1)[1].split("</tr>", 1)[0]
+        assert 'data-sort-value="Yes"' in paid_row and "❤️ Yes" in paid_row
+        assert 'data-sort-value=""' in free_row and "❤️" not in free_row
+
     def test_user_page_shows_last_seen_and_sign_in(self, client, db_conn, admin):
         other = _user(db_conn)
         db_conn.execute(

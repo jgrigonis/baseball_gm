@@ -201,7 +201,7 @@ class UserRepository:
         """Every user, with how many leagues they're a GM in."""
         rows = self.db.execute(
             """SELECT u.id, u.display_name, u.username, u.email, u.is_verified, u.is_admin,
-                      u.must_change_password, u.created_at, u.last_seen_at,
+                      u.is_contributor, u.must_change_password, u.created_at, u.last_seen_at,
                       u.password_hash IS NOT NULL AS has_password,
                       (SELECT COUNT(*) FROM gms g WHERE g.user_id = u.id) AS leagues
                FROM users u
