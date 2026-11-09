@@ -194,3 +194,41 @@ class TestClinchStatus:
         assert got["t0"] == "spot"
         assert got["t11"] == "out"
         assert got["t7"] is None
+
+
+class TestSettledTies:
+    """Once the season is over, a tie goes the way the standings break it
+    (head-to-head, then runs), as playoff seeding does."""
+
+    def _two_divisions(self):
+        ids = [f"t{i}" for i in range(16)]
+        confs = [
+            Conference("A", [Division("East", ids[0:4]), Division("West", ids[4:8])]),
+            Conference(
+                "P", [Division("North", ids[8:12]), Division("South", ids[12:16])]
+            ),
+        ]
+        return ids, confs
+
+    def test_division_tie_won_on_the_tiebreak(self):
+        ids, confs = self._two_divisions()
+        # t0 and t1 tie for the East; t0 is ahead on the tiebreak.
+        records = {"t0": (86, 76), "t1": (86, 76)}
+        teams = _teams(
+            *[(t, *records.get(t, (70 - i, 92 + i))) for i, t in enumerate(ids)]
+        )
+        left = {t: 0 for t in ids}
+
+        assert sim_summary.clinch_status(teams, "t0", confs, left) == "division"
+        assert sim_summary.clinch_status(teams, "t1", confs, left) != "division"
+        assert sim_summary.clinch_status(teams, "t1", confs, left) is not None
+
+    def test_tie_still_open_while_the_other_team_plays(self):
+        ids, confs = self._two_divisions()
+        records = {"t0": (86, 76), "t1": (85, 76)}
+        teams = _teams(
+            *[(t, *records.get(t, (70 - i, 92 + i))) for i, t in enumerate(ids)]
+        )
+        left = {t: 0 for t in ids} | {"t1": 1}
+
+        assert sim_summary.clinch_status(teams, "t0", confs, left) != "division"
