@@ -57,6 +57,10 @@ class TeamSeason:
     fans_before: int | None = None
     fans_after: int | None = None
     homegrown_share: float = 0.0
+    # The count behind the share: players on the 40-man roster the team
+    # drafted itself, and players on it, so the owner can name them.
+    homegrown_players: int = 0
+    roster_players: int = 0
     all_stars: int = 0
     award_winners: int = 0
     # The league's averages, so homegrown talent and stars are judged

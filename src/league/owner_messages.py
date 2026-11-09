@@ -360,7 +360,7 @@ ASIDES = {
     },
     "homegrown": {
         "good": "At least our own kids are getting their chance.",
-        "bad": "But I'd like to see more of our own players.",
+        "bad": "But I'd like to see more players we drafted on this roster.",
     },
     "stars": {
         "good": "At least we've got names people know.",
@@ -492,8 +492,10 @@ def facts(
 ) -> dict:
     """What an owner can point at when they talk: the record, the trades,
     the series with the rival, payroll against what they gave for it, and
-    whether the books are in the red. Public facts, never the owner's own
-    targets or scores. season: a TeamSeason as a dict (owner_scoring)."""
+    whether the books are in the red, how many players on the 40-man roster
+    came through the team's own draft (and what most teams have). Public
+    facts, never the owner's own targets or scores. season: a TeamSeason
+    as a dict (owner_scoring)."""
     s = season or {}
     out: dict = {"final": final}
     w, l = s.get("wins") or 0, s.get("losses") or 0
@@ -504,11 +506,39 @@ def facts(
     if rw or rl:
         out["rival_record"] = f"{rw}-{rl}"
     out["profit"] = s.get("profit")
+    if s.get("roster_players"):
+        mine, n = s.get("homegrown_players") or 0, s["roster_players"]
+        out["homegrown"] = mine
+        out["roster"] = n
+        if s.get("league_homegrown") is not None:
+            out["homegrown_avg"] = round(s["league_homegrown"] * n)
     if payroll is not None and payroll_budget and payroll > payroll_budget:
         out["over_budget"] = True
         out["payroll"] = format_salary(payroll)
         out["payroll_budget"] = format_salary(payroll_budget)
     return out
+
+
+def _word(n: int) -> str:
+    return _COUNTS[n].lower() if n < len(_COUNTS) else str(n)
+
+
+def _homegrown(f: dict) -> str:
+    """How many of the 40-man roster the team drafted itself, against what
+    most teams have: "Only two of our 39 players came through our own
+    draft. Most teams have about seven." """
+    mine, n, avg = f["homegrown"], f["roster"], f.get("homegrown_avg")
+    if not mine:
+        text = "Not one player on our 40-man roster came through our own draft."
+    elif avg is not None and mine < avg:
+        text = f"Only {_word(mine)} of our {n} players came through our own draft."
+    else:
+        text = (
+            f"{_word(mine).capitalize()} of our {n} players came through our own draft."
+        )
+    if avg is not None and avg != mine:
+        text += f" Most teams have about {_word(avg)}."
+    return text
 
 
 def _context(key: str, t: str, f: dict, fields: dict, used: set) -> str:
@@ -523,6 +553,9 @@ def _context(key: str, t: str, f: dict, fields: dict, used: set) -> str:
         if final:
             return f"{_count(n, 'trade')} this year."
         return f"{_count(n, 'trade')} so far." if n else "No trades so far."
+    if key == "homegrown" and f.get("roster") and "homegrown" not in used:
+        used.add("homegrown")
+        return _homegrown(f)
     if key == "rivalry" and f.get("rival_record") and fields.get("rival"):
         verb = "went" if final else "are"
         return f"We {verb} {f['rival_record']} against the {fields['rival']}."
@@ -610,7 +643,13 @@ def _notes(
         t = tone(scores[k])
         if i and t == against:
             if not asides:
-                asides.append(_fill(ASIDES[k][t], fields))
+                aside = _fill(ASIDES[k][t], fields)
+                # Homegrown talk is vague without the count, so the aside
+                # says it too.
+                if k == "homegrown":
+                    said = _context(k, t, f, fields, used)
+                    aside = f"{aside} {said}" if said else aside
+                asides.append(aside)
                 tones.append(t)
             continue
         line = _pick(rng, NOTES[k][t], fields)
