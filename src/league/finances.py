@@ -21,7 +21,7 @@ A light money model, just enough for owners to set budgets and judge profit:
   wants payroll under the cap, a spender lets it go well over.
 - The revenue base is scaled so an owner who spends an average share of
   revenue (from about 45% for a miser to 75% for a spender) would spend
-  about the cap.
+  about the cap, then raised by REGULAR_SEASON_BOOST.
 - **Profit** = revenue plus any share of the league's luxury tax (teams
   under the cap split it), minus payroll, luxury tax, fixed costs, the
   front office and the minor leagues (src/league/budget.py
@@ -61,9 +61,15 @@ FAN_MULT_SPAN = 0.40
 # Share of revenue an owner spends on payroll: Spending 0 to 100.
 SHARE_LOW = 0.45
 SHARE_SPAN = 0.30
+# Regular season revenue on top of the cap-matched base (Josh, 2026-11-09:
+# regular season tickets brought in too little). Everything priced as a share
+# of the league's average revenue (fixed costs, popularity, broadcast deals,
+# the playoff gate) grows with it.
+REGULAR_SEASON_BOOST = 1.25
 # Each home playoff game earns this share of the league's average revenue
-# (Josh, 2026-11-07: tripled from 1.2%, so October pays).
-PLAYOFF_GATE = 0.036
+# (Josh, 2026-11-07: tripled from 1.2%, so October pays; 2026-11-09: five
+# times that, 18% of the base before REGULAR_SEASON_BOOST).
+PLAYOFF_GATE = 0.18 / REGULAR_SEASON_BOOST
 # Popularity money (Josh, 2026-11-07): fan interest above POPULARITY_FROM
 # earns extra revenue, rising evenly to POPULARITY_SHARE of the league's
 # average revenue at 100, so a popular team can carry a tax bill. It goes by
@@ -237,7 +243,7 @@ def plan(cap: int, teams: dict[str, TeamMoney]) -> dict[str, Plan]:
     pull = {t: market_mult(m.market) * fan_mult(m.fans) for t, m in teams.items()}
     raw = {t: pull[t] * spend_share(m.spending) for t, m in teams.items()}
     mean = sum(raw.values()) / len(raw)
-    base = cap / mean  # league revenue at market 3, fans 50
+    base = cap / mean * REGULAR_SEASON_BOOST  # league revenue at market 3, fans 50
     return {
         t: Plan(
             revenue=_round(base * pull[t]),
