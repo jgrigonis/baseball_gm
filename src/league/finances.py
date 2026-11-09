@@ -172,6 +172,17 @@ TICKET_FANS = (12, 9, 6, 3, 0, -3, -6, -10, -14, -19)
 # fan interest, for club seats), or a share of the team's own regular season
 # revenue (a renovation). Paybacks run about 4 to 7 seasons, inside a
 # 10-season league.
+#
+# Club seats go in over one offseason; suites and the plaza take a season
+# to build and a renovation two (Josh, 2026-11-09), paid for as they go up.
+#
+# The big one is a new stadium (Josh, 2026-11-09): three price tiers, $1B,
+# $1.5B and $2B at a $160M cap, paying back in about 6 seasons once open, each
+# raising regular season revenue and fan interest more, and taking seasons
+# to build (build): ordered between seasons, it opens that many seasons
+# later, and the owner pays for it a season at a time while it goes up
+# (installments). A team gets one new stadium; it replaces a renovation
+# (replaces), while club seats, suites and the plaza move in with it.
 @dataclass(frozen=True)
 class Project:
     key: str
@@ -182,6 +193,9 @@ class Project:
     by_fans: bool = False  # and times fan interest (fan_mult)
     revenue: float = 0.0  # share of the team's regular season revenue
     fans: int = 0  # points on the fans' end-of-season target, every season
+    build: int = 0  # seasons of construction before it opens
+    group: str = ""  # a team builds one project of each group
+    replaces: tuple[str, ...] = ()  # projects it does away with once open
 
 
 BALLPARK = (
@@ -192,25 +206,43 @@ BALLPARK = (
     ),
     Project(
         "suites", "Luxury suites",
-        "Glassed-in boxes leased to companies. Big markets pay the most.",
-        cost=0.75, earns=0.072,
+        "Glassed-in boxes leased to companies. Big markets pay the most. A season to build.",
+        cost=0.75, earns=0.072, build=1,
     ),
     Project(
         "plaza", "Fan plaza and video board",
-        "A plaza outside the gates and a giant screen. Fans warm to the team every season.",
-        cost=0.25, fans=3,
+        "A plaza outside the gates and a giant screen. Fans warm to the team every season. A season to build.",
+        cost=0.25, fans=3, build=1,
     ),
     Project(
         "renovation", "Full renovation",
-        "New concourses, food and seats all round. Every regular season ticket earns more.",
-        cost=1.5, revenue=0.10,
+        "New concourses, food and seats all round. Every regular season ticket earns more. Two seasons of work.",
+        cost=1.5, revenue=0.10, build=2,
+    ),
+    Project(
+        "stadium_basic", "New stadium: Basic",
+        "A plain, modern park with more good seats. Takes two seasons to build.",
+        cost=6.25, revenue=0.50, fans=5, build=2, group="stadium",
+        replaces=("renovation",),
+    ),
+    Project(
+        "stadium_modern", "New stadium: Modern",
+        "Wide concourses, great sight lines and food worth the trip. Three seasons to build.",
+        cost=9.375, revenue=0.75, fans=8, build=3, group="stadium",
+        replaces=("renovation",),
+    ),
+    Project(
+        "stadium_showpiece", "New stadium: Showpiece",
+        "A landmark the whole city shows off: a roof, a skyline view, the works. Four seasons to build.",
+        cost=12.5, revenue=1.00, fans=12, build=4, group="stadium",
+        replaces=("renovation",),
     ),
 )  # fmt: skip
 BALLPARK_KEYS = tuple(p.key for p in BALLPARK)
 # The owner only builds with savings to spare: their bank has to hold at
 # least this many caps after paying.
 BALLPARK_FLOOR = 1.0
-# One project a season: it's built between seasons and opens on Opening Day.
+# One project ordered a season, between seasons.
 BALLPARK_PER_SEASON = 1
 # What the AI reckons a point of fan interest is worth a season, as a share
 # of its regular season revenue (fan_mult: 0.4 of revenue over 100 points).
@@ -287,6 +319,39 @@ def project_money(
     return _round(value)
 
 
+def open_projects(built) -> set[str]:
+    """The projects that count among these open ones: a new stadium does
+    away with a renovation."""
+    built = set(built)
+    gone = {r for k in built if (p := project(k)) for r in p.replaces}
+    return built - gone
+
+
+def blocked_by(key, built) -> str | None:
+    """The project (open or ordered) that rules this one out: another of
+    its group, or one that replaces it."""
+    p = project(key)
+    for k in built:
+        q = project(k)
+        if q is None or k == key:
+            continue
+        if p and p.group and q.group == p.group:
+            return k
+        if key in q.replaces:
+            return k
+    return None
+
+
+def installments(cost: int, ordered: int, opens: int) -> list[tuple[int, int]]:
+    """When the owner pays for a project: (season, amount) for each
+    season it's built in, or all at once for one that opens right away."""
+    n = max(1, opens - ordered)
+    part = _round(cost / n)
+    out = [(ordered + i, part) for i in range(n - 1)]
+    out.append((ordered + n - 1, cost - part * (n - 1)))
+    return out
+
+
 def ballpark_money(
     built,
     average_revenue: float,
@@ -298,13 +363,14 @@ def ballpark_money(
     """What the team's open ballpark projects earn this season."""
     return sum(
         project_money(k, average_revenue, market, fans, revenue, ticket_price)
-        for k in set(built)
+        for k in open_projects(built)
     )
 
 
 def ballpark_fans(built) -> int:
     """Points the open ballpark projects add to the fans' target."""
-    return sum(p.fans for p in BALLPARK if p.key in set(built))
+    keys = open_projects(built)
+    return sum(p.fans for p in BALLPARK if p.key in keys)
 
 
 def project_value(
