@@ -100,9 +100,12 @@ def _waiver(db, pid: str) -> dict | None:
     }
 
 
-def _happiness(db, league_id: str, pid: str) -> dict | None:
-    """His public type and mood word, what's on his mind, and (for admins)
-    the numbers behind it (src/player/happiness.py)."""
+def _happiness(
+    db, league_id: str, pid: str, position: str | None = None
+) -> dict | None:
+    """His public type and mood word, what's on his mind, a pitcher's wish to
+    start or relieve, and (for admins) the numbers behind it
+    (src/player/happiness.py)."""
     repo = HappinessRepository(db, league_id)
     pers = repo.personalities([pid]).get(pid)
     if pers is None:
@@ -118,6 +121,7 @@ def _happiness(db, league_id: str, pid: str) -> dict | None:
         "blurb": hp.TYPES.get(pers.type, {}).get("blurb", ""),
         "cares": hp.type_cares(pers.type),
         "ruiner": pers.ruiner,
+        "prefers": hp.ROLE_PREFERENCE.get((position or "").lower()),
         "mood": hp.mood_word(row["mood"]) if row else None,
         "lines": detail.get("lines") or [],
         "admin": {
@@ -313,7 +317,7 @@ def player_panel_data(
         "asking": _asking(db, league_id, pid) if status == "free_agent" else None,
         "waiver": _waiver(db, pid) if status == "free_agent" else None,
         "home_region": p.get("home_region"),
-        "happiness": _happiness(db, league_id, pid),
+        "happiness": _happiness(db, league_id, pid, grades.position),
         "grades": grade_map,
         "overall_grade": overall_grade,
         "overall_value": round(overall_value) if overall_value is not None else None,

@@ -10,6 +10,7 @@ from __future__ import annotations
 from src.player.injury_types import INJURY_TYPES, injury_phrase
 from src.api.services.news.names import Names, possessive
 from src.db.repositories.news_repo import NewsRepository
+from src.player.positions import display_position
 
 WIN_STREAKS = (7, 10, 15, 20)
 LOSING_STREAKS = (8, 12, 16)
@@ -331,7 +332,7 @@ def _injuries(conn, news, names, league_id, season_id, since, through) -> None:
             headline = f"{names.team(team)} lose {who} for {span}"
         body = f"{who}"
         if r["position"]:
-            body += f" ({r['position'].upper()})"
+            body += f" ({display_position(r['position'])})"
         body += f" is out for {span}" if phrase else " is out"
         if phrase:
             body += f" with {phrase}"
@@ -404,7 +405,7 @@ def _returns(conn, news, names, league_id, season_id, since) -> None:
         )
         body = f"{who}"
         if r["position"]:
-            body += f" ({r['position'].upper()})"
+            body += f" ({display_position(r['position'])})"
         body += " is back"
         if team:
             body += f" with the {names.full_team(team)}"

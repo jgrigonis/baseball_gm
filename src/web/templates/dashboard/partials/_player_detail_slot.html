@@ -20,7 +20,7 @@
      </button>
    </div>
    <div class="pd-meta">
-     {{ player.position or '?' }} ·
+     {{ player.position|pos_label or '?' }} ·
      {{ player.bats }}/{{ player.throws }} ·
      Age {{ player.age }} ·
      {% if player.home_region %}<span title="Home region">From {{ player.home_region }}</span> ·{% endif %}
@@ -35,7 +35,7 @@
    {% endif %}
    {% if player.happiness %}{% set h = player.happiness %}
    <div class="pd-mood">
-     <span class="pd-mood-type setting-tip" tabindex="0" data-tip="{{ h.type }}: {{ h.blurb }}{% if h.cares %} Cares most about {{ h.cares }}.{% endif %}">{{ h.type }}</span>{% if h.ruiner %} · <span class="pd-mood-ruiner setting-tip" tabindex="0" data-tip="Morale ruiner: when he's unhappy, he drags his teammates down with him.">morale ruiner</span>{% endif %}{% if h.mood %} · <span class="pd-mood-word mood-{{ h.mood }}"
+     <span class="pd-mood-type setting-tip" tabindex="0" data-tip="{{ h.type }}: {{ h.blurb }}{% if h.cares %} Cares most about {{ h.cares }}.{% endif %}">{{ h.type }}</span>{% if h.prefers %} · <span class="pd-mood-pref setting-tip" tabindex="0" data-tip="What he'd rather do. Any pitcher can start or relieve: his SP and RP grades say which he's better at, and he's happier doing the one he prefers.">{{ h.prefers }}</span>{% endif %}{% if h.ruiner %} · <span class="pd-mood-ruiner setting-tip" tabindex="0" data-tip="Morale ruiner: when he's unhappy, he drags his teammates down with him.">morale ruiner</span>{% endif %}{% if h.mood %} · <span class="pd-mood-word mood-{{ h.mood }}"
        {% if is_admin %}title="mood {{ h.admin.mood }} → target {{ h.admin.target }} (as of {{ h.admin.updated_on }})"{% endif %}>{{ h.mood }}</span>{% endif %}
      {% if h.refusing %}<div class="pd-mood-alert">Refusing to play for a few days.</div>
      {% elif h.wants_trade %}<div class="pd-mood-alert">Has asked to be traded.</div>{% endif %}

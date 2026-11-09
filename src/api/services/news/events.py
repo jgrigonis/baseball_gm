@@ -19,6 +19,7 @@ from src.api.services.news.names import Names, and_list, is_deadline_deal, posse
 from src.db.repositories.news_repo import NewsRepository
 from src.league import awards as awards_mod
 from src.league import divisions, swing_off
+from src.player.positions import display_position
 
 # ── Trades ────────────────────────────────────────────────────────────────────
 
@@ -141,7 +142,7 @@ def drafts(conn, names: Names, league_id: str, season_ids: list[str]) -> None:
         first = picks[0]
         gm = names.gm(first["gm_id"])
         who = names.player(first["player_id"])
-        pos = f" ({first['position'].upper()})" if first["position"] else ""
+        pos = f" ({display_position(first['position'])})" if first["position"] else ""
         news.add(
             league_id, d["season_id"], on, "draft", f"draft:{d['id']}",
             f"{names.team(first['team_id'])} take {who} first overall",
@@ -159,7 +160,7 @@ def drafts(conn, names: Names, league_id: str, season_ids: list[str]) -> None:
             if not gm or gm["is_ai"]:
                 continue
             who = names.player(p["player_id"])
-            pos = f" ({p['position'].upper()})" if p["position"] else ""
+            pos = f" ({display_position(p['position'])})" if p["position"] else ""
             news.add(
                 league_id, d["season_id"], on, "draft",
                 f"draft:{d['id']}:{p['team_id']}",

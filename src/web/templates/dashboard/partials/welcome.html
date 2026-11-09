@@ -192,7 +192,7 @@
   {% macro mover(p, cls) -%}
   <div class="wl-move">
     <span class="wl-link" onclick="openPlayerPanel('{{ p.player_id }}')">{{ p.name }}</span>
-    <span class="wl-meta" style="margin-left:0;">{{ p.position }} · {{ p.age }}</span>
+    <span class="wl-meta" style="margin-left:0;">{{ p.position|pos_label }} · {{ p.age }}</span>
     <span class="wl-meta">{{ grade(p.was) }} → {{ grade(p.now) }} <b class="{{ cls }}">{{ '%+d' % p.change }}</b></span>
   </div>
   {%- endmacro %}
@@ -212,7 +212,7 @@
       {% for p in w.retirees %}
       <div class="wl-move">
         <span class="wl-link" onclick="openPlayerPanel('{{ p.player_id }}')">{{ p.name }}</span>
-        <span class="wl-meta" style="margin-left:0;">{{ p.position }} · {{ p.age }}</span>
+        <span class="wl-meta" style="margin-left:0;">{{ p.position|pos_label }} · {{ p.age }}</span>
       </div>
       {% endfor %}
       {% endif %}
@@ -249,7 +249,7 @@
         <span class="wl-star-grade">{{ grade(s.grade) }}</span>
         <div>
           <div class="wl-star-name">{{ s.name }}</div>
-          <div class="wl-meta">{{ s.position }} · Age {{ s.age }}{% for label, g in s.skills %} · {{ label }} {{ grade(g) }}{% endfor %}</div>
+          <div class="wl-meta">{{ s.position|pos_label }} · Age {{ s.age }}{% for label, g in s.skills %} · {{ label }} {{ grade(g) }}{% endfor %}</div>
         </div>
       </div>
       {% else %}
@@ -352,7 +352,7 @@
       {% for d in b.biggest %}
       <div class="wl-move">
         <span class="wl-link" onclick="openPlayerPanel('{{ d.player_id }}')">{{ d.name }}</span>
-        <span class="wl-meta" style="margin-left:0;">{{ d.position }}</span>
+        <span class="wl-meta" style="margin-left:0;">{{ d.position|pos_label }}</span>
         <span class="wl-meta">{{ d.salary_text }} through {{ d.through }}</span>
       </div>
       {% endfor %}

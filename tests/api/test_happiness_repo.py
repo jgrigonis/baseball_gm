@@ -266,3 +266,18 @@ def test_restless_is_settled_enough_to_take_back_a_request(lg):
             _repo(lg).update(lg.season.id, date(2025, 4, 11) + timedelta(weeks=week))
     assert hp.mood_word(_repo(lg).mood(pid, lg.season.id)["mood"]) == "restless"
     assert pid not in _repo(lg).trade_requests([pid])
+
+
+def test_a_pitchers_wish_to_start_or_relieve_shows_with_his_happiness(lg):
+    """Players see every pitcher as P, so his lean shows in his happiness."""
+    from src.api.view_models.player_detail import _happiness
+
+    _repo(lg).update(lg.season.id, date(2025, 4, 11))
+    pid = lg.players[lg.a.id][0].id
+
+    def prefers(pos):
+        return _happiness(lg.db, lg.league.id, pid, pos)["prefers"]
+
+    assert prefers("sp") == "prefers to start"
+    assert prefers("RP") == "prefers relief"
+    assert prefers("ss") is None

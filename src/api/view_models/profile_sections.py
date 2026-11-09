@@ -14,6 +14,7 @@ from __future__ import annotations
 from collections import Counter
 
 from src.db.repositories.career_repo import CareerRepository
+from src.player.positions import display_position
 
 PITCHER_POSITIONS = ("p", "sp", "rp")
 # About 39% of a draft class are pitchers (draft_generator.PITCHER_SHARE).
@@ -110,7 +111,7 @@ def _draft(picks: list[dict]) -> dict | None:
         "best": [
             {
                 "name": f"{p['first_name']} {p['last_name']}",
-                "position": (p["position"] or "").upper(),
+                "position": display_position(p["position"]),
                 "when": f"{p['draft_year']} · R{p['round']} #{p['pick_number']}",
                 "city": p["city"],
                 "mascot": p["mascot"],

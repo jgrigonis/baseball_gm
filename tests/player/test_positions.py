@@ -82,3 +82,24 @@ def test_every_position_has_skill_template():
     for pos in POSITIONS:
         assert pos in SKILL_TEMPLATE
         assert isinstance(SKILL_TEMPLATE[pos], dict)
+
+
+def test_players_see_every_pitcher_as_p():
+    """A generated pitcher's SP or RP is only a leaning, so it never shows:
+    every pitcher is "P", everyone else upper case, nothing for no position."""
+    from src.player.positions import display_position
+
+    assert display_position("sp") == "P"
+    assert display_position("RP") == "P"
+    assert display_position("p") == "P"
+    assert display_position("2b") == "2B"
+    assert display_position("dh") == "DH"
+    assert display_position(None) == ""
+    assert display_position("") == ""
+
+
+def test_templates_show_positions_through_pos_label():
+    from src.web.utils import templates
+
+    t = templates.env.from_string("{{ a|pos_label }} {{ b|pos_label }}")
+    assert t.render(a="sp", b="ss") == "P SS"
