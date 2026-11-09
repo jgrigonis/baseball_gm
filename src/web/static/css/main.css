@@ -1439,7 +1439,9 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
   border-bottom: 1px solid var(--border);
   font-size: 12px;
 }
-.pd-skill-row:last-child { border-bottom: none; }
+.pd-skill-row:last-child,
+/* Two columns: the left cell of a full last row is on the last row too. */
+.pd-skill-row:nth-last-child(2):nth-child(odd) { border-bottom: none; }
 .pd-skill-label { color: var(--text-dim); }
 .pd-skill-grade { font-weight: 600; font-family: var(--font-mono); }
 
