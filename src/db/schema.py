@@ -331,12 +331,39 @@ CREATE TABLE IF NOT EXISTS gms (
 CREATE TABLE IF NOT EXISTS gm_notifications (
     id         SERIAL PRIMARY KEY,
     gm_id      TEXT NOT NULL,
-    kind       TEXT NOT NULL CHECK (kind IN ('injury', 'returned', 'roster', 'trade', 'rust')),
+    kind       TEXT NOT NULL CHECK (kind IN ('injury', 'returned', 'roster', 'trade', 'rust', 'settings')),
     payload    JSONB NOT NULL,
     created_at TEXT NOT NULL DEFAULT (NOW()),
     seen_at    TEXT,                  -- NULL until shown to the GM
 
     FOREIGN KEY (gm_id) REFERENCES gms(id) ON DELETE CASCADE
+);
+
+-- Settings changes the commissioner proposes in a league with more than one
+-- person, and the other human GMs' votes (src/api/services/settings_votes.py).
+-- changes holds only the settings that change. One open proposal a league.
+CREATE TABLE IF NOT EXISTS settings_proposals (
+    id             TEXT PRIMARY KEY,
+    league_id      TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    proposer_gm_id TEXT REFERENCES gms(id) ON DELETE SET NULL,
+    changes        JSONB NOT NULL,
+    status         TEXT NOT NULL DEFAULT 'open'
+        CHECK (status IN ('open', 'passed', 'rejected', 'withdrawn', 'void')),
+    closes_period  INTEGER NOT NULL,   -- passes before this period runs
+    reason         TEXT,
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    decided_at     TIMESTAMPTZ
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_settings_proposals_open
+    ON settings_proposals(league_id) WHERE status = 'open';
+
+CREATE TABLE IF NOT EXISTS settings_votes (
+    proposal_id TEXT NOT NULL REFERENCES settings_proposals(id) ON DELETE CASCADE,
+    gm_id       TEXT NOT NULL REFERENCES gms(id) ON DELETE CASCADE,
+    vote        BOOLEAN,               -- NULL until they vote
+    voted_at    TIMESTAMPTZ,
+    PRIMARY KEY (proposal_id, gm_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_gm_notifications_unseen
@@ -1784,6 +1811,9 @@ CREATE INDEX IF NOT EXISTS idx_team_states_league
     ON team_states(league_id, season_id);
 CREATE INDEX IF NOT EXISTS idx_team_states_season ON team_states(season_id);
 CREATE INDEX IF NOT EXISTS idx_trade_votes_gm         ON trade_votes(gm_id);
+
+CREATE INDEX IF NOT EXISTS idx_settings_proposals_proposer ON settings_proposals(proposer_gm_id);
+CREATE INDEX IF NOT EXISTS idx_settings_votes_gm ON settings_votes(gm_id);
 
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 

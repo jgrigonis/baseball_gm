@@ -185,6 +185,10 @@ def run_period(conn, league_id: str, sim_period: int) -> bool:
             now["state"],
         )
         trades.close_due(conn, league_id, now["sim_period"])
+        # (Imported here: settings_votes reaches this module through admin.)
+        from src.api.services import settings_votes
+
+        settings_votes.close_due(conn, league_id, now["sim_period"])
         at_deadline = _run_period(conn, league_id, now["state"], now["sim_period_days"])
         repo.next_period(
             league_id,

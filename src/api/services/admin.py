@@ -55,7 +55,8 @@ NUMBER_LABELS = {
 
 # Settings that time the ready-check window. Changing one starts the current
 # period's window over, so the new length applies now.
-_WINDOW_SETTINGS = ("pace_control", *(k for k in NUMBER_RANGES if k.endswith("_sec")))
+WINDOW_KEYS = tuple(k for k in NUMBER_RANGES if k.endswith("_sec"))
+_WINDOW_SETTINGS = ("pace_control", *WINDOW_KEYS)
 
 
 def _new_token() -> str:
@@ -128,12 +129,12 @@ def update_league_settings(conn, league_id: str, settings: dict) -> str | None:
         return "A sim is running in this league. Try again in a minute."
     timing_changed = any(settings[k] != league[k] for k in _WINDOW_SETTINGS)
     if timing_changed:
-        _restart_window(conn, league_id)
+        restart_window(conn, league_id)
     conn.commit()
     return None
 
 
-def _restart_window(conn, league_id: str) -> None:
+def restart_window(conn, league_id: str) -> None:
     """Give the current period a fresh window under timer pace, so a window
     that ran out while the league was paused, or under the old timing,
     doesn't sim it at once."""
@@ -148,7 +149,7 @@ def set_paused(conn, league_id: str, paused: bool) -> None:
     with league_lock(conn, league_id):
         LeagueRepository(conn).set_paused(league_id, paused)
         if not paused:
-            _restart_window(conn, league_id)
+            restart_window(conn, league_id)
         conn.commit()
 
 

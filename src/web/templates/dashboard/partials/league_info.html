@@ -36,6 +36,51 @@
 </div>
 
 <div class="tab-body">
+  {% if settings_toast %}<span hidden data-toast="{{ settings_toast }}" data-toast-kind="ok"></span>{% endif %}
+  {% if settings_error and not solo_edit %}<span hidden data-toast="{{ settings_error }}" data-toast-kind="err"></span>{% endif %}
+  {# The commissioner's open settings proposal and its votes (a league with
+     more than one person; src/api/services/settings_votes.py). #}
+  {% if proposal %}
+  {% set p = proposal %}
+  <div class="card settings-vote" id="settings-vote">
+    <div class="card-header"><span class="card-title">Proposed settings changes</span></div>
+    <div class="card-body">
+      <table class="data-table vote-changes">
+        <tbody>
+          {% for c in p.changes %}
+          <tr><td style="color:var(--text-dim);">{{ c.label }}</td><td><span class="vote-old">{{ c.old }}</span> → <strong>{{ c.new }}</strong></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p class="solo-hint vote-rule">Everyone but the commissioner votes. One Reject stops it. It passes once everyone approves, or
+        {% if p.windows_left <= 1 %}when this decision window ends{% else %}after {{ p.windows_left }} more decision windows{% endif %}: not voting counts as approval.</p>
+      <ul class="vote-list">
+        {% for v in p.votes %}
+        <li><span class="vote-mark {{ 'yes' if v.vote else ('no' if v.vote is false else 'wait') }}">{{ '✓' if v.vote else ('✗' if v.vote is false else '…') }}</span>
+          {{ v.display_name }}{% if v.city %} <span style="color:var(--text-dim);">· {{ v.mascot }}</span>{% endif %}</li>
+        {% endfor %}
+      </ul>
+      {% if p.can_vote %}
+      <div class="solo-actions">
+        <form method="POST" action="/leagues/{{ league_id }}/league/settings/vote">
+          <input type="hidden" name="yes" value="true">
+          <button type="submit" class="btn btn-primary"{% if p.my_vote %} disabled{% endif %}>{{ "Approved" if p.my_vote else "Approve" }}</button>
+        </form>
+        <form method="POST" action="/leagues/{{ league_id }}/league/settings/vote">
+          <input type="hidden" name="yes" value="false">
+          <button type="submit" class="btn btn-danger">Reject</button>
+        </form>
+      </div>
+      {% elif p.can_withdraw %}
+      <div class="solo-actions">
+        <form method="POST" action="/leagues/{{ league_id }}/league/settings/withdraw">
+          <button type="submit" class="btn btn-secondary">Withdraw proposal</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
   <div class="grid-2" style="gap:24px;align-items:start;">
 
     <div class="card">
@@ -78,8 +123,9 @@
     </div>
 
     {# A one-person league's commissioner can change most settings (the
-       Edit button swaps the rows for a form). They lock again once a second
-       person joins. See src/api/services/league_settings.py. #}
+       Edit button swaps the rows for a form; league_settings.py). With more
+       people the same form, plus pace, the windows and trade vote, proposes
+       the changes for the others to vote on (se.multi; settings_votes.py). #}
     {% set se = solo_edit %}
     <div class="card" id="league-settings">
       <div class="card-header">
@@ -87,7 +133,7 @@
         {% if se %}
         <button type="button" class="btn btn-secondary solo-edit-btn" id="solo-edit-open"
                 {% if se.error %}hidden{% endif %}
-                onclick="var c=document.getElementById('league-settings');c.querySelector('.solo-settings').hidden=false;c.querySelector('.settings-rows').hidden=true;this.hidden=true;">Edit</button>
+                onclick="var c=document.getElementById('league-settings');c.querySelector('.solo-settings').hidden=false;c.querySelector('.settings-rows').hidden=true;this.hidden=true;">{{ "Propose changes" if se.multi else "Edit" }}</button>
         {% endif %}
       </div>
       <div class="card-body table-scroll settings-rows" {% if se and se.error %}hidden{% endif %}>
@@ -98,10 +144,13 @@
         </table>
       </div>
       {% if se %}
-      {% if se.saved %}<span hidden data-toast="✓ Settings saved" data-toast-kind="ok"></span>{% endif %}
-      <form method="POST" action="/leagues/{{ league_id }}/league/settings" class="card-body solo-settings" {% if not se.error %}hidden{% endif %}>
+      <form method="POST" action="/leagues/{{ league_id }}/league/settings{{ '/propose' if se.multi }}" class="card-body solo-settings" {% if not se.error %}hidden{% endif %}>
         {% if se.error %}<div class="solo-settings-error">{{ se.error }}</div>{% endif %}
+        {% if se.multi %}
+        <p class="solo-note">The other human GMs vote on your changes. One Reject stops them; they pass once everyone approves, or after two decision windows. Not voting counts as approval.</p>
+        {% else %}
         <p class="solo-note">You're the only person in this league, so you can change these. They lock once someone else joins.</p>
+        {% endif %}
         <div class="field">
           <label for="ss-name">League name</label>
           <input name="name" id="ss-name" value="{{ league_name }}" required maxlength="80">
@@ -109,8 +158,23 @@
         {% call step_slider("num_seasons", "ss-seasons", "Seasons", se.season_choices, info.num_seasons) %}
           <span class="solo-hint">{% if info.state in ("offseason", "evaluation") %}Season {{ info.season_number }} is over, so the fewest is {{ info.season_number + 1 }}.{% else %}Can't go below the season you're in.{% endif %} Slide all the way right for unlimited.</span>
         {% endcall %}
+        {% if se.multi %}
+        <div class="field">
+          <label for="ss-pace">Pace</label>
+          <select name="pace_control" id="ss-pace">
+            <option value="timer" {% if info.pace_control == "timer" %}selected{% endif %}>Timer: when everyone is ready or the window runs out</option>
+            <option value="confirmed" {% if info.pace_control == "confirmed" %}selected{% endif %}>Confirmed: only when everyone is ready</option>
+          </select>
+        </div>
+        {% for key, id, label, step in [("decision_window_sec", "ss-decision", "Decision window", 10), ("draft_window_sec", "ss-draft", "Draft window", 30), ("lineup_window_sec", "ss-lineup", "Lineup window", 60)] %}
+        {% set value = info[key] %}{% set low, high = se.windows[key] %}
+        {% call slider(key, id, label, value, low, [high, value] | max, step=(step if value % step == 0 else 1), unit=" sec") %}
+          {% if loop.first %}<span class="solo-hint">Windows only count under Timer pace. A new length starts the current window over.</span>{% endif %}
+        {% endcall %}
+        {% endfor %}
+        {% endif %}
         {% call slider("sim_period_days", "ss-days", "Days per sim period", info.sim_period_days, se.sim_period_range[0], [se.sim_period_range[1], info.sim_period_days] | max) %}
-          <span class="solo-hint">On your own you sim at your own pace, so this only sets how long a released player sits on waivers: two periods of game days.</span>
+          <span class="solo-hint">{% if se.multi %}Game days each sim period plays before the next decision window. From the next period.{% else %}On your own you sim at your own pace, so this only sets how long a released player sits on waivers: two periods of game days.{% endif %}</span>
         {% endcall %}
         <label class="toggle-row"><input type="checkbox" name="weighted_schedule" value="true" {% if info.weighted_schedule %}checked{% endif %}>
           <span>Weighted schedule <span class="solo-hint">Division rivals meet most often, the other league least. Off: every team plays every other about the same. This season's games are already set, so a change starts next season.</span></span></label>
@@ -119,13 +183,19 @@
         {% if se.trades %}
         <label class="toggle-row"><input type="checkbox" name="trades_enabled" value="true" {% if info.trades_enabled %}checked{% endif %}>
           <span>Trades <span class="solo-hint">Off: open trade offers expire.</span></span></label>
+        {% if se.multi and info.human_gms >= 3 %}
+        {# The checkbox comes after so its "true" wins when it's ticked. #}
+        <input type="hidden" name="trade_vote" value="false">
+        <label class="toggle-row"><input type="checkbox" name="trade_vote" value="true" {% if info.trade_vote %}checked{% endif %}>
+          <span>Trade vote <span class="solo-hint">The other human GMs vote on trades between two human GMs. Votes already open finish under the old rule.</span></span></label>
+        {% endif %}
         <label class="toggle-row"><input type="checkbox" name="pick_trades" value="true" {% if info.pick_trades %}checked{% endif %}>
           <span>Draft pick trades <span class="solo-hint">Off: open offers with picks are called off. Picks already traded stay traded.</span></span></label>
         {% endif %}
         <label class="toggle-row"><input type="checkbox" name="reentry_enabled" value="true" {% if info.reentry_enabled %}checked{% endif %}>
-          <span>Re-entry <span class="solo-hint">No effect yet: GM firing isn't in the game.</span></span></label>
+          <span>Re-entry <span class="solo-hint">A fired GM can be handed another open team instead of sitting out.</span></span></label>
         <div class="solo-actions">
-          <button type="submit" class="btn btn-primary">Save settings</button>
+          <button type="submit" class="btn btn-primary">{{ "Propose changes" if se.multi else "Save settings" }}</button>
           <a class="btn btn-secondary" href="/leagues/{{ league_id }}/league">Cancel</a>
         </div>
       </form>

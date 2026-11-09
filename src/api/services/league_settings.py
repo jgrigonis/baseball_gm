@@ -29,7 +29,8 @@ from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.trade_repo import TradeRepository
 from src.api.view_models.league_info import league_gms
 from src.league.league_constants import MAX_SEASONS, UNLIMITED_SEASONS
-from src.league.league_modes import is_blitz_style
+from src.league.league_modes import injuries_allowed, is_blitz_style
+from src.league.trade_deadline import trades_enabled_for
 
 # The settings a solo commissioner can change, in the edit form's order.
 SOLO_SETTINGS = (
@@ -44,12 +45,28 @@ SOLO_SETTINGS = (
 )
 
 # The states a league can be edited in: started and not over yet.
-_RUNNING = ("draft", "preseason", "season", "playoffs", "offseason", "evaluation")
+RUNNING = ("draft", "preseason", "season", "playoffs", "offseason", "evaluation")
 # Once the playoffs are done, the league already decided whether that season
 # was its last (sim_playoff.py), so the count can't come back down to it.
 _SEASON_OVER = ("offseason", "evaluation")
 
 SIM_PERIOD_RANGE = (1, 30)
+
+
+def current_values(league: dict, keys) -> dict:
+    """These settings as the league has them, with the mode's defaults filled
+    in for injuries and trades (older leagues may have none stored)."""
+    out = {}
+    for k in keys:
+        if k == "injuries_enabled":
+            out[k] = injuries_allowed(league)
+        elif k == "trades_enabled":
+            out[k] = trades_enabled_for(league)
+        elif k in ("pick_trades", "trade_vote", "weighted_schedule", "reentry_enabled"):
+            out[k] = bool(league.get(k))
+        else:
+            out[k] = league[k]
+    return out
 
 
 def fewest_seasons(state: str, season_count: int) -> int:
@@ -75,7 +92,7 @@ def can_edit(league: dict, gm_id: str | None, human_gms: int) -> bool:
     return bool(
         gm_id
         and league["commissioner_gm_id"] == gm_id
-        and league["state"] in _RUNNING
+        and league["state"] in RUNNING
         and not league.get("is_practice")
         and human_gms < 2
     )
@@ -120,6 +137,13 @@ def save_solo(conn, league_id: str, gm_id: str, settings: dict) -> str | None:
         settings["name"] = settings["name"].strip()
         league_repo.update_settings(league_id, settings)
         apply_changes(conn, league, settings)
+        # A vote left open from when others were in the league is moot now.
+        conn.execute(
+            """UPDATE settings_proposals SET status = 'withdrawn', decided_at = NOW(),
+                      reason = 'edited alone'
+               WHERE league_id = %s AND status = 'open'""",
+            (league_id,),
+        )
         conn.commit()
     return None
 

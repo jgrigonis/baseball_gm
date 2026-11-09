@@ -130,8 +130,10 @@ def test_locks_once_a_second_person_joins(client, db_conn, factory, league):
     lg = league[0]
     factory.gm(team=factory.team(city="Denver", mascot="Peaks"), league=lg, is_ai=False)
 
+    # The commissioner proposes changes for a vote instead (test_settings_votes.py).
     html = client.get(f"/leagues/{lg.id}/league").text
-    assert 'id="solo-edit-open"' not in html
+    assert ">Propose changes</button>" in html
+    assert f'action="/leagues/{lg.id}/league/settings"' not in html
 
     r = client.post(f"/leagues/{lg.id}/league/settings", data=_form())
     assert "settings_error=" in r.headers["location"]

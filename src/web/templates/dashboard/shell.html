@@ -669,6 +669,15 @@ function showInjuryNews(d) {
     if (window.refreshTradeBadge) window.refreshTradeBadge();
     if (answers.length && window.refreshRosterBadge) window.refreshRosterBadge();
   }
+  // Settings votes (proposed, passed, rejected) lead to the League page,
+  // where the proposal and its votes are. A new proposal stops a sim run,
+  // like a trade offer, so the GM gets to vote.
+  (d.settings || []).forEach(function (s) {
+    items.push({ text: `📋 ${s.text}`, dest: 'league' });
+    if (s.event === 'proposed') stops = true;
+  });
+  if ((d.settings || []).length && document.getElementById('league-settings') && window.refreshActiveTab)
+    window.refreshActiveTab();
   setInjuryNews(items);  // clears if empty, shows if not
   return stops;
 }
@@ -697,7 +706,12 @@ function injuryNewsClick(ev) {
   var el = document.getElementById('sim-injury-news');
   var item = ev && ev.target && ev.target.closest ? ev.target.closest('.inj-news-item') : null;
   var dest = (item || el || {}).dataset ? (item || el).dataset.dest : 'batting';
-  if (dest === 'roster' || dest === 'trades') {
+  if (dest === 'league') {
+    // goToTab('league') would match every /leagues/ link.
+    var link = document.querySelector(`[hx-get="/leagues/${LEAGUE_ID}/league"]`);
+    if (link) { setActiveTab(link); link.click(); }
+    else window.location.href = `/leagues/${LEAGUE_ID}/league`;
+  } else if (dest === 'roster' || dest === 'trades') {
     goToTab(dest);
   } else {
     window._lineupLandingTab = dest;
