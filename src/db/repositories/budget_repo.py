@@ -975,7 +975,7 @@ class BudgetRepository:
                     "stadium": p.group == "stadium",
                     "opens": year + p.build,
                     "blocked": fn.project(blocker).name if blocker else None,
-                    "short": fn.can_build(balance, cost, cap)
+                    "short": fn.can_build(balance, cost, cap, p.key)
                     if p.key not in built
                     else 0,
                     "waiting": p.key not in built
@@ -1067,7 +1067,7 @@ class BudgetRepository:
                 if p.key in have or fn.blocked_by(p.key, have):
                     continue
                 cost = fn.project_cost(p.key, cap)
-                if fn.can_build(bank["balance"] - bank["owed"], cost, cap):
+                if fn.can_build(bank["balance"] - bank["owed"], cost, cap, p.key):
                     continue
                 value = fn.project_value(
                     p.key, average, money[t].market, fans, revenue, r["ticket_price"]

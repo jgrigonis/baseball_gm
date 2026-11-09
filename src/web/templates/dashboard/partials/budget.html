@@ -126,7 +126,7 @@
     {% for p in ballpark.rows %}
     {% if p.stadium and loop.previtem is defined and not loop.previtem.stadium %}
     <div class="bud-label" style="margin-top:14px;">A new stadium</div>
-    <div class="bud-note" style="margin-bottom:4px;">The big one: pick a price. Your owner pays for it a season at a time while it goes up, and it takes over from a renovation. One per team.</div>
+    <div class="bud-note" style="margin-bottom:4px;">The big one: pick a price. Your owner pays for it a season at a time while it goes up, so half the price in the bank (over the reserve) is enough to start. It takes over from a renovation. One per team.</div>
     {% endif %}
     <form class="bud-dept bud-park" data-quiet-swap hx-post="/leagues/{{ league_id }}/budget/ballpark"
           hx-target="#tab-content" hx-swap="innerHTML"
@@ -154,7 +154,7 @@
       {% endif %}
     </form>
     {% endfor %}
-    <div class="bud-line">Upgrades are your owner's to pay for, from their bank, so they don't come off your budget or this season's profit; what they earn goes into profit every season after. Your owner only builds with savings to spare: the bank has to hold {% if ballpark.floor_caps == 1 %}a full season's cap{% else %}{{ ballpark.floor_caps }} caps{% endif %} after paying. Club seats open right away; the rest take a season or more to build. One project ordered a season, from the draft to Opening Day.</div>
+    <div class="bud-line">Upgrades are your owner's to pay for, from their bank, so they don't come off your budget or this season's profit; what they earn goes into profit every season after. Your owner only builds with savings to spare: the bank has to hold {% if ballpark.floor_caps == 1 %}a full season's cap{% else %}{{ ballpark.floor_caps }} caps{% endif %} after paying (for a new stadium, paid as it goes up, after paying half). Club seats open right away; the rest take a season or more to build. One project ordered a season, from the draft to Opening Day.</div>
   </div>
 </div>
 {% if park_saved %}<script>if (window.gmToast) gmToast('Ballpark project ordered');</script>{% endif %}

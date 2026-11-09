@@ -196,6 +196,10 @@ class Project:
     build: int = 0  # seasons of construction before it opens
     group: str = ""  # a team builds one project of each group
     replaces: tuple[str, ...] = ()  # projects it does away with once open
+    # Share of the price the owner's bank must hold (over the reserve) to
+    # order it: a new stadium is paid a season at a time, so half will do
+    # (Josh, 2026-11-09).
+    upfront: float = 1.0
 
 
 BALLPARK = (
@@ -221,20 +225,20 @@ BALLPARK = (
     ),
     Project(
         "stadium_basic", "New stadium: Basic",
-        "A plain, modern park with more good seats. Takes two seasons to build.",
-        cost=6.25, revenue=0.50, fans=5, build=2, group="stadium",
+        "A plain, modern park with more good seats. Takes three seasons to build.",
+        cost=6.25, revenue=0.50, fans=5, build=3, group="stadium", upfront=0.5,
         replaces=("renovation",),
     ),
     Project(
         "stadium_modern", "New stadium: Modern",
-        "Wide concourses, great sight lines and food worth the trip. Three seasons to build.",
-        cost=9.375, revenue=0.75, fans=8, build=3, group="stadium",
+        "Wide concourses, great sight lines and food worth the trip. Four seasons to build.",
+        cost=9.375, revenue=0.75, fans=8, build=4, group="stadium", upfront=0.5,
         replaces=("renovation",),
     ),
     Project(
         "stadium_showpiece", "New stadium: Showpiece",
         "A landmark the whole city shows off: a roof, a skyline view, the works. Four seasons to build.",
-        cost=12.5, revenue=1.00, fans=12, build=4, group="stadium",
+        cost=12.5, revenue=1.00, fans=12, build=4, group="stadium", upfront=0.5,
         replaces=("renovation",),
     ),
 )  # fmt: skip
@@ -396,12 +400,15 @@ def payback(cost: int, per_season: float) -> float | None:
     return cost / per_season if per_season > 0 else None
 
 
-def can_build(bank: int | None, cost: int, cap: int) -> int:
-    """How much more the owner needs in the bank to pay for this: 0 when
-    they can."""
+def can_build(bank: int | None, cost: int, cap: int, key=None) -> int:
+    """How much more the owner needs in the bank to order this: 0 when
+    they can. The bank has to keep a reserve over the project's upfront
+    share of its price (all of it, or half for a new stadium)."""
+    p = project(key) if key else None
+    need = round(cost * (p.upfront if p else 1.0))
     if bank is None:
-        return cost
-    return max(0, round(cap * BALLPARK_FLOOR) + cost - bank)
+        return need
+    return max(0, round(cap * BALLPARK_FLOOR) + need - bank)
 
 
 def fan_target(
