@@ -7,7 +7,9 @@ Offseason free agency (free agency phase 2, PR 3; Josh's decisions
    with this season either re-sign with their team or go to market:
    - Veterans (MARKET_SEASONS seasons or more under contract in the league)
      and unhappy players (mood "unhappy" or worse) go to market unless their
-     team re-signs them now, at their price.
+     team re-signs them now, at their price. An arbitration player stays
+     under team control even when unhappy (Josh, 2026-11-09): he can't walk,
+     though his team can still let him go.
    - Everyone else is tendered (re-signed) by default unless their GM lets
      them go, as long as the owner's hard limit has room for him next
      season (Josh, 2026-11-07: re-signs answer to the owner; 2026-11-09:
@@ -150,10 +152,11 @@ def expiring(conn, league_id: str, year: int, team_ids=None) -> list[dict]:
         if p is None:
             continue
         deal, wants_out = contracts.renewal(p, year + 1, happy, scale, arb.get(p.id))
+        arb_season = arb.get(p.id) if deal.kind == "arbitration" else None
         mood = moods.get(p.id)
         if seasons.get(p.id, 0) >= MARKET_SEASONS:
             market = "veteran"
-        elif mood is not None and mood < hp.UNHAPPY:
+        elif mood is not None and mood < hp.UNHAPPY and arb_season is None:
             market = "unhappy"
         else:
             market = None
@@ -168,6 +171,10 @@ def expiring(conn, league_id: str, year: int, team_ids=None) -> list[dict]:
                 "wants_out": wants_out,
                 "market": market,
                 "seasons": seasons.get(p.id, 0),
+                "arb_season": arb_season,
+                "market_salary": (
+                    contracts.market_salary(p, year + 1, scale) if arb_season else None
+                ),
                 "choice": r["choice"],
                 "scale": scale,
             }
@@ -608,6 +615,19 @@ def expiring_view(conn, league_id: str, team_id: str) -> list[dict]:
                 "old_salary_text": ct.format_salary(r["old_salary"]),
                 "market": r["market"],
                 "seasons": r["seasons"],
+                # Arbitration (Josh, 2026-11-09): which season of the
+                # MARKET_SEASONS before the market his new deal is for, and
+                # his market price the arbitration share is taken from.
+                "arb_season": r["arb_season"],
+                "arb_of": MARKET_SEASONS,
+                "arb_share": (
+                    round(ct.ARBITRATION_SHARE[r["arb_season"]] * 100)
+                    if r["arb_season"]
+                    else None
+                ),
+                "market_salary_text": (
+                    ct.format_salary(r["market_salary"]) if r["market_salary"] else None
+                ),
                 "choice": r["choice"],
                 "fate": fate,
                 "wants_out": r["wants_out"],

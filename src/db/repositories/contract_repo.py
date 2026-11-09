@@ -547,6 +547,15 @@ class ContractRepository:
             deal = ct.arbitration_deal(deal, arb_season, scale) or deal
         return self._mood_terms(happy, p.id, None, deal, scale)
 
+    @staticmethod
+    def market_salary(p, year: int, scale: float = 1.0) -> int:
+        """What a player's next deal from `year` would pay on the open
+        market, before arbitration or his mood: the price renewal starts
+        from."""
+        rng = random.Random(f"contract:{p.id}:{year}")
+        kind = "pitcher" if p.is_pitcher() else "hitter"
+        return ct.standard_deal(p.age, role_rating(p), kind, rng, scale).salary
+
     def arbitration_seasons(self, player_ids, year: int) -> dict[str, int]:
         """For players who came up on a rookie deal in this league: which
         season in the league a new deal from `year` would be (his rookie
