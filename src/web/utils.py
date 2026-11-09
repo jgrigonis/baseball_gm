@@ -200,13 +200,16 @@ def _current_league_date(
     ):
         return None
     if state in ("draft", "offseason"):
+        # Between seasons the newest season is still the one just played, so
+        # once it has games behind it "today" is next spring, not this one.
+        # (Opening day of the season just played would put every late-season
+        # injury months in the future.)
         sr = SeasonRepository(db)
         row = sr.get_year(season_id)
         if row:
             year = row["year"]
-            if state == "draft":
-                if sr.has_a_completed_game(season_id):
-                    year += 1
+            if sr.has_a_completed_game(season_id):
+                year += 1
             return f"{year}-03-22"
         else:
             return None
