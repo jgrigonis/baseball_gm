@@ -3,6 +3,7 @@
    who runs each team. Open to the league's GMs and to viewers of a public
    league. Takes `league_info` (src/api/view_models/league_info.py). #}
 {% set info = league_info %}
+{% from "_sliders.html" import slider, step_slider %}
 <div class="tab-head" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
   <div>
     <h1 class="page-title">League</h1>
@@ -105,28 +106,14 @@
           <label for="ss-name">League name</label>
           <input name="name" id="ss-name" value="{{ league_name }}" required maxlength="80">
         </div>
-        <div class="field">
-          <label for="ss-seasons">Seasons</label>
-          <select name="num_seasons" id="ss-seasons">
-            {% for c in se.season_choices %}
-            <option value="{{ c }}" {% if c == info.num_seasons %}selected{% endif %}>{{ "Unlimited" if c == 0 else c }}</option>
-            {% endfor %}
-          </select>
-          <span class="solo-hint">{% if info.state in ("offseason", "evaluation") %}Season {{ info.season_number }} is over, so the fewest is {{ info.season_number + 1 }}.{% else %}Can't go below the season you're in.{% endif %}</span>
-        </div>
-        <div class="field">
-          <label for="ss-days">Days per sim period</label>
-          <input type="number" name="sim_period_days" id="ss-days" value="{{ info.sim_period_days }}" min="{{ se.sim_period_range[0] }}" max="{{ se.sim_period_range[1] }}" inputmode="numeric">
+        {% call step_slider("num_seasons", "ss-seasons", "Seasons", se.season_choices, info.num_seasons) %}
+          <span class="solo-hint">{% if info.state in ("offseason", "evaluation") %}Season {{ info.season_number }} is over, so the fewest is {{ info.season_number + 1 }}.{% else %}Can't go below the season you're in.{% endif %} Slide all the way right for unlimited.</span>
+        {% endcall %}
+        {% call slider("sim_period_days", "ss-days", "Days per sim period", info.sim_period_days, se.sim_period_range[0], [se.sim_period_range[1], info.sim_period_days] | max) %}
           <span class="solo-hint">On your own you sim at your own pace, so this only sets how long a released player sits on waivers: two periods of game days.</span>
-        </div>
-        <div class="field">
-          <label for="ss-schedule">Schedule</label>
-          <select name="weighted_schedule" id="ss-schedule">
-            <option value="true" {% if info.weighted_schedule %}selected{% endif %}>Weighted</option>
-            <option value="false" {% if not info.weighted_schedule %}selected{% endif %}>Balanced</option>
-          </select>
-          <span class="solo-hint">Weighted: division rivals meet most often. Balanced: every team plays every other about the same. This season's games are already set, so a change starts next season.</span>
-        </div>
+        {% endcall %}
+        <label class="toggle-row"><input type="checkbox" name="weighted_schedule" value="true" {% if info.weighted_schedule %}checked{% endif %}>
+          <span>Weighted schedule <span class="solo-hint">Division rivals meet most often, the other league least. Off: every team plays every other about the same. This season's games are already set, so a change starts next season.</span></span></label>
         <label class="toggle-row"><input type="checkbox" name="injuries_enabled" value="true" {% if info.injuries_enabled %}checked{% endif %}>
           <span>Injuries <span class="solo-hint">Off: nobody gets hurt from the next game on. Anyone already hurt heals as usual.</span></span></label>
         {% if se.trades %}
@@ -142,6 +129,7 @@
           <a class="btn btn-secondary" href="/leagues/{{ league_id }}/league">Cancel</a>
         </div>
       </form>
+      <script src="{{ static_url('js/sliders.js') }}"></script>
       {% endif %}
     </div>
 

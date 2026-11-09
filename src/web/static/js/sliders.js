@@ -30,6 +30,13 @@ function showSlider(field, fromRange) {
 function syncSliders() {
   document.querySelectorAll('.slider-field').forEach(function (f) { showSlider(f, false); });
 }
-document.querySelectorAll('.slider-field').forEach(function (f) {
-  f.querySelector('input[type=range]').addEventListener('input', function () { showSlider(f, true); });
-});
+// One listener on the document, so sliders in content htmx swaps in later
+// (the League page's Edit settings form) work too. A page that loads this
+// file again (each swap of that tab) doesn't add a second one.
+if (!window.gmSlidersBound) {
+  window.gmSlidersBound = true;
+  document.addEventListener('input', function (e) {
+    const f = e.target.matches('input[type=range]') && e.target.closest('.slider-field');
+    if (f) showSlider(f, true);
+  });
+}

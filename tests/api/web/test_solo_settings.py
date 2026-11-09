@@ -77,10 +77,10 @@ def test_solo_commissioner_sees_the_edit_form(client, league):
 
     assert 'id="solo-edit-open"' in html
     assert f'action="/leagues/{lg.id}/league/settings"' in html
-    # Seasons start at the one being played (2), not 1.
-    seasons = html.split('id="ss-seasons"')[1].split("</select>")[0]
-    assert '<option value="1"' not in seasons
-    assert '<option value="2"' in seasons and '<option value="0"' in seasons
+    # Seasons slide from the one being played (2), not 1, to unlimited.
+    assert "data-choices='[2, 3," in html and ", 60, 0]'" in html
+    assert 'name="sim_period_days" id="ss-days" value="3" min="1" max="30"' in html
+    assert 'type="checkbox" name="weighted_schedule" value="true" checked' in html
 
 
 def test_saves_every_setting(client, db_conn, league):
