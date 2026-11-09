@@ -123,6 +123,7 @@ def free_agents_tab(
         ctx["expiring"].sort(key=lambda c: -c.get("overall_score", -1.0))
         if ctx["expiring"]:
             ctx["next_money"] = offseason_fa.next_season_money(db, league_id, team_id)
+            ctx["resign_all"] = offseason_fa.resign_all_plan(db, league_id, team_id)
 
     ctx["players"] = players
     ctx["market_step_pct"] = round(free_agents.MARKET_STEP * 100)
@@ -236,6 +237,19 @@ def release_player(
 # ── Offseason free agency (src/api/services/offseason_fa.py) ─────────────────
 
 
+def _expiring_result(db, league_id: str, team_id: str, result: dict) -> dict:
+    """Every expiring row's call and fate, since one call moves the room for
+    the rest, the room line, and the Re-sign All plan, for the Free Agents
+    tab to update in place."""
+    result["rows"] = {
+        e["player_id"]: {"choice": e["choice"], "fate": e["fate"]}
+        for e in offseason_fa.expiring_view(db, league_id, team_id)
+    }
+    result["money"] = offseason_fa.next_season_money(db, league_id, team_id)
+    result["all"] = offseason_fa.resign_all_plan(db, league_id, team_id)
+    return result
+
+
 class BidBody(BaseModel):
     salary: int
     years: int
@@ -251,15 +265,7 @@ def place_bid(
         )
     except offseason_fa.OffseasonFAError as e:
         return JSONResponse({"detail": str(e)}, status_code=422)
-    # Every row's call and fate, since one call moves the room for the rest,
-    # and the room line, for the tab to update in place.
-    team_id = gm["team_id"]
-    result["rows"] = {
-        e["player_id"]: {"choice": e["choice"], "fate": e["fate"]}
-        for e in offseason_fa.expiring_view(db, league_id, team_id)
-    }
-    result["money"] = offseason_fa.next_season_money(db, league_id, team_id)
-    return JSONResponse(result)
+    return JSONResponse(_expiring_result(db, league_id, gm["team_id"], result))
 
 
 @router.post("/leagues/{league_id}/free-agents/{player_id}/bid/withdraw")
@@ -270,6 +276,16 @@ def withdraw_bid(league_id: str, player_id: str, db: DB, gm: GM, _active: Active
 
 class ChoiceBody(BaseModel):
     choice: str | None = None
+
+
+@router.post("/leagues/{league_id}/expiring/resign-all")
+def resign_all_expiring(league_id: str, db: DB, gm: GM, _active: ActiveLeague):
+    """Re-sign every expiring deal at once."""
+    try:
+        result = offseason_fa.resign_all(db, league_id, gm["team_id"])
+    except offseason_fa.OffseasonFAError as e:
+        return JSONResponse({"detail": str(e)}, status_code=422)
+    return JSONResponse(_expiring_result(db, league_id, gm["team_id"], result))
 
 
 @router.post("/leagues/{league_id}/players/{player_id}/expiring")
@@ -288,12 +304,4 @@ def expiring_choice(
         )
     except offseason_fa.OffseasonFAError as e:
         return JSONResponse({"detail": str(e)}, status_code=422)
-    # Every row's call and fate, since one call moves the room for the rest,
-    # and the room line, for the tab to update in place.
-    team_id = gm["team_id"]
-    result["rows"] = {
-        e["player_id"]: {"choice": e["choice"], "fate": e["fate"]}
-        for e in offseason_fa.expiring_view(db, league_id, team_id)
-    }
-    result["money"] = offseason_fa.next_season_money(db, league_id, team_id)
-    return JSONResponse(result)
+    return JSONResponse(_expiring_result(db, league_id, gm["team_id"], result))

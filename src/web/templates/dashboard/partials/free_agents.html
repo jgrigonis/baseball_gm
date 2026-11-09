@@ -52,6 +52,10 @@
     but the losses will cost you with your owner.
   </div>
   <div class="fa-note fa-room" id="fa-room" style="display:none;"></div>
+  <div class="fa-all" id="fa-resign-all-wrap" style="display:none;">
+    <button type="button" class="btn btn-secondary as-btn-sm" id="fa-resign-all"
+            title="Re-sign every expiring deal at the prices shown">Re-sign all my expiring deals</button>
+  </div>
   <div class="fa-list card" id="fa-expiring" style="margin-bottom:16px;"></div>
   {% endif %}
   {% if bidding %}
@@ -111,6 +115,7 @@
 .fa-fate.go { color: var(--red); }
 .fa-fate.resign { color: var(--green); }
 .fa-fate.no_room { color: var(--amber); }
+.fa-all { margin: 0 0 10px; }
 .fa-room b { color: var(--text); font-weight: 600; }
 .fa-room.over b { color: var(--red); }
 .fa-choice { display: flex; border: 1px solid var(--border); }
@@ -259,8 +264,39 @@ function roomLine(m) {
 function renderExpiring() {
   if (exBox) exBox.replaceChildren(...EXPIRING.map(expiringRow));
 }
+// Re-sign All (Josh, 2026-11-09): shown only when the owner's limit plus
+// their bank covers every expiring deal; warns first if it takes bank money.
+let ALL = {{ resign_all | default(none) | tojson }};
+const allBtn = document.getElementById('fa-resign-all');
+function allButton(plan) {
+  ALL = plan;
+  if (allBtn) allBtn.parentElement.style.display = plan ? '' : 'none';
+}
+if (allBtn) allBtn.addEventListener('click', async () => {
+  if (!ALL) return;
+  const n = ALL.count === 1 ? '1 player' : `${ALL.count} players`;
+  if (ALL.from_bank > 0) {
+    const ok = await gmConfirm({
+      title: `Re-sign all ${n}?`,
+      lines: [
+        `Re-signing everyone costs ${ALL.cost_text} next season.`,
+        `That's ${ALL.from_bank_text} over your owner's limit, paid from their bank. ` +
+        `They have ${ALL.bank_text} in it.`,
+      ],
+      warn: 'Your owner will feel the losses.',
+      ok: 'Re-sign all',
+    });
+    if (!ok) return;
+  }
+  let d;
+  try { d = await postJson('/leagues/{{ league_id }}/expiring/resign-all', {}); }
+  catch (e) { gmAlert(e.message); return; }
+  if (!window.faExpiringUpdate(d)) reloadTab();
+  gmToast(`Re-signed ${n}`, 'ok');
+});
 renderExpiring();
 roomLine({{ next_money | default(none) | tojson }});
+allButton(ALL);
 // After a Re-sign or Let go (shell.html expiringChoice): the new calls and
 // fates, without reloading the tab, so the list stays where it was.
 window.faExpiringUpdate = function (d) {
@@ -268,6 +304,7 @@ window.faExpiringUpdate = function (d) {
   EXPIRING.forEach(p => Object.assign(p, d.rows[p.player_id] || {}));
   renderExpiring();
   roomLine(d.money);
+  allButton(d.all || null);
   return true;
 };
 
