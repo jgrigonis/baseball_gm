@@ -100,6 +100,8 @@
   border-bottom: 1px solid var(--border); cursor: pointer;
 }
 .fa-row:last-child { border-bottom: none; }
+.fa-season { font-family: var(--font-mono); font-size: 10px; color: var(--text-hi); margin-top: 2px; display: flex; gap: 8px; flex-wrap: wrap; }
+.fa-season .gl { color: var(--muted); }
 .fa-row:hover { background: var(--bg-3); }
 .fa-ask { font-family: var(--font-mono); font-size: 11px; color: var(--text); text-align: right; white-space: nowrap; }
 .fa-ask small { display: block; color: var(--text-dim); font-size: 10px; }
@@ -211,6 +213,31 @@ const FATE = {
   auto: 'Re-signs when the offseason runs',
   no_room: 'No room under your owner\'s limit',
 };
+// The season just played, on its own line under the name (Josh, 2026-11-09).
+function seasonLineHtml(p) {
+  const bit = (v, label, tip) => `<span title="${tip}">${v}<span class="gl"> ${label}</span></span>`;
+  let parts;
+  if (p.player_type === 'pitcher') {
+    if (p.stat_ip == null) return '<div class="fa-season">No games this season</div>';
+    parts = [
+      bit(`${p.stat_w}-${p.stat_l}`, 'W-L', 'Wins and losses'),
+      bit(p.stat_era, 'ERA', 'Earned run average'),
+      bit(p.stat_ip, 'IP', 'Innings pitched'),
+      p.stat_gs ? bit(p.stat_gs, 'GS', 'Games started') : bit(p.stat_g, 'G', 'Games pitched'),
+    ];
+    if (p.stat_sv) parts.push(bit(p.stat_sv, 'SV', 'Saves'));
+  } else {
+    if (p.stat_avg == null) return '<div class="fa-season">No at-bats this season</div>';
+    parts = [
+      bit(p.stat_avg.replace(/^0\./, '.'), 'AVG', 'Batting average'),
+      bit(p.stat_hr, 'HR', 'Home runs'),
+      bit(p.stat_rbi, 'RBI', 'Runs batted in'),
+    ];
+    if (p.stat_ops) parts.push(bit(p.stat_ops, 'OPS', 'On-base plus slugging'));
+    parts.push(bit(p.stat_g, 'G', 'Games played'));
+  }
+  return `<div class="fa-season">${parts.join('')}</div>`;
+}
 function expiringRow(p) {
   const el = document.createElement('div');
   el.className = 'fa-row fa-exp';
@@ -225,7 +252,8 @@ function expiringRow(p) {
     <span class="${gradeClass(p.overall)} lu-grade">${p.overall}</span>
     ${faceImgHtml(p, false)}
     <div style="min-width:0;">
-      <div class="lu-name">${p.first_name} ${p.last_name}${nameTrailHtml(p, trail, '')}</div>
+      <div class="lu-name"${p.injured ? ' style="color:var(--red);"' : ''}>${p.first_name} ${p.last_name}${ilTag(p)}${nameTrailHtml(p, trail, '')}</div>
+      ${seasonLineHtml(p)}
       ${isPitcher ? `<div class="lu-skills">${pitcherGradesHtml(p)}</div>` : hitterGradesHtml(p, null)}
     </div>
     <div class="fa-right">
