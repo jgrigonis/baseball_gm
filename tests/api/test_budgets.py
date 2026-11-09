@@ -713,7 +713,8 @@ def _farm(x, team, n):
         for _ in range(n)
     ]
     x.contracts.sign_unsigned(x.league.id, 2026)
-    return ids, sum(c["salary"] for c in x.contracts.active_for(ids, 2026).values())
+    scale = x.budgets.salary_scale(x.league.id, 2026)
+    return ids, n * ct.minors_salary(scale)
 
 
 def test_owners_cover_a_farm_by_their_spending():
@@ -726,7 +727,14 @@ def test_owners_cover_a_farm_by_their_spending():
     assert bg.average_farm([]) == 0
 
 
-def test_the_farm_counts_full_salaries_against_spending_not_the_cap(lg):
+def test_minor_leaguers_earn_a_minor_league_salary():
+    assert ct.MINORS_SALARY == 44_000
+    assert ct.minors_salary() == 44_000
+    # It grows with the cap, like other salaries.
+    assert ct.minors_salary(bg.salary_scale(5)) == 56_000
+
+
+def test_the_farm_counts_minor_league_pay_against_spending_not_the_cap(lg):
     x = lg()
     x.budgets.for_league(x.league.id, 2026)
     before = x.budgets.standing(x.league.id, x.mine.id, 2026)
@@ -739,8 +747,13 @@ def test_the_farm_counts_full_salaries_against_spending_not_the_cap(lg):
     x.db.execute(
         "UPDATE player_status SET status = 'minors' WHERE player_id = %s", (vet.id,)
     )
-    assert pay >= 10 * ct.MIN_SALARY
-    assert x.contracts.minor_league_pay([x.mine.id], 2026) == {x.mine.id: pay}
+    # Each is paid the minor league salary, not his deal's.
+    assert pay == 10 * ct.minors_salary(x.budgets.salary_scale(x.league.id, 2026))
+    deals = x.contracts.active_for(farm, 2026)
+    assert all(d["salary"] >= ct.MIN_SALARY for d in deals.values())
+    assert x.contracts.minor_league_pay([x.mine.id], 2026) == {
+        x.mine.id: 10 * ct.MINORS_SALARY
+    }
 
     after = x.budgets.standing(x.league.id, x.mine.id, 2026)
     assert after["minors"] == pay
@@ -751,8 +764,8 @@ def test_the_farm_counts_full_salaries_against_spending_not_the_cap(lg):
     assert after["payroll_budget"] == (
         after["budget"] - after["front_office"] - after["minors"]
     )
-    # Letting one go saves his salary.
-    one = x.contracts.active(farm[0], 2026)["salary"]
+    # Letting one go saves his minor league pay.
+    one = pay // 10
     x.contracts.release(farm[0], x.mine.id, 2026)
     x.db.execute("DELETE FROM team_players WHERE player_id = %s", (farm[0],))
     assert x.budgets.standing(x.league.id, x.mine.id, 2026)["minors"] == pay - one
@@ -1366,3 +1379,23 @@ def test_ordering_a_ballpark_project_on_the_budget_tab(lg, client_for):
     assert [p["project"] for p in x.budgets.ballpark(x.league.id, x.mine.id)] == [
         "club_seats"
     ]
+
+
+def test_the_roster_and_panel_show_a_farm_players_minor_league_pay(lg, client_for):
+    from src.api.view_models.player_detail import _contract
+
+    x = lg()
+    x.budgets.for_league(x.league.id, 2026)
+    (pid,), _ = _farm(x, x.mine, 1)
+    deal = x.contracts.active(pid, 2026)
+    c = _contract(x.db, x.league.id, pid)
+    assert c["farm"] and c["farm_pay_text"] == "$44K"
+    assert c["salary_text"] == ct.format_salary(deal["salary"])
+    html = client_for(x).get(f"/leagues/{x.league.id}/roster").text
+    assert '"farm_pay_text": "$44K"' in html
+    # Once he's on the 40-man his deal's salary is what he's paid.
+    x.db.execute(
+        "UPDATE player_status SET status = '40man' WHERE player_id = %s", (pid,)
+    )
+    c = _contract(x.db, x.league.id, pid)
+    assert not c["farm"] and c["farm_pay_text"] is None

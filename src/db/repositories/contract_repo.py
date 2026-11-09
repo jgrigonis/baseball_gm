@@ -41,12 +41,18 @@ def _years_left(row: dict, year: int) -> int:
     return row["start_year"] + row["years"] - year
 
 
-def view(row: dict | None, year: int) -> dict | None:
+def view(row: dict | None, year: int, scale: float = 1.0) -> dict | None:
     """A contract for display: salary text, which year of how many, and the
-    last season it covers."""
+    last season it covers. A minor leaguer whose deal isn't on the payroll
+    (row["on_payroll"] false: never played a game on the 40-man) is paid
+    the minor league salary instead (farm_pay_text; scale: the league's
+    salary_scale)."""
     if row is None:
         return None
+    farm = row.get("on_payroll") is False
     return {
+        "farm": farm,
+        "farm_pay_text": (ct.format_salary(ct.minors_salary(scale)) if farm else None),
         "kind": row["kind"],
         "salary": row["salary"],
         "salary_text": ct.format_salary(row["salary"]),
@@ -55,6 +61,9 @@ def view(row: dict | None, year: int) -> dict | None:
         "years_left": _years_left(row, year),
         "through": row["start_year"] + row["years"] - 1,
         "pick_number": row.get("pick_number"),
+        "signing_bonus_text": (
+            ct.format_salary(row["signing_bonus"]) if row.get("signing_bonus") else None
+        ),
         "guaranteed": bool(row.get("guaranteed")),
     }
 
@@ -154,18 +163,23 @@ class ContractRepository:
         ).fetchone()
         return int(row["total"]) + self.dead_money(team_id, year)
 
-    def minor_league_pay(self, team_ids, year: int) -> dict[str, int]:
+    def minor_league_pay(
+        self, team_ids, year: int, each: int = ct.MINORS_SALARY
+    ) -> dict[str, int]:
         """What each team pays this season to the minor leaguers who aren't
         on its payroll (deals never guaranteed: never played on the 40-man), by
-        team id. Not payroll or the cap, but it counts against the owner's
-        budget (src/league/budget.py)."""
+        team id: each of them earns `each`, the minor league salary, not his
+        deal's (src/player/contracts.py minors_salary), plus the signing
+        bonuses of the players it drafted for this season (signing_bonuses).
+        Not payroll or the cap, but it counts against the owner's budget
+        (src/league/budget.py)."""
         ids = list(team_ids)
         out = dict.fromkeys(ids, 0)
         if not ids:
             return out
         rows = self.conn.execute(
             f"""
-            SELECT tp.team_id, SUM(c.salary) AS total
+            SELECT tp.team_id, COUNT(DISTINCT tp.player_id) AS n
             FROM team_players tp
             JOIN player_status ps ON ps.player_id = tp.player_id
             JOIN player_contracts c ON c.player_id = tp.player_id
@@ -178,8 +192,27 @@ class ContractRepository:
             (ids, year, year, year),
         ).fetchall()
         for r in rows:
-            out[r["team_id"]] = int(r["total"] or 0)
+            out[r["team_id"]] = int(r["n"] or 0) * each
+        for team_id, bonus in self.signing_bonuses(ids, year).items():
+            out[team_id] += bonus
         return out
+
+    def signing_bonuses(self, team_ids, year: int) -> dict[str, int]:
+        """What each team pays in signing bonuses this season: the players
+        it drafted for it, paid once, even if he's since been released or
+        traded. By team id, teams with none left out."""
+        ids = list(team_ids)
+        if not ids:
+            return {}
+        rows = self.conn.execute(
+            """
+            SELECT team_id, SUM(signing_bonus) AS total FROM player_contracts
+            WHERE team_id = ANY(%s) AND start_year = %s AND signing_bonus > 0
+            GROUP BY team_id
+            """,
+            (ids, year),
+        ).fetchall()
+        return {r["team_id"]: int(r["total"]) for r in rows}
 
     def dead_money(self, team_id: str, year: int) -> int:
         """This season's salary of the guaranteed deals the team released."""
@@ -357,8 +390,8 @@ class ContractRepository:
             """
             INSERT INTO player_contracts (
                 player_id, league_id, team_id, kind, salary, start_year, years,
-                pick_number, guaranteed
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                pick_number, guaranteed, signing_bonus
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (player_id, start_year) WHERE released_year IS NULL
             DO NOTHING
             """,
@@ -372,6 +405,7 @@ class ContractRepository:
                 deal.years,
                 pick,
                 guaranteed,
+                deal.signing_bonus,
             ),
         )
 

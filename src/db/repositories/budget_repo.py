@@ -31,6 +31,7 @@ from src.league import budget as bg
 from src.league import finances as fn
 from src.league import team_pool
 from src.league.league_modes import get_mode
+from src.player import contracts as ct
 from src.player.contracts import format_salary
 
 
@@ -270,7 +271,8 @@ class BudgetRepository:
         season, by team id. Every team in the league unless team_ids says
         which."""
         ids = self._team_ids(league_id) if team_ids is None else list(team_ids)
-        return self.contracts.minor_league_pay(ids, year)
+        each = ct.minors_salary(self.salary_scale(league_id, year))
+        return self.contracts.minor_league_pay(ids, year, each)
 
     def minor_leagues(self, league_id: str, team_id: str, year: int) -> int:
         """What the team's farm costs this season (0 without budgets)."""

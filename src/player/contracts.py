@@ -7,10 +7,11 @@ salary paid each season for a run of seasons. There are three kinds.
 
 - Rookie deals. A drafted player signs one the season he's drafted: two to
   four seasons (rookie_years, set per player so a draft class doesn't all
-  come due the same winter; Josh, 2026-11-07) at a salary set by where he
-  was picked. Early picks get more, as they do with real signing bonuses,
-  which are folded into the salary here. It runs its years whether or not
-  he keeps his rookie (r).
+  come due the same winter; Josh, 2026-11-07) at the minimum salary, plus a
+  signing bonus set by where he was picked (signing_bonus), paid once by the
+  team that drafted him in his draft season (Josh, 2026-11-09). It runs its
+  years whether or not he keeps his rookie (r). Rookie deals signed before
+  2026-11-09 have no bonus and fold one into the salary instead.
 - Arbitration deals. A player whose rookie deal has run out, until he's
   been in the league long enough to reach the market, signs one season at
   a time for a share of his market price that grows each season
@@ -37,6 +38,11 @@ from src.api.grade_curves import GRADES, OVERALL_CUTOFFS
 
 # The MLB minimum salary.
 MIN_SALARY = 780_000
+# What a minor leaguer is paid a season while his deal isn't guaranteed
+# (he's never played a game on the 40-man): about a real minor league
+# salary, not his contract's (Josh, 2026-11-09). His deal's salary starts
+# once he plays a game on the 40-man.
+MINORS_SALARY = 44_000
 # Nobody is paid more than this a season.
 MAX_SALARY = 40_000_000
 
@@ -70,7 +76,8 @@ GRADE_SALARY: dict[str, int] = {
 }
 
 # The first pick's signing bonus. Each later pick's is a bit smaller, as on
-# MLB's slot scale, and a rookie's salary is the minimum plus a third of it.
+# MLB's slot scale. It's paid once, in the draft season, and the rookie's
+# salary is the minimum.
 TOP_PICK_BONUS = 10_000_000
 BONUS_DECAY_PICKS = 12  # the bonus falls by about 1/e every 12 picks
 
@@ -84,6 +91,8 @@ class Deal:
     salary: int
     years: int
     kind: str  # 'rookie', 'arbitration' or 'standard'
+    # Paid once, the season it starts: a draftee's signing bonus.
+    signing_bonus: int = 0
 
 
 def round_salary(amount: float, scale: float = 1.0) -> int:
@@ -137,6 +146,13 @@ def age_factor(age: int) -> float:
     return 1.0
 
 
+def minors_salary(scale: float = 1.0) -> int:
+    """What a minor leaguer off the payroll is paid this season, grown with
+    the payroll cap like other salaries (scale: src/league/budget.py
+    salary_scale), to the nearest $1K."""
+    return round(MINORS_SALARY * scale / 1_000) * 1_000
+
+
 def standard_years(age: int, value: float, kind: str, rng: random.Random) -> int:
     """How many seasons a standard deal runs: long for young stars, short
     for old or fringe players."""
@@ -167,10 +183,17 @@ def standard_deal(
 
 
 def rookie_salary(pick_number: int, scale: float = 1.0) -> int:
-    """A rookie deal's salary for the nth pick of the draft (1 = first),
-    grown with the league's cap by scale."""
+    """A rookie deal's salary: the minimum, grown with the league's cap by
+    scale, whatever the pick (his bonus is paid up front, signing_bonus)."""
+    return round_salary(MIN_SALARY * scale, scale)
+
+
+def signing_bonus(pick_number: int, scale: float = 1.0) -> int:
+    """The nth pick's signing bonus (1 = first), grown with the league's cap
+    by scale, to the nearest $10K: $10M for the first pick, about $3.7M for
+    the 13th, nothing much past the third round."""
     bonus = TOP_PICK_BONUS * math.exp(-(max(1, pick_number) - 1) / BONUS_DECAY_PICKS)
-    return round_salary((MIN_SALARY + bonus / ROOKIE_YEARS) * scale, scale)
+    return round(bonus * scale / 10_000) * 10_000
 
 
 def rookie_years(player_id: str) -> int:
@@ -183,7 +206,12 @@ def rookie_years(player_id: str) -> int:
 def rookie_deal(
     pick_number: int, scale: float = 1.0, years: int = ROOKIE_YEARS
 ) -> Deal:
-    return Deal(rookie_salary(pick_number, scale), years, "rookie")
+    return Deal(
+        rookie_salary(pick_number, scale),
+        years,
+        "rookie",
+        signing_bonus(pick_number, scale),
+    )
 
 
 def arbitration_deal(market: Deal, season: int, scale: float = 1.0) -> Deal | None:

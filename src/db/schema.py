@@ -1620,6 +1620,7 @@ CREATE TABLE IF NOT EXISTS player_contracts (
     start_year  INTEGER NOT NULL,
     years       INTEGER NOT NULL CHECK (years >= 1),
     pick_number INTEGER,
+    signing_bonus INTEGER NOT NULL DEFAULT 0,  -- a draftee's bonus, paid once in his draft season (migration 106)
     created_at  TEXT NOT NULL DEFAULT (NOW()),
     guaranteed  BOOLEAN NOT NULL DEFAULT FALSE,  -- owed in full: played a game on the 40-man, or a free agent signing (migration 072)
     released_year    INTEGER,                    -- season a team released him; the deal ends for him then

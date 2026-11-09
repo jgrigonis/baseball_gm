@@ -62,7 +62,10 @@ def _contract(db, league_id: str, pid: str) -> dict | None:
     year = repo.current_year(league_id)
     if year is None:
         return None
-    return contract_repo.view(repo.active(pid, year), year)
+    from src.db.repositories.budget_repo import BudgetRepository
+
+    scale = BudgetRepository(db).salary_scale(league_id, year)
+    return contract_repo.view(repo.active(pid, year), year, scale)
 
 
 def _asking(db, league_id: str, pid: str) -> dict | None:
