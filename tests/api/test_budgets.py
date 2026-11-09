@@ -1438,7 +1438,10 @@ def test_a_rich_owner_builds_a_new_stadium_over_seasons(lg):
     assert row["ordered"] == 2026 and row["year"] == 2028
     cost = row["cost"]
     # Half paid now, nothing earned while it goes up.
-    assert x.budgets.banks(x.league.id)[x.mine.id]["spent"] == cost // 2
+    from src.league import finances as fn
+
+    first = fn.installments(cost, 2026, 2028)[0][1]
+    assert x.budgets.banks(x.league.id)[x.mine.id]["spent"] == first
     assert x.budgets.ballparks(x.league.id, 2027) == {}
     x.budgets.assess(x.league.id, 2026)
     assert x.budgets.history(x.league.id, x.mine.id)[0]["ballpark_revenue"] == 0
