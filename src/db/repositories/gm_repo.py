@@ -274,6 +274,19 @@ class GMRepository:
             (season_id, gm_id),
         )
 
+    def summary_seen(self, gm_id: str, season_id: str) -> bool:
+        """True once the GM has opened this season's summary."""
+        row = self.conn.execute(
+            "SELECT summary_seen_season_id FROM gms WHERE id = %s", (gm_id,)
+        ).fetchone()
+        return bool(row) and row["summary_seen_season_id"] == season_id
+
+    def mark_summary_seen(self, gm_id: str, season_id: str) -> None:
+        self.conn.execute(
+            "UPDATE gms SET summary_seen_season_id = %s WHERE id = %s",
+            (season_id, gm_id),
+        )
+
     def needs_setup_bar(self, gm_id: str) -> bool:
         """True until the GM first saves their roster."""
         row = self.conn.execute(

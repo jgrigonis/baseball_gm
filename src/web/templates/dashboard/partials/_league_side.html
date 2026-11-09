@@ -73,6 +73,17 @@
         {# Not tabs, but they load in place like tabs so a multi-day sim
            keeps running, and the sim redraws the open one after each day
            (History's current-season record). #}
+        {% if league_state in ('offseason', 'complete') %}
+        {# How the season just ended, from the champion's crowning until the
+           offseason runs (and for good once the league is complete), so
+           the next-move button can move on to the offseason's next step. #}
+        <a href="/leagues/{{ league_id }}/season-summary"
+           hx-get="/leagues/{{ league_id }}/season-summary"
+           hx-target="#tab-content" hx-swap="innerHTML" hx-push-url="true"
+           onclick="setActiveTab(this)" title="Season summary"
+           class="side-link{% if path.endswith('/season-summary') %} active{% endif %}">
+          <span class="tab-icon" aria-hidden="true">🏁</span><span class="tab-label">Season summary</span></a>
+        {% endif %}
         {% if league_info %}
         <a href="/leagues/{{ league_id }}/league"
            hx-get="/leagues/{{ league_id }}/league"
