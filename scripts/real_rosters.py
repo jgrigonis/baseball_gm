@@ -595,7 +595,7 @@ class Rater:
             pool = ref_pos[s] if is_p else group[s]
             z = None if h is None else h["z_" + s]
             if is_p and s == "durability":
-                z = None  # durability isn't used for pitchers
+                z = None  # Lahman can't tell a durable pitcher: noise below
             if is_p and h is not None and not (h["PA"] >= 0.15 * h["lgG"]):
                 # Barely batted (AL after 1972, or a reliever): he's whatever
                 # a generated pitcher is.
@@ -615,6 +615,10 @@ class Rater:
                 skills[s] = median(ref_pos[s])
 
         skills["clutch"] = median(ref_pos["clutch"]) + seeded_noise(pid + "clutch", 7)
+        if is_p:
+            skills["durability"] = median(ref_pos["durability"]) + seeded_noise(
+                pid + "durability", 10
+            )
 
         # Defense: his own position's glove for that skill, else the
         # generated median for his affinity position.

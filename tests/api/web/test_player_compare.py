@@ -104,7 +104,7 @@ def test_hitter_tucks_pitching_behind_a_toggle(setup):
     assert " open" not in html.split('class="pd-offrole"')[1].split(">")[0]
 
 
-def test_pitcher_tucks_hitting_general_and_defense_behind_a_toggle(
+def test_pitcher_shows_general_and_tucks_hitting_and_defense_behind_a_toggle(
     setup, factory, db_conn
 ):
     client, league, (a, *_) = setup
@@ -116,7 +116,7 @@ def test_pitcher_tucks_hitting_general_and_defense_behind_a_toggle(
         (p.id,),
     )
     html = _panel(client, league, p, a)
-    assert _off_role(html) == [["General", "Defense", "Hitting"], ["Pitching"]]
+    assert _off_role(html) == [["Defense", "Hitting"], ["Pitching"]]
 
 
 def test_each_player_shows_a_face(setup):

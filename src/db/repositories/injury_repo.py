@@ -455,20 +455,18 @@ class InjuryRepository:
         return injury
 
     def _roll_rust(self, player_id, injury_type, days_missed, rng):
-        """Roll the rust this injury will leave, from the player's age and,
-        for hitters only, durability."""
+        """Roll the rust this injury will leave, from the player's age and
+        durability."""
         if not injury_type:
             return None
         row = self.conn.execute(
-            """SELECT p.position, ps.age, ps.durability
+            """SELECT ps.age, ps.durability
                FROM players p LEFT JOIN player_skills ps ON ps.player_id = p.id
                WHERE p.id = %s""",
             (player_id,),
         ).fetchone()
         age = row["age"] if row else None
-        durability = None
-        if row and not is_pitcher(row["position"] or ""):
-            durability = row["durability"]
+        durability = row["durability"] if row else None
         return roll_rust(injury_type, days_missed, age, durability, rng)
 
     # ------------------------------------------------------------------
