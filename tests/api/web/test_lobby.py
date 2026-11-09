@@ -455,3 +455,44 @@ def test_commissioner_controls_sit_above_the_settings(client, db_conn, lobby):
     html = client.get(f"/leagues/{league.id}/").text
 
     assert html.index("Commissioner Controls") < html.index("League Settings</span>")
+
+
+def _add_humans(db_conn, league, n):
+    for i in range(n):
+        db_conn.execute(
+            "INSERT INTO gms (id, league_id, display_name, is_ai)"
+            " VALUES (gen_random_uuid(), %s, %s, false)",
+            (league.id, f"Newcomer {i}"),
+        )
+
+
+def _trading_lobby(db_conn, league):
+    db_conn.execute(
+        "UPDATE leagues SET mode = 'blitz', trades_enabled = true,"
+        " trade_vote = true WHERE id = %s",
+        (league.id,),
+    )
+
+
+@pytest.mark.parametrize("extra", [0, 1])
+def test_trade_vote_is_greyed_out_under_three_humans(client, db_conn, lobby, extra):
+    league, _ = lobby
+    _trading_lobby(db_conn, league)
+    _add_humans(db_conn, league, extra)
+
+    html = _settings_page(client, league)
+    row = _settings_rows(html)["Trade vote"]
+
+    assert 'class="setting-off"' in row
+    assert 'data-needs-humans="3"' in row
+    assert "Only human GMs vote" in html
+
+
+def test_trade_vote_lights_up_with_three_humans(client, db_conn, lobby):
+    league, _ = lobby
+    _trading_lobby(db_conn, league)
+    _add_humans(db_conn, league, 2)
+
+    rows = _settings_rows(_settings_page(client, league))
+
+    assert "setting-off" not in rows["Trade vote"]

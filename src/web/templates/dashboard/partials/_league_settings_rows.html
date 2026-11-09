@@ -6,10 +6,11 @@
    Pace, the three windows and Days per sim period only matter once a second
    person has joined (a lone GM sims at their own pace; the period length then
    only sets waiver length), so their values are greyed out (.setting-off)
-   while there's one human GM. The
+   while there's one human GM. Trade vote needs a third human GM (the two
+   trading don't vote on their own trade), so it's greyed under three. The
    windows also stay greyed under Confirmed pace, which has no clock. Rows
-   marked data-needs-humans are the ones the lobby un-greys live when someone
-   joins (see lobby.html). #}
+   marked data-needs-humans="N" are the ones the lobby un-greys live once N
+   people are in (see lobby.html). #}
 {% set started = info.state != "lobby" %}
 {% set solo = info.human_gms < 2 %}
 {% set timer_note = " Only used with Timer pace." if info.pace_control != "timer" else "" %}
@@ -17,7 +18,9 @@
 {# Rows whose value is greyed out: always (Confirmed pace's windows), or
    while the league has one human GM. #}
 {% set always_off = ["Decision window", "Draft window", "Lineup window"] if info.pace_control != "timer" else [] %}
-{% set needs_humans = ["Pace", "Decision window", "Draft window", "Lineup window", "Days per sim period"] %}
+{# How many human GMs each such row needs before its value matters. #}
+{% set needs_humans = {"Pace": 2, "Decision window": 2, "Draft window": 2, "Lineup window": 2,
+                       "Days per sim period": 2, "Trade vote": 3} %}
 {% set settings = [
   ("Mode", info.mode.label,
    info.mode.description),
@@ -79,8 +82,8 @@
 {% if info.trades_enabled %}
   {% set settings = settings + [
     ("Trade vote", "On" if info.trade_vote else "Off",
-     "On: a trade between two GMs goes to a vote of the league's other GMs, and needs yes votes from more than half of them. A GM who doesn't vote counts as a no. With only two GMs there's nobody to vote, so trades go straight through." if info.trade_vote
-     else "Off: a trade between two GMs goes through as soon as they both agree."),
+     "Only human GMs vote, and only on trades between two human GMs. Trades with AI teams never go to a vote. On: the league's other human GMs vote, and the trade needs yes votes from more than half of them. A GM who doesn't vote counts as a no. With fewer than three human GMs there's nobody to vote, so trades go straight through." if info.trade_vote
+     else "Off: a trade between two human GMs goes through as soon as they both agree. Only human GMs would vote, and only on trades between two human GMs."),
     ("Draft pick trades", "On" if info.pick_trades else "Off",
      "On: teams can trade picks in the first five rounds of the next draft along with players." if info.pick_trades
      else "Off: only players can be traded, as in MLB."),
@@ -116,8 +119,8 @@
   "Late joiners": ("late_joins", info.late_joins, "Turn off" if info.late_joins else "Allow"),
 } if can_edit_settings and not info.is_practice and not info.single_player else {} %}
 {% for label, value, tip in settings %}
-{% set off = label in always_off or (solo and label in needs_humans) %}
-<tr{% if label in needs_humans and label not in always_off %} data-needs-humans{% endif %}{% if off %} class="setting-off"{% endif %}>
+{% set off = label in always_off or (label in needs_humans and info.human_gms < needs_humans[label]) %}
+<tr{% if label in needs_humans and label not in always_off %} data-needs-humans="{{ needs_humans[label] }}"{% endif %}{% if off %} class="setting-off"{% endif %}>
   <td style="color:var(--text-dim);">
     <span class="setting-tip" tabindex="0" data-tip="{{ tip }}">{{ label }}</span>
   </td>
