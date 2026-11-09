@@ -9,7 +9,10 @@ Uses tables:
                 from it, the revenue and fan interest coming in, and once the season
                 is over the luxury tax, playoff gate, payroll, profit and fan
                 interest after
+- broadcast_deals  each team's local TV deals (price locked when signed)
 - team_owners, owner_personas  for each owner's Spending
+- player_season_stats, all_stars, season_awards, player_status  for who
+                sells jerseys for each team (merchandise)
 - player_contracts (through ContractRepository) for payroll, and how many
                 what its never-guaranteed minor leaguers are paid (not
                 payroll, but it counts against the owner's budget)
@@ -478,6 +481,7 @@ class BudgetRepository:
             dict(r)
             for r in self.conn.execute(
                 """SELECT year, cap, budget, payroll, revenue, playoff_revenue,
+                          popularity_revenue, broadcast_revenue, merch_revenue,
                           luxury_tax, tax_share, front_office, minor_league,
                           profit,
                           fans_before, fans_after, ticket_price
@@ -529,6 +533,8 @@ class BudgetRepository:
         levels = self.league_levels(league_id, year)
         payrolls = {t: self.contracts.payroll(t, year) for t in budgets}
         shares = bg.tax_shares(payrolls, cap)
+        deals = self.broadcast_deals(league_id, year)
+        merch = self.merchandise(league_id, year)
         taxes = {}
         for team_id in budgets:
             payroll = payrolls[team_id]
@@ -551,12 +557,15 @@ class BudgetRepository:
             gate = fn.playoff_gate(average, r.get("home_playoff_games", 0))
             tickets = fn.ticket_revenue(revenue[team_id], rows[team_id]["ticket_price"])
             popular = fn.popularity_money(average, before)
-            total = tickets + gate + popular
+            broadcast = deals[team_id]["amount"] if team_id in deals else 0
+            sold = merch[team_id]["total"] if team_id in merch else 0
+            total = tickets + gate + popular + broadcast + sold
             self.conn.execute(
                 """UPDATE team_budgets
                    SET luxury_tax = %s, revenue = %s, fans_before = %s,
                        fans_after = %s, playoff_revenue = %s,
-                       popularity_revenue = %s, payroll = %s,
+                       popularity_revenue = %s, broadcast_revenue = %s,
+                       merch_revenue = %s, payroll = %s,
                        tax_share = %s, front_office = %s, minor_league = %s,
                        profit = %s
                    WHERE league_id = %s AND team_id = %s AND year = %s""",
@@ -567,6 +576,8 @@ class BudgetRepository:
                     fans,
                     gate,
                     popular,
+                    broadcast,
+                    sold,
                     payroll,
                     share,
                     office,
@@ -579,6 +590,312 @@ class BudgetRepository:
             )
             taxes[team_id] = tax
         return taxes
+
+    # ── Broadcast deals ──────────────────────────────────────────────────────
+
+    def _average_revenue(self, league_id: str, year: int) -> float:
+        """The league's average regular season revenue this season (before
+        ticket prices and the playoff gate)."""
+        rows = {
+            r["team_id"]: r
+            for r in self.conn.execute(
+                "SELECT team_id, revenue FROM team_budgets"
+                " WHERE league_id = %s AND year = %s",
+                (league_id, year),
+            ).fetchall()
+        }
+        if not rows:
+            return 0.0
+        money = self._team_money(league_id, year, list(rows))
+        revenue = self._revenues(
+            league_id, year, rows, money, self.cap(league_id, year)
+        )
+        return sum(revenue.values()) / len(revenue)
+
+    def _past_seasons(self, league_id: str, year: int, count: int) -> list[str]:
+        """The ids of the league's seasons (backstory ones too) in the
+        count years before this one."""
+        return [
+            r["id"]
+            for r in self.conn.execute(
+                """SELECT s.id FROM seasons s
+                   JOIN league_seasons ls ON ls.season_id = s.id
+                   WHERE ls.league_id = %s AND s.year < %s AND s.year >= %s""",
+                (league_id, year, year - count),
+            ).fetchall()
+        ]
+
+    def _recent_win_pct(
+        self, league_id: str, year: int, team_ids: list[str]
+    ) -> dict[str, float]:
+        """Each team's average win % over the seasons before this one (.500
+        when it has none)."""
+        seen: dict[str, list[float]] = {}
+        for season_id in self._past_seasons(league_id, year, fn.BROADCAST_SEASONS):
+            for team_id, r in self._results(league_id, season_id).items():
+                if "win_pct" in r:
+                    seen.setdefault(team_id, []).append(r["win_pct"])
+        return {
+            t: sum(seen[t]) / len(seen[t]) if seen.get(t) else 0.5 for t in team_ids
+        }
+
+    def broadcast_deals(self, league_id: str, year: int) -> dict[str, dict]:
+        """Each team's broadcast deal running this season, by team id,
+        signing a new one (at the default length) for any team whose deal
+        has run out: priced from its market, fan interest coming into the
+        season and recent win % (src/league/finances.py broadcast_base).
+        Empty without budgets."""
+        if not self.for_league(league_id, year):
+            return {}
+        teams = self._team_ids(league_id)
+        have = {
+            r["team_id"]: dict(r)
+            for r in self.conn.execute(
+                """SELECT DISTINCT ON (team_id) team_id, start_year, years, base,
+                          fans, win_pct
+                   FROM broadcast_deals
+                   WHERE league_id = %s AND start_year <= %s
+                   ORDER BY team_id, start_year DESC""",
+                (league_id, year),
+            ).fetchall()
+            if r["start_year"] + r["years"] > year
+        }
+        missing = [t for t in teams if t not in have]
+        if missing:
+            average = self._average_revenue(league_id, year)
+            money = self._team_money(league_id, year, missing)
+            wins = self._recent_win_pct(league_id, year, missing)
+            for t in missing:
+                fans = int(round(money[t].fans))
+                deal = {
+                    "team_id": t,
+                    "start_year": year,
+                    "years": fn.BROADCAST_DEFAULT_YEARS,
+                    "base": fn.broadcast_base(average, money[t].market, fans, wins[t]),
+                    "fans": fans,
+                    "win_pct": round(wins[t], 3),
+                }
+                self.conn.execute(
+                    """INSERT INTO broadcast_deals
+                           (league_id, team_id, start_year, years, base, fans, win_pct)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s)
+                       ON CONFLICT (league_id, team_id, start_year) DO NOTHING""",
+                    (
+                        league_id, t, year, deal["years"], deal["base"],
+                        deal["fans"], deal["win_pct"],
+                    ),
+                )  # fmt: skip
+                have[t] = deal
+        return {t: self._deal(d, year) for t, d in have.items()}
+
+    @staticmethod
+    def _deal(d: dict, year: int) -> dict:
+        years = int(d["years"])
+        return {
+            "start_year": d["start_year"],
+            "years": years,
+            "base": int(d["base"]),
+            "amount": fn.broadcast_amount(int(d["base"]), years),
+            "fans": int(d["fans"]),
+            "win_pct": float(d["win_pct"]),
+            # Seasons it still pays, this one included.
+            "left": d["start_year"] + years - year,
+            # Signed this season: its length can still be picked.
+            "new": d["start_year"] == year,
+        }
+
+    def broadcast_deal(self, league_id: str, team_id: str, year: int) -> dict | None:
+        return self.broadcast_deals(league_id, year).get(team_id)
+
+    def deal_in(self, league_id: str, team_id: str, year: int) -> dict | None:
+        """The deal that paid the team in a season (no new one signed)."""
+        row = self.conn.execute(
+            """SELECT start_year, years, base, fans, win_pct FROM broadcast_deals
+               WHERE league_id = %s AND team_id = %s AND start_year <= %s
+               ORDER BY start_year DESC LIMIT 1""",
+            (league_id, team_id, year),
+        ).fetchone()
+        if not row or row["start_year"] + row["years"] <= year:
+            return None
+        return self._deal(dict(row), year)
+
+    def set_broadcast_years(
+        self, league_id: str, team_id: str, year: int, years: int
+    ) -> bool:
+        """Pick the length of the deal the team signs this season (the
+        caller checks it's allowed). False when its deal wasn't signed this
+        season."""
+        deal = self.broadcast_deal(league_id, team_id, year)
+        if not deal or not deal["new"]:
+            return False
+        self.conn.execute(
+            """UPDATE broadcast_deals SET years = %s
+               WHERE league_id = %s AND team_id = %s AND start_year = %s""",
+            (fn.broadcast_years(years), league_id, team_id, year),
+        )
+        return True
+
+    # ── Merchandise ──────────────────────────────────────────────────────────
+
+    def _season_any(self, league_id: str, year: int) -> str | None:
+        """The league's season in this year, a backstory one too."""
+        row = self.conn.execute(
+            """SELECT s.id FROM seasons s JOIN league_seasons ls ON ls.season_id = s.id
+               WHERE ls.league_id = %s AND s.year = %s
+               ORDER BY s.is_backstory LIMIT 1""",
+            (league_id, year),
+        ).fetchone()
+        return row["id"] if row else None
+
+    def _games(self, season_id: str | None, team_ids=None) -> dict[tuple, int]:
+        """{(player_id, team_id): regular season games} in a season."""
+        if not season_id:
+            return {}
+        rows = self.conn.execute(
+            """SELECT player_id, team_id,
+                      SUM(GREATEST(bat_games_played, pitch_games_played)) AS n
+               FROM player_season_stats
+               WHERE season_id = %s AND NOT is_postseason
+                 AND (%s::TEXT[] IS NULL OR team_id = ANY(%s::TEXT[]))
+               GROUP BY player_id, team_id""",
+            (season_id, team_ids, team_ids),
+        ).fetchall()
+        return {
+            (r["player_id"], r["team_id"]): int(r["n"] or 0) for r in rows if r["n"]
+        }
+
+    def sellers(
+        self, league_id: str, year: int, only: set[str] | None = None
+    ) -> dict[str, list[fn.Seller]]:
+        """Who sells jerseys for each team this season (or just these
+        teams), by team id: everyone who played for it, by the share of his
+        games he played there, and anyone on its big league roster who
+        hasn't played anywhere yet."""
+        from src.api.services.icons import _grades
+
+        teams = self._team_ids(league_id)
+        season_id = self._season_id(league_id, year)
+        games = self._games(season_id, teams)
+        roster = {
+            r["player_id"]: r["team_id"]
+            for r in self.conn.execute(
+                """SELECT tp.player_id, tp.team_id FROM team_players tp
+                   JOIN player_status ps ON ps.player_id = tp.player_id
+                   WHERE tp.team_id = ANY(%s) AND ps.status = '26man'""",
+                (teams,),
+            ).fetchall()
+        }
+        played: dict[str, dict[str, int]] = {}
+        for (p, t), n in games.items():
+            played.setdefault(p, {})[t] = n
+        for p, t in roster.items():
+            if p not in played:
+                played[p] = {t: 1}
+        if only is not None:
+            played = {p: bt for p, bt in played.items() if set(bt) & only}
+        before: dict[str, set[str]] = {}
+        for (p, t), _n in self._games(self._season_any(league_id, year - 1)).items():
+            before.setdefault(p, set()).add(t)
+        grades = _grades(self.conn, list(played)) if played else {}
+        stars: set[str] = set()
+        winners: set[str] = set()
+        if season_id:
+            stars = {
+                r["player_id"]
+                for r in self.conn.execute(
+                    "SELECT player_id FROM all_stars WHERE season_id = %s",
+                    (season_id,),
+                ).fetchall()
+            }
+            winners = {
+                r["player_id"]
+                for r in self.conn.execute(
+                    """SELECT player_id FROM season_awards
+                       WHERE season_id = %s AND award = ANY(%s)
+                         AND player_id IS NOT NULL""",
+                    (season_id, list(fn.MERCH_AWARDS)),
+                ).fetchall()
+            }
+        out: dict[str, list[fn.Seller]] = {}
+        # Hall of Famers sell retro jerseys for the team they went in for,
+        # from the season after they're elected (src/league/finances.py).
+        for r in self.conn.execute(
+            """SELECT hb.player_id, hb.team_id, he.year FROM hall_ballot hb
+               JOIN hall_elections he ON he.season_id = hb.season_id
+               WHERE hb.league_id = %s AND hb.outcome = 'elected'
+                 AND he.year < %s AND hb.team_id = ANY(%s)""",
+            (league_id, year, list(only) if only is not None else teams),
+        ).fetchall():
+            out.setdefault(r["team_id"], []).append(
+                fn.Seller(
+                    player_id=r["player_id"],
+                    grade=fn.HALL_GRADE,
+                    share=1.0,
+                    new=r["year"] == year - 1,
+                )
+            )
+        for p, by_team in played.items():
+            grade = grades.get(p)
+            if grade not in fn.MERCH_BY_GRADE:
+                continue
+            total = sum(by_team.values())
+            last = before.get(p, set())
+            for t, n in by_team.items():
+                if only is not None and t not in only:
+                    continue
+                # New to the team (a new jersey): he played for someone
+                # else last season, or, in his first season, for someone
+                # else earlier this one before landing here.
+                new = bool(last - {t}) or (
+                    not last and bool(set(by_team) - {t}) and roster.get(p) == t
+                )
+                out.setdefault(t, []).append(
+                    fn.Seller(
+                        player_id=p,
+                        grade=grade,
+                        share=n / total if total else 1.0,
+                        all_star=p in stars,
+                        award=p in winners,
+                        new=new,
+                    )
+                )
+        return out
+
+    def merchandise(self, league_id: str, year: int, team_ids=None) -> dict[str, dict]:
+        """Each team's (or these teams') merchandise money this season, by
+        team id: {"total", "sellers": [(Seller, amount), best first]}
+        (src/league/finances.py merchandise). Empty without budgets."""
+        if not self.for_league(league_id, year):
+            return {}
+        teams = self._team_ids(league_id)
+        only = None if team_ids is None else set(team_ids)
+        if only is not None:
+            teams = [t for t in teams if t in only]
+        cap = self.cap(league_id, year)
+        money = self._team_money(league_id, year, teams)
+        fans_before = {
+            r["team_id"]: r["fans_before"]
+            for r in self.conn.execute(
+                "SELECT team_id, fans_before FROM team_budgets"
+                " WHERE league_id = %s AND year = %s",
+                (league_id, year),
+            ).fetchall()
+        }
+        levels = self.league_levels(league_id, year)
+        sellers = self.sellers(league_id, year, only)
+        out = {}
+        for t in teams:
+            fans = fans_before.get(t)
+            fans = money[t].fans if fans is None else fans
+            total, parts = fn.merchandise(
+                sellers.get(t, []),
+                cap,
+                money[t].market,
+                fans,
+                levels.get(t, {}).get("marketing"),
+            )
+            out[t] = {"total": total, "sellers": parts}
+        return out
 
     def _season_id(self, league_id: str, year: int) -> str | None:
         row = self.conn.execute(
@@ -617,7 +934,8 @@ class BudgetRepository:
         rows = self.conn.execute(
             """SELECT team_id, year, cap, revenue, playoff_revenue, payroll,
                       luxury_tax, tax_share, front_office, minor_league, profit,
-                      fans_before, ticket_price, popularity_revenue
+                      fans_before, ticket_price, popularity_revenue,
+                      broadcast_revenue, merch_revenue
                FROM team_budgets WHERE league_id = %s AND year <= %s""",
             (league_id, year),
         ).fetchall()
@@ -634,6 +952,7 @@ class BudgetRepository:
             done = mine["profit"] is not None
             if not done and y != year:
                 continue
+            extra: dict = {"sellers": []}
             cap = int(mine["cap"]) if mine["cap"] else self.cap(league_id, y)
             money = self._team_money(league_id, y, list(league_rows))
             revenue = self._revenues(league_id, y, league_rows, money, cap)
@@ -647,6 +966,8 @@ class BudgetRepository:
                     playoff_gate=gate,
                     home_playoff_games=round(gate / per_game) if per_game else 0,
                     popularity=int(mine["popularity_revenue"] or 0),
+                    broadcast=int(mine["broadcast_revenue"] or 0),
+                    merchandise=int(mine["merch_revenue"] or 0),
                     tax_share=int(mine["tax_share"] or 0),
                     payroll=int(mine["payroll"] or 0),
                     front_office=int(mine["front_office"] or 0),
@@ -672,7 +993,12 @@ class BudgetRepository:
                 )
                 payrolls = {t: self.contracts.payroll(t, y) for t in league_rows}
                 farms = self._minor_leagues(league_id, y, list(league_rows))
+                deal = self.broadcast_deal(league_id, team_id, y)
+                sold = self.merchandise(league_id, y, [team_id]).get(team_id)
+                extra = {"sellers": sold["sellers"] if sold else []}
                 line = dict(
+                    broadcast=deal["amount"] if deal else 0,
+                    merchandise=sold["total"] if sold else 0,
                     minor_league=farms.get(team_id, 0),
                     farm_help=bg.average_farm(farms.values()),
                     playoff_gate=fn.playoff_gate(average, games),
@@ -695,6 +1021,8 @@ class BudgetRepository:
                         ticket_price=mine["ticket_price"],
                         **line,
                     ),
+                    "deal": self.deal_in(league_id, team_id, y),
+                    **extra,
                 }
             )
         return out
@@ -727,6 +1055,8 @@ class BudgetRepository:
         levels = self.league_levels(league_id, year)
         season_id = self._season_id(league_id, year)
         results = self._results(league_id, season_id) if season_id else {}
+        deals = self.broadcast_deals(league_id, year)
+        merch = self.merchandise(league_id, year)
         out = {}
         for t, r in rows.items():
             fans = money[t].fans if r["fans_before"] is None else r["fans_before"]
@@ -744,6 +1074,8 @@ class BudgetRepository:
                 playoff_gate=gate,
                 home_playoff_games=games,
                 popularity=fn.popularity_money(average, fans),
+                broadcast=deals[t]["amount"] if t in deals else 0,
+                merchandise=merch[t]["total"] if t in merch else 0,
                 tax_share=shares.get(t, 0),
                 payroll=payrolls[t],
                 front_office=(

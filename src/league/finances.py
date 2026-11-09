@@ -11,6 +11,8 @@ A light money model, just enough for owners to set budgets and judge profit:
 - **Revenue** per season: a league-wide base, times the team's market size
   (the team pool's 1 to 5), times how interested its fans are, plus a gate
   for every home playoff game and popularity money when fans are keen.
+  Two more lines on top: a broadcast deal, its price locked when it's
+  signed, and merchandise, what the team's good players sell.
 - **Budget**: what the owner will spend on payroll and the front office
   (src/league/budget.py DEPARTMENTS). The league sets one payroll cap for every team
   (src/league/budget.py: the average payroll, then last season's average
@@ -75,6 +77,49 @@ POPULARITY_SHARE = 0.15
 FIXED_COSTS = 0.32
 
 ROUNDING = 100_000
+
+# Merchandise (Josh, 2026-11-09): every good player sells jerseys. What one
+# sells in a season by his overall grade, at a MERCH_CAP payroll cap (it grows
+# with the cap). An All-Star sells MERCH_ALL_STAR times as many, an MVP or Cy
+# Young winner MERCH_AWARD times, and a player in his first year with a new
+# team MERCH_NEW times, for the new team only (a new jersey). Each player's
+# money goes to his teams by the share of his games he played for each.
+MERCH_BY_GRADE = {"A+": 10_000_000, "A": 6_000_000, "A-": 3_000_000, "B+": 1_000_000}
+MERCH_CAP = 160_000_000
+MERCH_ALL_STAR = 1.5
+MERCH_AWARD = 2.0
+MERCH_NEW = 1.5
+MERCH_AWARDS = ("mvp", "cy_young")
+# Retro jerseys (Josh, 2026-11-09): every Hall of Famer sells HALL_JERSEY a
+# season (at a MERCH_CAP cap) for the team he went in for, HALL_INDUCTION
+# times that the season after he's elected. Times the same market, fans and
+# marketing as the rest.
+HALL_GRADE = "HOF"
+HALL_JERSEY = 1_500_000
+HALL_INDUCTION = 3.0
+# The team's total is times its market (MARKET_MULT) and its fans: fan
+# interest 0 is MERCH_FAN_LOW, 100 is MERCH_FAN_LOW + MERCH_FAN_SPAN.
+MERCH_FAN_LOW = 0.6
+MERCH_FAN_SPAN = 0.8
+# And times the Marketing department, Bare bones to Elite.
+MERCH_MARKETING = (0.8, 0.9, 1.0, 1.1, 1.2)
+
+# Broadcast deals (Josh, 2026-11-09): a local TV deal, its price locked for
+# its length when it's signed: a share of the league's average revenue,
+# BROADCAST_FLOOR for the least attractive team up to BROADCAST_FLOOR +
+# BROADCAST_SPAN for the most, times the market. Attractive = fan interest
+# coming into the season and the win % of the last BROADCAST_SEASONS seasons,
+# half each; win % runs from BROADCAST_WIN_LOW (nothing) to BROADCAST_WIN_LOW +
+# BROADCAST_WIN_SPAN (all of it). A GM picks the length of a new deal;
+# a long one pays a little more for locking the price in.
+BROADCAST_FLOOR = 0.06
+BROADCAST_SPAN = 0.10
+BROADCAST_SEASONS = 3
+BROADCAST_WIN_LOW = 0.35
+BROADCAST_WIN_SPAN = 0.30
+BROADCAST_YEARS = (2, 3, 5)
+BROADCAST_DEFAULT_YEARS = 3
+BROADCAST_LENGTH_MULT = {2: 1.0, 3: 1.0, 5: 1.05}
 
 # Ticket prices (Josh, 2026-11-07): the GM sets them on a 1 to 10 slider
 # between seasons. Higher prices take more at the gate this season, with
@@ -203,6 +248,105 @@ def plan(cap: int, teams: dict[str, TeamMoney]) -> dict[str, Plan]:
     }
 
 
+def jersey_money(
+    grade: str | None,
+    cap: int,
+    *,
+    all_star: bool = False,
+    award: bool = False,
+    new: bool = False,
+) -> float:
+    """What one player's jerseys sell in a season, before his team's market,
+    fans and marketing (not rounded: a team adds up its players). A Hall of
+    Famer (grade HALL_GRADE) sells retro jerseys; new is his induction."""
+    if grade == HALL_GRADE:
+        value = HALL_JERSEY * cap / MERCH_CAP
+        return value * HALL_INDUCTION if new else value
+    value = MERCH_BY_GRADE.get(grade or "", 0) * cap / MERCH_CAP
+    if all_star:
+        value *= MERCH_ALL_STAR
+    if award:
+        value *= MERCH_AWARD
+    if new:
+        value *= MERCH_NEW
+    return value
+
+
+def merch_mult(market: int, fans: float, marketing=None) -> float:
+    level = 2 if marketing is None else bg.clean_level(marketing)
+    fans = max(0.0, min(100.0, fans))
+    return (
+        market_mult(market)
+        * (MERCH_FAN_LOW + MERCH_FAN_SPAN * fans / 100)
+        * MERCH_MARKETING[level]
+    )
+
+
+@dataclass(frozen=True)
+class Seller:
+    """A player selling jerseys for a team this season."""
+
+    player_id: str
+    grade: str | None
+    share: float  # of his games, played for this team (1 for a Hall of Famer)
+    all_star: bool = False
+    award: bool = False
+    new: bool = False
+
+    @property
+    def hall(self) -> bool:
+        return self.grade == HALL_GRADE
+
+
+def merchandise(
+    sellers: list[Seller], cap: int, market: int, fans: float, marketing=None
+) -> tuple[int, list[tuple[Seller, int]]]:
+    """A team's merchandise money for a season, and each player's part of
+    it (best sellers first, players selling nothing left out)."""
+    mult = merch_mult(market, fans, marketing)
+    parts = []
+    for s in sellers:
+        value = (
+            jersey_money(s.grade, cap, all_star=s.all_star, award=s.award, new=s.new)
+            * max(0.0, min(1.0, s.share))
+            * mult
+        )
+        if value > 0:
+            parts.append((s, value))
+    parts.sort(key=lambda p: -p[1])
+    total = _round(sum(v for _, v in parts))
+    return total, [(s, _round(v)) for s, v in parts]
+
+
+def broadcast_years(years) -> int:
+    """A deal length, one of BROADCAST_YEARS (the default when unknown)."""
+    try:
+        years = int(years)
+    except TypeError, ValueError:
+        return BROADCAST_DEFAULT_YEARS
+    return years if years in BROADCAST_YEARS else BROADCAST_DEFAULT_YEARS
+
+
+def broadcast_appeal(fans: float, win_pct: float) -> float:
+    """How much broadcasters want the team, 0 to 1."""
+    fan_part = max(0.0, min(100.0, fans)) / 100
+    win_part = max(0.0, min(1.0, (win_pct - BROADCAST_WIN_LOW) / BROADCAST_WIN_SPAN))
+    return 0.5 * fan_part + 0.5 * win_part
+
+
+def broadcast_base(
+    average_revenue: float, market: int, fans: float, win_pct: float
+) -> int:
+    """A season of a new broadcast deal at the default length."""
+    share = BROADCAST_FLOOR + BROADCAST_SPAN * broadcast_appeal(fans, win_pct)
+    return _round(average_revenue * share * market_mult(market))
+
+
+def broadcast_amount(base: int, years) -> int:
+    """A season of a deal this many years long."""
+    return _round(base * BROADCAST_LENGTH_MULT[broadcast_years(years)])
+
+
 def popularity_money(average_revenue: float, fans: float) -> int:
     """What a team's popularity earns in a season."""
     over = max(0.0, min(100.0, fans) - POPULARITY_FROM) / (100 - POPULARITY_FROM)
@@ -248,6 +392,8 @@ def books(
     farm_help: int = 0,
     ticket_price=None,
     popularity: int = 0,
+    broadcast: int = 0,
+    merchandise: int = 0,
     profit: int | None = None,
 ) -> dict:
     """A team's season as money in and money out, for the Budget tab.
@@ -263,7 +409,16 @@ def books(
     mm, fm = market_mult(market), fan_mult(fans)
     level = ticket_level(ticket_price)
     tickets = ticket_revenue(revenue, level) - revenue
-    total_in = revenue + tickets + playoff_gate + popularity + tax_share + farm_help
+    total_in = (
+        revenue
+        + tickets
+        + playoff_gate
+        + popularity
+        + broadcast
+        + merchandise
+        + tax_share
+        + farm_help
+    )
     known_out = payroll + front_office + minor_league + luxury_tax + costs
     projected = profit is None
     if projected:
@@ -284,6 +439,8 @@ def books(
         "playoff_gate": playoff_gate,
         "popularity": popularity,
         "popularity_from": POPULARITY_FROM,
+        "broadcast": broadcast,
+        "merchandise": merchandise,
         "home_playoff_games": home_playoff_games,
         "gate_per_game": gate_per_game,
         "tax_share": tax_share,

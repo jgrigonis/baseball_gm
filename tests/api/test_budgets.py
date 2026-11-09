@@ -1024,3 +1024,131 @@ def test_the_budget_tab_has_a_marketing_department(lg, client_for):
     x.budgets.for_league(x.league.id, 2026)
     html = client_for(x).get(f"/leagues/{x.league.id}/budget").text
     assert 'name="department" value="marketing"' in html
+
+
+# ── Broadcast deals and merchandise (Josh, 2026-11-09) ────────────────────────
+
+
+def test_a_broadcast_deal_is_locked_for_its_length(lg):
+    x = lg()
+    deals = x.budgets.broadcast_deals(x.league.id, 2026)
+    assert set(deals) == {x.mine.id, x.theirs.id}
+    mine = deals[x.mine.id]
+    assert mine["years"] == 3 and mine["new"] and mine["amount"] > 0
+    # Fans soar, but the price holds until the deal runs out.
+    x.db.execute(
+        "UPDATE team_budgets SET fans_after = 95 WHERE league_id = %s",
+        (x.league.id,),
+    )
+    x.budgets.for_league(x.league.id, 2027)
+    later = x.budgets.broadcast_deal(x.league.id, x.mine.id, 2027)
+    assert later["base"] == mine["base"] and later["left"] == 2 and not later["new"]
+    for year in (2028, 2029):
+        x.budgets.for_league(x.league.id, year)
+    renewed = x.budgets.broadcast_deal(x.league.id, x.mine.id, 2029)
+    assert renewed["start_year"] == 2029 and renewed["base"] > mine["base"]
+
+
+def test_picking_a_new_deals_length_on_the_budget_tab(lg, client_for):
+    x = lg()
+    x.budgets.for_league(x.league.id, 2026)
+    client = client_for(x)
+    url = f"/leagues/{x.league.id}/budget/broadcast"
+    r = client.post(url, data={"years": 5})
+    assert "between seasons" in r.text
+    x.db.execute("UPDATE leagues SET state = 'preseason' WHERE id = %s", (x.league.id,))
+    r = client.post(url, data={"years": 5})
+    assert r.status_code == 200 and "Broadcast deal saved" in r.text
+    deal = x.budgets.broadcast_deal(x.league.id, x.mine.id, 2026)
+    assert deal["years"] == 5 and deal["amount"] > deal["base"]
+    assert "Broadcast deal" in client.get(f"/leagues/{x.league.id}/budget").text
+    # Locked once it's no longer new.
+    x.budgets.for_league(x.league.id, 2027)
+    assert not x.budgets.set_broadcast_years(x.league.id, x.mine.id, 2027, 2)
+
+
+def _games(x, season, player, team, n):
+    x.db.execute(
+        """INSERT INTO player_season_stats
+               (player_id, season_id, team_id, bat_games_played)
+           VALUES (%s, %s, %s, %s)""",
+        (player.id, season.id, team.id, n),
+    )
+
+
+def test_merchandise_splits_by_games_and_bumps_new_arrivals(lg, monkeypatch):
+    from src.api.services import icons
+
+    x = lg()
+    star = x.factory.rated_player(x.mine, x.league, level=90, status="26man")
+    monkeypatch.setattr(icons, "_grades", lambda conn, ids: {p: "A" for p in ids})
+    # Traded from the AI club to us: 50 games there, 100 here.
+    _games(x, x.season, star, x.theirs, 50)
+    _games(x, x.season, star, x.mine, 100)
+    x.budgets.for_league(x.league.id, 2026)
+    merch = x.budgets.merchandise(x.league.id, 2026)
+    mine = dict((s.player_id, (s, v)) for s, v in merch[x.mine.id]["sellers"])
+    theirs = dict((s.player_id, (s, v)) for s, v in merch[x.theirs.id]["sellers"])
+    s_mine, v_mine = mine[star.id]
+    s_theirs, v_theirs = theirs[star.id]
+    assert s_mine.new and not s_theirs.new
+    assert abs(s_mine.share - 2 / 3) < 1e-9
+    # Twice the games, and the new jersey on top.
+    assert v_mine > 2 * v_theirs
+    # An All-Star sells more.
+    x.db.execute(
+        """INSERT INTO all_stars (season_id, player_id, team_id, slot)
+           VALUES (%s, %s, %s, 'DH')""",
+        (x.season.id, star.id, x.mine.id),
+    )
+    again = x.budgets.merchandise(x.league.id, 2026)[x.mine.id]["total"]
+    assert again > merch[x.mine.id]["total"]
+
+
+def test_the_season_end_records_broadcast_and_merchandise(lg, monkeypatch):
+    from src.api.services import icons
+
+    x = lg()
+    monkeypatch.setattr(icons, "_grades", lambda conn, ids: {p: "A-" for p in ids})
+    x.budgets.for_league(x.league.id, 2026)
+    before = x.budgets.projected(x.league.id, 2026)[x.mine.id]["profit"]
+    x.budgets.assess(x.league.id, 2026)
+    row = x.db.execute(
+        """SELECT broadcast_revenue, merch_revenue, profit FROM team_budgets
+           WHERE league_id = %s AND team_id = %s AND year = 2026""",
+        (x.league.id, x.mine.id),
+    ).fetchone()
+    assert row["broadcast_revenue"] > 0
+    assert row["merch_revenue"] == 0  # 40-man only, nobody on the 26-man
+    assert row["profit"] == before
+    books = x.budgets.books(x.league.id, x.mine.id, 2026)[0]
+    assert books["broadcast"] == row["broadcast_revenue"]
+
+
+def test_hall_of_famers_sell_retro_jerseys_for_their_team(lg, monkeypatch):
+    from src.api.services import icons
+
+    x = lg()
+    monkeypatch.setattr(icons, "_grades", lambda conn, ids: {p: "C" for p in ids})
+    legend = x.factory.rated_player(x.mine, x.league, level=60, status="retired")
+    past = x.factory.season(year=2025)
+    x.factory.league_season(x.league, past)
+    x.db.execute(
+        "INSERT INTO hall_elections (season_id, league_id, year, ballots)"
+        " VALUES (%s, %s, 2025, 10)",
+        (past.id, x.league.id),
+    )
+    x.db.execute(
+        """INSERT INTO hall_ballot (season_id, player_id, league_id, votes, share,
+               outcome, team_id)
+           VALUES (%s, %s, %s, 9, 0.9, 'elected', %s)""",
+        (past.id, legend.id, x.league.id, x.mine.id),
+    )
+    for year in (2026, 2027):
+        x.budgets.for_league(x.league.id, year)
+    first = x.budgets.merchandise(x.league.id, 2026)
+    later = x.budgets.merchandise(x.league.id, 2027)
+    ((seller, amount),) = first[x.mine.id]["sellers"]
+    assert seller.hall and seller.new and amount > 0
+    assert not first[x.theirs.id]["sellers"]
+    assert 0 < later[x.mine.id]["total"] < first[x.mine.id]["total"]

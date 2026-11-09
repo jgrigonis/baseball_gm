@@ -169,6 +169,41 @@
 {% if ticket_saved %}<script>if (window.gmToast) gmToast('Ticket prices saved');</script>{% endif %}
 {% endif %}
 
+{% if broadcast %}
+<div class="card" style="margin-bottom:16px;" id="broadcast">
+  <div class="card-header"><span class="card-title">Broadcast deal</span>
+    <span class="admin-dim" style="margin-left:auto;font-size:11px;">{% if broadcast.choosing and not broadcast.open %}length locked until the offseason{% elif not broadcast.choosing %}locked in{% endif %}</span></div>
+  <div class="card-body">
+    {% if broadcast_error %}<div class="bud-line bud-bad" style="margin-top:0;margin-bottom:10px;">{{ broadcast_error }}</div>{% endif %}
+    <div class="bud-grid">
+      <div class="bud-stat">
+        <div class="bud-label">Each season</div>
+        <div class="bud-value">{{ broadcast.amount_text }}</div>
+        <div class="bud-note">{{ broadcast.left_text }}</div>
+      </div>
+      <div class="bud-stat">
+        <div class="bud-label">Signed in {{ broadcast.signed }}</div>
+        <div class="bud-value">{{ broadcast.years }} seasons</div>
+        <div class="bud-note">At fan interest {{ broadcast.fans }} and a {{ broadcast.win_text }} record over the seasons before</div>
+      </div>
+    </div>
+    {% if broadcast.choosing %}
+    <form class="bud-dept" data-quiet-swap hx-post="/leagues/{{ league_id }}/budget/broadcast"
+          hx-target="#tab-content" hx-swap="innerHTML" hx-trigger="change" style="margin-top:10px;">
+      <div class="bud-dept-name"><strong>Deal length</strong><div class="bud-note">A new deal: pick how long to lock its price</div></div>
+      <select name="years" {% if not broadcast.open %}disabled{% endif %} aria-label="Broadcast deal length">
+        {% for o in broadcast.options %}<option value="{{ o.years }}" {% if o.years == broadcast.years %}selected{% endif %}>{{ o.years }} seasons · {{ o.amount_text }} a season · through {{ o.through }}</option>{% endfor %}
+      </select>
+    </form>
+    {% endif %}
+    <div class="bud-line">
+      Your local TV deal pays the same every season it runs. It's priced when it's signed, from your market, your fan interest and how you've won over the last three seasons, so a team that just got good waits for its next deal and a fading one keeps its old price. A short deal is re-priced sooner; a long one pays 5% more for locking the price in.{% if not broadcast.choosing %} Next deal: {{ broadcast.renews }}.{% endif %}
+    </div>
+  </div>
+</div>
+{% if broadcast_saved %}<script>if (window.gmToast) gmToast('Broadcast deal saved');</script>{% endif %}
+{% endif %}
+
 {% if books %}
 <div class="card" style="margin-bottom:16px;" id="revenue">
   <div class="card-header"><span class="card-title">Revenue and profit</span>
@@ -212,6 +247,7 @@
       <div class="bud-line">
         On today's payroll. The playoff gate and the luxury tax are settled when the playoffs end, and the tax share depends on every team's final payroll.
         Your market is fixed; fan interest moves each season with winning, the playoffs, a title and your All-Stars, and sets next season's revenue.
+        Merchandise follows your players: everyone graded B+ or better sells jerseys, All-Stars and MVP or Cy Young winners more, and a player in his first year with you sells half again as many. Your Hall of Famers sell retro jerseys every season, three times as many the season after they're elected.
       </div>
       {% endif %}
     </div>
