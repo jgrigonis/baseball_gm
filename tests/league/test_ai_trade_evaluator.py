@@ -220,3 +220,71 @@ def test_an_ai_team_wont_take_on_more_salary_than_its_owner_allows():
         roster + [star], [star], [scrub], "rebuilding", 100, 0.0, pay_room=-1
     )
     assert shed.reason != ev.OVER_BUDGET_REASON
+
+
+# Pricing contracts: what a player is owed counts against him.
+RATE = ai_evaluator.money_rate(10_000_000, 200_000_000, 1.0, "retooling")
+
+
+def _paid(rating, now, later, **kw):
+    from dataclasses import replace
+
+    return replace(_p(rating, **kw), owed_now=now, owed_later=later)
+
+
+def _priced(roster, giving, getting, state="retooling", money=RATE, days_left=60):
+    return evaluate(roster, giving, getting, state, days_left, 0.08, money=money)
+
+
+def test_money_rate_by_owner_room_and_state():
+    cap = 200_000_000
+    tight = ai_evaluator.money_rate(-5_000_000, cap, 1.0, "retooling")
+    loose = ai_evaluator.money_rate(80_000_000, cap, 1.0, "retooling")
+    assert tight > RATE > loose > 0
+    assert ai_evaluator.money_rate(None, cap, 1.0, "retooling") == 0.0
+    assert ai_evaluator.money_rate(
+        10_000_000, cap, 1.0, "all-in"
+    ) < ai_evaluator.money_rate(10_000_000, cap, 1.0, "rebuilding")
+    # Salaries grown with the cap cost the same in value.
+    assert ai_evaluator.money_rate(10_000_000, cap, 2.0, "retooling") == RATE / 2
+
+
+def test_without_a_money_rate_contracts_dont_count():
+    roster = _roster()
+    cheap = _priced(roster, [roster[0]], [_p(64)], money=0.0)
+    dear = _priced(roster, [roster[0]], [_paid(64, 30_000_000, 30_000_000)], money=0.0)
+    assert cheap.score == dear.score
+
+
+def test_an_overpaid_player_is_turned_down_for_his_contract():
+    roster = _roster()
+    fair = _priced(roster, [roster[0]], [_paid(64, 9_000_000, 9_000_000)])
+    over = _priced(roster, [roster[0]], [_paid(64, 30_000_000, 30_000_000)])
+    assert fair.accept
+    assert not over.accept
+    assert "contract" in over.reason
+    assert over.details["d_money"] < fair.details["d_money"] < 0
+
+
+def test_sending_away_a_bad_contract_is_worth_something():
+    vet = _paid(60, 25_000_000, 25_000_000, age=34)
+    roster = _roster() + [vet]
+    # A slightly worse, cheap player for him: the savings make it worth it.
+    assert _priced(roster, [vet], [_p(57)]).accept
+    assert not _judge(roster, [vet], [_p(57)]).accept
+
+
+def test_a_cheap_star_is_worth_more_than_a_fairly_paid_one():
+    roster = _roster()
+    cheap = _priced(roster, [roster[0]], [_paid(70, 500_000, 2_000_000)])
+    paid = _priced(roster, [roster[0]], [_paid(70, 22_000_000, 22_000_000)])
+    assert cheap.score > paid.score > 0
+
+
+def test_tight_owners_care_more_about_money():
+    roster = _roster()
+    getting = [_paid(64, 18_000_000, 18_000_000)]
+    tight = ai_evaluator.money_rate(-5_000_000, 200_000_000, 1.0, "retooling")
+    loose = ai_evaluator.money_rate(80_000_000, 200_000_000, 1.0, "retooling")
+    assert _priced(roster, [roster[0]], getting, money=loose).accept
+    assert not _priced(roster, [roster[0]], getting, money=tight).accept

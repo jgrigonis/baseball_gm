@@ -85,3 +85,23 @@ def test_a_scaled_deal_costs_more_and_moves_the_floor():
     assert ct.rookie_salary(200, 1.2) == ct.round_salary(ct.MIN_SALARY * 1.2, 1.2)
     assert ct.rookie_salary(200, 1.2) > ct.rookie_salary(200)
     assert ct.round_salary(1, 1.0) == ct.MIN_SALARY
+
+
+def test_owed_prices_deal_then_arbitration_then_market():
+    from src.player import contracts as ct
+
+    deals = [{"start_year": 2025, "years": 2, "salary": 1_780_000}]
+
+    def fair(y):
+        return 10_780_000
+
+    now, later = ct.owed(deals, 2025, fair, 2024, 3)
+    # This season on his deal; then 2026 on it (season 3 by then is
+    # arbitration's first, but the deal covers it), 2027 at 55%, 2028 at 70%.
+    assert now == 1_000_000
+    expected = (
+        1_000_000 + (10_780_000 * 0.55 - 780_000) + (10_780_000 * 0.70 - 780_000)
+    ) / 3
+    assert later == round(expected)
+    # A veteran with no deal is owed his market price.
+    assert ct.owed([], 2025, fair, None, 3) == (10_000_000, 10_000_000)

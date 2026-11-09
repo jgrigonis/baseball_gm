@@ -87,6 +87,7 @@ class _Ctx:
             stats_weight=self.leanings.get(self.team_id, Leanings()).stats_weight,
         )
         self._rooms = None
+        self._terms = None
 
     def seller_tradeable(self) -> None:
         """Let the GM's other players be offered as sweeteners (a dump)."""
@@ -164,10 +165,12 @@ class _Ctx:
         blocked = {pid for pid, teams in back.items() if self.team_id in teams}
         if self._rooms is None:
             self._rooms = owners.pay_rooms(self.conn, self.league_id, self.season_id)
+            self._terms = owners.money_terms(self.conn, self.league_id, self.season_id)
         lean = self.leanings.get(team_id, Leanings())
+        state = self._state(team_id)
         ai = Side(
             team_id=team_id,
-            state=self._state(team_id),
+            state=state,
             roster=roster,
             tradeable=tradeable,
             # The same margin it would answer this GM's offer with today
@@ -178,6 +181,7 @@ class _Ctx:
             stats_weight=lean.stats_weight,
             horizon=lean.horizon,
             pay_room=self._rooms.get(team_id),
+            money=owners.money_rate(self._terms, self._rooms.get(team_id), state),
         )
         return ai, blocked
 
@@ -203,7 +207,7 @@ def shop(conn, league_id: str, gm: dict, player_id: str) -> dict:
     deal they'd take (the package each came closest to taking, best for the
     GM first, the near ones (it would come out ahead, just not by its
     margin) before the rest), "no_interest": [team names], "why": {reason: [team names]}}
-    (reasons: ai_proposer.NO_HELP/NO_ROOM/NO_MATCH, TRADED_HIM)."""
+    (reasons: ai_proposer.NO_HELP/NO_VALUE/NO_ROOM/NO_MATCH, TRADED_HIM)."""
     ctx = _Ctx(conn, league_id, gm, player_id)
     offers, close, none, why = [], [], [], {}
     for t in ctx.ai_teams():

@@ -43,6 +43,9 @@ class Side:
     horizon: float = 0.0  # its GM's, -1 (builds for later) to 1 (wins now)
     # More payroll its owner will stand for (an AI team's); None: no limit.
     pay_room: int | None = None
+    # Value points it charges per dollar a player is owed
+    # (ai_evaluator.money_rate); 0: money doesn't count.
+    money: float = 0.0
     _seen: dict[str, Asset] = field(default_factory=dict, repr=False)
 
     def see(self, assets: list[Asset]) -> list[Asset]:
@@ -74,6 +77,7 @@ def _verdict(side: Side, giving, getting, days_left, margin, base):
         base,
         side.horizon,
         side.pay_room,
+        side.money,
     )
 
 
@@ -175,7 +179,9 @@ def shop_offer(
 # Why an AI team made no shop offer, for the shopping GM: he doesn't help
 # them, every deal it would take adds more salary than its owner allows, or
 # it wants him but nothing it would part with is worth enough to the seller.
-NO_HELP, NO_ROOM, NO_MATCH = "fit", "pay", "price"
+# Or he'd help on the field but his contract costs more than he's worth to
+# them (ai_evaluator.money_cost).
+NO_HELP, NO_ROOM, NO_MATCH, NO_VALUE = "fit", "pay", "price", "cost"
 
 
 def shop_offer_or_why(
@@ -185,7 +191,8 @@ def shop_offer_or_why(
     days_left: int,
     blocked: set[str] = frozenset(),
 ) -> ShopOffer | str:
-    """shop_offer, or why there's none (NO_HELP, NO_ROOM or NO_MATCH). When
+    """shop_offer, or why there's none (NO_HELP, NO_VALUE, NO_ROOM or
+    NO_MATCH). When
     it wants him but no package passes its margin, the package it came
     closest to taking, marked short (and near when it would still come out
     ahead on it, just not by its margin); NO_MATCH only when there's no
@@ -196,6 +203,9 @@ def shop_offer_or_why(
     # package counts against his, so the budget is judged package by package.
     free = replace(ai, pay_room=None, _seen=ai._seen)
     if _verdict(free, [], [target], days_left, 0.0, ai_base).score <= 0:
+        unpriced = replace(free, money=0.0, _seen=ai._seen)
+        if _verdict(unpriced, [], [target], days_left, 0.0, ai_base).score > 0:
+            return NO_VALUE
         return NO_HELP
 
     def for_seller(give):
