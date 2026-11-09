@@ -97,7 +97,8 @@
       </div>
       <label class="admin-check"><input type="checkbox" name="is_public" value="true" {% if league.is_public %}checked{% endif %}> Public league</label>
       <label class="admin-check"><input type="checkbox" name="late_joins" value="true" {% if league.late_joins %}checked{% endif %}> Late joiners (take over AI teams between seasons)</label>
-      <label class="admin-check"><input type="checkbox" name="reentry_enabled" value="true" {% if league.reentry_enabled %}checked{% endif %}> Re-entry enabled</label>
+      <label class="admin-check"><input type="checkbox" name="owner_firing" value="true" {% if league.owner_firing %}checked{% endif %}> Owner firing (owners can fire GMs; never in Speed Blitz)</label>
+      <label class="admin-check"><input type="checkbox" name="reentry_enabled" value="true" {% if league.reentry_enabled %}checked{% endif %}> Re-entry enabled (a fired GM can take over an AI team)</label>
       {# The same settings a solo commissioner can change on the League page
          (src/api/services/league_settings.py says what each change does). #}
       <label class="admin-check"><input type="checkbox" name="injuries_enabled" value="true" {% if injuries_on %}checked{% endif %}> Injuries</label>

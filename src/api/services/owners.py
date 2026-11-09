@@ -58,6 +58,11 @@ def _teams(conn, league_id: str) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+def market_of(team: dict) -> int:
+    """A team's market size, 1 to 5 ({city, mascot})."""
+    return _market(team)
+
+
 def _market(team: dict) -> int:
     pool = team_pool.get(team["city"], team["mascot"]) or team_pool.by_city(
         team["city"]

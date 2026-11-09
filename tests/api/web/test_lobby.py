@@ -139,14 +139,15 @@ def test_lobby_settings_explain_themselves_on_hover(client, db_conn, lobby):
 
     r = client.get(f"/leagues/{league.id}/")
 
-    # Fourteen settings, plus the GM list's and the settings card's own headers.
-    assert r.text.count('class="setting-tip"') == 16
+    # Thirteen settings (Speed Blitz has no owner firing, so no Re-entry
+    # either), plus the GM list's and the settings card's own headers.
+    assert r.text.count('class="setting-tip"') == 15
     assert "Speed Blitz" in r.text
     assert "Trades and injuries are off by default" in r.text
     assert "trade with each other." in r.text
     assert "Off: nobody gets hurt" in r.text
     assert "Total teams in the league" in r.text
-    assert "<td>Enabled</td>" in r.text
+    assert "Re-entry" not in r.text and "Owner firing" not in r.text
 
 
 def _fill(db_conn, league, num_teams=4):
@@ -437,10 +438,14 @@ def test_confirmed_pace_keeps_the_windows_greyed_out(client, db_conn, lobby):
 
 def test_reentry_sits_below_seasons(client, db_conn, lobby):
     league, _ = lobby
+    db_conn.execute(
+        "UPDATE leagues SET owner_firing = true WHERE id = %s", (league.id,)
+    )
 
     labels = list(_settings_rows(_settings_page(client, league)))
 
-    assert labels.index("Re-entry") == labels.index("Seasons") + 1
+    assert labels.index("Owner firing") == labels.index("Seasons") + 1
+    assert labels.index("Re-entry") == labels.index("Seasons") + 2
     assert labels.index("Days per sim period") < labels.index("Seasons")
 
 

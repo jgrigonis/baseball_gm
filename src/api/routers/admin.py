@@ -204,7 +204,15 @@ def _review_row(review: dict | None) -> dict | None:
         "score": review["score"],
         "security": review["job_security"],
         "before": detail.get("security_before"),
-        "verdict": "would fire" if detail.get("would_fire") else review["verdict"],
+        # Fired, or past the line but held back (firing off in the league,
+        # or the owner's honeymoon or warning first).
+        "verdict": (
+            "fired"
+            if review["verdict"] == "fired"
+            else "would fire"
+            if detail.get("would_fire")
+            else review["verdict"]
+        ),
         "dimensions": [
             {"label": label, "score": scores.get(k)}
             for k, label, _ in owners.DIMENSIONS
@@ -249,6 +257,7 @@ def league_settings(
     num_seasons: int = Form(...),
     backstory_years: int | None = Form(None),
     reentry_enabled: bool = Form(False),
+    owner_firing: bool = Form(False),
     is_public: bool = Form(False),
     late_joins: bool = Form(False),
     injuries_enabled: bool = Form(False),
@@ -274,6 +283,7 @@ def league_settings(
             "num_seasons": num_seasons,
             "backstory_years": backstory_years,
             "reentry_enabled": reentry_enabled,
+            "owner_firing": owner_firing,
             "is_public": is_public,
             "late_joins": late_joins,
             "injuries_enabled": injuries_enabled,

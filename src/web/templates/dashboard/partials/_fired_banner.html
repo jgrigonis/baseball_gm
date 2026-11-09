@@ -1,0 +1,42 @@
+{# templates/dashboard/partials/_fired_banner.html
+   A person their owner fired (src/api/services/firing.py): who let them go
+   and what the owner said. With re-entry on, between seasons, a button to
+   take over another team (takeover.py); one and done, they watch. #}
+{% set f = fired %}
+<div class="join-banner fired-banner" role="note">
+  <span class="join-banner-text">
+    <strong>You're fired.</strong>
+    {% if f %}
+      {% if f.owner_name %}{{ f.owner_name }}{% if f.archetype %} ({{ f.archetype }}){% endif %}{% else %}The owner{% endif %}
+      let you go as GM of the {{ f.city }} {{ f.mascot }} after a {{ f.wins }}-{{ f.losses }} season.
+      {% if f.message %}<span class="fired-quote">“{{ f.message }}”</span>{% endif %}
+    {% endif %}
+    {% if can_take_over %}
+      {{ open_team_count }} owner{{ "s" if open_team_count != 1 }} {{ "have" if open_team_count != 1 else "has" }} offered you a job. You can take one until Opening Day.
+    {% elif fired_reentry %}
+      Between seasons, owners around the league can offer you a job. Until then, you're watching.
+    {% else %}
+      {{ league_name }} is one and done, so you're watching from here on.
+    {% endif %}
+  </span>
+  {% if can_take_over %}
+  <a class="btn btn-primary join-banner-btn" href="/leagues/{{ league_id }}/take-over">Find a new job →</a>
+  {% endif %}
+</div>
+<style>
+/* The same shape as the join banner (_join_banner.html), in red. */
+.fired-banner {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 10px 24px; border-bottom: 1px solid var(--red);
+  font-family: var(--font-mono); font-size: 12px; color: var(--text);
+}
+.fired-banner .join-banner-text { flex: 1 1 260px; }
+.fired-banner .join-banner-btn { font-size: 11px; padding: 6px 14px; white-space: nowrap; }
+@media (max-width: 600px) {
+  .fired-banner { padding: 10px 16px; gap: 10px; }
+  .fired-banner .join-banner-btn { width: 100%; text-align: center; }
+}
+.fired-banner { background: var(--red-dim); border-bottom-color: var(--red); }
+.fired-banner strong { color: var(--red); margin-right: 4px; }
+.fired-quote { display: block; margin-top: 4px; color: var(--text-dim); font-style: italic; }
+</style>

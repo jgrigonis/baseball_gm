@@ -61,6 +61,25 @@
           </label>
           <span class="mode-note">You can change this later on the League page.</span>
         </div>
+        <div class="field">
+          <label for="owner-firing">Owner Firing</label>
+          <input type="hidden" name="owner_firing" value="false">
+          <label class="toggle-row">
+            <input type="checkbox" name="owner_firing" id="owner-firing" value="true" checked
+                   onchange="document.getElementById('reentry-field').hidden = !this.checked;">
+            <span>Owners can fire GMs who let them down, people and AI alike</span>
+          </label>
+          <span class="mode-note">Off: owners still judge, warn and grade every season, but nobody is fired. Never in Speed Blitz. Set once, when the league is created.</span>
+        </div>
+        <div class="field" id="reentry-field">
+          <label for="reentry">Re-entry</label>
+          <input type="hidden" name="reentry_enabled" value="false">
+          <label class="toggle-row">
+            <input type="checkbox" name="reentry_enabled" id="reentry" value="true" checked>
+            <span>A fired GM can take over another team an AI GM runs</span>
+          </label>
+          <span class="mode-note">Off: one and done. A fired GM watches the rest of the league, and if nobody is left running a team, the league ends.</span>
+        </div>
         <div class="generated-only">
         {% call slider("backstory_years", "backstory-years", "Years of History", default_backstory_years, 0, max_backstory_years) %}
           <span class="mode-note">Past seasons simulated when the league starts, so it opens with standings, champions and player stats already on the books. 0 starts fresh, with a random first draft order. Each year adds a little to the start time.</span>

@@ -377,7 +377,7 @@ def review(conn, league_id: str, season_id: str, today: str | None = None) -> in
     names = _team_names(conn, by_team)
     written = 0
     for r in conn.execute(
-        """SELECT g.team_id, e.gm_id, e.score, e.job_security, e.detail
+        """SELECT g.team_id, e.gm_id, e.score, e.job_security, e.detail, e.verdict
            FROM gm_season_evaluations e JOIN gms g ON g.id = e.gm_id
            WHERE e.season_id = %s AND g.league_id = %s AND e.job_security IS NOT NULL""",
         (season_id, league_id),
@@ -388,7 +388,13 @@ def review(conn, league_id: str, season_id: str, today: str | None = None) -> in
             continue
         security = r["job_security"]
         band = (
-            "warned" if security < sc.HOT_SEAT else "fine" if security < 60 else "safe"
+            "fired"
+            if r["verdict"] == "fired"
+            else "warned"
+            if security < sc.HOT_SEAT
+            else "fine"
+            if security < 60
+            else "safe"
         )
         fields = _fields(owner, gm, names, None)
         scores = (r["detail"] or {}).get("scores", {})

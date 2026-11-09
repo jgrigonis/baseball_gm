@@ -193,8 +193,14 @@
         <label class="toggle-row needs-trades{% if not info.trades_enabled %} trade-off{% endif %}"><input type="checkbox" name="pick_trades" value="true" {% if info.pick_trades %}checked{% endif %}>
           <span>Draft pick trades <span class="solo-hint">Off: open offers with picks are called off. Picks already traded stay traded.</span></span></label>
         {% endif %}
+        {% if info.owner_firing %}
         <label class="toggle-row"><input type="checkbox" name="reentry_enabled" value="true" {% if info.reentry_enabled %}checked{% endif %}>
-          <span>Re-entry <span class="solo-hint">A fired GM can be handed another open team instead of sitting out.</span></span></label>
+          <span>Re-entry <span class="solo-hint">A fired GM can take over another team an AI GM runs. Off: one and done.</span></span></label>
+        {% elif info.reentry_enabled %}
+        {# Nobody is fired in this league, so there's nothing to change, but
+           the form still says what it is. #}
+        <input type="hidden" name="reentry_enabled" value="true">
+        {% endif %}
         <div class="solo-actions">
           <button type="submit" class="btn btn-primary">{{ "Propose changes" if se.multi else "Save settings" }}</button>
           <a class="btn btn-secondary" href="/leagues/{{ league_id }}/league">Cancel</a>

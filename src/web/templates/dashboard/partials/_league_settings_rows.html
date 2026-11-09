@@ -66,9 +66,21 @@
    "Unlimited: the league keeps going, season after season, with no last one." if not info.num_seasons
    else "Which season the league is in, out of how many it runs before it ends." if started and info.season_number
    else "How many seasons the league runs before it ends."),
-  ("Re-entry", "Enabled" if info.reentry_enabled else "Disabled",
-   "Whether a fired GM can be handed another open team instead of sitting out. GM firing isn't in the game yet, so this has no effect for now."),
 ] %}
+{% if info.mode.budgets %}
+  {% set settings = settings + [
+    ("Owner firing", "On" if info.owner_firing else "Off",
+     "On: an owner can fire a GM who keeps letting them down, people and AI GMs alike. Each owner has their own patience, and most give a new GM a season or two and a warning first. Set when the league was created." if info.owner_firing
+     else "Off: owners still judge every season, warn and grade, but nobody is fired. Set when the league was created."),
+  ] %}
+  {% if info.owner_firing %}
+    {% set settings = settings + [
+      ("Re-entry", "On" if info.reentry_enabled else "One and done",
+       "On: a fired GM can take over any team an AI GM runs between seasons, except the one that fired them, and starts fresh with its owner." if info.reentry_enabled
+       else "One and done: a fired GM watches the rest of the league. If nobody is left running a team, the league ends."),
+    ] %}
+  {% endif %}
+{% endif %}
 {% set settings = settings + [
   ("Injuries", "On" if info.injuries_enabled else "Off",
    "On: players can get hurt in games and miss time." if info.injuries_enabled

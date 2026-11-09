@@ -424,7 +424,7 @@ window.closeGamePanel = function() {
 
 {% if multiplayer and not is_viewer %}{% include "dashboard/partials/_ready_bar.html" %}{% endif %}
 {% if is_viewer %}{% include "dashboard/partials/_viewer_refresh.html" %}{% endif %}
-{% if can_take_over %}{% include "dashboard/partials/_join_banner.html" %}{% endif %}
+{% if fired is defined and fired %}{% include "dashboard/partials/_fired_banner.html" %}{% elif can_take_over %}{% include "dashboard/partials/_join_banner.html" %}{% endif %}
 <div id="sim-status" style="display:none;padding:6px 24px;
      background:var(--green-dim);border-bottom:1px solid var(--green-mid);
      font-family:var(--font-mono);font-size:11px;color:var(--green);

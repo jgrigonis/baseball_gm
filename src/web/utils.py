@@ -11,6 +11,7 @@ from src.config import settings
 from src.player.injury_types import injury_effect, injury_label
 from src.api.services import (
     all_star,
+    firing,
     hall_of_fame,
     next_move,
     owner_office,
@@ -329,7 +330,19 @@ def _shell_ctx(
                 # A viewer of a public league that takes late joiners can
                 # join between seasons: the top bar's Join button and the
                 # banner over the tabs. A private league needs its join code.
-                if (league["is_public"] or gm.get("has_code")) and not (
+                if gm.get("fired"):
+                    # Their owner fired them (src/api/services/firing.py):
+                    # the banner says so, and with re-entry on offers a new
+                    # job between seasons.
+                    uid = gm["user_id"]
+                    ctx["fired"] = firing.latest(db, league_id, uid)
+                    ctx["fired_reentry"] = bool(league["reentry_enabled"])
+                    if not takeover.closed_reason(db, league, uid):
+                        ctx["can_take_over"] = True
+                        ctx["open_team_count"] = len(
+                            takeover.open_teams(db, league_id, uid)
+                        )
+                elif (league["is_public"] or gm.get("has_code")) and not (
                     takeover.closed_reason(db, league)
                 ):
                     ctx["can_take_over"] = True

@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+from src.api.services import owner_review
 from src.db.repositories.league_repo import LeagueRepository
 from src.league.league_modes import get_mode, injuries_allowed
 from src.league.trade_deadline import trades_enabled_for
@@ -24,6 +25,8 @@ def league_info(db, league: dict) -> dict:
         "draft_window_sec": league["draft_window_sec"],
         "lineup_window_sec": league["lineup_window_sec"],
         "reentry_enabled": bool(league["reentry_enabled"]),
+        # Owners can fire GMs (src/api/services/owner_review.firing_on).
+        "owner_firing": owner_review.firing_on(league),
         "pace_control": league["pace_control"],
         "sim_period_days": league["sim_period_days"],
         "num_seasons": league["num_seasons"],

@@ -13,7 +13,9 @@ Job security, 0 to 100, carries from season to season for a GM under one
 owner. A new GM starts at a grace level set by the owner's patience. Each
 season's score adds to it or takes from it; patience softens the losses, and
 a title buys a lot of time. Below HOT_SEAT the GM is on the hot seat; below
-FIRE, at a season's end, they'd be fired (not yet: firing comes later).
+FIRE, at a season's end, they're fired, if the league has owner firing on and
+the owner's own rules allow it (FiringRules: a honeymoon, a warning first,
+credit for a better year than the last).
 
 Speed Blitz has no money, so profit, attendance and fans aren't judged
 there; the other weights carry the score. Money is judged by profit alone:
@@ -206,3 +208,81 @@ def verdict(security: int) -> str:
     if security < HOT_SEAT:
         return "warned"
     return "retained"
+
+
+# ── Firing ───────────────────────────────────────────────────────────────────
+# Per archetype (plans/owners.md, "Firing parameters"). Not shown to GMs.
+
+
+@dataclass(frozen=True)
+class FiringRules:
+    # Seasons under this owner before they can fire the GM. Security still
+    # moves and the hot seat still shows during it.
+    honeymoon: int = 2
+    # The GM must have been on the hot seat at the last review before they
+    # can be fired: a fall from safe straight past the line stops on the
+    # hot seat.
+    warn_first: bool = True
+    # A losing season that still beats the one before has this share of its
+    # loss forgiven (a rebuild that's going somewhere).
+    trend_credit: float = 0.2
+
+
+FIRING_RULES: dict[str, FiringRules] = {
+    "The Tycoon": FiringRules(honeymoon=1, warn_first=False, trend_credit=0.0),
+    "The Meddler": FiringRules(honeymoon=1, warn_first=False, trend_credit=0.0),
+    "The Long-Gamer": FiringRules(honeymoon=3, trend_credit=0.6),
+    "The Absentee": FiringRules(honeymoon=3),
+    "The Hometown Owner": FiringRules(trend_credit=0.4),
+    "The People's Owner": FiringRules(trend_credit=0.4),
+}
+
+
+def firing_rules(archetype: str | None) -> FiringRules:
+    return FIRING_RULES.get(archetype or "", FiringRules())
+
+
+@dataclass(frozen=True)
+class Tenure:
+    """What the owner remembers of this GM's earlier seasons under them."""
+
+    # Seasons judged before this one.
+    seasons: int = 0
+    # Last season's score and job security (None: no earlier season).
+    last_score: float | None = None
+    last_security: int | None = None
+
+
+def trended(score: float, tenure: Tenure, rules: FiringRules) -> float:
+    """The season's score with the owner's credit for improving: a losing
+    season better than the last loses less security."""
+    if score < 0 and tenure.last_score is not None and score > tenure.last_score:
+        return score * (1 - rules.trend_credit)
+    return score
+
+
+def judge(
+    security: float,
+    score: float,
+    traits: dict,
+    champion: bool,
+    tenure: Tenure,
+    rules: FiringRules,
+) -> tuple[int, str, bool]:
+    """Job security after the season, the verdict (retained, warned or
+    fired) and whether the bare numbers alone would have fired them. The
+    owner's rules can hold a firing back: during the honeymoon, or when they
+    warn first and the GM wasn't on the hot seat last time. A GM held back
+    sits at the bottom of the hot seat (FIRE), so an ordinary season next
+    year saves them."""
+    after = next_security(security, trended(score, tenure, rules), traits, champion)
+    v = verdict(after)
+    would = v == "fired"
+    if would:
+        in_honeymoon = tenure.seasons + 1 <= rules.honeymoon
+        unwarned = rules.warn_first and (
+            tenure.last_security is None or tenure.last_security >= HOT_SEAT
+        )
+        if in_honeymoon or unwarned:
+            return FIRE, "warned", True
+    return after, v, would

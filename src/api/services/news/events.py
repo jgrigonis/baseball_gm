@@ -900,20 +900,43 @@ def _scope_phrase(scope: str) -> str:
 
 
 def firings(conn, names: Names, league_id: str, season_id: str, on: str) -> None:
+    """GMs their owners fired after the season (src/api/services/firing.py).
+    The fired GM's row has gone to the new AI GM, so the name is the one
+    gm_firings kept; a person's links to their profile row in the league."""
     news = NewsRepository(conn)
     for r in conn.execute(
-        """SELECT e.gm_id, e.wins, e.losses, g.team_id, g.display_name
-           FROM gm_season_evaluations e JOIN gms g ON g.id = e.gm_id
-           WHERE e.season_id = %s AND e.verdict = 'fired' AND g.league_id = %s""",
+        """SELECT f.id, f.gm_id, f.team_id, f.user_id, f.display_name, f.wins,
+                  f.losses, o.archetype,
+                  (SELECT g.id FROM gms g WHERE g.league_id = f.league_id
+                     AND g.user_id = f.user_id) AS person_gm_id
+           FROM gm_firings f LEFT JOIN owner_personas o ON o.id = f.owner_id
+           WHERE f.season_id = %s AND f.league_id = %s
+           ORDER BY f.user_id IS NULL, f.id""",
         (season_id, league_id),
     ).fetchall():
         team = r["team_id"]
+        person = r["person_gm_id"]
+        who = (
+            names.gm_name({"id": person, "display_name": r["display_name"]})
+            if person
+            else f"GM {r['display_name']}"
+        )
+        boss = f" {r['archetype'].replace('The ', 'the ', 1)}" if r["archetype"] else ""
+        new_gm = names.gm_name(names.gm_of(team))
+        body = (
+            f"After a {r['wins']}-{r['losses']} season, the {names.full_team(team)}"
+            f" have let {who} go."
+        )
+        if boss:
+            body += f" The owner,{boss}, had seen enough."
+        if new_gm:
+            body += f" {new_gm} takes over."
         news.add(
             league_id, season_id, on, "front_office", f"fired:{r['gm_id']}:{season_id}",
-            f"{names.team(team)} fire {names.gm_name(names.gm(r['gm_id'])) or 'GM ' + r['display_name']}",
-            f"After a {r['wins']}-{r['losses']} season, the {names.full_team(team)}"
-            f" are looking for a new GM.",
-            weight=3, team_ids=[team] if team else [], gm_ids=[r["gm_id"]],
+            f"{names.team(team)} fire {who}",
+            body,
+            weight=3 if r["user_id"] else 2, team_ids=[team] if team else [],
+            gm_ids=[g for g in (person, r["gm_id"]) if g],
         )  # fmt: skip
 
 

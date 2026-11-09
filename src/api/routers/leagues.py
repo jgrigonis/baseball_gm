@@ -26,6 +26,7 @@ from src.api.dependencies import (
 )
 from src.api.services import (
     custom_teams,
+    firing,
     league_custom_teams,
     league_settings,
     lobby_teams,
@@ -220,6 +221,7 @@ def new_league(
     draft_window_sec: int = Form(300),
     lineup_window_sec: int = Form(600),
     reentry_enabled: bool = Form(True),
+    owner_firing: bool = Form(False),
     pace_control: str = Form("timer"),
     sim_period_days: int = Form(3),
     num_seasons: int = Form(10),
@@ -281,6 +283,7 @@ def new_league(
             "draft_window_sec": draft_window_sec,
             "lineup_window_sec": lineup_window_sec,
             "reentry_enabled": reentry_enabled,
+            "owner_firing": owner_firing,
             "pace_control": pace_control,
             "sim_period_days": sim_period_days,
             "num_seasons": num_seasons,
@@ -479,12 +482,14 @@ def _takeover_league(db, league_id: str, code: str, user_id: str) -> dict | None
         league["is_public"]
         or (code and code.strip().upper() == league["join_code"])
         or repo.is_watcher(league_id, user_id)
+        or takeover.is_fired(db, league_id, user_id)
     ):
         return league
     return None
 
 
-def _takeover_page(request, db, league, code, error=None):
+def _takeover_page(request, db, league, code, user_id, error=None):
+    fired = takeover.is_fired(db, league["id"], user_id)
     return templates.TemplateResponse(
         request,
         "leagues/take_over.html",
@@ -492,9 +497,11 @@ def _takeover_page(request, db, league, code, error=None):
             "league": league,
             "code": code,
             "error": error,
-            "closed": takeover.closed_reason(db, league),
-            "teams": takeover.open_teams(db, league["id"]),
+            "closed": takeover.closed_reason(db, league, user_id),
+            "teams": takeover.open_teams(db, league["id"], user_id),
             "joined_year": takeover.joined_year(db, league),
+            # Back from a firing (src/api/services/firing.py).
+            "fired": firing.latest(db, league["id"], user_id) if fired else None,
         },
     )
 
@@ -507,9 +514,10 @@ def take_over_page(
     league = _takeover_league(db, league_id, code, user["id"])
     if not league:
         return _cant_join(league_id)
-    if GMRepository(db).get_by_user_and_league(user["id"], league_id):
+    mine = GMRepository(db).get_by_user_and_league(user["id"], league_id)
+    if mine and not mine["fired_at"]:
         return RedirectResponse(f"/leagues/{league_id}/", status_code=302)
-    return _takeover_page(request, db, league, code)
+    return _takeover_page(request, db, league, code, user["id"])
 
 
 @router.post("/leagues/{league_id}/take-over")
@@ -533,7 +541,7 @@ def take_over_team(
             if isinstance(e, takeover.TakeoverClosed)
             else (f"{league['name']} is moving on right now. Try again in a minute.")
         )
-        return _takeover_page(request, db, league, code, error=msg)
+        return _takeover_page(request, db, league, code, user["id"], error=msg)
     return RedirectResponse(f"/leagues/{league_id}/", status_code=302)
 
 
