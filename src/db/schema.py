@@ -940,6 +940,8 @@ CREATE TABLE IF NOT EXISTS gm_profiles (
     -- How much a player's season stats count against his ratings, 0-100.
     stats_vs_scouting INTEGER NOT NULL DEFAULT 50
                           CHECK (stats_vs_scouting BETWEEN 0 AND 100),
+    -- Players still rusty from an injury sit until it fades (migration 097).
+    rest_rusty BOOLEAN NOT NULL DEFAULT FALSE,
 
     updated_at TEXT NOT NULL DEFAULT (NOW()),
 

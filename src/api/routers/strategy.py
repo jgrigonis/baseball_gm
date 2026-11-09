@@ -207,6 +207,34 @@ SETTINGS: tuple[tuple[str, tuple[Setting, ...]], ...] = (
 )
 
 
+@dataclass(frozen=True)
+class Checkbox:
+    name: str  # gm_profiles column, a boolean
+    label: str
+    hint: str
+
+
+# Checkbox panels: (title, checkboxes). A box left unticked isn't posted, so
+# the save reads each one as on when it's in the form and off when it isn't.
+CHECKBOXES: tuple[tuple[str, tuple[Checkbox, ...]], ...] = (
+    (
+        "Injuries",
+        (
+            Checkbox(
+                "rest_rusty",
+                "Rest rusty players",
+                "A player back from an injury is rusty for a while: a few "
+                "ratings are down until it fades. When this is on he sits "
+                "until it's gone. Rebuild and Auto-fill leave him out of the "
+                "lineup and rotation, the bullpen gives him no role, and on "
+                "game day he's out like an injured player. Rust fades twice as "
+                "fast on days he doesn't play. Off plays him through it.",
+            ),
+        ),
+    ),
+)
+
+
 def _index(values: tuple, current) -> int:
     """The slider step for a stored value: the closest one for a number
     between steps."""
@@ -245,6 +273,21 @@ def strategy(
         )
         for title, settings in SETTINGS
     ]
+    ctx["checkbox_cards"] = [
+        (
+            title,
+            [
+                {
+                    "name": c.name,
+                    "label": c.label,
+                    "hint": c.hint,
+                    "checked": bool(current[c.name]),
+                }
+                for c in boxes
+            ],
+        )
+        for title, boxes in CHECKBOXES
+    ]
     # Unsaved slider moves are kept in the browser under this key, so they
     # survive a look at another tab.
     ctx["draft_key"] = f"strategy_draft_{league_id}_{gm['id'] if gm else 'none'}"
@@ -272,6 +315,9 @@ async def save_strategy(
                 except ValueError:
                     continue
                 updates[s.name] = s.values[max(0, min(i, len(s.values) - 1))]
+    for _, boxes in CHECKBOXES:
+        for c in boxes:
+            updates[c.name] = c.name in form
 
     if updates:
         GMRepository(db).save_profile(gm["id"], updates)

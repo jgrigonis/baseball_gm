@@ -347,3 +347,11 @@ def test_rest_often_and_iron_man():
 def test_never_rests_below_nine_hitters():
     team, players = rest_team("standard", [0.1] * 10 + [1.0])
     assert len(resting(team, players)) == 2
+
+
+def test_rest_rusty_defaults_off_and_reads_from_the_row():
+    from src.team.manager_profile import ManagerProfile
+
+    assert ManagerProfile().rest_rusty is False
+    assert ManagerProfile.from_row({"rest_rusty": True}).rest_rusty is True
+    assert ManagerProfile.from_row({"rest_rusty": None}).rest_rusty is False

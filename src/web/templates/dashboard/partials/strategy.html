@@ -16,6 +16,26 @@
   <p class="ss-hint" onclick="this.classList.toggle('open')">{{ s.hint }}</p>
 </div>
 {% endmacro %}
+{% macro checkbox(c) %}
+<div class="strategy-check">
+  <label class="sc-row">
+    <input type="checkbox" name="{{ c.name }}" value="1"{% if c.checked %} checked{% endif %}
+           onchange="strategyChanged()">
+    <span class="ss-label">{{ c.label }}</span>
+  </label>
+  <p class="ss-hint" onclick="this.classList.toggle('open')">{{ c.hint }}</p>
+</div>
+{% endmacro %}
+{% macro checkbox_card(title, boxes) %}
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">{{ title }}</span>
+  </div>
+  <div class="card-body" style="display: flex; flex-direction: column; gap: 20px;">
+    {% for c in boxes %}{{ checkbox(c) }}{% endfor %}
+  </div>
+</div>
+{% endmacro %}
 {% macro card(title, settings) %}
 <div class="card">
   <div class="card-header">
@@ -60,6 +80,9 @@
         {% for title, settings in cards if title in ("Pitching", "Rotation") %}
           {{ card(title, settings) }}
         {% endfor %}
+        {% for title, boxes in checkbox_cards %}
+          {{ checkbox_card(title, boxes) }}
+        {% endfor %}
 
         {# Save + feedback #}
         <div class="strategy-save" style="display: flex; align-items: center; gap: 12px;">
@@ -91,6 +114,10 @@
 .ss-label { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-dim); }
 .ss-value { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--amber); min-width: 120px; text-align: right; }
 .ss-ends { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 10px; color: var(--muted); margin-top: -2px; }
+.sc-row { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.sc-row .ss-label { color: var(--text); }
+.strategy-check { display: flex; flex-direction: column; gap: 6px; }
+.strategy-check input[type=checkbox] { width: 16px; height: 16px; margin: 0; accent-color: var(--amber); cursor: pointer; }
 .ss-hint { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); line-height: 1.7; }
 /* The not-saved bar stays in view at the top while you scroll the sliders. */
 #strategy-unsaved-banner { position: sticky; top: 0; z-index: 10; margin: 0 0 16px; }
@@ -120,6 +147,7 @@
     overflow: hidden; cursor: pointer;
   }
   .ss-hint.open { display: block; }
+  .strategy-check input[type=checkbox] { width: 22px; height: 22px; }
   #strategy-form input[type=range] { height: 6px; margin: 10px 0 6px; }
   #strategy-form input[type=range]::-webkit-slider-thumb { width: 26px; height: 26px; }
   #strategy-form input[type=range]::-moz-range-thumb { width: 26px; height: 26px; }
@@ -161,9 +189,11 @@ input[type=range]::-moz-range-thumb {
   if (!form) return;
   var key = form.dataset.draftKey;
   function sliders() { return form.querySelectorAll('input[type=range]'); }
+  function boxes() { return form.querySelectorAll('input[type=checkbox]'); }
   function values() {
     var out = {};
     sliders().forEach(function(s) { out[s.name] = s.value; });
+    boxes().forEach(function(b) { out[b.name] = b.checked ? '1' : '0'; });
     return out;
   }
   function setValues(vals) {
@@ -172,6 +202,10 @@ input[type=range]::-moz-range-thumb {
       if (v == null || +v < +s.min || +v > +s.max) return;
       s.value = v;
       showLabel(s);
+    });
+    boxes().forEach(function(b) {
+      var v = vals[b.name];
+      if (v === '1' || v === '0') b.checked = v === '1';
     });
   }
   function showLabel(input) {
@@ -192,6 +226,11 @@ input[type=range]::-moz-range-thumb {
   }
   window.updateLabel = function(input) {
     showLabel(input);
+    var fb = document.getElementById('strategy-feedback');
+    if (fb) fb.textContent = '';
+    check();
+  };
+  window.strategyChanged = function() {
     var fb = document.getElementById('strategy-feedback');
     if (fb) fb.textContent = '';
     check();

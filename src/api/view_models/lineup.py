@@ -19,6 +19,7 @@ from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.player.face import face_url
+from src.player.skill_map import SKILL_MIN
 from src.stats import formulas
 from src.team.manager_profile import ManagerProfile
 
@@ -36,8 +37,10 @@ def lineup_context(db, league_id: str, gm: dict, season_id: str | None) -> dict:
     hitters = []
     pitchers = []
     team = TeamRepository(db).get_city_and_mascot(team_id) or {}
+    rows = {}
     for row in player_repo.get_active_roster_with_skills(team_id):
         g = lineup_card(row)
+        rows[g["player_id"]] = row
         g["jersey_number"] = row.get("jersey_number")
         g["face_url"] = face_url(
             g["player_id"], g.get("age"), team.get("city"), team.get("mascot")
@@ -83,14 +86,17 @@ def lineup_context(db, league_id: str, gm: dict, season_id: str | None) -> dict:
         )
 
     inj = InjuryRepository(db, league_id)
+    rust = inj.get_rust([p["player_id"] for p in hitters + pitchers])
     attach_injuries(
         hitters + pitchers,
         inj.get_team_injuries(team_id),
         inj.get_team_injury_types(team_id),
-        inj.get_rust([p["player_id"] for p in hitters + pitchers]),
+        rust,
     )
+    attach_rusty_grades(pitchers, rows, rust)
     # Tell template whether we're in playoffs so the nav button points the right way
     league_row = LeagueRepository(db).get_by_id(league_id)
+    profile = ManagerProfile.from_row(GMRepository(db).get_profile(gm["id"]))
     return {
         "hitters": hitters,
         "pitchers": pitchers,
@@ -101,10 +107,32 @@ def lineup_context(db, league_id: str, gm: dict, season_id: str | None) -> dict:
         "saved_rotation_pointer": saved_rotation_pointer,
         "is_playoffs": league_row and league_row["state"] == "playoffs",
         # How many starters Auto-fill and Rebuild put in the rotation (Strategy tab)
-        "rotation_size": ManagerProfile.from_row(
-            GMRepository(db).get_profile(gm["id"])
-        ).rotation_size,
+        "rotation_size": profile.rotation_size,
+        # Auto builds leave rusty players out (Strategy tab)
+        "rest_rusty": profile.rest_rusty,
     }
+
+
+# The grades rotation Rebuild and bullpen auto-assign sort pitchers by.
+RUSTY_GRADE_KEYS = ("overall", "sp_grade", "rp_grade", "stuff")
+
+
+def attach_rusty_grades(pitchers: list, rows: dict, rust: dict) -> None:
+    """For each rusty pitcher, the grades he pitches at today with his rust
+    taken off his skills, as p["rusty_grades"]. Rotation Rebuild and bullpen
+    auto-assign sort by these, the way the sim sees him; the page still shows
+    his real grades."""
+    for p in pitchers:
+        r = rust.get(p["player_id"])
+        row = rows.get(p["player_id"])
+        if not r or not row:
+            continue
+        lowered = dict(row)
+        for skill, points in r["skills"].items():
+            if isinstance(lowered.get(skill), (int, float)):
+                lowered[skill] = max(SKILL_MIN, lowered[skill] - points)
+        g = lineup_card(lowered)
+        p["rusty_grades"] = {k: g.get(k) for k in RUSTY_GRADE_KEYS}
 
 
 def attach_lineup_stats(hitters: list, pitchers: list, stats_map: dict) -> None:
