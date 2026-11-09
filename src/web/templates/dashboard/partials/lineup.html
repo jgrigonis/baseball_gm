@@ -652,12 +652,11 @@ function updatePitchSeg() {
   const rc = document.getElementById('seg-rot-count');
   const bc = document.getElementById('seg-bp-count');
   if (rc) rc.textContent = inRot.size;
-  if (bc) bc.textContent = ALL_PITCHERS.filter(p => !inRot.has(p.player_id)).length;
+  // Healthy relievers only: not in the rotation and not on the IL.
+  const n = ALL_PITCHERS.filter(p => !inRot.has(p.player_id) && !p.injured).length;
+  if (bc) bc.textContent = n;
   const bpc = document.getElementById('bp-count');
-  if (bpc) {
-    const n = ALL_PITCHERS.filter(p => !inRot.has(p.player_id) && !p.injured).length;
-    bpc.textContent = `${n} pitcher${n === 1 ? '' : 's'}`;
-  }
+  if (bpc) bpc.textContent = `${n} pitcher${n === 1 ? '' : 's'}`;
   document.querySelector('.lu-seg [data-pcol="rot"]')?.classList.toggle('unsaved', !pitchingSaved);
   document.querySelector('.lu-seg [data-pcol="bp"]')?.classList.toggle('unsaved', !bullpenSaved);
 }
