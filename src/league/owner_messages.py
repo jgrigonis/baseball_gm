@@ -72,6 +72,14 @@ PRESEASON_OPEN = (
     "New year, same standards. Listen up.",
 )
 
+# The opener when the owner is writing to a GM for the first time.
+PRESEASON_WELCOME = (
+    "Welcome to the {team}, {gm}. Here's what I expect.",
+    "Glad to have you, {gm}. Let me tell you how this club works.",
+    "Welcome aboard, {gm}. Before you do anything, hear me out.",
+    "So you're my new GM. Here's what I want from you.",
+)
+
 # What an owner wants, by dimension, for the preseason memo.
 WANTS = {
     "wins": (
@@ -452,11 +460,16 @@ def _speakable(weights: dict, fields: dict, money: bool) -> list[str]:
 
 
 def preseason(
-    weights: dict, fields: dict, rng: random.Random, money: bool = True
+    weights: dict,
+    fields: dict,
+    rng: random.Random,
+    money: bool = True,
+    first: bool = False,
 ) -> str:
-    """The preseason memo: the owner's top two or three wants."""
+    """The preseason memo: the owner's top two or three wants. first: the
+    owner's first word to this GM, so it opens with a welcome."""
     top = _speakable(weights, fields, money)[:3]
-    lines = [_pick(rng, PRESEASON_OPEN, fields)]
+    lines = [_pick(rng, PRESEASON_WELCOME if first else PRESEASON_OPEN, fields)]
     lines += [_pick(rng, WANTS[k], fields) for k in top]
     if money and fields.get("budget"):
         lines.append(_fill("Your payroll budget is {budget}.", fields))

@@ -112,6 +112,17 @@ def _has(conn, league_id: str, team_id: str, key: str) -> bool:
     )
 
 
+def _wrote_to(conn, league_id: str, team_id: str, gm_id: str) -> bool:
+    """Whether the team's owner has written to this GM before."""
+    return bool(
+        conn.execute(
+            """SELECT 1 FROM owner_messages
+               WHERE league_id = %s AND team_id = %s AND gm_id = %s LIMIT 1""",
+            (league_id, team_id, gm_id),
+        ).fetchone()
+    )
+
+
 def _recent(conn, league_id: str, team_id: str, n: int = 4) -> list[str]:
     """The team's owner's last few messages, newest first."""
     rows = conn.execute(
@@ -255,8 +266,9 @@ def catch_up(conn, league_id: str, today: str | None = None) -> int:
         sid = season["id"]
         # The preseason memo, before or early in the season.
         if not _has(conn, league_id, team_id, f"pre:{sid}"):
+            first = not _wrote_to(conn, league_id, team_id, gm["id"])
             body = om.preseason(
-                owner["weights"], fields, _rng(sid, team_id, "pre"), money
+                owner["weights"], fields, _rng(sid, team_id, "pre"), money, first
             )
             written += _write(
                 conn, league_id, team_id, gm["id"], sid, f"pre:{sid}", "preseason",
@@ -440,6 +452,23 @@ def office(conn, league_id: str, team_id: str, gm_id: str) -> dict:
         (league_id, team_id, gm_id),
     )
     return {"mood": mood, "messages": [dict(r) for r in rows]}
+
+
+def preseason_memo(conn, league_id: str, team_id: str, gm_id: str, season_id: str):
+    """This season's preseason memo to the GM, writing it first if it's due,
+    with the owner's mood. None if there isn't one (no owner yet, or they
+    don't judge this season)."""
+    catch_up(conn, league_id)
+    row = conn.execute(
+        """SELECT body FROM owner_messages
+           WHERE league_id = %s AND team_id = %s AND gm_id = %s AND key = %s""",
+        (league_id, team_id, gm_id, f"pre:{season_id}"),
+    ).fetchone()
+    if not row:
+        return None
+    m = moods(conn, league_id, season_id).get(team_id)
+    mood = m["mood"] if m else latest_moods(conn, league_id).get(team_id, 0.0)
+    return {"body": row["body"], "mood": om.mood_word(mood)}
 
 
 def unseen(conn, gm_id: str) -> int:
