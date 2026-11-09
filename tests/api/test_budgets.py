@@ -592,6 +592,26 @@ def test_ai_teams_get_their_own_levels(lg):
     assert mine["coaching"] is None  # a person's starts at Standard
 
 
+def test_a_persons_front_office_carries_into_next_season(lg):
+    x = lg()
+    x.budgets.for_league(x.league.id, 2026)
+    x.budgets.set_level(x.league.id, x.mine.id, 2026, "coaching", 4)
+    x.budgets.set_level(x.league.id, x.mine.id, 2026, "marketing", 0)
+    theirs = x.budgets.levels(x.league.id, x.theirs.id, 2026)
+    x.budgets.assess(x.league.id, 2026)
+    x.budgets.for_league(x.league.id, 2027)
+    mine = x.budgets.levels(x.league.id, x.mine.id, 2027)
+    assert mine["coaching"] == 4
+    assert mine["marketing"] == 0
+    assert mine["facilities"] == mine["analytics"] == bg.STANDARD
+    # AI teams still pick their own each season, by their owner.
+    assert x.budgets.levels(x.league.id, x.theirs.id, 2027) == bg.ai_levels(
+        x.budgets._spending(x.league.id).get(x.theirs.id, 50),
+        f"fo:{x.theirs.id}:2027",
+    )
+    assert theirs  # (and had levels the season before)
+
+
 def test_setting_the_front_office_on_the_budget_tab(lg, client_for):
     x = lg()
     x.budgets.for_league(x.league.id, 2026)

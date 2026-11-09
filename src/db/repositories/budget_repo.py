@@ -73,14 +73,18 @@ class BudgetRepository:
         self._rich_custom_owners(league_id, year, cap, made)
         ai = self._ai_teams(league_id)
         spending = self._spending(league_id)
+        carried = self._prior_levels(league_id, year, [t for t in made if t not in ai])
         for team_id, amount in made.items():
             revenue, fans = self._pending.get(team_id, (None, None))
             # AI GMs fund their front office by their owner (src/league/
-            # budget.py ai_levels); a person's starts at Standard.
+            # budget.py ai_levels); a person's keeps last season's levels
+            # (Josh, 2026-11-09), Standard in their first season. A carried
+            # level past the owner's limit stays: the Budget tab shows it
+            # and Standard is always allowed.
             levels = (
                 bg.ai_levels(spending.get(team_id, 50), f"fo:{team_id}:{year}")
                 if team_id in ai
-                else {}
+                else carried.get(team_id, {})
             )
             self.conn.execute(
                 """INSERT INTO team_budgets
@@ -96,6 +100,26 @@ class BudgetRepository:
             )  # fmt: skip
         self._ai_ballparks(league_id, year, [t for t in made if t in ai], cap)
         return self._with_farm(league_id, year, {**have, **made})
+
+    def _prior_levels(
+        self, league_id: str, year: int, team_ids: list[str]
+    ) -> dict[str, dict[str, int]]:
+        """Each team's front office levels from its latest season before
+        this one, by team id; teams without one are left out."""
+        if not team_ids:
+            return {}
+        rows = self.conn.execute(
+            """SELECT DISTINCT ON (team_id)
+                      team_id, coaching, facilities, analytics, marketing
+               FROM team_budgets
+               WHERE league_id = %s AND year < %s AND team_id = ANY(%s)
+               ORDER BY team_id, year DESC""",
+            (league_id, year, list(team_ids)),
+        ).fetchall()
+        return {
+            r["team_id"]: {k: r[k] for k in bg.DEPARTMENT_KEYS if r[k] is not None}
+            for r in rows
+        }
 
     def custom_team_ids(self, league_id: str) -> set[str]:
         """The league's teams that play with a custom team's players
