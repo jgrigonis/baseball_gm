@@ -584,6 +584,37 @@ def _league_pay(db, seasons: list[dict], my_team: str | None) -> list[dict]:
     return out
 
 
+def _bank_seasons(past: list[dict], projected: dict | None) -> list[dict]:
+    """The owner's bank season by season, newest first: what it came into
+    the season with, the season's profit, what went into the ballpark and
+    where it finished. This season shows its projected profit."""
+    out = []
+    for r in past:
+        if r["bank_before"] is None:
+            continue
+        profit = r["profit"]
+        guess = profit is None
+        if guess:
+            if not projected or projected["year"] != r["year"]:
+                continue
+            profit = projected["profit"]
+        change = profit - r["bank_spent"]
+        out.append(
+            {
+                "year": r["year"],
+                "projected": guess,
+                "start_text": _money(r["bank_before"]),
+                "profit_text": ("+" if profit >= 0 else "") + _money(profit),
+                "loss": profit < 0,
+                "spent_text": _money(-r["bank_spent"]) if r["bank_spent"] else None,
+                "end_text": _money(r["bank_before"] + change),
+                "change_text": ("+" if change >= 0 else "") + _money(change),
+                "down": change < 0,
+            }
+        )
+    return out
+
+
 def _render(
     request, htmx, league_id, db, user, gm, error=None, saved=False,
     ticket_error=None, ticket_saved=False,
@@ -681,6 +712,7 @@ def _render(
         "swing_pct": round(bg.BANK_SWING * 100),
         "margin_pct": round(bg.HARD_MARGIN * 100),
     }
+    past = budgets.history(league_id, team_id) if standing else []
     ctx["history"] = [
         {
             "year": r["year"],
@@ -707,7 +739,7 @@ def _render(
             "fans": r["fans_after"],
             "bank": _money(r["bank_after"]),
         }
-        for r in (budgets.history(league_id, team_id) if standing else [])
+        for r in past
         if r["profit"] is not None
     ]
     books = budgets.books(league_id, team_id, year) if standing else []
@@ -720,6 +752,10 @@ def _render(
         ctx["bank"]["profit_loss"] = profit < 0
         ctx["bank"]["after_text"] = _money(bank["balance"] + profit)
         ctx["bank"]["year"] = books[0]["year"]
+    if bank:
+        ctx["bank"]["seasons"] = _bank_seasons(
+            past, books[0] if books and books[0]["projected"] else None
+        )
     ctx["league_pay"] = (
         _league_pay(db, budgets.league_payrolls(league_id, year), team_id)
         if standing

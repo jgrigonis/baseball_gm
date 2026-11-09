@@ -463,6 +463,28 @@ def test_the_bank_carries_profit_into_next_seasons_budget(lg):
     assert history[1]["bank_after"] == bank["start"] + profit
 
 
+def test_the_bank_card_shows_each_season(lg, client_for):
+    """Season by season under the bank: what it started with, the profit and
+    where it ended, with this season's projected profit on top."""
+    x = lg()
+    _owned(x, spending=95)
+    x.budgets.for_league(x.league.id, 2026)
+    start = x.budgets.banks(x.league.id)[x.mine.id]["start"]
+    x.budgets.assess(x.league.id, 2026)
+    profit = x.budgets.finances(x.league.id, 2026)[x.mine.id]["profit"]
+    x.budgets.for_league(x.league.id, 2027)
+    history = x.budgets.history(x.league.id, x.mine.id)
+    assert history[1]["bank_before"] == start and history[1]["bank_spent"] == 0
+    assert history[0]["bank_before"] == start + profit
+    assert history[0]["bank_after"] is None
+    html = client_for(x).get(f"/leagues/{x.league.id}/budget").text
+    assert "Season by season" in html
+    rows = html[html.index("Season by season") : html.index("Past seasons")]
+    assert "<td>2026</td>" in rows
+    assert bg.format_salary(start) in rows
+    assert bg.format_salary(start + profit) in rows
+
+
 def test_the_owner_refuses_a_signing_past_the_limit(lg):
     x = lg()
     pid = x.factory.rated_player(x.theirs, x.league, level=70, status="free_agent").id
