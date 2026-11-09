@@ -457,6 +457,8 @@ def test_no_budget_card_without_budgets(client, league):
 
 
 def test_welcome_page_shows_a_word_from_the_owner(client, db_conn, factory, league):
+    from markupsafe import escape
+
     from src.api.services import owners
 
     lg, gm, team = league
@@ -481,7 +483,8 @@ def test_welcome_page_shows_a_word_from_the_owner(client, db_conn, factory, leag
     ).fetchone()
     assert "A word from your owner" in html
     assert owner["name"] in html
-    assert memo and memo["body"].split(".")[0] in html
+    # Jinja escapes apostrophes ("you're" -> "you&#39;re").
+    assert memo and escape(memo["body"].split(".")[0]) in html
     assert f'href="/leagues/{lg.id}/owner"' in html
 
 
