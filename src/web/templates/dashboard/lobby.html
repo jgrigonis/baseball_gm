@@ -123,15 +123,16 @@ function onStartLeague(form) {
   return false;
 }
 
-// Pace and the timer windows only matter with two or more people, so their
-// values are greyed out while one human is in the league. Un-grey them (or
-// grey them again) as the GM list's poll sees people join or leave.
+// Pace and the timer windows only matter with two or more people (Trade vote
+// with three), so their values are greyed out until enough humans are in the
+// league. Un-grey them (or grey them again) as the GM list's poll sees people
+// join or leave. Each row's data-needs-humans says how many it needs.
 document.body.addEventListener('htmx:afterSwap', function() {
   var card = document.getElementById('lobby-gms');
   if (!card || !card.dataset.humans) return;
-  var solo = Number(card.dataset.humans) < 2;
+  var humans = Number(card.dataset.humans);
   document.querySelectorAll('tr[data-needs-humans]').forEach(function(row) {
-    row.classList.toggle('setting-off', solo);
+    row.classList.toggle('setting-off', humans < Number(row.dataset.needsHumans || 2));
   });
 });
 
