@@ -35,6 +35,7 @@ from src.game.intent_generator import IntentGenerator
 from src.game.intents.pick_off import PickOffIntent
 from src.game.intents.pitch import PrePitchSituation
 from src.game.pitcher_appearance import PitcherAppearance, LeadChange
+from src.game.play_log import PlayLog
 from src.game.probabilities import (
     INJURY_BASE_PROB,
     FATIGUE_MULTIPLIER,
@@ -284,6 +285,8 @@ class Game:
         self.logger = logger
         self.pauses = pauses
         self.event_logger = event_logger
+        # Play-by-play, one entry per plate appearance (src/game/play_log.py)
+        self.play_log = PlayLog()
 
         # Initialize player game stats
         self._init_game_stats()
@@ -320,6 +323,7 @@ class Game:
             self.step()
         if self._seg is not None:
             self._close_segment()
+        self.play_log.end_half(self)
 
         for team_id in set(a.team_id for a in self.pitcher_appearances):
             last = next(
@@ -392,6 +396,7 @@ class Game:
 
             # apply the event and possibly return a list of followups
             followups = event.apply(self) or []
+            self.play_log.see(event, self)
 
             if event.should_log(self):
                 # set level to the specific level for this event
@@ -876,6 +881,7 @@ class Game:
         # Check if game is over BEFORE incrementing
         if self.is_over():
             return
+        self.play_log.end_half(self)
         # Advance inning
         self.inning.increment()
         if self.event_logger:

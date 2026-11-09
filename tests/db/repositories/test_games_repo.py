@@ -398,3 +398,24 @@ class TestGameRepositoryIsCompleted:
         assert game_repo.is_completed(completed_game.gid) is True
         game_repo.clear_result(completed_game.gid)
         assert game_repo.is_completed(completed_game.gid) is False
+
+
+def test_play_by_play_is_kept_for_the_current_season_only(db_conn, factory):
+    from src.db.repositories.games_repo import GameRepository
+
+    league = factory.league()
+    old, new = factory.season(2025), factory.season(2026)
+    other_league, other = factory.league(), factory.season(2025)
+    for lg, s in ((league, old), (league, new), (other_league, other)):
+        factory.league_season(lg, s)
+    games = {s.id: factory.game_with_teams(season=s).id for s in (old, new, other)}
+    repo = GameRepository(db_conn)
+    for season_id, game_id in games.items():
+        repo.save_plays(game_id, season_id, [{"i": 1, "t": True, "b": "X"}])
+
+    assert repo.clear_old_plays(league.id, new.id) == 1
+
+    assert repo.get_plays(games[old.id]) is None
+    assert repo.get_plays(games[new.id]) == [{"i": 1, "t": True, "b": "X"}]
+    # Another league's plays are its own business
+    assert repo.get_plays(games[other.id]) is not None

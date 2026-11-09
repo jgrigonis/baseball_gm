@@ -812,6 +812,7 @@ def _play_game(
         result.away_score,
     )
     save_player_stats(conn, game_info["game_id"], home_team, away_team)
+    game_repo.save_plays(game_info["game_id"], season_id, game.play_log.plays)
     # A game on the 40-man guarantees a player's deal; just being put there
     # doesn't (src/db/repositories/contract_repo.py).
     ContractRepository(conn).guarantee_teams(

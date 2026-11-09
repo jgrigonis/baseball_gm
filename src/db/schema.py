@@ -1125,6 +1125,17 @@ CREATE TABLE IF NOT EXISTS game_events (
     FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
 );
 
+-- game_plays: the game panel's play-by-play, one JSON list per game
+--   (src/game/play_log.py, migration 106). Only the league's current
+--   season is kept: a new season deletes the older rows.
+CREATE TABLE IF NOT EXISTS game_plays (
+    game_id   TEXT PRIMARY KEY REFERENCES games(id) ON DELETE CASCADE,
+    season_id TEXT NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
+    plays     JSONB NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_game_plays_season_id ON game_plays(season_id);
+
 CREATE TABLE IF NOT EXISTS game_lineup_slots (
     game_id       TEXT NOT NULL,
     team_id       TEXT NOT NULL,
