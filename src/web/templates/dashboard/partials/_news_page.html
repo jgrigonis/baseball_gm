@@ -13,6 +13,7 @@
       <h3 class="news-headline">{{ s.headline_html }}</h3>
     </div>
     {% if s.body %}<p class="news-body">{{ s.body_html }}</p>{% endif %}
+    {% if s.box_event %}<a href="#" class="news-box-link" onclick="openAllStarBox('{{ s.box_event }}', '{{ s.season_id }}'); return false;">Box score →</a>{% endif %}
   </article>
   {% endfor %}
 </section>

@@ -589,3 +589,53 @@ class TestLinks:
         html = day["stories"][0]["headline_html"]
         assert "&lt;b&gt;bold&lt;/b&gt;" in html
         assert ">Captains</a>" in html
+
+
+def test_the_all_star_game_story_links_its_box_score():
+    from src.api.view_models.news import _box_event
+
+    game = {"key": "allstar:game:s1", "season_id": "s1"}
+    assert _box_event(game) == "all_star"
+    rookie = {"key": "rookie:game:s1", "season_id": "s1"}
+    assert _box_event(rookie) == "rookie"
+    assert _box_event({"key": "allstar:team:s1:t1", "season_id": "s1"}) is None
+    assert _box_event({"key": "trade:1", "season_id": "s1"}) is None
+
+
+class TestRookieGame:
+    def test_the_rookie_game_gets_a_story(self, db_conn, lg):
+        sid = lg["season"].id
+        star = _player(db_conn, lg, lg["mine"], "Ann", "Ames")
+        kid = _player(db_conn, lg, lg["theirs"], "Kit", "Kidd")
+        db_conn.execute(
+            "INSERT INTO all_stars (season_id, player_id, team_id, slot)"
+            " VALUES (%s, %s, %s, 'rf')",
+            (sid, star, lg["mine"].id),
+        )
+        db_conn.execute(
+            "INSERT INTO rookie_game_players (season_id, player_id, team_id, slot)"
+            " VALUES (%s, %s, %s, 'cf')",
+            (sid, kid, lg["theirs"].id),
+        )
+        db_conn.execute(
+            """INSERT INTO rookie_games (season_id, captain1_team_id,
+                   captain2_team_id, state, game_date, score1, score2, innings,
+                   mvp_player_id)
+               VALUES (%s, %s, %s, 'played', '2025-04-21', 2, 4, 9, %s)""",
+            (sid, lg["mine"].id, lg["theirs"].id, kid),
+        )
+
+        news.update_league(db_conn, lg["league"].id)
+
+        (s,) = [
+            s for s in _stories(db_conn, lg, "all_star") if "Rookie" in s["headline"]
+        ]
+        assert s["headline"].endswith("wins the Rookie Game 4-2")
+        assert "Kit Kidd of the" in s["body"] and "was named MVP" in s["body"]
+        assert s["news_date"] == "2025-04-21"
+        # Run again: still one story.
+        news.update_league(db_conn, lg["league"].id)
+        assert (
+            sum("Rookie" in s["headline"] for s in _stories(db_conn, lg, "all_star"))
+            == 1
+        )

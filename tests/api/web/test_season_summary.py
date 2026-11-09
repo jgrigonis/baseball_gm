@@ -494,6 +494,12 @@ def test_summary_page_shows_all_stars(client, db_conn, league):
     assert 'id="all-stars"' in r.text
     assert "All-Star Game MVP" in r.text and "Rookie Game MVP" in r.text
     assert "2025 All-Stars" in r.text
+    # Each game links its box score, which opens in the game panel.
+    for event, title in (("rookie", "🌱 Rookie Game"), ("all_star", "★ All-Star Game")):
+        assert f"openAllStarBox('{event}', '{sid}')" in r.text
+        box = client.get(f"/leagues/{lid}/allstar/box/{event}/{sid}")
+        assert box.status_code == 200 and f"2025 {title}" in box.text
+        assert 'id="game-panel-body-inner"' in box.text
 
 
 def test_no_all_star_break_no_card(client, league):

@@ -139,9 +139,20 @@ def _items(
                 "teams": [teams[t] for t in s["team_ids"] if t in teams],
                 "mine": bool(my_team_id and my_team_id in s["team_ids"]),
                 "day": _day(s["news_date"]),
+                "box_event": _box_event(s),
             }
         )
     return out
+
+
+def _box_event(story: dict) -> str | None:
+    """The All-Star break game a story is about ("all_star" or "rookie",
+    news/events.py _game_story), for a Box score link to it
+    (openAllStarBox), else None."""
+    for event, prefix in (("all_star", "allstar:game:"), ("rookie", "rookie:game:")):
+        if story.get("key") == f"{prefix}{story.get('season_id')}":
+            return event
+    return None
 
 
 def linked(text: str, league_id: str, gms: dict[str, dict]) -> Markup:

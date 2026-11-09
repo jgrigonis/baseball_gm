@@ -1,0 +1,20 @@
+{# templates/dashboard/partials/_all_star_box.html
+   A played All-Star Game or Rookie Game in the game panel (src/api/routers/
+   all_star.py all_star_box, opened by openAllStarBox in shell.html): the
+   same line score, MVP and box score the All-Star tab shows, for any season.
+#}
+{% set is_rookie = x.event == 'rookie' %}
+<div id="game-panel-header-inner">
+  <div style="flex:1;">
+    <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">
+      {{ x.game.game_date or "" }}{% if x.swingoff %} · home run swing-off{% elif x.game.innings and x.game.innings != 9 %} · F/{{ x.game.innings }}{% endif %}
+    </div>
+    <div style="font-size:16px;font-weight:700;margin-top:2px;">
+      {{ box_year }} {{ '🌱 Rookie Game' if is_rookie else '★ All-Star Game' }}
+    </div>
+  </div>
+</div>
+
+<div id="game-panel-body-inner">
+  {% include "dashboard/partials/_all_star_game.html" %}
+</div>

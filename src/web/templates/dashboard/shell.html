@@ -364,6 +364,17 @@ document.addEventListener('keydown', e => {
 
 // ── Game panel ─────────────────────────────────────────────────────────────
 window.openGamePanel = function(gameId) {
+  _loadGamePanel('/leagues/' + LEAGUE_ID + '/games/' + gameId + '/panel');
+};
+// A played All-Star Game (event 'all_star') or Rookie Game ('rookie') of a
+// season, in the same panel. From a player's career page the player panel
+// closes first, since it sits above the game panel.
+window.openAllStarBox = function(event, seasonId) {
+  var mount = document.getElementById('player-panel-mount');
+  if (mount && mount.innerHTML.trim()) closePlayerPanel();
+  _loadGamePanel('/leagues/' + LEAGUE_ID + '/allstar/box/' + event + '/' + seasonId);
+};
+function _loadGamePanel(url) {
   var panel   = document.getElementById('game-panel');
   var overlay = document.getElementById('game-panel-overlay');
   var body    = document.getElementById('game-panel-content');
@@ -372,7 +383,7 @@ window.openGamePanel = function(gameId) {
   panel.style.display   = 'flex';
   overlay.style.display = 'block';
   body.innerHTML = '<div style="padding:40px;text-align:center;font-family:var(--font-mono);color:var(--text-dim);">Loading…</div>';
-  fetch('/leagues/' + LEAGUE_ID + '/games/' + gameId + '/panel', {headers:{'HX-Request':'true'}})
+  fetch(url, {headers:{'HX-Request':'true'}})
     .then(function(r){ return r.text(); })
     .then(function(html){
       var tmp = document.createElement('div');
@@ -389,7 +400,7 @@ window.openGamePanel = function(gameId) {
       if (nb) body.innerHTML = nb.innerHTML;
     })
     .catch(function(){ body.innerHTML = '<div style="padding:20px;color:var(--red);">Error loading game.</div>'; });
-};
+}
 window.closeGamePanel = function() {
   var panel   = document.getElementById('game-panel');
   var overlay = document.getElementById('game-panel-overlay');

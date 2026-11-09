@@ -359,6 +359,8 @@ def all_star_summary(db, season_id: str, my_team_id: str | None) -> dict:
             {
                 "name": name,
                 "icon": icon,
+                "event": event,
+                "season_id": season_id,
                 "final": _final(g),
                 "mvp": _mvp(repo, season_id, g, my_team_id),
             }
