@@ -1584,6 +1584,7 @@ function clearRotation() {
 }
 
 // Keep who's there (minus the injured) and fill up to ROTATION_SIZE.
+// ROTATION_SIZE is the playoff rotation size during the playoffs (Strategy tab).
 function autoFillRotation() {
   const before = rotation.filter(Boolean).join(',');
   const bullpenBefore = JSON.stringify(Object.entries(bullpen).sort());

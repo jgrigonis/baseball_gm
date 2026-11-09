@@ -23,7 +23,9 @@ from src.stats import formulas
 from src.team.manager_profile import ManagerProfile
 
 
-def lineup_context(db, league_id: str, gm: dict, season_id: str | None) -> dict:
+def lineup_context(
+    db, league_id: str, gm: dict, season_id: str | None, league_state: str = ""
+) -> dict:
     team_id = gm["team_id"]
 
     # For stat display use last season with completed games so preseason still
@@ -103,10 +105,19 @@ def lineup_context(db, league_id: str, gm: dict, season_id: str | None) -> dict:
         "saved_bullpen": saved_bullpen,
         "saved_rotation_pointer": saved_rotation_pointer,
         # How many starters Auto-fill and Rebuild put in the rotation (Strategy tab)
-        "rotation_size": profile.rotation_size,
+        "rotation_size": auto_rotation_size(profile, league_state),
         # Auto builds leave rusty players out (Strategy tab)
         "rest_rusty": profile.rest_rusty,
     }
+
+
+def auto_rotation_size(profile: ManagerProfile, league_state: str) -> int:
+    """How many starters the Lineup tab's rotation Auto-fill and Rebuild pick:
+    the Strategy tab's playoff rotation (3 or 4) during the playoffs, unless
+    it's "same", and the regular rotation size otherwise."""
+    if league_state == "playoffs" and profile.playoff_rotation_size:
+        return profile.playoff_rotation_size
+    return profile.rotation_size
 
 
 # The grades rotation Rebuild and bullpen auto-assign sort pitchers by.
