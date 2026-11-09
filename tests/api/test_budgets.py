@@ -597,6 +597,7 @@ def test_a_persons_front_office_carries_into_next_season(lg):
     x.budgets.for_league(x.league.id, 2026)
     x.budgets.set_level(x.league.id, x.mine.id, 2026, "coaching", 4)
     x.budgets.set_level(x.league.id, x.mine.id, 2026, "marketing", 0)
+    x.budgets.set_ticket_price(x.league.id, x.mine.id, 2026, 8)
     theirs = x.budgets.levels(x.league.id, x.theirs.id, 2026)
     x.budgets.assess(x.league.id, 2026)
     x.budgets.for_league(x.league.id, 2027)
@@ -604,6 +605,7 @@ def test_a_persons_front_office_carries_into_next_season(lg):
     assert mine["coaching"] == 4
     assert mine["marketing"] == 0
     assert mine["facilities"] == mine["analytics"] == bg.STANDARD
+    assert x.budgets.ticket_price(x.league.id, x.mine.id, 2027) == 8
     # AI teams still pick their own each season, by their owner.
     assert x.budgets.levels(x.league.id, x.theirs.id, 2027) == bg.ai_levels(
         x.budgets._spending(x.league.id).get(x.theirs.id, 50),
