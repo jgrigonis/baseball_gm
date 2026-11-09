@@ -144,3 +144,49 @@ def test_hall_of_famers_sell_retro_jerseys_most_after_induction():
     assert legend.hall
     total, _ = fn.merchandise([legend], cap, 3, 50)
     assert total == 1_500_000
+
+
+# ── Sponsors (Josh, 2026-11-09) ───────────────────────────────────────────────
+
+
+def test_steady_sponsors_pay_the_same_and_grow_with_the_market():
+    small = fn.sponsor_steady(333 * M, 1)
+    huge = fn.sponsor_steady(333 * M, 5)
+    assert 10 * M < small < huge < 18 * M
+    bad = fn.sponsor_money(small, "steady", 0.35)
+    good = fn.sponsor_money(small, "steady", 0.65, True, 3)
+    assert bad["total"] == good["total"] == small
+
+
+def test_incentive_sponsors_reward_contenders_and_cost_bad_teams():
+    steady = 13 * M
+    bad = fn.sponsor_money(steady, "incentive", 0.42)
+    assert bad["total"] == round(steady * fn.SPONSOR_BASE)
+    assert bad["wins"] == bad["playoffs"] == bad["rounds"] == 0
+    wildcard = fn.sponsor_money(steady, "incentive", 0.56, True, 0)
+    assert wildcard["total"] > steady
+    champ = fn.sponsor_money(steady, "incentive", 0.62, True, 3)
+    assert 1.9 * steady < champ["total"] < 2.3 * steady
+    assert (
+        champ["total"]
+        == champ["base"] + champ["wins"] + champ["playoffs"] + champ["rounds"]
+    )
+
+
+def test_a_team_that_hasnt_picked_goes_by_last_season():
+    assert fn.sponsor_kind(None, 0.60) == "incentive"
+    assert fn.sponsor_kind(None, 0.50) == "steady"
+    assert fn.sponsor_kind(None, None) == "steady"
+    assert fn.sponsor_kind("steady", 0.70) == "steady"
+    assert fn.sponsor_kind("bogus", 0.30) == "steady"
+
+
+def test_the_books_count_sponsors_in():
+    kw = dict(
+        revenue=250 * M, market=3, fans=50, playoff_gate=0, home_playoff_games=0,
+        gate_per_game=9 * M, tax_share=0, payroll=150 * M, front_office=20 * M,
+        luxury_tax=0, costs=80 * M,
+    )  # fmt: skip
+    plain = fn.books(**kw)
+    more = fn.books(**kw, sponsor=13 * M)
+    assert more["profit"] == plain["profit"] + 13 * M

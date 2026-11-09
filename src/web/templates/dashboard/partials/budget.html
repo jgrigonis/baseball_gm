@@ -204,6 +204,40 @@
 {% if broadcast_saved %}<script>if (window.gmToast) gmToast('Broadcast deal saved');</script>{% endif %}
 {% endif %}
 
+{% if sponsor %}
+<div class="card" style="margin-bottom:16px;" id="sponsor">
+  <div class="card-header"><span class="card-title">Sponsors</span>
+    <span class="admin-dim" style="margin-left:auto;font-size:11px;">{% if not sponsor.open %}locked until the offseason{% endif %}</span></div>
+  <div class="card-body">
+    {% if sponsor_error %}<div class="bud-line bud-bad" style="margin-top:0;margin-bottom:10px;">{{ sponsor_error }}</div>{% endif %}
+    <div class="bud-grid">
+      <div class="bud-stat">
+        <div class="bud-label">This season{% if sponsor.kind == 'incentive' %} so far{% endif %}</div>
+        <div class="bud-value">{{ sponsor.amount_text }}</div>
+        <div class="bud-note">{{ sponsor.name }} deal{% if not sponsor.picked %}, picked for you{% if sponsor.last_text %} after a {{ sponsor.last_text }} season{% endif %}{% endif %}</div>
+      </div>
+      <div class="bud-stat">
+        <div class="bud-label">Incentive at its best</div>
+        <div class="bud-value">{{ sponsor.best_text }}</div>
+        <div class="bud-note">A .620 champion, three series won</div>
+      </div>
+    </div>
+    <form class="bud-dept" data-quiet-swap hx-post="/leagues/{{ league_id }}/budget/sponsor"
+          hx-target="#tab-content" hx-swap="innerHTML" hx-trigger="change" style="margin-top:10px;">
+      <div class="bud-dept-name"><strong>Offer</strong><div class="bud-note">One a season</div></div>
+      <select name="kind" {% if not sponsor.open %}disabled{% endif %} aria-label="Sponsor offer">
+        <option value="steady" {% if sponsor.kind == 'steady' %}selected{% endif %}>Steady · {{ sponsor.steady_text }}</option>
+        <option value="incentive" {% if sponsor.kind == 'incentive' %}selected{% endif %}>Incentive · {{ sponsor.base_text }} + bonuses</option>
+      </select>
+    </form>
+    <div class="bud-line">
+      Steady pays {{ sponsor.steady_text }} however the season goes. Incentive pays {{ sponsor.base_text }} up front, then {{ sponsor.per_10_text }} for every .100 of win % over .500, {{ sponsor.playoffs_text }} for making the playoffs and {{ sponsor.round_text }} for each series won, so it pays off for a contender and costs a team that falls short. Bigger markets get bigger offers. Pick between seasons, from the draft to Opening Day; if you don't, you get Incentive after a season over {{ sponsor.ai_from_text }}, Steady otherwise.
+    </div>
+  </div>
+</div>
+{% if sponsor_saved %}<script>if (window.gmToast) gmToast('Sponsor deal saved');</script>{% endif %}
+{% endif %}
+
 {% if books %}
 <div class="card" style="margin-bottom:16px;" id="revenue">
   <div class="card-header"><span class="card-title">Revenue and profit</span>

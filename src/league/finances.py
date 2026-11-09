@@ -11,8 +11,9 @@ A light money model, just enough for owners to set budgets and judge profit:
 - **Revenue** per season: a league-wide base, times the team's market size
   (the team pool's 1 to 5), times how interested its fans are, plus a gate
   for every home playoff game and popularity money when fans are keen.
-  Two more lines on top: a broadcast deal, its price locked when it's
-  signed, and merchandise, what the team's good players sell.
+  Three more lines on top: a broadcast deal, its price locked when it's
+  signed, merchandise, what the team's good players sell, and a sponsor
+  deal, steady or paid on how the team does this season.
 - **Budget**: what the owner will spend on payroll and the front office
   (src/league/budget.py DEPARTMENTS). The league sets one payroll cap for every team
   (src/league/budget.py: the average payroll, then last season's average
@@ -126,6 +127,24 @@ BROADCAST_WIN_SPAN = 0.30
 BROADCAST_YEARS = (2, 3, 5)
 BROADCAST_DEFAULT_YEARS = 3
 BROADCAST_LENGTH_MULT = {2: 1.0, 3: 1.0, 5: 1.05}
+
+# Sponsors (Josh, 2026-11-09): the one money line that follows how the team
+# does THIS season. Each season the GM takes one of two offers between
+# seasons. Steady pays SPONSOR_SHARE of the league's average revenue times
+# the market, whatever happens. Incentive pays SPONSOR_BASE of that up front,
+# plus SPONSOR_PER_WIN_PCT times it for every point of win % over .500 (.600
+# is +0.5), SPONSOR_PLAYOFFS for making the playoffs and SPONSOR_PER_ROUND for
+# each playoff series won: a bad team gets less than Steady, a champion about
+# twice it. A team that hasn't picked (every AI team) takes Incentive after a
+# season over SPONSOR_AI_FROM, Steady otherwise.
+SPONSOR_KINDS = ("steady", "incentive")
+SPONSOR_NAMES = {"steady": "Steady", "incentive": "Incentive"}
+SPONSOR_SHARE = 0.04
+SPONSOR_BASE = 0.6
+SPONSOR_PER_WIN_PCT = 5.0
+SPONSOR_PLAYOFFS = 0.3
+SPONSOR_PER_ROUND = 0.2
+SPONSOR_AI_FROM = 0.540
 
 # Ticket prices (Josh, 2026-11-07): the GM sets them on a 1 to 10 slider
 # between seasons. Higher prices take more at the gate this season, with
@@ -353,6 +372,40 @@ def broadcast_amount(base: int, years) -> int:
     return _round(base * BROADCAST_LENGTH_MULT[broadcast_years(years)])
 
 
+def sponsor_steady(average_revenue: float, market: int) -> int:
+    """A season of the Steady sponsor deal."""
+    return _round(average_revenue * SPONSOR_SHARE * market_mult(market))
+
+
+def sponsor_kind(kind, last_win_pct: float | None = None) -> str:
+    """The deal a team takes: its pick, or by last season's record."""
+    if kind in SPONSOR_KINDS:
+        return kind
+    if last_win_pct is not None and last_win_pct > SPONSOR_AI_FROM:
+        return "incentive"
+    return "steady"
+
+
+def sponsor_money(
+    steady: int,
+    kind: str,
+    win_pct: float = 0.5,
+    playoffs: bool = False,
+    rounds: int = 0,
+) -> dict:
+    """What a sponsor deal pays for a season, and its parts (Incentive only:
+    up front, wins, playoffs, rounds)."""
+    if kind != "incentive":
+        return {"total": steady, "base": steady, "wins": 0, "playoffs": 0, "rounds": 0}
+    parts = {
+        "base": _round(steady * SPONSOR_BASE),
+        "wins": _round(steady * SPONSOR_PER_WIN_PCT * max(0.0, win_pct - 0.5)),
+        "playoffs": _round(steady * SPONSOR_PLAYOFFS) if playoffs else 0,
+        "rounds": _round(steady * SPONSOR_PER_ROUND * max(0, rounds)),
+    }
+    return {"total": sum(parts.values()), **parts}
+
+
 def popularity_money(average_revenue: float, fans: float) -> int:
     """What a team's popularity earns in a season."""
     over = max(0.0, min(100.0, fans) - POPULARITY_FROM) / (100 - POPULARITY_FROM)
@@ -400,6 +453,7 @@ def books(
     popularity: int = 0,
     broadcast: int = 0,
     merchandise: int = 0,
+    sponsor: int = 0,
     profit: int | None = None,
 ) -> dict:
     """A team's season as money in and money out, for the Budget tab.
@@ -422,6 +476,7 @@ def books(
         + popularity
         + broadcast
         + merchandise
+        + sponsor
         + tax_share
         + farm_help
     )
@@ -447,6 +502,7 @@ def books(
         "popularity_from": POPULARITY_FROM,
         "broadcast": broadcast,
         "merchandise": merchandise,
+        "sponsor": sponsor,
         "home_playoff_games": home_playoff_games,
         "gate_per_game": gate_per_game,
         "tax_share": tax_share,
