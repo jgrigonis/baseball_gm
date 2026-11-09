@@ -2,6 +2,7 @@
 """My Teams: custom teams of real player-seasons, shared by code
 (routers/custom_teams.py, services/custom_teams.py)."""
 
+import re
 import uuid
 
 import pytest
@@ -92,6 +93,8 @@ def test_my_teams_lists_them(as_user, josh):
     html = client.get("/teams/").text
     assert "Old Timers" in html and "0/26" in html
     assert 'href="/teams/"' in html  # menu link for contributors
+    # Each row copies its full share link.
+    assert re.search(r'data-copy="http[^"]+/teams/shared/[A-Z0-9]{8}"', html)
 
 
 def test_no_duplicates_and_a_full_roster(as_user, db_conn, josh):
