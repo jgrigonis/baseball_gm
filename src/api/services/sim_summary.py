@@ -171,8 +171,13 @@ def clinch_marks(
 
 def _final(teams, team_id, left, me_best: bool) -> list[dict]:
     """Every team's final record in one extreme: the GM's team wins out and
-    everyone else loses out (me_best), or the other way round. Ties go
-    against the GM's team in its worst case and to it in its best."""
+    everyone else loses out (me_best), or the other way round. ``teams`` is
+    in standings order, tiebreakers applied. A tie with a team is settled by
+    that order once neither has a game left (head-to-head and runs are
+    final); before then it goes against the GM's team in its worst case and
+    to it in its best."""
+    order = {t["team_id"]: i for i, t in enumerate(teams)}
+    mine_done = left.get(team_id, 0) == 0
     rows = []
     for t in teams:
         n = left.get(t["team_id"], 0)
@@ -185,12 +190,19 @@ def _final(teams, team_id, left, me_best: bool) -> list[dict]:
                 "losses": t["losses"] + (0 if wins_out else n),
             }
         )
+    # Undecided ties put the GM's team at the front (best) or back (worst).
+    edge = -1 if me_best else len(teams)
 
     def key(r):
         played = r["wins"] + r["losses"]
         pct = r["wins"] / played if played else 0.0
-        tiebreak = 0 if r["team_id"] != team_id else (-1 if me_best else 1)
-        return (-pct, tiebreak)
+        tid = r["team_id"]
+        if tid == team_id:
+            return (-pct, order[tid] if mine_done else edge)
+        if mine_done and left.get(tid, 0) > 0:
+            # Its tie with the GM's team isn't settled yet.
+            return (-pct, len(teams) if me_best else -1)
+        return (-pct, order[tid])
 
     return sorted(rows, key=key)
 
