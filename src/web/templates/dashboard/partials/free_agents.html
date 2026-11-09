@@ -250,10 +250,10 @@ function roomLine(m) {
   if (!m) { el.style.display = 'none'; return; }
   el.classList.toggle('over', m.over);
   el.innerHTML = m.over
-    ? `Next season, your re-signs so far put you <b>${m.left_text} over</b> your owner's limit, ` +
-      `paid from their bank (${m.bank_left_text} left there to go further).`
-    : `Next season, after your re-signs so far: <b>${m.left_text}</b> left under your owner's limit, ` +
-      `plus ${m.bank_left_text} in their bank for players you re-sign yourself.`;
+    ? `Over your owner's limit next season: <b>${m.left_text}</b>. They'll pay that from their bank, ` +
+      `and can spend up to ${m.bank_left_text} more from it to keep your own players.`
+    : `Room left next season: <b>${m.left_text}</b>. ` +
+      `Your owner will also spend up to ${m.bank_left_text} from their bank to keep your own players.`;
   el.style.display = '';
 }
 function renderExpiring() {
