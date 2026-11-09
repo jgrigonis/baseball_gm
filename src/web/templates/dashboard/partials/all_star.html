@@ -283,7 +283,8 @@
   <h2 class="as-heading as-anchor" id="as-rookie">The Rookie Game</h2>
   {% if team_id %}
   <div class="card as-intro"><div class="card-body as-note">
-    {% if rookie.my_rookies %}<span class="as-ok">🌱 {{ rookie.my_rookies }} of your rookies {{ 'is' if rookie.my_rookies == 1 else 'are' }} in it.</span>
+    {% if rookie.my_rookies %}<span class="as-ok">🌱 {{ 'Your rookie in it:' if rookie.my_rookies | length == 1 else 'Your rookies in it:' }}</span>
+    {% for r in rookie.my_rookies %}<span class="as-player" onclick="openPlayerPanel('{{ r.player_id }}')">{{ r.name }}</span>{% if not loop.last %}{{ ' and ' if loop.revindex == 2 else ', ' }}{% endif %}{% endfor %}.
     {% else %}None of your rookies made it this year.{% endif %}
   </div></div>
   {% endif %}

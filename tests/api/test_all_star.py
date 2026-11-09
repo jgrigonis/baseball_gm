@@ -880,6 +880,13 @@ def test_the_rookie_game_is_played_on_the_break(client, lg):
     assert AllStarRepository(lg.db).lines(lg.season.id) == []
     html = client.get(f"/leagues/{lg.league.id}/allstar").text
     assert "🌱 Rookie Game" in html and "★ MVP" in html
+    # Your rookies are named, and their rows in the box score are yours.
+    mine = [r for r in lines if r["team_id"] == lg.mine.id]
+    assert mine
+    assert "Your rookie" in html
+    for r in mine:
+        assert r["name"] in html
+    assert ' my-team">' in html
     career = client.get(
         f"/leagues/{lg.league.id}/players/{g['mvp_player_id']}/career"
     ).text
@@ -890,6 +897,7 @@ def test_the_rookie_game_is_played_on_the_break(client, lg):
     assert box.status_code == 200
     assert 'id="game-panel-header-inner"' in box.text and "🌱 Rookie Game" in box.text
     assert "★ MVP" in box.text and "Pitching" in box.text
+    assert ' my-team">' in box.text
 
 
 # ── Time to draft: a person captain gets the Lineup Window ───────────────────

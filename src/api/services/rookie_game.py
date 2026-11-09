@@ -80,7 +80,7 @@ def tab_context(conn, league_id: str, season_id: str, team_id) -> dict:
     stars = all_star.stars_with_injuries(conn, league_id, season_id, EVENT)
     ctx = all_star.game_context(conn, league_id, season_id, team_id, g, stars, EVENT)
     ctx["rookie_count"] = len(stars)
-    ctx["my_rookies"] = sum(1 for r in stars if r["team_id"] == team_id)
+    ctx["my_rookies"] = [r for r in stars if r["team_id"] == team_id]
     return {"rookie": ctx}
 
 
