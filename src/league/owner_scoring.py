@@ -172,11 +172,37 @@ def season_score(scores: dict[str, float | None], weights: dict) -> float:
 
 
 # ── Job security ─────────────────────────────────────────────────────────────
-HOT_SEAT = 30
-FIRE = 15
+# Tuned on a 30-team all-AI sim (2026-11-09) to fire about 3 or 4 GMs a
+# season once the honeymoons are over (plans/owners.md, "Tuning target").
+HOT_SEAT = 40
+FIRE = 25
 # A full +1 season adds this much; a -1 season takes up to LOSS_SCALE.
-GAIN_SCALE = 25
-LOSS_SCALE = 40
+GAIN_SCALE = 15
+LOSS_SCALE = 60
+# Each season, before it counts, security drifts this share of the way back
+# to the middle: old credit (and old blame) fades, so recent years count most.
+DRIFT = 0.15
+MIDDLE = 50
+# Owners grade on a curve: a season's score is how far it stands from the
+# league's average that year, in standard deviations times CURVE. Raw scores
+# bunch near zero (most rosters do about what they should), so judged raw
+# almost nobody was ever fired.
+CURVE = 0.45
+CURVE_MIN_TEAMS = 4
+CURVE_MIN_SD = 0.05
+
+
+def curved(raw: dict[str, float]) -> dict[str, float]:
+    """Each team's season score on the league's curve (see CURVE). With too
+    few teams to grade against, the raw scores."""
+    if len(raw) < CURVE_MIN_TEAMS:
+        return dict(raw)
+    vals = list(raw.values())
+    mean = sum(vals) / len(vals)
+    sd = max(CURVE_MIN_SD, (sum((v - mean) ** 2 for v in vals) / len(vals)) ** 0.5)
+    return {k: _clamp((v - mean) / sd * CURVE) for k, v in raw.items()}
+
+
 TITLE_BONUS = 15
 
 
@@ -275,6 +301,7 @@ def judge(
     warn first and the GM wasn't on the hot seat last time. A GM held back
     sits at the bottom of the hot seat (FIRE), so an ordinary season next
     year saves them."""
+    security = security + DRIFT * (MIDDLE - security)
     after = next_security(security, trended(score, tenure, rules), traits, champion)
     v = verdict(after)
     would = v == "fired"
