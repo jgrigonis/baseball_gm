@@ -139,6 +139,7 @@ def load_bracket(
         completed_games = [
             {
                 "id": g["id"],
+                "game_date": g["game_date"],
                 "winner_id": g["winner_id"],
                 "home_score": g["home_score"],
                 "away_score": g["away_score"],
@@ -170,4 +171,35 @@ def load_bracket(
                 "decided": all(s["decided"] for s in series_list),
             }
         )
+    _mark_latest_day(rounds)
     return rounds
+
+
+def _mark_latest_day(rounds: list) -> None:
+    """Flag the games of the last playoff day played (and the day before),
+    for the bracket's dots: the latest day's dots show larger, and during a
+    live sim they ripple in. Series that played that day get a running order
+    top to bottom so they light up one after another, and a series won that
+    day is marked clinched."""
+    dates = sorted(
+        {
+            g["game_date"]
+            for rd in rounds
+            for s in rd["series"]
+            for g in s.get("completed_games", [])
+        }
+    )
+    latest = dates[-1] if dates else None
+    prev = dates[-2] if len(dates) > 1 else None
+    order = 0
+    for rd in rounds:
+        for s in rd["series"]:
+            games = s.get("completed_games", [])
+            for g in games:
+                g["latest"] = g["game_date"] == latest
+                g["prev"] = g["game_date"] == prev
+            played_today = any(g["latest"] for g in games)
+            s["latest_order"] = order if played_today else None
+            if played_today:
+                order += 1
+            s["clinched_today"] = s["decided"] and played_today
