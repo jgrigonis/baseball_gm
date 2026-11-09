@@ -221,7 +221,8 @@
         {% else %}
         <div class="ss-award-detail">No MVP named</div>
         {% endif %}
-        <div class="ss-award-detail ss-as-final">{{ g.final }}</div>
+        <div class="ss-award-detail ss-as-final">{{ g.final }}
+          · <a href="#" class="ss-box-link" onclick="openAllStarBox('{{ g.event }}', '{{ g.season_id }}'); return false;">Box score →</a></div>
       </div>
       {% endfor %}
       {% if derby_champion %}
@@ -511,6 +512,8 @@
 .ss-award-detail { font-family:var(--font-mono);font-size:10px;color:var(--text-dim); }
 .ss-clickable:hover { background:var(--bg-3); }
 .ss-as-final { margin-top:2px; }
+.ss-box-link { color:var(--amber); text-decoration:none; white-space:nowrap; }
+.ss-box-link:hover { text-decoration:underline; }
 .ss-as-head { display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 12px; }
 .ss-as-table td { line-height:1.7; }
 .ss-as-pos { width:40px;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);vertical-align:top; }

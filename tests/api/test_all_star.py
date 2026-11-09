@@ -884,6 +884,12 @@ def test_the_rookie_game_is_played_on_the_break(client, lg):
         f"/leagues/{lg.league.id}/players/{g['mvp_player_id']}/career"
     ).text
     assert "Rookie Game" in career and "All-Star Games" not in career
+    assert f"openAllStarBox('rookie', '{lg.season.id}')" in career
+    # Its box score opens in the game panel.
+    box = client.get(f"/leagues/{lg.league.id}/allstar/box/rookie/{lg.season.id}")
+    assert box.status_code == 200
+    assert 'id="game-panel-header-inner"' in box.text and "🌱 Rookie Game" in box.text
+    assert "★ MVP" in box.text and "Pitching" in box.text
 
 
 # ── Time to draft: a person captain gets the Lineup Window ───────────────────
@@ -994,3 +1000,43 @@ def test_the_weekend_results_up_top_after_the_sim(client, lg):
     assert "Sim All-Star Weekend" not in html
     # Just the tab, later on: no banner.
     assert "in the books" not in client.get(url).text
+
+
+# ── Box scores of past games, in the game panel ──────────────────────────────
+
+
+def test_the_all_star_game_box_score_opens_from_anywhere(client, lg):
+    repo, _ = _count(lg, lg.mine)
+    box = f"/leagues/{lg.league.id}/allstar/box/all_star/{lg.season.id}"
+    # Not until it's played.
+    assert client.get(box).status_code == 404
+    all_star.play_game(lg.db, lg.league.id, lg.season.id, random.Random(7))
+    g = repo.game(lg.season.id)
+    html = client.get(box).text
+    assert 'id="game-panel-body-inner"' in html and "★ All-Star Game" in html
+    assert "Batting" in html and "Pitching" in html
+    assert g["mvp_player_id"] in html
+    # A season of another league, or an event that isn't one, isn't found.
+    assert (
+        client.get(
+            f"/leagues/{lg.league.id}/allstar/box/derby/{lg.season.id}"
+        ).status_code
+        == 404
+    )
+    assert (
+        client.get(f"/leagues/{lg.league.id}/allstar/box/all_star/nope").status_code
+        == 404
+    )
+    # The MVP's career page links to it.
+    career = client.get(
+        f"/leagues/{lg.league.id}/players/{g['mvp_player_id']}/career"
+    ).text
+    assert f"openAllStarBox('all_star', '{lg.season.id}')" in career
+
+
+def test_the_weekend_results_link_the_box_score(client, lg):
+    _count(lg, lg.mine)
+    all_star.play_game(lg.db, lg.league.id, lg.season.id, random.Random(7))
+    html = client.get(f"/leagues/{lg.league.id}/allstar?weekend=1").text
+    assert "in the books" in html
+    assert f"openAllStarBox('all_star', '{lg.season.id}')" in html

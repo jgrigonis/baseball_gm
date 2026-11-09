@@ -15,10 +15,11 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 
 from src.api.dependencies import DB, GM, ActiveLeague, GMOrViewer, IsHTMX, User
 from src.api.services import all_star, coach, hr_derby, rookie_game
+from src.db.repositories.all_star_repo import AllStarRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.league.all_star import BALLOT, SLOTS
-from src.web.utils import _shell_ctx, tab_response
+from src.web.utils import _shell_ctx, tab_response, templates
 
 router = APIRouter(tags=["web"])
 
@@ -49,6 +50,36 @@ def all_star_tab(
         if coach.mark_all_star_visit(db, league, ctx["as_phase"], pick_due):
             ctx["coach"] = coach.coach_ctx(db, league)
     return tab_response(request, htmx, "dashboard/partials/all_star.html", ctx)
+
+
+@router.get(
+    "/leagues/{league_id}/allstar/box/{event}/{season_id}", response_class=HTMLResponse
+)
+def all_star_box(
+    request: Request,
+    league_id: str,
+    event: str,
+    season_id: str,
+    db: DB,
+    user: User,
+    gm: GMOrViewer,
+):
+    """A played All-Star Game's (or, with event "rookie", Rookie Game's) line
+    score, MVP and box score, for the game panel (openAllStarBox in
+    shell.html): from the season summary, the news, a player's career page or
+    the weekend results card, for any season of the league."""
+    if event not in ("all_star", rookie_game.EVENT):
+        return HTMLResponse("Game not found", status_code=404)
+    season = SeasonRepository(db).get_for_league(league_id, season_id)
+    g = AllStarRepository(db, event).game(season_id) if season else None
+    if not g or g["state"] != "played":
+        return HTMLResponse("Game not found", status_code=404)
+    ctx = _shell_ctx(request, db, gm, league_id, user=user)
+    x = all_star.game_context(db, league_id, season_id, ctx["team_id"], g, [], event)
+    ctx.update({"x": x, "box_year": season["year"]})
+    return templates.TemplateResponse(
+        request=request, name="dashboard/partials/_all_star_box.html", context=ctx
+    )
 
 
 def _weekend_context(request: Request, db, league_id: str, ctx: dict) -> dict:

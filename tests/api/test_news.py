@@ -589,3 +589,12 @@ class TestLinks:
         html = day["stories"][0]["headline_html"]
         assert "&lt;b&gt;bold&lt;/b&gt;" in html
         assert ">Captains</a>" in html
+
+
+def test_the_all_star_game_story_links_its_box_score():
+    from src.api.view_models.news import _box_event
+
+    game = {"key": "allstar:game:s1", "season_id": "s1"}
+    assert _box_event(game) == "all_star"
+    assert _box_event({"key": "allstar:team:s1:t1", "season_id": "s1"}) is None
+    assert _box_event({"key": "trade:1", "season_id": "s1"}) is None

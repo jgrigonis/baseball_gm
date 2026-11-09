@@ -80,8 +80,8 @@ class NewsRepository:
             args.append(before_id)
         args.append(limit)
         rows = self.conn.execute(
-            f"""SELECT id, season_id, news_date, kind, headline, body, weight,
-                       team_ids, player_ids, gm_ids
+            f"""SELECT id, season_id, news_date, kind, key, headline, body,
+                       weight, team_ids, player_ids, gm_ids
                 FROM league_news WHERE {" AND ".join(where)}
                 ORDER BY news_date DESC, weight DESC, id DESC LIMIT %s""",
             args,
