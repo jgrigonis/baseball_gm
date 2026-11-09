@@ -35,6 +35,7 @@ KIND_ICONS = {
     "retirement": "👋",
     "clubhouse": "😤",
     "hall_of_fame": "🏛️",
+    "free_agency": "✍️",
 }
 
 KIND_LABELS = {
@@ -57,6 +58,7 @@ KIND_LABELS = {
     "retirement": "Retirement",
     "clubhouse": "Clubhouse",
     "hall_of_fame": "Hall of Fame",
+    "free_agency": "Free agency",
 }
 
 
