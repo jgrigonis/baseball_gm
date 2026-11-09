@@ -175,7 +175,9 @@ def test_rest_rusty_players_leaves_them_out(db_conn, team_setup):
     current = [{"player_id": rusty.id, "position": "c"}] + [None] * 8
 
     # Off (the default): a little rust and he still plays.
-    assert rusty.id in ids(autofill(db_conn, league.id, team.id, current, rebuild=False))
+    assert rusty.id in ids(
+        autofill(db_conn, league.id, team.id, current, rebuild=False)
+    )
 
     db_conn.execute(
         "UPDATE gm_profiles SET rest_rusty = TRUE"
