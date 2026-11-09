@@ -7,13 +7,19 @@ from src.api.grade_curves import OVERALL_CUTOFFS
 from src.player import contracts as ct
 
 
-def test_rookie_deals_pay_early_picks_more_and_run_two_to_four_years():
-    pays = [ct.rookie_salary(n) for n in (1, 5, 10, 30, 90)]
-    assert pays == sorted(pays, reverse=True)
-    assert pays[0] > 3_000_000
-    assert pays[-1] == ct.MIN_SALARY
+def test_rookie_deals_pay_the_minimum_plus_a_bonus_by_pick_and_run_two_to_four_years():
+    # The bonus is paid up front (Josh, 2026-11-09); the salary is the minimum.
+    assert {ct.rookie_salary(n) for n in (1, 5, 10, 30, 90)} == {ct.MIN_SALARY}
+    bonuses = [ct.signing_bonus(n) for n in (1, 5, 10, 30, 90)]
+    assert bonuses == sorted(bonuses, reverse=True)
+    assert bonuses[0] == ct.TOP_PICK_BONUS
+    assert bonuses[-1] <= 10_000
+    assert ct.signing_bonus(1, 1.2) == 12_000_000
     deal = ct.rookie_deal(7)
     assert deal.years == ct.ROOKIE_YEARS == 3 and deal.kind == "rookie"
+    assert deal.salary == ct.MIN_SALARY
+    assert deal.signing_bonus == ct.signing_bonus(7)
+    assert ct.standard_deal(27, 70, "hitter", random.Random(1)).signing_bonus == 0
     lengths = [ct.rookie_years(f"p{i}") for i in range(300)]
     assert set(lengths) == {2, 3, 4}
     assert ct.rookie_years("p1") == ct.rookie_years("p1")
@@ -84,6 +90,7 @@ def test_a_scaled_deal_costs_more_and_moves_the_floor():
     assert abs(grown.salary - base.salary * 1.2) <= 60_000
     assert ct.rookie_salary(200, 1.2) == ct.round_salary(ct.MIN_SALARY * 1.2, 1.2)
     assert ct.rookie_salary(200, 1.2) > ct.rookie_salary(200)
+    assert ct.rookie_salary(1, 1.2) == ct.rookie_salary(200, 1.2)
     assert ct.round_salary(1, 1.0) == ct.MIN_SALARY
 
 

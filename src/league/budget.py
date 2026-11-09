@@ -282,9 +282,11 @@ def analytics_aim(level: int, quality: float) -> float:
 
 
 # ── The minor leagues ───────────────────────────────────────────────────────
-# Minor leaguers who've never been on the 40-man aren't payroll (their deals
-# aren't guaranteed, and they don't count toward the cap or the tax), but
-# their full salaries count against the owner's budget (Josh, 2026-11-06).
+# Minor leaguers who've never played a game on the 40-man aren't payroll
+# (their deals aren't guaranteed, and they don't count toward the cap or the
+# tax), but their pay counts against the owner's budget (Josh, 2026-11-06).
+# They're paid a minor league salary, not their deals' (src/player/contracts.py
+# MINORS_SALARY, Josh 2026-11-09).
 # Each owner's budget grows to cover a farm: the league's average farm cost,
 # times a share set by their Spending, so a miser covers less than an average
 # farm and a spender more (farm_allowance). The league's fixed costs are an

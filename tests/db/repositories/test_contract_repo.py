@@ -53,13 +53,32 @@ def test_drafted_player_gets_a_rookie_deal_from_his_draft_year(env):
     assert deal["kind"] == "rookie" and deal["start_year"] == 2025
     years = ct.rookie_years(pid)
     assert deal["years"] == years and deal["pick_number"] == 1
-    assert deal["salary"] == ct.rookie_salary(1)
+    assert deal["salary"] == ct.rookie_salary(1) == ct.MIN_SALARY
+    assert deal["signing_bonus"] == ct.signing_bonus(1)
     v = contract_repo.view(deal, 2026)
     assert (v["year_of"], v["years_left"], v["through"]) == (
         2,
         years - 1,
         2024 + years,
     )
+
+
+def test_a_signing_bonus_is_paid_once_by_the_drafting_team(env):
+    db, factory, league, _, team = env
+    pid = factory.rated_player(team, league, status="minors", age=19).id
+    _draft(env, pid, pick=1, year=2026)
+    repo = ContractRepository(db)
+    repo.sign_unsigned(league.id, 2026)
+    bonus = ct.signing_bonus(1)
+    assert repo.signing_bonuses([team.id], 2026) == {team.id: bonus}
+    assert repo.signing_bonuses([team.id], 2027) == {}
+    # With the farm: his minor league pay plus the bonus, this season only.
+    assert repo.minor_league_pay([team.id], 2026) == {team.id: bonus + ct.MINORS_SALARY}
+    # Releasing him doesn't give the bonus back.
+    repo.release(pid, team.id, 2026)
+    assert repo.signing_bonuses([team.id], 2026) == {team.id: bonus}
+    v = contract_repo.view(repo.history(pid)[0], 2026)
+    assert v["signing_bonus_text"] == ct.format_salary(bonus)
 
 
 def test_an_old_draft_pick_signs_a_standard_deal(env):
