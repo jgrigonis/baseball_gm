@@ -143,3 +143,29 @@ def test_the_review_says_how_the_year_finished():
         season,
     )
     assert "We finished 70-92." in text and "Two trades this year." in text
+
+
+def test_homegrown_talk_names_the_count_and_what_most_teams_have():
+    season = om.facts(
+        {"homegrown_players": 2, "roster_players": 39, "league_homegrown": 0.18}
+    )
+    w = owners.clean_weights({"wins": 90, "homegrown": 80})
+    # As the worry at the end of a pleased check-in.
+    body = om.checkin(
+        {"wins": 0.8, "homegrown": -0.6}, w, FIELDS, random.Random(2), mood=0.3,
+        season=season,
+    )  # fmt: skip
+    assert body.endswith(
+        "But I'd like to see more players we drafted on this roster. Only two of"
+        " our 39 players came through our own draft. Most teams have about seven."
+    )
+    # As the lead line.
+    body = om.checkin(
+        {"homegrown": -0.8}, owners.clean_weights({"homegrown": 100}), FIELDS,
+        random.Random(3), mood=-0.4, season=season,
+    )  # fmt: skip
+    assert "Only two of our 39 players came through our own draft." in body
+    none = om.facts({"homegrown_players": 0, "roster_players": 40})
+    assert om._homegrown(none) == (
+        "Not one player on our 40-man roster came through our own draft."
+    )

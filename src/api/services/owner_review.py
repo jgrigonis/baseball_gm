@@ -243,7 +243,8 @@ def gather(
     )
     lost_icons = _icons_lost(conn, league_id, season_id, year)
     teams = list(by_team)
-    league_home = sum(homegrown.get(t, 0.0) for t in teams) / max(1, len(teams))
+    share = {t: mine / n if n else 0.0 for t, (mine, n) in homegrown.items()}
+    league_home = sum(share.get(t, 0.0) for t in teams) / max(1, len(teams))
     league_stars = sum(
         all_stars.get(t, 0) + 1.5 * awards.get(t, 0) for t in teams
     ) / max(1, len(teams))
@@ -275,7 +276,9 @@ def gather(
             profit_par=par.get(team_id),
             fans_before=m.get("fans_before"),
             fans_after=m.get("fans_after"),
-            homegrown_share=homegrown.get(team_id, 0.0),
+            homegrown_share=share.get(team_id, 0.0),
+            homegrown_players=homegrown.get(team_id, (0, 0))[0],
+            roster_players=homegrown.get(team_id, (0, 0))[1],
             league_homegrown=league_home,
             league_star_points=league_stars,
             all_stars=all_stars.get(team_id, 0),
@@ -349,7 +352,8 @@ def _playoffs(conn, season_id: str) -> dict[str, dict]:
 
 
 def _homegrown(conn, league_id: str, team_ids: list[str]) -> dict[str, float]:
-    """The share of each team's big-league roster it drafted itself."""
+    """How many players on each team's 40-man roster it drafted itself, and
+    how many players are on it."""
     rows = conn.execute(
         """SELECT tp.team_id,
                   COUNT(*) AS n,
@@ -363,7 +367,7 @@ def _homegrown(conn, league_id: str, team_ids: list[str]) -> dict[str, float]:
            GROUP BY tp.team_id""",
         (league_id, team_ids),
     ).fetchall()
-    return {r["team_id"]: r["mine"] / r["n"] if r["n"] else 0.0 for r in rows}
+    return {r["team_id"]: (r["mine"], r["n"]) for r in rows}
 
 
 def _icons_lost(conn, league_id: str, season_id: str, year: int) -> dict[str, int]:
