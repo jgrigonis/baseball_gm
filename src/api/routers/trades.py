@@ -220,6 +220,8 @@ def trades_tab(
     ctx.update(
         {
             "shop_players": shop_players,
+            # The last shop kept in the browser shows again while this matches.
+            "shop_stamp": trade_shop.stamp(db, league_id),
             # AI teams' GMs, for their names and persona cards.
             "ai_gms": PersonaRepository(db).by_team(league_id),
             "trade_window": trade_deadline.window(db, dict(league), season_id),
@@ -327,6 +329,7 @@ def shop_player(
         o["room_text"] = room_text(rooms.get(o["team_id"]))
         g = ai_gms.get(o["team_id"])
         o["gm_name"] = g["name"] if g else None
+    result["stamp"] = trade_shop.stamp(db, league_id)
     return JSONResponse(result)
 
 
@@ -382,6 +385,7 @@ def dump_player(
         g = ai_gms.get(o["team_id"])
         o["gm_name"] = g["name"] if g else None
     result["salary_text"] = format_salary(result["salary"])
+    result["stamp"] = trade_shop.stamp(db, league_id)
     return JSONResponse(result)
 
 

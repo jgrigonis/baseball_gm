@@ -110,3 +110,16 @@ def test_dump_lists_who_would_take_him_and_the_trade_goes_through(lg):  # noqa: 
     for pid in offer["add"]:
         assert _team_of_id(lg.db, pid) == lg.theirs.id
     assert _team_of_id(lg.db, offer["give"][0]) == lg.mine.id
+
+
+def test_the_kept_shop_stamp_changes_when_a_roster_does(lg):  # noqa: F811
+    """The Trades tab shows a kept shop list again only while the stamp is
+    the same: shopping doesn't change it, a trade does."""
+    star = lg.factory.rated_player(lg.mine, lg.league, 72)
+    _with_prospects(lg)
+    before = trade_shop.stamp(lg.db, lg.league.id)
+    assert before
+    _shop(lg, star)
+    assert trade_shop.stamp(lg.db, lg.league.id) == before
+    trade_shop.take(lg.db, lg.league.id, lg.gm, star.id, lg.theirs.id)
+    assert trade_shop.stamp(lg.db, lg.league.id) != before
