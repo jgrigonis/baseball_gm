@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "baseball_manager"
-version = "0.6.0"
+version = "0.7.0"
 description = "A baseball simulator"
 authors = [
   { name = "Joshua Grigonis", email = "josh.grigonis@gmail.com" }
