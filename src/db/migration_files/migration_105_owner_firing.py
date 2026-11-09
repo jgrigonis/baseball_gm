@@ -5,7 +5,9 @@ league's toggle, set when the league is created (Josh, 2026-11-07); leagues
 made before this keep it off, so nobody is fired in a league that never chose
 it. gm_firings remembers each firing: who it was (a person or an AI persona),
 the team, the owner, the record and what the owner said, since the GM row
-itself stays with the team and goes to a new AI GM.
+itself stays with the team and goes to a new AI GM. gm_job_offers holds the
+owners' offers to a fired person (src/api/services/job_offers.py), one set
+per season they're out of work.
 """
 
 VERSION = 105
@@ -36,6 +38,23 @@ def upgrade(conn):
                rehired_at   TIMESTAMPTZ
            )"""
     )
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS gm_job_offers (
+               id         SERIAL PRIMARY KEY,
+               league_id  TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+               user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+               year       INTEGER NOT NULL,
+               team_id    TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+               owner_id   TEXT,
+               message    TEXT NOT NULL,
+               created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+               UNIQUE (league_id, user_id, year, team_id)
+           )"""
+    )
+    for col in ("user_id", "team_id"):
+        conn.execute(
+            f"CREATE INDEX IF NOT EXISTS idx_gm_job_offers_{col} ON gm_job_offers({col})"
+        )
     # Every foreign key gets an index (tests/db/test_init.py).
     for col in (
         "league_id",

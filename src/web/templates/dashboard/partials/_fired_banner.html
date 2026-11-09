@@ -12,9 +12,9 @@
       {% if f.message %}<span class="fired-quote">“{{ f.message }}”</span>{% endif %}
     {% endif %}
     {% if can_take_over %}
-      You can take over any of the {{ open_team_count }} team{{ "s" if open_team_count != 1 }} an AI GM runs until Opening Day.
+      {{ open_team_count }} owner{{ "s" if open_team_count != 1 }} {{ "have" if open_team_count != 1 else "has" }} offered you a job. You can take one until Opening Day.
     {% elif fired_reentry %}
-      Between seasons you can take over a team an AI GM runs. Until then, you're watching.
+      Between seasons, owners around the league can offer you a job. Until then, you're watching.
     {% else %}
       {{ league_name }} is one and done, so you're watching from here on.
     {% endif %}

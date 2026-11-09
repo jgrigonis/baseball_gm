@@ -20,12 +20,13 @@
 #
 # A person their owner fired (src/api/services/firing.py) in a league with
 # re-entry on comes back the same way, whatever the Late joiners setting:
-# any AI team but the one that fired them, between seasons. Their fired row
-# gives way to the team's.
+# one of the AI teams whose owners offer them the job (job_offers.py), never
+# the one that fired them, between seasons. Their fired row gives way to the
+# team's.
 
 from __future__ import annotations
 
-from src.api.services import firing, sim_jobs, trades
+from src.api.services import firing, job_offers, sim_jobs, trades
 from src.db.locks import league_lock
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.league_repo import LeagueRepository
@@ -78,7 +79,9 @@ def is_fired(conn, league_id: str, user_id: str) -> bool:
 def open_teams(conn, league_id: str, user_id: str | None = None) -> list[dict]:
     """The teams an AI GM runs, with the GM and the team's last finished
     season, for the page where a person picks one. With user_id, not the
-    teams that fired them."""
+    teams that fired them; and for a fired person, only the teams whose
+    owners offer them the job (job_offers.py), with each owner's message.
+    Owners only make offers between seasons."""
     last = conn.execute(
         """SELECT s.id FROM seasons s JOIN league_seasons ls ON ls.season_id = s.id
            WHERE ls.league_id = %s
@@ -106,6 +109,14 @@ def open_teams(conn, league_id: str, user_id: str | None = None) -> list[dict]:
         repo = TeamGameRepository(conn)
         for t in teams:
             t["last_wl"] = repo.get_team_wl(t["team_id"], last["id"])
+    if user_id and is_fired(conn, league_id, user_id):
+        league = conn.execute(
+            "SELECT id, state FROM leagues WHERE id = %s", (league_id,)
+        ).fetchone()
+        if league["state"] not in BETWEEN_SEASONS:
+            return []
+        year = joined_year(conn, league)
+        teams = job_offers.offers(conn, league_id, user_id, year, teams)
     return teams
 
 

@@ -1088,6 +1088,20 @@ CREATE TABLE IF NOT EXISTS gm_firings (
     rehired_at   TIMESTAMPTZ
 );
 
+-- gm_job_offers: owners' job offers to a fired person (re-entry;
+--   src/api/services/job_offers.py, migration 105), one set per season out.
+CREATE TABLE IF NOT EXISTS gm_job_offers (
+    id         SERIAL PRIMARY KEY,
+    league_id  TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    year       INTEGER NOT NULL,
+    team_id    TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    owner_id   TEXT,
+    message    TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (league_id, user_id, year, team_id)
+);
+
 CREATE TABLE IF NOT EXISTS game_events (
     id            SERIAL PRIMARY KEY,
     game_id       TEXT    NOT NULL,

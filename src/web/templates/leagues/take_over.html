@@ -15,8 +15,8 @@
     {% if fired %}
     <p class="takeover-note">
       The {{ fired.city }} {{ fired.mascot }} let you go, but {{ league.name }}
-      has re-entry on, so you can take over any team an AI GM runs, except
-      theirs. It keeps its players, contracts and draft picks, and you start
+      has re-entry on. These owners would let their AI GM go to hire you.
+      The team keeps its players, contracts and draft picks, and you start
       fresh with its owner. Your record there starts with the {{ joined_year }} season.
     </p>
     {% else %}
@@ -28,18 +28,20 @@
     {% endif %}
     {% if error %}<div role="alert" class="takeover-note" style="color:var(--red);">{{ error }}</div>{% endif %}
     <div class="card">
-      <div class="card-header"><span class="card-title">Teams you can take over ({{ teams | length }})</span>{% if teams | length > 1 %}<span class="takeover-dim" style="margin-left:auto;">Tap Team or Last season to sort</span>{% endif %}</div>
+      <div class="card-header"><span class="card-title">{% if fired %}Job offers{% else %}Teams you can take over{% endif %} ({{ teams | length }})</span>{% if teams | length > 1 %}<span class="takeover-dim" style="margin-left:auto;">Tap Team or Last season to sort</span>{% endif %}</div>
       <div class="card-body table-scroll">
         <table class="data-table" data-sortable data-sort-url>
-          <thead><tr><th data-sort="text">Team</th><th class="wide-only">AI GM</th><th data-sort="num" data-sort-first="desc" title="Best record first, tap again for worst">Last season</th><th></th></tr></thead>
+          <thead><tr><th data-sort="text">Team</th><th class="wide-only">{% if fired %}Owner{% else %}AI GM{% endif %}</th><th data-sort="num" data-sort-first="desc" title="Best record first, tap again for worst">Last season</th><th></th></tr></thead>
           <tbody>
             {% for t in teams %}
             <tr>
               <td class="team-name" data-sort-value="{{ t.city }} {{ t.mascot }}">
                 <span class="takeover-team">{{ team_badge(t.city, t.mascot) }}<span>{{ t.city }} {{ t.mascot }}</span></span>
+                {% if t.message %}<div class="takeover-offer">“{{ t.message }}”</div>{% endif %}
               </td>
               <td class="wide-only" style="color:var(--text-dim);">
-                {{ t.display_name }}{% if t.archetype %}<div class="takeover-dim">{{ t.archetype }}</div>{% endif %}
+                {% if fired %}{{ t.owner_name }}{% if t.owner_archetype %}<div class="takeover-dim">{{ t.owner_archetype }}</div>{% endif %}
+                {% else %}{{ t.display_name }}{% if t.archetype %}<div class="takeover-dim">{{ t.archetype }}</div>{% endif %}{% endif %}
               </td>
               {# Win share, then wins as a tiebreak; no record sorts below every team with one. #}
               <td style="font-family:var(--font-mono);color:var(--text-dim);"
@@ -51,9 +53,9 @@
                   <input type="hidden" name="team_id" value="{{ t.team_id }}">
                   <input type="hidden" name="code" value="{{ code }}">
                   <button type="submit" class="btn btn-primary" style="font-size:10px;padding:4px 10px;"
-                          data-confirm="Take over the {{ t.city }} {{ t.mascot }}?"
+                          data-confirm="{% if fired %}Take the {{ t.city }} {{ t.mascot }} job?{% else %}Take over the {{ t.city }} {{ t.mascot }}?{% endif %}"
                           data-confirm-text="{{ t.display_name }} steps aside and the team is yours."
-                          data-confirm-ok="Take over" data-confirm-tone="go">Take over</button>
+                          data-confirm-ok="{% if fired %}Take the job{% else %}Take over{% endif %}" data-confirm-tone="go">{% if fired %}Accept{% else %}Take over{% endif %}</button>
                 </form>
               </td>
             </tr>
@@ -69,5 +71,6 @@
 .takeover-note { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); line-height: 1.6; margin: 0 0 16px; }
 .takeover-dim { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); }
 .takeover-team { display: inline-flex; align-items: center; gap: 8px; }
+.takeover-offer { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); font-style: italic; margin-top: 6px; max-width: 42ch; white-space: normal; }
 </style>
 {% endblock %}

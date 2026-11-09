@@ -147,3 +147,42 @@ def test_trend_credit_softens_an_improving_losing_season():
     a = sc.judge(40, -0.4, MID, False, better, rules)[0]
     b = sc.judge(40, -0.4, MID, False, worse, rules)[0]
     assert a > b
+
+
+# ── Job offers after a firing (src/league/job_offers.py) ─────────────────────
+
+
+def test_reputation():
+    from src.league import job_offers as jo
+
+    good = [jo.Record(0.5, True, True), jo.Record(0.4, True)]
+    bad = [jo.Record(-0.6), jo.Record(-0.5)]
+    assert jo.reputation(good, [0]) > jo.reputation(bad, [0])
+    # A firing hurts most at first, then fades.
+    assert (
+        jo.reputation(bad, [0]) < jo.reputation(bad, [2]) < jo.reputation(bad, [3]) + 1
+    )
+    assert 0 <= jo.reputation(bad, [0, 0, 0]) <= 100
+
+
+def test_owners_offer_jobs_they_think_the_gm_has_earned():
+    from src.league import job_offers as jo
+
+    champs = jo.appeal(0.0, 0.1, 5)
+    cellar = jo.appeal(1.0, 0.9, 1)
+    assert champs > 80 and cellar < 20
+    # An owner unhappy with their AI GM wants a change; a happy one doesn't.
+    assert jo.bar(50, MID, 10) < jo.bar(50, MID, 90)
+    # Ambitious owners want more, patient ones less.
+    assert jo.bar(50, {"ambition": 90}, 50) > jo.bar(50, {"patience": 90}, 50)
+    jobs = [
+        jo.Job("champs", "The Tycoon", champs),
+        jo.Job("cellar", "The Long-Gamer", cellar),
+    ]
+    assert jo.choose(jobs, 40) == (["cellar"], False)
+    # Someone always offers: the keenest owner, even when nobody's bar is met.
+    assert jo.choose([jo.Job("a", "", 70), jo.Job("b", "", 60)], 10) == (["b"], True)
+    import random
+
+    text = jo.message("The Tycoon", 10, 80, True, random.Random(1))
+    assert "anyway" in text or "glamour" in text

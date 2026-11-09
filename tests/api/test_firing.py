@@ -215,29 +215,56 @@ class TestAPerson:
         assert _league(lg.db, lg.league.id)["commissioner_gm_id"] == mine["id"]
         assert not firing.nobody_left(lg.db, lg.league.id)
 
-    def test_re_entry_takes_another_ai_team(self, lg):
+    def test_re_entry_takes_a_job_an_owner_offers(self, lg):
         _fire(lg, lg.alice)
         firing.carry_out(lg.db, lg.league.id, lg.season.id, 2026)
         league = _league(lg.db, lg.league.id)
         uid = lg.user["id"]
-        # Open to her even with late joiners off, but not her old team.
+        # Open to her even with late joiners off.
         assert takeover.closed_reason(lg.db, league, uid) is None
         assert takeover.closed_reason(lg.db, league)  # others: closed
-        teams = {t["team_id"] for t in takeover.open_teams(lg.db, lg.league.id, uid)}
-        assert teams == {lg.teams[1].id, lg.teams[2].id}
+        offers = takeover.open_teams(lg.db, lg.league.id, uid)
+        # Someone always offers, never the team that fired her, and each
+        # offer comes in the owner's words.
+        assert offers and all(t["message"] and t["owner_name"] for t in offers)
+        offered = {t["team_id"] for t in offers}
+        assert lg.teams[0].id not in offered
+        # The offers are kept: asking again gives the same ones.
+        assert {
+            t["team_id"] for t in takeover.open_teams(lg.db, lg.league.id, uid)
+        } == offered
         with pytest.raises(takeover.TakeoverClosed):
             takeover.take_over(lg.db, lg.league.id, lg.user, lg.teams[0].id)
-        gm_id = takeover.take_over(lg.db, lg.league.id, lg.user, lg.teams[2].id)
-        assert gm_id == lg.other
+        others = {lg.teams[1].id, lg.teams[2].id} - offered
+        for team_id in others:  # an owner who didn't offer
+            with pytest.raises(takeover.TakeoverClosed):
+                takeover.take_over(lg.db, lg.league.id, lg.user, team_id)
+        team_id = sorted(offered)[0]
+        gm_id = takeover.take_over(lg.db, lg.league.id, lg.user, team_id)
         rows = lg.db.execute(
             "SELECT * FROM gms WHERE league_id = %s AND user_id = %s",
             (lg.league.id, uid),
         ).fetchall()
-        assert len(rows) == 1 and rows[0]["id"] == lg.other
+        assert len(rows) == 1 and rows[0]["id"] == gm_id
+        assert rows[0]["team_id"] == team_id
         assert rows[0]["fired_at"] is None and not rows[0]["is_ai"]
-        assert _league(lg.db, lg.league.id)["commissioner_gm_id"] == lg.other
+        assert _league(lg.db, lg.league.id)["commissioner_gm_id"] == gm_id
         f = firing.latest(lg.db, lg.league.id, uid)
-        assert f["rehired_team_id"] == lg.teams[2].id
+        assert f["rehired_team_id"] == team_id
+
+    def test_a_good_record_draws_more_offers(self, lg):
+        from src.api.services import job_offers
+
+        _fire(lg, lg.alice)
+        firing.carry_out(lg.db, lg.league.id, lg.season.id, 2026)
+        uid = lg.user["id"]
+        low = job_offers.reputation(lg.db, lg.league.id, uid, 2027)
+        lg.db.execute(
+            """UPDATE gm_season_evaluations SET score = 0.9, won_championship = true,
+                   made_playoffs = true, detail = %s WHERE gm_id = %s""",
+            (f'{{"who": "{uid}"}}', lg.alice),
+        )
+        assert job_offers.reputation(lg.db, lg.league.id, uid, 2027) > low
 
     def test_one_and_done(self, lg):
         _set(lg.db, lg.league.id, reentry_enabled=False)
