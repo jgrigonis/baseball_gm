@@ -139,7 +139,7 @@ def expiring(conn, league_id: str, year: int, team_ids=None) -> list[dict]:
     contracts = ContractRepository(conn)
     seasons = contracts.seasons_signed(ids, year)
     happy = HappinessRepository(conn, league_id)
-    happy.prepare_resign(ids)
+    happy.prepare_resign(ids, seasons)
     moods = happy.latest_moods(ids)
     scale = BudgetRepository(conn).salary_scale(league_id, year + 1)
     arb = contracts.arbitration_seasons(ids, year + 1)
@@ -234,11 +234,20 @@ def _next_room(
     return room + sum(r["old_salary"] for r in rows if r["team_id"] == team_id)
 
 
+def _bank(conn, league_id: str, team_id: str) -> int:
+    """The owner's bank now, or 0 without one."""
+    bank = BudgetRepository(conn).banks(league_id).get(team_id)
+    return max(0, bank["balance"]) if bank else 0
+
+
 def _resign_refusal(
     conn, league_id: str, team_id: str, year: int, mine: list[dict], row: dict
 ) -> str | None:
     """Why the owner won't let a person re-sign him now, or None: his new
-    salary, with the re-signs already called, has to fit next season's room."""
+    salary, with the re-signs already called, has to fit next season's room.
+    A person re-signing their own player may go past the limit as far as the
+    owner's bank reaches (Josh, 2026-11-09, like the NBA's Bird rights): the
+    owner pays it from the bank, and the losses show in their mood."""
     room = _next_room(conn, league_id, team_id, year, True, mine)
     if room == float("inf"):
         return None
@@ -247,20 +256,21 @@ def _resign_refusal(
         for r in mine
         if r["choice"] == "resign" and r["player_id"] != row["player_id"]
     )
-    left = room - called
+    left = room - called + _bank(conn, league_id, team_id)
     if row["deal"].salary <= left:
         return None
+    have = ct.format_salary(int(left)) if left >= 1 else "nothing"
     return (
-        f"Your owner won't allow it: next season you have "
-        f"{ct.format_salary(max(0, int(left)))} left under their limit, and he "
-        f"wants {ct.format_salary(row['deal'].salary)}. Let someone else go to "
-        f"make room."
+        f"Your owner won't allow it: even dipping into their bank, next season "
+        f"has {have} left, and he wants "
+        f"{ct.format_salary(row['deal'].salary)}. Let someone else go to make room."
     )
 
 
 def next_season_money(conn, league_id: str, team_id: str) -> dict | None:
     """For the Free Agents tab: what's left under the owner's limit next
-    season after the re-signs called so far. None without budgets."""
+    season after the re-signs called so far, and how much of their bank is
+    left to go past it. None without budgets."""
     year = _year(conn, league_id)
     rows = expiring(conn, league_id, year, [team_id])
     room = _next_room(conn, league_id, team_id, year, True, rows)
@@ -268,7 +278,15 @@ def next_season_money(conn, league_id: str, team_id: str) -> dict | None:
         return None
     called = sum(r["deal"].salary for r in rows if r["choice"] == "resign")
     left = int(room - called)
-    return {"left": left, "left_text": ct.format_salary(abs(left)), "over": left < 0}
+    bank = _bank(conn, league_id, team_id)
+    return {
+        "left": left,
+        "left_text": ct.format_salary(abs(left)),
+        "over": left < 0,
+        "bank_left_text": (
+            ct.format_salary(bank + min(left, 0)) if bank + min(left, 0) > 0 else "$0"
+        ),
+    }
 
 
 def _keeps(

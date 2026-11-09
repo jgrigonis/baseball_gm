@@ -398,7 +398,7 @@ class ContractRepository:
             return 1.0 if first is None else bg.salary_scale(at - first)
 
         renewing = [r["player_id"] for r in rows if r["signed_before"]]
-        happy.prepare_resign(renewing)
+        happy.prepare_resign(renewing, self.seasons_signed(renewing, year - 1))
         arb = self.arbitration_seasons(renewing, year)
         unhappy_out: list[tuple[str, str]] = []
 

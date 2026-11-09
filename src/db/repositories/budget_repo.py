@@ -66,6 +66,7 @@ class BudgetRepository:
         self._pending: dict[str, tuple[int, int]] = {}
         cap = self.cap(league_id, year)
         made = self._make(league_id, year, missing, cap)
+        self._rich_custom_owners(league_id, year, cap, made)
         ai = self._ai_teams(league_id)
         spending = self._spending(league_id)
         for team_id, amount in made.items():
@@ -90,6 +91,47 @@ class BudgetRepository:
                 ),
             )  # fmt: skip
         return self._with_farm(league_id, year, {**have, **made})
+
+    def custom_team_ids(self, league_id: str) -> set[str]:
+        """The league's teams that play with a custom team's players
+        (services/league_custom_teams.py)."""
+        return {
+            r["id"]
+            for r in self.conn.execute(
+                """SELECT DISTINCT t.id FROM league_custom_teams c
+                   JOIN league_season_teams lst ON lst.league_id = c.league_id
+                   JOIN teams t ON t.id = lst.team_id
+                        AND t.city = c.city AND t.mascot = c.mascot
+                   WHERE c.league_id = %s""",
+                (league_id,),
+            ).fetchall()
+        }
+
+    def _rich_custom_owners(
+        self, league_id: str, year: int, cap: int, made: dict[str, int]
+    ) -> None:
+        """A custom team's owner is rich enough for the team brought in
+        (Josh, 2026-11-09): their budget covers at least that payroll, as it
+        was the first season, plus a standard front office, grown with the
+        league's prices since."""
+        custom = self.custom_team_ids(league_id) & set(made)
+        if not custom:
+            return
+        first = self.first_year(league_id)
+        for team_id in custom:
+            if first is None or first >= year:
+                base = self.contracts.payroll(team_id, year)
+                floor = base + bg.standard_front_office(cap)
+            else:
+                row = self.conn.execute(
+                    """SELECT budget FROM team_budgets
+                       WHERE league_id = %s AND team_id = %s AND year = %s""",
+                    (league_id, team_id, first),
+                ).fetchone()
+                if not row:
+                    continue
+                floor = round(int(row["budget"]) * bg.salary_scale(year - first))
+            made[team_id] = max(made[team_id], floor)
 
     def _with_farm(
         self, league_id: str, year: int, budgets: dict[str, int]
@@ -401,8 +443,12 @@ class BudgetRepository:
             return
         spending = self._spending(league_id)
         cap = self.cap(league_id, year)
+        custom = self.custom_team_ids(league_id)
         for r in rows:
             start = bg.starting_bank(cap, spending.get(r["team_id"], 50))
+            if r["team_id"] in custom:
+                # A rich owner for a custom team: a season of its payroll more.
+                start += self.contracts.payroll(r["team_id"], year)
             self.conn.execute(
                 """UPDATE team_owners SET bank_start = %s, bank_year = %s
                    WHERE league_id = %s AND team_id = %s AND bank_start IS NULL""",

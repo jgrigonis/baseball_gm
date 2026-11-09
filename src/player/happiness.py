@@ -766,15 +766,30 @@ def refuses_to_play(mood: float, traits: dict[str, int], roll: float) -> int:
     return 3 + int(roll / chance * 3)  # 3 to 5 days
 
 
-def resign_terms(mood: float | None, loyalty: int) -> tuple[float, int | None, bool]:
+# A happy player's hometown discount at full loyalty: HOMETOWN_DISCOUNT, and
+# HOMETOWN_PER_SEASON more for each season in the league up to
+# HOMETOWN_SEASONS (Josh, 2026-11-09: long-time stars should be easier to
+# keep), so 15% for a newcomer, 30% after six seasons.
+HOMETOWN_DISCOUNT = 0.15
+HOMETOWN_PER_SEASON = 0.025
+HOMETOWN_SEASONS = 6
+
+
+def resign_terms(
+    mood: float | None, loyalty: int, seasons: int = 0
+) -> tuple[float, int | None, bool]:
     """How his mood changes a new deal when his old one runs out: (salary
     multiplier, most years he'll sign for, whether he wants a trade). A happy,
-    loyal player gives a hometown discount; an unhappy one wants more for
-    fewer years; a miserable one signs for one year and wants out."""
+    loyal player gives a hometown discount, bigger the longer he's been in
+    the league; an unhappy one wants more for fewer years; a miserable one
+    signs for one year and wants out."""
     if mood is None:
         return 1.0, None, False
     if mood >= 0.25:
-        return 1 - 0.15 * loyalty / 100, None, False
+        top = HOMETOWN_DISCOUNT + HOMETOWN_PER_SEASON * min(
+            max(seasons, 0), HOMETOWN_SEASONS
+        )
+        return 1 - top * loyalty / 100, None, False
     if mood >= -0.15:
         return 1.0, None, False
     if mood >= UNHAPPY:

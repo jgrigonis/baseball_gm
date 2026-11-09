@@ -251,6 +251,14 @@ def place_bid(
         )
     except offseason_fa.OffseasonFAError as e:
         return JSONResponse({"detail": str(e)}, status_code=422)
+    # Every row's call and fate, since one call moves the room for the rest,
+    # and the room line, for the tab to update in place.
+    team_id = gm["team_id"]
+    result["rows"] = {
+        e["player_id"]: {"choice": e["choice"], "fate": e["fate"]}
+        for e in offseason_fa.expiring_view(db, league_id, team_id)
+    }
+    result["money"] = offseason_fa.next_season_money(db, league_id, team_id)
     return JSONResponse(result)
 
 
@@ -280,4 +288,12 @@ def expiring_choice(
         )
     except offseason_fa.OffseasonFAError as e:
         return JSONResponse({"detail": str(e)}, status_code=422)
+    # Every row's call and fate, since one call moves the room for the rest,
+    # and the room line, for the tab to update in place.
+    team_id = gm["team_id"]
+    result["rows"] = {
+        e["player_id"]: {"choice": e["choice"], "fate": e["fate"]}
+        for e in offseason_fa.expiring_view(db, league_id, team_id)
+    }
+    result["money"] = offseason_fa.next_season_money(db, league_id, team_id)
     return JSONResponse(result)

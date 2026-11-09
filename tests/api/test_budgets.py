@@ -1152,3 +1152,30 @@ def test_hall_of_famers_sell_retro_jerseys_for_their_team(lg, monkeypatch):
     assert seller.hall and seller.new and amount > 0
     assert not first[x.theirs.id]["sellers"]
     assert 0 < later[x.mine.id]["total"] < first[x.mine.id]["total"]
+
+
+def test_a_custom_team_gets_an_owner_rich_enough_for_its_payroll(lg):
+    x = lg()
+    for _ in range(12):
+        x.factory.rated_player(x.mine, x.league, level=90)
+    x.contracts.sign_unsigned(x.league.id, 2026)
+    x.db.execute(
+        """INSERT INTO league_custom_teams (league_id, city, mascot, name, players)
+           VALUES (%s, 'My', 'Team', 'Greats', '[]')""",
+        (x.league.id,),
+    )
+    _seat(x, x.mine, 50)
+    _seat(x, x.theirs, 50)
+    budgets = x.budgets.for_league(x.league.id, 2026)
+    cap = x.budgets.cap(x.league.id, 2026)
+    fo = bg.standard_front_office(cap)
+    payroll = x.contracts.payroll(x.mine.id, 2026)
+    assert budgets[x.mine.id] - x.budgets.farm_allowances(x.league.id, 2026)[
+        x.mine.id
+    ] == max(bg.owner_budget(cap, 50) + fo, payroll + fo)
+    assert payroll > bg.owner_budget(cap, 50)  # the floor mattered
+    banks = x.budgets.banks(x.league.id, 2026)
+    assert banks[x.mine.id]["start"] == banks[x.theirs.id]["start"] + payroll
+    # Later seasons keep the floor, grown with prices.
+    nxt = x.budgets.for_league(x.league.id, 2027)
+    assert nxt[x.mine.id] > nxt[x.theirs.id]
