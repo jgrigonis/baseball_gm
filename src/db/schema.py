@@ -331,7 +331,7 @@ CREATE TABLE IF NOT EXISTS gms (
 CREATE TABLE IF NOT EXISTS gm_notifications (
     id         SERIAL PRIMARY KEY,
     gm_id      TEXT NOT NULL,
-    kind       TEXT NOT NULL CHECK (kind IN ('injury', 'returned', 'roster', 'trade')),
+    kind       TEXT NOT NULL CHECK (kind IN ('injury', 'returned', 'roster', 'trade', 'rust')),
     payload    JSONB NOT NULL,
     created_at TEXT NOT NULL DEFAULT (NOW()),
     seen_at    TEXT,                  -- NULL until shown to the GM

@@ -51,6 +51,7 @@ def test_every_human_gm_gets_their_own_news(db_conn, factory):
     assert a == {
         "new_injuries": [{"name": "Alice ", "days": 10, "is_pitcher": False}],
         "returned": [],
+        "rust_cleared": [],
         "roster_moves": [],
         "trades": [],
     }
@@ -59,6 +60,7 @@ def test_every_human_gm_gets_their_own_news(db_conn, factory):
         "returned": [
             {"name": "Bob ", "length": 3, "is_pitcher": False, "on_40man": False}
         ],
+        "rust_cleared": [],
         "roster_moves": [],
         "trades": [],
     }
@@ -92,6 +94,7 @@ def test_news_is_shown_once(db_conn, factory):
     assert take_injury_news(db_conn, gm.id) == {
         "new_injuries": [],
         "returned": [],
+        "rust_cleared": [],
         "roster_moves": [],
         "trades": [],
     }
@@ -163,3 +166,85 @@ def test_a_return_says_what_the_injury_left(db_conn, factory):
     news.record()
     (note,) = take_injury_news(db_conn, gm.id)["returned"]
     assert note["effect"] == "came back stronger (KK +3)"
+
+
+# ── Rust wearing off ──────────────────────────────────────────────────────────
+
+
+def _back_rusty(db, league, player, rust_days=20):
+    """Back from an injury yesterday with some rust left."""
+    db.execute(
+        "INSERT INTO player_injuries (player_id, league_id, games_remaining,"
+        " return_date, rust, rust_days)"
+        " VALUES (%s, %s, 5, %s, '{\"speed\": 4.0}'::jsonb, %s)",
+        (
+            player.id,
+            league.id,
+            (date.today() - timedelta(days=1)).isoformat(),
+            rust_days,
+        ),
+    )
+
+
+def _rust_wears_off(db, player):
+    db.execute(
+        "UPDATE player_injuries SET rust_days = 1 WHERE player_id = %s", (player.id,)
+    )
+
+
+def _rest_rusty(db, gm, on=True):
+    db.execute("UPDATE gm_profiles SET rest_rusty = %s WHERE gm_id = %s", (on, gm.id))
+
+
+def test_rust_wearing_off_is_news_when_resting_rusty(db_conn, factory):
+    league = factory.league(state="season")
+    team = factory.team()
+    gm = factory.gm(team=team, league=league, is_ai=False)
+    _rest_rusty(db_conn, gm)
+    rusty = _player_on(db_conn, factory, team, "Rusty")
+    still = _player_on(db_conn, factory, team, "Still")
+    _back_rusty(db_conn, league, rusty)
+    _back_rusty(db_conn, league, still)
+
+    news = InjuryNews(db_conn, league.id)
+    _rust_wears_off(db_conn, rusty)
+    news.record()
+
+    assert take_injury_news(db_conn, gm.id)["rust_cleared"] == [
+        {"name": "Rusty ", "is_pitcher": False}
+    ]
+
+
+def test_no_rust_news_without_rest_rusty(db_conn, factory):
+    league = factory.league(state="season")
+    team = factory.team()
+    gm = factory.gm(team=team, league=league, is_ai=False)
+    _rest_rusty(db_conn, gm, on=False)
+    rusty = _player_on(db_conn, factory, team, "Rusty")
+    _back_rusty(db_conn, league, rusty)
+
+    news = InjuryNews(db_conn, league.id)
+    _rust_wears_off(db_conn, rusty)
+    news.record()
+
+    assert take_injury_news(db_conn, gm.id)["rust_cleared"] == []
+
+
+def test_no_rust_news_when_hurt_again(db_conn, factory):
+    league = factory.league(state="season")
+    team = factory.team()
+    gm = factory.gm(team=team, league=league, is_ai=False)
+    _rest_rusty(db_conn, gm)
+    rusty = _player_on(db_conn, factory, team, "Rusty")
+    _back_rusty(db_conn, league, rusty)
+
+    news = InjuryNews(db_conn, league.id)
+    db_conn.execute(
+        "UPDATE player_injuries SET return_date = %s, rust = NULL WHERE player_id = %s",
+        ((date.today() + timedelta(days=10)).isoformat(), rusty.id),
+    )
+    news.record()
+
+    got = take_injury_news(db_conn, gm.id)
+    assert got["rust_cleared"] == []
+    assert len(got["new_injuries"]) == 1
