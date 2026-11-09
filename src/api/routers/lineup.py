@@ -46,7 +46,11 @@ def lineup(
         ctx["saved_bullpen"] = []
         return tab_response(request, htmx, "dashboard/partials/lineup.html", ctx)
 
-    ctx.update(lineup_context(db, league_id, gm, ctx.get("season_id")))
+    ctx.update(
+        lineup_context(
+            db, league_id, gm, ctx.get("season_id"), ctx.get("league_state", "")
+        )
+    )
     return tab_response(request, htmx, "dashboard/partials/lineup.html", ctx)
 
 
