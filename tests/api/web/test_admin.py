@@ -701,7 +701,9 @@ class TestUsers:
     def test_lists_paid_contributors(self, client, db_conn, admin):
         free = _user(db_conn)
         paid = _user(db_conn)
-        db_conn.execute("UPDATE users SET is_contributor = TRUE WHERE id = %s", (paid["id"],))
+        db_conn.execute(
+            "UPDATE users SET is_contributor = TRUE WHERE id = %s", (paid["id"],)
+        )
 
         r = client.get("/admin/users")
 
