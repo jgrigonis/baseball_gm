@@ -84,6 +84,18 @@ def test_the_books_count_popularity_money_in():
     assert popular["profit"] == plain["profit"] + 20 * M
 
 
+def test_the_books_say_what_a_point_of_fan_interest_earns():
+    # 15% of $250M over the 45 points from 55 to 100: $833K, shown to $10K.
+    assert fn.popularity_point(250 * M) == 830_000
+    b = fn.books(
+        revenue=200 * M, market=3, fans=80, playoff_gate=0, home_playoff_games=0,
+        gate_per_game=7 * M, tax_share=0, payroll=150 * M, front_office=20 * M,
+        luxury_tax=0, costs=10 * M, average_revenue=250 * M,
+    )  # fmt: skip
+    assert b["popularity_point"] == 830_000
+    assert b["popularity_top"] == fn.popularity_money(250 * M, fn.FAN_MAX)
+
+
 # ── Broadcast deals and merchandise (Josh, 2026-11-09) ────────────────────────
 
 

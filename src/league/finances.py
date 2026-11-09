@@ -623,6 +623,13 @@ def popularity_money(average_revenue: float, fans: float) -> int:
     return _round(average_revenue * POPULARITY_SHARE * over)
 
 
+def popularity_point(average_revenue: float) -> int:
+    """What each point of fan interest over POPULARITY_FROM earns a season,
+    to the nearest $10K (for the Budget tab's text)."""
+    per = average_revenue * POPULARITY_SHARE / (100 - POPULARITY_FROM)
+    return round(per / 10_000) * 10_000
+
+
 def playoff_gate(average_revenue: int, home_games: int) -> int:
     return _round(average_revenue * PLAYOFF_GATE * home_games)
 
@@ -667,6 +674,7 @@ def books(
     ballpark: int = 0,
     sponsor: int = 0,
     profit: int | None = None,
+    average_revenue: float = 0,
 ) -> dict:
     """A team's season as money in and money out, for the Budget tab.
 
@@ -713,6 +721,9 @@ def books(
         "playoff_gate": playoff_gate,
         "popularity": popularity,
         "popularity_from": POPULARITY_FROM,
+        "popularity_point": popularity_point(average_revenue),
+        "popularity_top": popularity_money(average_revenue, FAN_MAX),
+        "fans_max": FAN_MAX,
         "broadcast": broadcast,
         "merchandise": merchandise,
         "ballpark": ballpark,

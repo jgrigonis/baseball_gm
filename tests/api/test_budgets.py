@@ -910,6 +910,8 @@ def test_the_budget_tab_shows_the_revenue_breakdown(lg, client_for):
     html = client_for(x).get(f"/leagues/{x.league.id}/budget").text
     assert "Revenue and profit" in html and "Projected profit" in html
     assert "league base" in html and "Fixed costs" in html
+    # Popularity says what fan interest is, its value and what a point earns.
+    assert "Fan interest, how keen your fans are" in html and "each worth $" in html
     assert (
         "Spending" not in html.split("Revenue and profit")[1].split("Past seasons")[0]
     )
