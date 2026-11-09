@@ -591,6 +591,18 @@ var SHOP_WHY = [
 // How many of the close packages show before "Show more".
 var SHOP_CLOSE_SHOWN = 5;
 
+// "The Moscow Cossacks ($5.2M over the cap) give": cap room right after the name.
+function roomText(o) {
+  return o.room_text ? ' <span class="tr-room">(' + esc(o.room_text) + ')</span>' : '';
+}
+
+// The page script is wrapped in a function, so inline onclicks need a window name.
+window.trShopMore = function() {
+  if (!SHOP) return;
+  SHOP.allClose = true;
+  renderShop();
+};
+
 function shopAll() { return SHOP ? SHOP.offers.concat(SHOP.close) : []; }
 
 function renderShop() {
@@ -607,7 +619,7 @@ function renderShop() {
   shopAll().forEach(function(o, i) {
     var close = i >= SHOP.offers.length;
     if (close && !SHOP.allClose && i - SHOP.offers.length === SHOP_CLOSE_SHOWN) {
-      html += '<button class="tr-link tr-shop-more" onclick="SHOP.allClose = true; renderShop()">Show ' +
+      html += '<button class="tr-link tr-shop-more" onclick="trShopMore()">Show ' +
               (SHOP.close.length - SHOP_CLOSE_SHOWN) + ' more</button>';
     }
     if (close && !SHOP.allClose && i - SHOP.offers.length >= SHOP_CLOSE_SHOWN) return;
@@ -622,9 +634,7 @@ function renderShop() {
         '<div>' + (i === 0 && !close ? '<span class="tr-tag">best for you</span>' : '') +
           (close ? '<span class="tr-tag' + (o.near ? '' : ' tr-tag-far') + '">' + (o.near ? 'close' : 'far') + '</span>' : '') +
           'The <strong>' + esc(o.team_name) + '</strong>' +
-          (o.gm_name ? ' <span class="tr-gm">(' + esc(o.gm_name) + ')</span>' : '') +
-          (close ? ' came closest with' : ' give') +
-          (o.room_text ? ' <span class="tr-room">' + esc(o.room_text) + '</span>' : '') + '</div>' +
+          roomText(o) + (close ? ' came closest with' : ' give') + '</div>' +
         o.players.map(shopRow).join('') +
       '</div>' +
       '<div class="tr-offer-btns">' +
@@ -708,8 +718,7 @@ function renderDump() {
       '<div class="tr-offer-text">' +
         '<div>' + (o.add.length ? '<span class="tr-tag tr-tag-far">sweetener</span>' : '<span class="tr-tag">takes him alone</span>') +
           'The <strong>' + esc(o.team_name) + '</strong>' +
-          (o.gm_name ? ' <span class="tr-gm">(' + esc(o.gm_name) + ')</span>' : '') +
-          (o.room_text ? ' <span class="tr-room">' + esc(o.room_text) + '</span>' : '') + '</div>' +
+          roomText(o) + '</div>' +
         (o.adds.length ? '<div class="tr-dump-label">If you add</div>' + o.adds.map(shopRow).join('') : '') +
         '<div class="tr-dump-label">They send back</div>' + o.players.map(shopRow).join('') +
         '<div class="tr-dump-saved">' + (o.saved > 0 ? 'Saves you ' + esc(o.saved_text) + ' in payroll this season' : 'Doesn\'t lower your payroll: he isn\'t on it') + '</div>' +
@@ -886,7 +895,7 @@ if (done) { showResult(done.msg, done.kind, done.dest); window._tradeResult = nu
 @media (max-width: 600px) {
   #trades-page .tr-shop-pick .tr-team { flex-basis: 100%; max-width: none; }
 }
-#trades-page .tr-room { color: var(--text-dim); font-size: 11px; margin-left: 4px; }
+#trades-page .tr-room { color: var(--text-dim); font-size: 11px; }
 #trades-page .tr-dump-label { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
 #trades-page .tr-dump-saved { font-size: 12px; color: var(--green, var(--text)); margin-top: 4px; }
 #trades-page .tr-link { background: none; border: none; padding: 0; color: var(--sky); cursor: pointer;
