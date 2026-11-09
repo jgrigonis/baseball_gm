@@ -173,6 +173,35 @@ def test_your_own_re_signs_can_dip_into_the_owners_bank(lg, monkeypatch):
     assert lg.status.get_status(b) == "free_agent"
 
 
+def test_re_sign_all_only_when_the_bank_covers_everyone(lg, monkeypatch):
+    a = _expiring(lg, lg.mine, 2024, 3, level=75)
+    b = _expiring(lg, lg.mine, 2024, 3, level=75)
+    deals = _deals(lg)
+    total = deals[a] + deals[b]
+    # Next season's room is this season's plus the $10M coming off.
+    _room_this_season(monkeypatch, total - 10_000_000 - 3_000_000)
+    monkeypatch.setattr(offseason_fa, "_bank", lambda *_: 2_000_000)
+    assert offseason_fa.resign_all_plan(lg.db, lg.league.id, lg.mine.id) is None
+    with pytest.raises(OffseasonFAError, match="bank"):
+        offseason_fa.resign_all(lg.db, lg.league.id, lg.mine.id)
+    # A bigger bank covers it, and the plan says how much comes out.
+    monkeypatch.setattr(offseason_fa, "_bank", lambda *_: 5_000_000)
+    plan = offseason_fa.resign_all_plan(lg.db, lg.league.id, lg.mine.id)
+    assert plan["from_bank"] == 3_000_000 and plan["bank"] == 5_000_000
+    assert plan["count"] == 2 and plan["cost"] == total
+    offseason_fa.choose(lg.db, lg.league.id, lg.mine.id, b, "let_go")
+    assert offseason_fa.resign_all(lg.db, lg.league.id, lg.mine.id) == {"count": 2}
+    offseason_fa.close_window(lg.db, lg.league.id)
+    assert lg.contracts.active(a, 2027) is not None
+    assert lg.contracts.active(b, 2027) is not None
+
+
+def test_re_sign_all_inside_the_limit_needs_no_bank(lg, monkeypatch):
+    _expiring(lg, lg.mine, 2024, 3, level=60)
+    plan = offseason_fa.resign_all_plan(lg.db, lg.league.id, lg.mine.id)
+    assert plan["fits"] and plan["from_bank"] == 0
+
+
 def test_a_pay_cut_isnt_free_when_over_the_limit(lg, monkeypatch):
     pid = _expiring(lg, lg.mine, 2024, 3, level=40)
     lg.db.execute(

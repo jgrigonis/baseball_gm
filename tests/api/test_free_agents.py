@@ -418,3 +418,25 @@ def test_a_re_sign_call_returns_every_rows_fate_and_the_room(lg, client):
     d = r.json()
     assert d["rows"][pid] == {"choice": "let_go", "fate": "go"}
     assert "left_text" in d["money"]
+
+
+def test_re_sign_all_re_signs_every_expiring_deal(lg, client):
+    lg.db.execute(
+        "UPDATE leagues SET state = 'offseason' WHERE id = %s", (lg.league.id,)
+    )
+    ids = []
+    for name in ("One", "Two"):
+        pid = lg.factory.rated_player(lg.mine, lg.league, level=60, name=name).id
+        lg.contracts.insert_deal(
+            pid, lg.league.id, lg.mine.id, ct.Deal(5_000_000, 3, "standard"), 2024
+        )
+        ids.append(pid)
+    html = client.get(f"/leagues/{lg.league.id}/free-agents").text
+    assert 'id="fa-resign-all"' in html
+    assert '"count": 2' in html
+    r = client.post(f"/leagues/{lg.league.id}/expiring/resign-all")
+    assert r.status_code == 200
+    d = r.json()
+    assert d["count"] == 2
+    assert all(d["rows"][pid]["choice"] == "resign" for pid in ids)
+    assert d["all"] is None  # nothing left to re-sign

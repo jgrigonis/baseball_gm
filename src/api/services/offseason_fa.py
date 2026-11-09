@@ -289,6 +289,80 @@ def next_season_money(conn, league_id: str, team_id: str) -> dict | None:
     }
 
 
+def _all_plan(
+    conn, league_id: str, team_id: str, year: int, rows: list[dict]
+) -> dict | None:
+    """Re-signing every expiring deal at once (Josh, 2026-11-09): what it
+    costs next season, whether it fits under the owner's hard limit plus their
+    bank, and how much of the bank it takes. None when every deal is already
+    re-signed or nothing is expiring."""
+    if not rows or all(r["choice"] == "resign" for r in rows):
+        return None
+    cost = sum(r["deal"].salary for r in rows)
+    room = _next_room(conn, league_id, team_id, year, True, rows)
+    if room == float("inf"):
+        return {
+            "count": len(rows),
+            "cost": cost,
+            "fits": True,
+            "from_bank": 0,
+            "bank": 0,
+        }
+    bank = _bank(conn, league_id, team_id)
+    from_bank = max(0, int(cost - room))
+    return {
+        "count": len(rows),
+        "cost": cost,
+        "fits": from_bank <= bank,
+        "from_bank": from_bank,
+        "bank": bank,
+    }
+
+
+def resign_all_plan(conn, league_id: str, team_id: str) -> dict | None:
+    """For the Free Agents tab's Re-sign All button: shown only when the plan
+    fits. Adds the money as text for the warning."""
+    year = _year(conn, league_id)
+    plan = _all_plan(
+        conn, league_id, team_id, year, expiring(conn, league_id, year, [team_id])
+    )
+    if plan is None or not plan["fits"]:
+        return None
+    return plan | {
+        "cost_text": ct.format_salary(plan["cost"]),
+        "from_bank_text": ct.format_salary(plan["from_bank"]),
+        "bank_text": ct.format_salary(plan["bank"]),
+    }
+
+
+def resign_all(conn, league_id: str, team_id: str) -> dict:
+    """A GM re-signs every expiring deal at once, if the owner's hard limit
+    plus their bank covers all of them."""
+    with league_lock(conn, league_id):
+        if _league(conn, league_id)["state"] != "offseason":
+            raise OffseasonFAError("Expiring deals are decided in the offseason.")
+        year = _year(conn, league_id)
+        mine = expiring(conn, league_id, year, [team_id])
+        plan = _all_plan(conn, league_id, team_id, year, mine)
+        if plan is None:
+            return {"count": 0}
+        if not plan["fits"]:
+            raise OffseasonFAError(
+                "Your owner won't allow it: even dipping into their bank, next "
+                "season can't cover all of them. Re-sign them one at a time."
+            )
+        for r in mine:
+            conn.execute(
+                """INSERT INTO contract_choices (league_id, player_id, team_id, year, choice)
+                   VALUES (%s, %s, %s, %s, 'resign')
+                   ON CONFLICT (player_id, year) DO UPDATE
+                   SET choice = excluded.choice, team_id = excluded.team_id""",
+                (league_id, r["player_id"], team_id, year),
+            )
+        conn.commit()
+    return {"count": plan["count"]}
+
+
 def _keeps(
     conn, league_id: str, year: int, rows: list[dict], humans: set[str]
 ) -> set[str]:
