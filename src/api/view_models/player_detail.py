@@ -9,6 +9,7 @@ from datetime import date
 from src.player.injury_types import injury_label
 from src.api.grade_curves import role_to_grade
 from src.api.schemas import player_row_to_grades, skill_to_grade
+from src.api.view_models.player_history import player_history
 from src.api.view_models.player_cards import (
     compute_ratings,
     overall_grade as player_overall_grade,
@@ -320,6 +321,7 @@ def player_panel_data(
         "best_def_label": best_def_label,
         "energy": energy,
         "injury_log": inj_log,
+        "history": player_history(db, league_id, pid),
         "pitch_stats": pitch_stats,
         "bat_stats": bat_stats,
         "injured": raw_injury is not None,

@@ -222,3 +222,17 @@
  {% endfor %}
 </div>
 {% endif %}
+
+{# ── History: draft, trades, deals, releases (view_models/player_history.py).
+   Starts closed, like the game pop-in's play-by-play. #}
+{% if player.history %}
+<details class="pd-history">
+ <summary>History</summary>
+ {% for h in player.history %}
+ <div class="pd-history-row">
+   <span class="pd-history-year">{{ h.year }}</span>
+   <span>{{ h.text }}</span>
+ </div>
+ {% endfor %}
+</details>
+{% endif %}
