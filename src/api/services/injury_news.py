@@ -132,6 +132,8 @@ def take_injury_news(conn, gm_id: str) -> dict:
         "roster_moves": [_fields(n) for n in news if n["kind"] == "roster"],
         # Trade offers, answers and votes (src/api/services/trades.py)
         "trades": [_fields(n) for n in news if n["kind"] == "trade"],
+        # Settings votes: proposed, passed, rejected (settings_votes.py)
+        "settings": [_fields(n) for n in news if n["kind"] == "settings"],
     }
 
 

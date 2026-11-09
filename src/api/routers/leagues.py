@@ -30,9 +30,11 @@ from src.api.services import (
     league_settings,
     lobby_teams,
     personas,
+    settings_votes,
     sim_jobs,
     takeover,
 )
+from src.api.services import admin as admin_service
 from src.api.services.coach import coach_ctx
 from src.api.services.leave_league import leave_league
 from src.api.view_models.league_info import league_info
@@ -771,7 +773,7 @@ def league_page(
     db: DB,
     user: User,
     gm: GMOrViewer,
-    saved: bool = False,
+    saved: str = "",
     settings_error: str = "",
 ):
     """The league's settings and who runs each team, for GMs and viewers once
@@ -785,21 +787,30 @@ def league_page(
     )
     ctx["settings_next"] = f"/leagues/{league_id}/league"
     ctx["late_joins"] = bool(league["late_joins"])
-    # The commissioner of a one-person league can change most settings.
+    # The commissioner of a one-person league can change most settings; with
+    # more people they propose changes the others vote on.
     info = ctx.get("league_info") or league_info(db, league)
     ctx["league_info"] = info
-    if not ctx["is_viewer"] and league_settings.can_edit(
-        league, gm.get("id"), info["human_gms"]
-    ):
+    me = None if ctx["is_viewer"] else gm.get("id")
+    solo = league_settings.can_edit(league, me, info["human_gms"])
+    proposal = settings_votes.view(db, league, me) if not solo else None
+    ctx["proposal"] = proposal
+    multi = settings_votes.can_propose(league, me, info["human_gms"])
+    if solo or (multi and not proposal):
         ctx["solo_edit"] = {
+            "multi": multi,
             "season_choices": league_settings.season_choices(
                 league["state"], info["season_number"], league["num_seasons"]
             ),
             "sim_period_range": league_settings.SIM_PERIOD_RANGE,
+            "windows": {
+                k: admin_service.NUMBER_RANGES[k] for k in admin_service.WINDOW_KEYS
+            },
             "trades": is_blitz_style(league["mode"]),
-            "saved": saved,
             "error": settings_error,
         }
+    ctx["settings_error"] = settings_error
+    ctx["settings_toast"] = _SETTINGS_TOASTS.get(saved)
     # Every team's market size and climate: the Teams card.
     ctx["league_teams"] = team_facts.league_teams(
         db, league_id, None if ctx["is_viewer"] else gm.get("team_id")
@@ -856,6 +867,81 @@ def solo_settings(
             f"{back}?settings_error={quote(error)}", status_code=303
         )
     return RedirectResponse(f"{back}?saved=1", status_code=303)
+
+
+# What the League page says after a settings form or vote goes through.
+_SETTINGS_TOASTS = {
+    "1": "✓ Settings saved",
+    "proposed": "✓ Proposal sent to the league",
+    "voted": "✓ Vote counted",
+    "withdrawn": "✓ Proposal withdrawn",
+}
+
+
+def _settings_back(league_id: str, error: str | None, saved: str):
+    back = f"/leagues/{league_id}/league"
+    if error:
+        return RedirectResponse(
+            f"{back}?settings_error={quote(error)}", status_code=303
+        )
+    return RedirectResponse(f"{back}?saved={saved}", status_code=303)
+
+
+@router.post("/leagues/{league_id}/league/settings/propose")
+def propose_settings(
+    league_id: str,
+    db: DB,
+    gm: GM,
+    _active: ActiveLeague,
+    name: str = Form(...),
+    num_seasons: int = Form(...),
+    pace_control: str = Form(...),
+    decision_window_sec: int = Form(...),
+    draft_window_sec: int = Form(...),
+    lineup_window_sec: int = Form(...),
+    sim_period_days: int = Form(...),
+    weighted_schedule: bool = Form(False),
+    injuries_enabled: bool = Form(False),
+    trades_enabled: bool = Form(False),
+    trade_vote: bool | None = Form(None),
+    pick_trades: bool = Form(False),
+    reentry_enabled: bool = Form(False),
+):
+    """The commissioner of a league with more than one person proposes
+    settings changes for the others to vote on (settings_votes.py)."""
+    form = {
+        "name": name,
+        "num_seasons": num_seasons,
+        "pace_control": pace_control,
+        "decision_window_sec": decision_window_sec,
+        "draft_window_sec": draft_window_sec,
+        "lineup_window_sec": lineup_window_sec,
+        "sim_period_days": sim_period_days,
+        "weighted_schedule": weighted_schedule,
+        "injuries_enabled": injuries_enabled,
+        "trades_enabled": trades_enabled,
+        "pick_trades": pick_trades,
+        "reentry_enabled": reentry_enabled,
+    }
+    # The form only has Trade vote with three or more people in the league.
+    if trade_vote is not None:
+        form["trade_vote"] = trade_vote
+    error = settings_votes.propose(db, league_id, gm["id"], form)
+    return _settings_back(league_id, error, "proposed")
+
+
+@router.post("/leagues/{league_id}/league/settings/vote")
+def vote_settings(
+    league_id: str, db: DB, gm: GM, _active: ActiveLeague, yes: bool = Form(...)
+):
+    error = settings_votes.vote(db, league_id, gm["id"], yes)
+    return _settings_back(league_id, error, "voted")
+
+
+@router.post("/leagues/{league_id}/league/settings/withdraw")
+def withdraw_settings(league_id: str, db: DB, gm: GM, _active: ActiveLeague):
+    error = settings_votes.withdraw(db, league_id, gm["id"])
+    return _settings_back(league_id, error, "withdrawn")
 
 
 @router.get("/leagues/{league_id}/next-move", response_class=HTMLResponse)

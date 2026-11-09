@@ -368,6 +368,7 @@ class LeagueRepository:
         "trades_enabled",
         "pick_trades",
         "weighted_schedule",
+        "trade_vote",
     )
 
     def update_settings(self, league_id: str, settings: dict) -> None:

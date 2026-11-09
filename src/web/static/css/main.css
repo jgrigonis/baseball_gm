@@ -1960,3 +1960,16 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
 .solo-settings .toggle-row input { margin-top: 3px; accent-color: var(--amber); }
 .solo-settings-error { color: var(--red); font-size: 12px; }
 .solo-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* ── League page: a settings proposal waiting on votes (settings_votes.py) ── */
+.settings-vote { margin-bottom: 24px; border-color: var(--amber); }
+.settings-vote .card-body { display: flex; flex-direction: column; gap: 12px; }
+.vote-changes td { padding: 6px 8px; }
+.vote-old { color: var(--text-dim); text-decoration: line-through; }
+.vote-rule { margin: 0; }
+.vote-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; }
+.vote-mark { display: inline-block; width: 1.2em; text-align: center; font-weight: 700; }
+.vote-mark.yes { color: var(--green); }
+.vote-mark.no { color: var(--red); }
+.vote-mark.wait { color: var(--text-dim); }
+.settings-vote .solo-actions form { margin: 0; }
