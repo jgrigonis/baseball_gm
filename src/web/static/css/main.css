@@ -1418,19 +1418,19 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
 }
 
 /* Off-role ratings (hitting for a pitcher, pitching for a hitter): collapsed. */
-.pd-offrole { margin-bottom: 16px; }
-.pd-offrole > summary {
+.pd-offrole, .pd-history { margin-bottom: 16px; }
+.pd-offrole > summary, .pd-history > summary {
   list-style: none; cursor: pointer;
   font-family: var(--font-mono); font-size: 10px;
   letter-spacing: .12em; text-transform: uppercase;
   color: var(--text-dim);
   padding: 8px 0; border-top: 1px dashed var(--border);
 }
-.pd-offrole > summary::-webkit-details-marker { display: none; }
-.pd-offrole > summary::before { content: "▸ Show "; }
-.pd-offrole[open] > summary::before { content: "▾ Hide "; }
-.pd-offrole > summary:hover { color: var(--text); }
-.pd-offrole[open] > summary { margin-bottom: 8px; }
+.pd-offrole > summary::-webkit-details-marker, .pd-history > summary::-webkit-details-marker { display: none; }
+.pd-offrole > summary::before, .pd-history > summary::before { content: "▸ Show "; }
+.pd-offrole[open] > summary::before, .pd-history[open] > summary::before { content: "▾ Hide "; }
+.pd-offrole > summary:hover, .pd-history > summary:hover { color: var(--text); }
+.pd-offrole[open] > summary, .pd-history[open] > summary { margin-bottom: 8px; }
 
 .pd-skill-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; }
 .pd-skill-row {
@@ -1455,6 +1455,14 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
   font-family: var(--font-mono); font-size: 11px;
 }
 .pd-injury-row:last-child { border-bottom: none; }
+/* Player history (view_models/player_history.py) */
+.pd-history-row {
+  display: flex; gap: 12px; align-items: baseline;
+  padding: 4px 0; border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.pd-history-row:last-child { border-bottom: none; }
+.pd-history-year { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); flex: none; }
 /* What an injury left for good (injury_types.injury_effect) */
 .inj-effect { font-family: var(--font-mono); font-size: 11px; white-space: nowrap; }
 .inj-effect-down { color: var(--red); }
