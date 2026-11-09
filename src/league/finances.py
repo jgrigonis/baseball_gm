@@ -62,8 +62,9 @@ FAN_MULT_SPAN = 0.40
 SHARE_LOW = 0.45
 SHARE_SPAN = 0.30
 # Each home playoff game earns this share of the league's average revenue
-# (Josh, 2026-11-07: tripled from 1.2%, so October pays).
-PLAYOFF_GATE = 0.036
+# (Josh, 2026-11-07: tripled from 1.2%, so October pays; 2026-11-09: ten
+# times that again, so a deep run is worth more than a season of tickets).
+PLAYOFF_GATE = 0.36
 # Popularity money (Josh, 2026-11-07): fan interest above POPULARITY_FROM
 # earns extra revenue, rising evenly to POPULARITY_SHARE of the league's
 # average revenue at 100, so a popular team can carry a tax bill. It goes by

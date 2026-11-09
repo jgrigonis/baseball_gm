@@ -61,7 +61,7 @@ def test_fans_follow_winning():
 def test_profit_takes_off_payroll_tax_and_costs():
     assert fn.profit(250 * M, 160 * M, 5 * M, 50 * M) == 35 * M
     assert fn.playoff_gate(250 * M, 0) == 0
-    assert fn.playoff_gate(250 * M, 4) == 36 * M
+    assert fn.playoff_gate(250 * M, 4) == 360 * M
 
 
 def test_only_keen_fans_bring_in_popularity_money():
