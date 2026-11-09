@@ -82,7 +82,10 @@ def test_solo_commissioner_sees_the_edit_form(client, league):
     assert 'name="sim_period_days" id="ss-days" value="3" min="1" max="30"' in html
     assert 'type="checkbox" name="weighted_schedule" value="true" checked' in html
     # Trades on: Draft pick trades isn't greyed (it greys live when unticked).
-    assert 'class="toggle-row needs-trades"><input type="checkbox" name="pick_trades"' in html
+    assert (
+        'class="toggle-row needs-trades"><input type="checkbox" name="pick_trades"'
+        in html
+    )
 
 
 def test_saves_every_setting(client, db_conn, league):
@@ -204,4 +207,7 @@ def test_pick_trades_greyed_while_trades_are_off(client, db_conn, league):
 
     html = client.get(f"/leagues/{lg.id}/league").text
 
-    assert 'class="toggle-row needs-trades trade-off"><input type="checkbox" name="pick_trades"' in html
+    assert (
+        'class="toggle-row needs-trades trade-off"><input type="checkbox" name="pick_trades"'
+        in html
+    )
