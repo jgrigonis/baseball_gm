@@ -109,13 +109,13 @@
 </div>
 {% endfor %}
 
-{% if events %}
+{% if events or pbp %}
 <div style="margin-top:8px;">
   <div style="font-family:var(--font-mono);font-size:11px;font-weight:600;
               color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;">
     Game Log
   </div>
-  {% for e in events %}
+  {% for e in events if not pbp or e.event_type in ('lineup_set', 'pitcher_start') %}
   {% set is_mine = e.team_id == my_team_id %}
   <div style="border-bottom:1px solid var(--border);padding:4px 0;font-family:var(--font-mono);font-size:11px;
               {% if is_mine %}background:rgba(74,222,128,.04);{% endif %}">
@@ -146,6 +146,61 @@
     {% endif %}
   </div>
   {% endfor %}
+
+  {% if pbp %}
+  {# Closed until asked for: a whole game is a lot for the pop-in #}
+  <div data-pbp style="margin-top:14px;">
+  <div style="display:flex;align-items:center;gap:10px;">
+    <button type="button" class="btn btn-secondary as-btn-sm" aria-expanded="false"
+            onclick="var box=this.closest('[data-pbp]'),open=box.classList.toggle('pbp-open');this.setAttribute('aria-expanded',open);this.textContent=open?'Hide play-by-play':'Play-by-play';">Play-by-play</button>
+    <button type="button" class="btn btn-secondary as-btn-sm pbp-only-open" aria-pressed="false"
+            onclick="var on=this.closest('[data-pbp]').classList.toggle('pbp-scoring');this.setAttribute('aria-pressed',on);this.textContent=on?'All plays':'Scoring plays';">Scoring plays</button>
+  </div>
+  <div class="pbp-only-open">
+  <style>
+    .pbp-half { margin-top:12px; }
+    .pbp-head { display:flex; gap:8px; align-items:baseline; font-family:var(--font-mono); font-size:11px;
+                font-weight:600; padding:4px 0; border-bottom:1px solid var(--border); }
+    .pbp-row { display:flex; gap:8px; align-items:baseline; padding:3px 0; font-size:12px;
+               border-bottom:1px solid var(--border); }
+    .pbp-outs { font-family:var(--font-mono); font-size:9px; color:var(--muted); letter-spacing:1px;
+                min-width:26px; flex-shrink:0; }
+    .pbp-text { flex:1; min-width:0; }
+    .pbp-score { font-family:var(--font-mono); font-weight:700; flex-shrink:0; }
+    .pbp-ev { font-family:var(--font-mono); font-size:11px; color:var(--text-dim); }
+    .pbp-scoring .pbp-row:not(.scored), .pbp-scoring .pbp-half:not(.has-runs) { display:none; }
+    [data-pbp]:not(.pbp-open) .pbp-only-open { display:none; }
+  </style>
+  {% for h in pbp %}
+  {% set mine = h.team_id == my_team_id %}
+  <div class="pbp-half{% if h.runs %} has-runs{% endif %}">
+    <div class="pbp-head">
+      <span style="color:var(--text);min-width:86px;">{{ h.label }}</span>
+      <span style="flex:1;color:{% if mine %}var(--green){% else %}var(--text-dim){% endif %};">{{ h.team }}</span>
+      <span style="color:var(--text-dim);font-weight:400;">{{ h.runs }} R · {{ h.hits }} H</span>
+    </div>
+    {% for it in h['items'] %}
+    {% if it.kind == 'play' %}
+    <div class="pbp-row{% if it.scored %} scored{% endif %}">
+      <span class="pbp-outs" title="{{ it.outs }} out{% if it.outs != 1 %}s{% endif %}">{% for n in range(3) %}{% if n < it.outs %}●{% else %}○{% endif %}{% endfor %}</span>
+      <span class="pbp-text" style="color:{% if it.scored %}var(--text){% else %}var(--text-dim){% endif %};">{{ it.text }}</span>
+      {% if it.score %}
+      <span class="pbp-score" title="{{ game.away_mascot }}–{{ game.home_mascot }}"
+            style="color:{% if mine %}var(--green){% else %}var(--amber){% endif %};">{{ it.score }}</span>
+      {% endif %}
+    </div>
+    {% else %}
+    <div class="pbp-row pbp-ev">
+      <span class="pbp-outs"></span>
+      <span class="pbp-text" style="color:{% if it.event_type == 'injury' %}var(--red){% elif it.team_id == my_team_id %}var(--green){% else %}var(--amber){% endif %};">{{ it.text }}</span>
+    </div>
+    {% endif %}
+    {% endfor %}
+  </div>
+  {% endfor %}
+  </div>
+  </div>
+  {% endif %}
 </div>
 {% else %}
 <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim);margin-top:16px;">

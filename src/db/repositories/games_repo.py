@@ -214,6 +214,35 @@ class GameRepository:
         ).fetchall()
         return [dict(r) for r in rows]
 
+    def save_plays(self, game_id: str, season_id: str, plays: list[dict]) -> None:
+        """Keep a game's play-by-play (src/game/play_log.py) for the panel."""
+        self.conn.execute(
+            """INSERT INTO game_plays (game_id, season_id, plays)
+               VALUES (%s, %s, %s)
+               ON CONFLICT (game_id) DO UPDATE SET plays = EXCLUDED.plays""",
+            (game_id, season_id, Jsonb(plays)),
+        )
+
+    def get_plays(self, game_id: str) -> list[dict] | None:
+        """A game's play-by-play, or None when it was never kept or has
+        been cleared (only the current season's are kept)."""
+        row = self.conn.execute(
+            "SELECT plays FROM game_plays WHERE game_id = %s", (game_id,)
+        ).fetchone()
+        return row["plays"] if row else None
+
+    def clear_old_plays(self, league_id: str, keep_season_id: str) -> int:
+        """Delete the league's play-by-play from every season but this one."""
+        cur = self.conn.execute(
+            """DELETE FROM game_plays
+               WHERE season_id <> %s
+                 AND season_id IN (
+                     SELECT season_id FROM league_seasons WHERE league_id = %s
+                 )""",
+            (keep_season_id, league_id),
+        )
+        return cur.rowcount
+
     def get_series_games(self, series_id: str) -> list[dict]:
         """Return all games for a playoff series, ordered by date."""
         rows = self.conn.execute(

@@ -625,3 +625,45 @@ def test_code_holder_gets_join_button_between_seasons(client, db_conn, factory):
 
     assert "Join league →" in html
     assert page.status_code == 200
+
+
+def test_game_panel_shows_kept_play_by_play(client, db_conn, factory):
+    from src.db.repositories.games_repo import GameRepository
+
+    league, home = _league(db_conn, factory)
+    game = db_conn.execute(
+        "SELECT id, season_id FROM games WHERE home_team_id = %s", (home.id,)
+    ).fetchone()
+    GameRepository(db_conn).save_plays(
+        game["id"],
+        game["season_id"],
+        [
+            {
+                "i": 1,
+                "t": True,
+                "b": "A. Bat",
+                "r": "double",
+                "o": 0,
+                "sc": [1, 0],
+                "g": 0,
+                "s": ["C. Run"],
+            },
+        ],
+    )
+
+    html = client.get(f"/leagues/{league.id}/games/{game['id']}/panel").text
+
+    assert ">Play-by-play</button>" in html
+    assert "Top 1st" in html
+    assert "A. Bat doubles; C. Run scores." in html
+
+
+def test_game_panel_without_plays_keeps_the_game_log(client, db_conn, factory):
+    league, home = _league(db_conn, factory)
+    game_id = db_conn.execute(
+        "SELECT id FROM games WHERE home_team_id = %s", (home.id,)
+    ).fetchone()["id"]
+
+    html = client.get(f"/leagues/{league.id}/games/{game_id}/panel").text
+
+    assert "Play-by-play" not in html

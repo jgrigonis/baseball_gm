@@ -38,6 +38,9 @@ class GameEventLogger:
         self.game_id = game_id
         self._inning: int | None = None
         self._half: str | None = None
+        # Rows written so far: the play-by-play notes it with each play so
+        # substitutions and pitching changes land between the right plays.
+        self.count = 0
         # TODO should we put the GameEventRepository in init?
 
     def set_context(self, inning: int, half: str) -> None:
@@ -181,6 +184,7 @@ class GameEventLogger:
                     reason=reason,
                     detail=detail,
                 )
+            self.count += 1
         except psycopg.Error:
             # Never let a failed event insert crash a game; the savepoint
             # above has already undone it.

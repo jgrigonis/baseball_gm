@@ -18,6 +18,7 @@ from src.api.view_models.box_score import (
     used_batting_columns,
 )
 from src.api.view_models.line_score import headline, line_score
+from src.api.view_models import play_by_play
 from src.api.view_models.standouts import standouts
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.player_games import PlayerGameRepository
@@ -71,6 +72,10 @@ def game_panel(
         else:
             ed["detail_parsed"] = None
         events_out.append(ed)
+
+    # Play-by-play: kept for the league's current season only
+    plays = game_repo.get_plays(game_id)
+    pbp = play_by_play.build(plays, events_out, game) if plays else None
 
     def _team_rows(rows: list[dict], team_id: str, order) -> list[dict]:
         mine = [r for r in rows if r["team_id"] == team_id]
@@ -135,6 +140,7 @@ def game_panel(
                 for s in (scoreboard or {}).get("standouts", [])
             },
             "events": events_out,
+            "pbp": pbp,
             "my_team_id": my_team_id,
             "fmt_ip": fmt_ip,
             # Rookies and All-Stars of the season the game was played in.
