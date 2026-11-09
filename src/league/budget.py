@@ -4,10 +4,11 @@ The league's payroll cap and each owner's budget (Josh's decisions,
 2026-11-05 and 2026-11-06).
 
 The league sets one payroll cap a season, the same for every team: the
-league's average payroll the first season budgets are needed, then each
-season after, last season's average payroll plus CAP_GROWTH (Josh,
-2026-11-07: the cap follows the league), never lower than last season's cap. With no finished
-season to go by, it grows CAP_GROWTH a season. It's a soft cap: a team can go over
+average payroll teams have already committed to that season, plus
+CAP_GROWTH for the free agents and rookies still to come (Josh, 2026-11-07:
+the cap follows the league; 2026-11-09: this season's payrolls, not last
+season's), never lower than last season's cap. A cap further out than the
+next season grows CAP_GROWTH a season. It's a soft cap: a team can go over
 it, and pays a luxury tax on what's over when the season ends. Nothing is
 blocked; the game warns before a move that takes a team over.
 
@@ -62,10 +63,11 @@ HARD_MARGIN = 0.10
 
 
 def first_cap(payrolls: list[int]) -> int:
-    """The league's first cap: its average payroll."""
+    """The league's first cap: its average payroll plus CAP_GROWTH, like
+    every later one (next_cap)."""
     if not payrolls:
         return 0
-    avg = sum(payrolls) / len(payrolls)
+    avg = sum(payrolls) / len(payrolls) * (1 + CAP_GROWTH)
     return max(
         FIRST_CAP_ROUNDING,
         round(avg / FIRST_CAP_ROUNDING) * FIRST_CAP_ROUNDING,
@@ -73,10 +75,9 @@ def first_cap(payrolls: list[int]) -> int:
 
 
 def next_cap(cap: int, payrolls: list[int]) -> int:
-    """Next season's cap after a season with these final payrolls: their
-    average grown CAP_GROWTH (payrolls keep climbing, and a cap at last
-    season's average left most teams over it in a sim check), but never
-    below this season's cap."""
+    """A new season's cap from the payrolls teams have committed to it:
+    their average grown CAP_GROWTH (free agents and rookies still to sign),
+    but never below the last cap."""
     if not payrolls:
         return grown(cap)
     avg = sum(payrolls) / len(payrolls) * (1 + CAP_GROWTH)
