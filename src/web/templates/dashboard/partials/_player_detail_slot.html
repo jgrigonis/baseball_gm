@@ -85,7 +85,7 @@
  {% endif %}
  {% if player.rust %}
    <span class="badge badge-rust"
-         title="Rusty after his injury. Gone in about {{ player.rust.days }} days if he plays every day, about half that if he rests.">Rusty · {{ player.rust.text }} · {{ player.rust.days }}d</span>
+         title="Rusty after his injury: {{ player.rust.tip }} Gone in about {{ player.rust.days }} days if he plays every day, about half that if he rests.">Rusty · {{ player.rust.text }} · {{ player.rust.days }}d</span>
  {% endif %}
  {% if player.energy %}
    {% if player.energy.current < 40 %}

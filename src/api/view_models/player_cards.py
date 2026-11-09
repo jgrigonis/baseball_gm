@@ -387,20 +387,33 @@ def attach_roster_stats(players: list[dict], stats_map: dict) -> None:
             p["stat_sv"] = s["pitch_saves"] or 0
 
 
+# Hover names for skills the game shows under another word (as in news).
+_RUST_WORDS = {"strikes": "stuff", "accuracy": "control"}
+
+
 def rust_view(rust: dict | None) -> dict | None:
-    """A player's rust for display: {"text": "SP −4 · BR −2", "days": days
-    until it's gone if he plays every day}, or None when there's none."""
+    """A player's rust for display, or None when there's none:
+    {"text": "SP −4 · BR −2", "tip": "Speed (SP) is down 4 and Base
+    running (BR) is down 2.", "days": days until it's gone if he plays
+    every day}. The badge shows text; the hover spells it out with tip."""
     if not rust:
         return None
     parts = [
-        (SKILL_ABBREVIATIONS.get(k, k.upper()), round(v))
+        (k, SKILL_ABBREVIATIONS.get(k, k.upper()), round(v))
         for k, v in sorted(rust["skills"].items(), key=lambda kv: -kv[1])
         if round(v) >= 1
     ]
     if not parts:
         return None
+    phrases = [
+        f"{_RUST_WORDS.get(k, k.replace('_', ' ')).capitalize()} ({abbr}) is down {n}"
+        for k, abbr, n in parts
+    ]
+    if len(phrases) > 1:
+        phrases = [", ".join(phrases[:-1]) + " and " + phrases[-1]]
     return {
-        "text": " · ".join(f"{abbr} −{n}" for abbr, n in parts),
+        "text": " · ".join(f"{abbr} −{n}" for _, abbr, n in parts),
+        "tip": phrases[0] + ".",
         "days": rust["days_left"],
     }
 

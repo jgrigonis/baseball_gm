@@ -74,7 +74,7 @@ function pitcherGradesHtml(p) {
 // says which ratings are down and for how long.
 function rustTag(p) {
   if (!p.rust) return '';
-  const tip = `Rusty: ${p.rust.text}. Gone in about ${p.rust.days}d if he plays every day, about half that if he rests.`;
+  const tip = `Rusty after his injury: ${p.rust.tip} Gone in about ${p.rust.days}d if he plays every day, about half that if he rests.`;
   return ` <span class="lu-rust" title="${tip}">RUST</span>`;
 }
 
