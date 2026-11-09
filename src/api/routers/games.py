@@ -71,6 +71,9 @@ def game_panel(
                 ed["detail_parsed"] = None
         else:
             ed["detail_parsed"] = None
+        # Debug notes like "fatigue=tired" are for admins only
+        if not user.get("is_admin"):
+            ed["reason"] = play_by_play.strip_debug(ed.get("reason"))
         events_out.append(ed)
 
     # Play-by-play: kept for the league's current season only

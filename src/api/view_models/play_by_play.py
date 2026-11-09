@@ -7,6 +7,21 @@ pitching changes put between the plays they came between.
 
 from __future__ import annotations
 
+import re
+
+# Engine notes left on game log lines for debugging, like the
+# "— fatigue=tired" on a pitching change. Only admins see them.
+_DEBUG_NOTE = re.compile(r"\s*[—(,;]?\s*\b[a-z_]+=[\w.\-]+\)?")
+
+
+def strip_debug(text: str | None) -> str | None:
+    """A game log line without its key=value debug notes."""
+    if not text:
+        return text
+    cleaned = _DEBUG_NOTE.sub("", text).strip()
+    return cleaned.rstrip(" —,;") or text
+
+
 # Where a ball went: "flies out to center"
 _TO = {
     "p": "pitcher",
