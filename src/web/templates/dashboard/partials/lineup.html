@@ -236,6 +236,9 @@
     <div class="lu-col" data-pcol="bp">
       <div class="lu-col-hdr">
         <span class="lu-col-label" style="color:var(--text-dim);">Bullpen</span>
+        <span id="bp-count" title="Healthy relievers (not in the rotation, not on the IL)"
+              style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);
+                     margin-left:8px;"></span>
         <div class="spacer"></div>
         <button class="btn btn-secondary" onclick="autoAssignBullpen()"
                 style="font-size:11px;padding:4px 10px;margin-right:6px;">Auto Assign</button>
@@ -649,7 +652,11 @@ function updatePitchSeg() {
   const rc = document.getElementById('seg-rot-count');
   const bc = document.getElementById('seg-bp-count');
   if (rc) rc.textContent = inRot.size;
-  if (bc) bc.textContent = ALL_PITCHERS.filter(p => !inRot.has(p.player_id)).length;
+  // Healthy relievers only: not in the rotation and not on the IL.
+  const n = ALL_PITCHERS.filter(p => !inRot.has(p.player_id) && !p.injured).length;
+  if (bc) bc.textContent = n;
+  const bpc = document.getElementById('bp-count');
+  if (bpc) bpc.textContent = `${n} pitcher${n === 1 ? '' : 's'}`;
   document.querySelector('.lu-seg [data-pcol="rot"]')?.classList.toggle('unsaved', !pitchingSaved);
   document.querySelector('.lu-seg [data-pcol="bp"]')?.classList.toggle('unsaved', !bullpenSaved);
 }
