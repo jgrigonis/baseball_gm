@@ -95,16 +95,14 @@ def playoff_race(
     if len(teams) < PLAYOFF_TEAMS:
         return None
     mine = left.get(team_id, 0)
-    worst = _final(teams, team_id, left, me_best=False)
-    best = _final(teams, team_id, left, me_best=True)
-    div_ids = _division_of(confs, team_id)
-    if div_ids and _first_in(worst, div_ids) == team_id:
+    status = clinch_status(teams, team_id, confs, left)
+    if status == "division":
         name = _division_name(confs, team_id)
         # "Clinched the East", "Clinched North America East"
         return f"Clinched {name}" if " " in name else f"Clinched the {name}"
-    if team_id in _field_ids(worst, confs):
+    if status == "spot":
         return "Clinched a playoff spot"
-    if team_id not in _field_ids(best, confs):
+    if status == "out":
         return "Eliminated"
     if mine > LATE_GAMES:
         return None
@@ -132,6 +130,43 @@ def playoff_race(
         if back > 0
         else "Tied for a playoff spot"
     )
+
+
+def clinch_status(
+    teams: list[dict], team_id: str, confs, left: dict[str, int]
+) -> str | None:
+    """ "division" (clinched its division), "spot" (clinched a playoff spot),
+    "out" (eliminated) or None (still to be decided)."""
+    if len(teams) < PLAYOFF_TEAMS:
+        return None
+    worst = _final(teams, team_id, left, me_best=False)
+    div_ids = _division_of(confs, team_id)
+    if div_ids and _first_in(worst, div_ids) == team_id:
+        return "division"
+    if team_id in _field_ids(worst, confs):
+        return "spot"
+    if team_id not in _field_ids(_final(teams, team_id, left, me_best=True), confs):
+        return "out"
+    return None
+
+
+def clinch_marks(
+    db, league_id: str, season_id: str, teams: list[dict]
+) -> dict[str, str]:
+    """{team_id: "division" | "spot" | "out"} for the standings page's
+    markers, from ``teams`` (records, any order); undecided teams are left
+    out."""
+    if len(teams) < PLAYOFF_TEAMS:
+        return {}
+    ranked = _ranked(db, season_id, teams)
+    confs = divisions.load(db, league_id)
+    left = _games_left(db, season_id)
+    out = {}
+    for t in ranked:
+        status = clinch_status(ranked, t["team_id"], confs, left)
+        if status:
+            out[t["team_id"]] = status
+    return out
 
 
 def _final(teams, team_id, left, me_best: bool) -> list[dict]:

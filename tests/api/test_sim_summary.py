@@ -179,3 +179,18 @@ class TestMyDay:
             sim_summary.my_day(db_conn, s.league.id, s.season.id, None, "2025-04-01")
             == {}
         )
+
+
+class TestClinchStatus:
+    def test_marks_for_the_standings(self):
+        teams = _league()
+        left = {t["team_id"]: 5 for t in teams}
+
+        got = {
+            t["team_id"]: sim_summary.clinch_status(teams, t["team_id"], [], left)
+            for t in teams
+        }
+
+        assert got["t0"] == "spot"
+        assert got["t11"] == "out"
+        assert got["t7"] is None
