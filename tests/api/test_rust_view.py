@@ -12,7 +12,7 @@ def test_several_ratings_joined_biggest_first():
     r = rust_view({"skills": {"strikes": 3, "stamina": 5, "arm": 4}, "days_left": 9})
     assert r["text"] == "ST −5 · AR −4 · KK −3"
     assert r["tip"] == (
-        "Stamina (ST) is down 5, Arm (AR) is down 4 and Strikes (KK) is down 3."
+        "Stamina (ST) is down 5, Arm (AR) is down 4 and Stuff (KK) is down 3."
     )
 
 
@@ -24,3 +24,8 @@ def test_hitter_ratings_and_underscores():
 def test_nothing_left_is_none():
     assert rust_view(None) is None
     assert rust_view({"skills": {"speed": 0.3}, "days_left": 1}) is None
+
+
+def test_accuracy_reads_as_control():
+    r = rust_view({"skills": {"accuracy": 3}, "days_left": 2})
+    assert r["tip"] == "Control (AC) is down 3."

@@ -387,6 +387,10 @@ def attach_roster_stats(players: list[dict], stats_map: dict) -> None:
             p["stat_sv"] = s["pitch_saves"] or 0
 
 
+# Hover names for skills the game shows under another word (as in news).
+_RUST_WORDS = {"strikes": "stuff", "accuracy": "control"}
+
+
 def rust_view(rust: dict | None) -> dict | None:
     """A player's rust for display, or None when there's none:
     {"text": "SP −4 · BR −2", "tip": "Speed (SP) is down 4 and Base
@@ -402,7 +406,7 @@ def rust_view(rust: dict | None) -> dict | None:
     if not parts:
         return None
     phrases = [
-        f"{k.replace('_', ' ').capitalize()} ({abbr}) is down {n}"
+        f"{_RUST_WORDS.get(k, k.replace('_', ' ')).capitalize()} ({abbr}) is down {n}"
         for k, abbr, n in parts
     ]
     if len(phrases) > 1:
