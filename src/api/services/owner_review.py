@@ -51,14 +51,22 @@ def review_season(conn, league_id: str, season_id: str, year: int) -> dict[str, 
         ).fetchall()
         if r["team_id"]
     }
-    out = {}
+    # Every owner's raw verdict first, so each can be graded on the
+    # league's curve (owner_scoring.curved).
+    judged, raw = {}, {}
     for team_id, owner in by_team.items():
         gm = gms.get(team_id)
         season = facts.get(team_id)
         if not gm or not season or year < owner["since_year"]:
             continue
         scores = sc.score_dimensions(season, owner["traits"], money)
-        score = sc.season_score(scores, owner["weights"])
+        judged[team_id] = scores
+        raw[team_id] = sc.season_score(scores, owner["weights"])
+    curve = sc.curved(raw)
+    out = {}
+    for team_id, scores in judged.items():
+        owner, gm, season = by_team[team_id], gms[team_id], facts[team_id]
+        score = curve[team_id]
         who = gm["user_id"] or gm["persona_id"] or gm["id"]
         before, tenure = _tenure(conn, gm["id"], who, owner, year)
         rules = sc.firing_rules(owner.get("archetype"))
@@ -70,6 +78,7 @@ def review_season(conn, league_id: str, season_id: str, year: int) -> dict[str, 
         detail = {
             "who": who,
             "scores": scores,
+            "raw_score": round(raw[team_id], 4),
             "facts": season.as_dict(),
             "security_before": before,
             "would_fire": would_fire,

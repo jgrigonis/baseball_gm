@@ -74,13 +74,17 @@ def test_job_security():
     )
     # An impatient owner gives about one terrible season, a patient one two.
     assert sc.verdict(sc.next_security(sc.grace(0), -1, rash, False)) != "retained"
-    two = sc.next_security(
-        sc.next_security(sc.grace(100), -1, patient, False), -1, patient, False
-    )
-    assert two >= sc.HOT_SEAT
+    # A patient owner keeps a GM through two disasters (on the hot seat, but
+    # still in the job: the honeymoon), and one middling year off the hot
+    # seat after a single bad one.
+    rules = sc.firing_rules("The Long-Gamer")
+    one, v1, _ = sc.judge(sc.grace(100), -1, patient, False, sc.Tenure(), rules)
+    two, v2, _ = sc.judge(one, -1, patient, False, sc.Tenure(1, -1, one), rules)
+    assert v1 != "fired" and v2 != "fired"
+    assert one >= sc.HOT_SEAT
     # A title buys time.
     assert sc.next_security(40, 0, MID, True) == 40 + sc.TITLE_BONUS
-    assert sc.verdict(10) == "fired" and sc.verdict(20) == "warned"
+    assert sc.verdict(sc.FIRE - 1) == "fired" and sc.verdict(sc.FIRE) == "warned"
     assert sc.verdict(80) == "retained"
 
 
@@ -186,3 +190,12 @@ def test_owners_offer_jobs_they_think_the_gm_has_earned():
 
     text = jo.message("The Tycoon", 10, 80, True, random.Random(1))
     assert "anyway" in text or "glamour" in text
+
+
+def test_owners_grade_on_a_curve():
+    raw = {"a": 0.1, "b": 0.12, "c": 0.08, "d": -0.2}
+    c = sc.curved(raw)
+    # The worst season stands out, even though raw scores bunch together.
+    assert c["d"] < -0.6 and abs(sum(c.values())) < 1e-9
+    # Too few teams to grade against: raw.
+    assert sc.curved({"a": 0.3, "b": -0.1}) == {"a": 0.3, "b": -0.1}
