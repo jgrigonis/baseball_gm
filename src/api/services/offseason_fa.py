@@ -9,8 +9,9 @@ Offseason free agency (free agency phase 2, PR 3; Josh's decisions
      and unhappy players (mood "unhappy" or worse) go to market unless their
      team re-signs them now, at their price.
    - Everyone else is tendered (re-signed) by default unless their GM lets
-     them go, as long as the owner's hard limit has room for the raise
-     (Josh, 2026-11-07: re-signs answer to the owner).
+     them go, as long as the owner's hard limit has room for him next
+     season (Josh, 2026-11-07: re-signs answer to the owner; 2026-11-09:
+     judged on next season, when the expiring salaries are gone).
    A GM makes the call on the Free Agents tab (contract_choices). AI teams
    re-sign the best first while their owner's budget has room (market-bound
    players only from the 40-man) and let fringe players go rather than pay
@@ -196,9 +197,7 @@ def choose(
             )
         else:
             if choice == "resign":
-                refusal = BudgetRepository(conn).refusal(
-                    league_id, team_id, year, row["deal"].salary - row["old_salary"]
-                )
+                refusal = _resign_refusal(conn, league_id, team_id, year, mine, row)
                 if refusal:
                     raise OffseasonFAError(refusal)
             conn.execute(
@@ -213,14 +212,63 @@ def choose(
 
 
 def _room(conn, league_id: str, team_id: str, year: int, human: bool) -> float:
-    """What a team can add before its owner balks: up to the hard limit for
-    a person, the budget for an AI GM. Unlimited without budgets."""
+    """What a team can spend this season before its owner balks: up to the
+    hard limit for a person, the budget for an AI GM. Unlimited without
+    budgets."""
     if not human:
         return ai_free_agents._budget_room(conn, league_id, team_id, year)
     s = BudgetRepository(conn).standing(league_id, team_id, year)
     if s is None:
         return float("inf")
     return s["limit"] - s["spend"]
+
+
+def _next_room(
+    conn, league_id: str, team_id: str, year: int, human: bool, rows: list[dict]
+) -> float:
+    """What a team has for re-signs next season (Josh, 2026-11-09): this
+    season's room plus every expiring salary, which drops off when the deals
+    end. Each re-sign then costs his whole new salary, so letting a player go
+    leaves room for another, and a pay cut isn't free."""
+    room = _room(conn, league_id, team_id, year, human)
+    return room + sum(r["old_salary"] for r in rows if r["team_id"] == team_id)
+
+
+def _resign_refusal(
+    conn, league_id: str, team_id: str, year: int, mine: list[dict], row: dict
+) -> str | None:
+    """Why the owner won't let a person re-sign him now, or None: his new
+    salary, with the re-signs already called, has to fit next season's room."""
+    room = _next_room(conn, league_id, team_id, year, True, mine)
+    if room == float("inf"):
+        return None
+    called = sum(
+        r["deal"].salary
+        for r in mine
+        if r["choice"] == "resign" and r["player_id"] != row["player_id"]
+    )
+    left = room - called
+    if row["deal"].salary <= left:
+        return None
+    return (
+        f"Your owner won't allow it: next season you have "
+        f"{ct.format_salary(max(0, int(left)))} left under their limit, and he "
+        f"wants {ct.format_salary(row['deal'].salary)}. Let someone else go to "
+        f"make room."
+    )
+
+
+def next_season_money(conn, league_id: str, team_id: str) -> dict | None:
+    """For the Free Agents tab: what's left under the owner's limit next
+    season after the re-signs called so far. None without budgets."""
+    year = _year(conn, league_id)
+    rows = expiring(conn, league_id, year, [team_id])
+    room = _next_room(conn, league_id, team_id, year, True, rows)
+    if room == float("inf"):
+        return None
+    called = sum(r["deal"].salary for r in rows if r["choice"] == "resign")
+    left = int(room - called)
+    return {"left": left, "left_text": ct.format_salary(abs(left)), "over": left < 0}
 
 
 def _keeps(
@@ -236,18 +284,19 @@ def _keeps(
       market-bound players only from the 40-man, and lets a fringe player
       (C- or worse) go rather than pay him more than the minimum.
 
-    A raise is the new salary less the old one, which comes off."""
+    Each is judged on next season (Josh, 2026-11-09): the expiring salaries
+    drop off, and a re-sign costs his whole new salary (_next_room)."""
     keep: set[str] = set()
     room: dict[str, float] = {}
 
     def fits(r: dict, force: bool = False) -> bool:
         t = r["team_id"]
         if t not in room:
-            room[t] = _room(conn, league_id, t, year, t in humans)
-        cost = r["deal"].salary - r["old_salary"]
+            room[t] = _next_room(conn, league_id, t, year, t in humans, rows)
+        cost = r["deal"].salary
         if cost > room[t] and not force:
             return False
-        room[t] -= max(0, cost)
+        room[t] -= cost
         return True
 
     by_value = sorted(rows, key=lambda r: -role_rating(r["player"]))
@@ -373,8 +422,8 @@ def _why_gone(r: dict, human: bool) -> str:
     if r["market"] == "unhappy":
         return "couldn't keep him; he's unhappy and wants a fresh start"
     if human:
-        return "couldn't fit his raise under the owner's limit"
-    return "passed on his raise"
+        return "couldn't fit him under the owner's limit next season"
+    return "passed on him at his new price"
 
 
 def _news_departures(
@@ -444,14 +493,18 @@ def expiring_view(conn, league_id: str, team_id: str) -> list[dict]:
     """A GM's expiring deals for the Free Agents tab."""
     year = _year(conn, league_id)
     out = []
-    for r in expiring(conn, league_id, year, [team_id]):
+    rows = expiring(conn, league_id, year, [team_id])
+    keep = _keeps(conn, league_id, year, rows, {team_id})
+    for r in rows:
         d = r["deal"]
         if r["choice"] == "resign":
             fate = "resign"
         elif r["choice"] == "let_go" or r["market"]:
             fate = "go"
-        else:
+        elif r["player_id"] in keep:
             fate = "auto"
+        else:
+            fate = "no_room"
         out.append(
             {
                 "player_id": r["player_id"],

@@ -46,7 +46,18 @@
     players go to free agency unless you re-sign them now. The rest re-sign when the
     offseason runs unless you let them go, best first, as far as your owner's limit
     stretches; anyone it can't cover goes to free agency. Either way the price is the one shown.
+    Your owner judges re-signs on next season: these salaries come off, and each player
+    you keep costs his whole new salary, so letting one go makes room for another.
   </div>
+  {% if next_money %}
+  <div class="fa-note fa-room{% if next_money.over %} over{% endif %}">
+    {% if next_money.over %}
+    Next season, your re-signs so far put you <b>{{ next_money.left_text }} over</b> your owner's limit.
+    {% else %}
+    Next season, after your re-signs so far: <b>{{ next_money.left_text }}</b> left under your owner's limit.
+    {% endif %}
+  </div>
+  {% endif %}
   <div class="fa-list card" id="fa-expiring" style="margin-bottom:16px;"></div>
   {% endif %}
   {% if bidding %}
@@ -105,6 +116,9 @@
 .fa-fate { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); text-align: right; }
 .fa-fate.go { color: var(--red); }
 .fa-fate.resign { color: var(--green); }
+.fa-fate.no_room { color: var(--amber); }
+.fa-room b { color: var(--text); font-weight: 600; }
+.fa-room.over b { color: var(--red); }
 .fa-choice { display: flex; border: 1px solid var(--border); }
 .fa-choice button { font-family: var(--font-mono); font-size: 10px; padding: 4px 9px; background: var(--bg-2); border: none; border-right: 1px solid var(--border); color: var(--text-dim); cursor: pointer; }
 .fa-choice button:last-child { border-right: none; }
@@ -195,7 +209,8 @@ function row(p) {
 const FATE = {
   resign: 'Re-signing',
   go: 'Going to free agency',
-  auto: 'Re-signs if your owner can afford it',
+  auto: 'Re-signs when the offseason runs',
+  no_room: 'No room under your owner\'s limit',
 };
 function expiringRow(p) {
   const el = document.createElement('div');

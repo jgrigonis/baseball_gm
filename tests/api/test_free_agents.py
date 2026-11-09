@@ -386,3 +386,20 @@ def test_unsigned_undrafted_free_agents_go_back_into_the_draft_pool(lg):
     # Undrafted again: back to free agency.
     assert repo.release_undrafted(lg.league.id) == 1
     assert lg.status.get_status(young) == "free_agent"
+
+
+def test_the_offseason_tab_shows_next_seasons_room(lg, client):
+    lg.db.execute(
+        "UPDATE leagues SET state = 'offseason' WHERE id = %s", (lg.league.id,)
+    )
+    pid = lg.factory.rated_player(lg.mine, lg.league, level=60, name="Expiring").id
+    lg.contracts.insert_deal(
+        pid, lg.league.id, lg.mine.id, ct.Deal(5_000_000, 3, "standard"), 2024
+    )
+    html = client.get(f"/leagues/{lg.league.id}/free-agents").text
+    assert "Your expiring deals" in html
+    assert (
+        "left under your owner&#39;s limit" in html
+        or "left under your owner's limit" in html
+    )
+    assert '"fate": "auto"' in html

@@ -109,15 +109,59 @@ def test_closing_the_window_follows_the_gms_calls(lg):
     assert lg.contracts.active(young, 2027)["start_year"] == 2027
 
 
+def _deals(lg):
+    return {
+        r["player_id"]: r["deal"].salary
+        for r in offseason_fa.expiring(lg.db, lg.league.id, 2026)
+    }
+
+
+def _room_this_season(monkeypatch, room):
+    monkeypatch.setattr(ai_free_agents, "_budget_room", lambda *a: room)
+
+
 def test_a_default_tender_the_owner_cant_cover_goes_to_market(lg, monkeypatch):
-    monkeypatch.setattr(ai_free_agents, "_budget_room", lambda *a: 0)
     young = _expiring(lg, lg.mine, 2024, 3, level=75)
     kept = _expiring(lg, lg.mine, 2024, 3, level=75)
+    # Next season: this season's room plus both $5M salaries coming off,
+    # enough for one of them at his new price.
+    _room_this_season(monkeypatch, _deals(lg)[kept] - 10_000_000)
     offseason_fa.choose(lg.db, lg.league.id, lg.mine.id, kept, "resign")
     offseason_fa.close_window(lg.db, lg.league.id)
     # His own call stands; the default can't get past the owner.
     assert lg.contracts.active(kept, 2027) is not None
     assert lg.status.get_status(young) == "free_agent"
+
+
+def test_re_signs_are_judged_on_next_season(lg, monkeypatch):
+    a = _expiring(lg, lg.mine, 2024, 3, level=75)
+    b = _expiring(lg, lg.mine, 2024, 3, level=75)
+    deals = _deals(lg)
+    # Over the limit this season, but the $10M coming off covers one more.
+    _room_this_season(monkeypatch, max(deals.values()) - 10_000_000)
+    offseason_fa.choose(lg.db, lg.league.id, lg.mine.id, a, "resign")
+    with pytest.raises(OffseasonFAError, match="left under their limit"):
+        offseason_fa.choose(lg.db, lg.league.id, lg.mine.id, b, "resign")
+    money = offseason_fa.next_season_money(lg.db, lg.league.id, lg.mine.id)
+    assert money["left"] == max(deals.values()) - deals[a]
+    fates = {
+        r["player_id"]: r["fate"]
+        for r in offseason_fa.expiring_view(lg.db, lg.league.id, lg.mine.id)
+    }
+    assert fates == {a: "resign", b: "no_room"}
+    # Letting the first go makes room for the second.
+    offseason_fa.choose(lg.db, lg.league.id, lg.mine.id, a, "let_go")
+    offseason_fa.choose(lg.db, lg.league.id, lg.mine.id, b, "resign")
+
+
+def test_a_pay_cut_isnt_free_when_over_the_limit(lg, monkeypatch):
+    pid = _expiring(lg, lg.mine, 2024, 3, level=40)
+    lg.db.execute(
+        "UPDATE player_contracts SET salary = 40000000 WHERE player_id = %s", (pid,)
+    )
+    _room_this_season(monkeypatch, -40_000_000)  # $40M over this season
+    with pytest.raises(OffseasonFAError):
+        offseason_fa.choose(lg.db, lg.league.id, lg.mine.id, pid, "resign")
 
 
 def test_ai_teams_tender_the_best_first_while_the_budget_lasts(lg, monkeypatch):
