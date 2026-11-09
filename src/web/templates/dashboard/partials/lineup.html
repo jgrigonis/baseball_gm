@@ -15,11 +15,6 @@
             style="margin-left:8px;">Rebuild All</button>
     <button class="btn btn-secondary" id="save-all-btn" onclick="saveAll()"
             style="margin-left:8px;">Save All Lineups</button>
-    <a id="schedule-btn" href="/leagues/{{ league_id }}/{% if is_playoffs %}playoffs{% else %}schedule{% endif %}"
-       class="btn btn-secondary"
-       style="margin-left:8px;border-color:var(--green);color:var(--green);display:none;">
-      Go to {% if is_playoffs %}Playoffs{% else %}Schedule{% endif %} →
-    </a>
   </div>
 
   {# Tab toggles #}
@@ -620,7 +615,6 @@ let savedBullpen = null;  // {player_id: role}
 let rosterFilter = { type: 'hitter', health: 'healthy' };
 
 /* ── Save flags ─────────────────────────────────────────────────────────────── */
-let battingSaved  = false;
 let pitchingSaved = false;
 let bullpenSaved  = false;
 
@@ -914,7 +908,6 @@ function updateBattingBanner() {
   const banner = document.getElementById('bat-unsaved-banner');
   if (!banner) return;
   const dirty = unsavedHands();
-  if (dirty.length) battingSaved = false;
   banner.style.display = dirty.length ? 'flex' : 'none';
   // Revert only when there's a saved lineup to go back to
   const revert = document.getElementById('bat-revert-btn');
@@ -925,7 +918,7 @@ function updateBattingBanner() {
       ? '⚠ vs RHP and vs LHP lineups not saved'
       : dirty.length ? `⚠ vs ${HAND_LABEL[dirty[0]]} lineup not saved` : '';
   }
-  updateScheduleBtn();
+  updateHeaderGlow();
 }
 
 function clearLineup() {
@@ -1145,10 +1138,9 @@ async function saveBatting() {
     if (errors.length) {
       showFeedback('✗ ' + errors.join('; '), 'var(--red)');
     } else {
-      battingSaved = true;
       const which = hands.length === 2 ? 'vs RHP and vs LHP' : `vs ${HAND_LABEL[hands[0]]}`;
       showFeedback(`✓ Batting saved (${which})`, 'var(--green)');
-      updateScheduleBtn();
+      updateHeaderGlow();
     }
   } catch(e) { showFeedback('✗ Network error', 'var(--red)'); }
   finally { btn.disabled = false; btn.textContent = 'Save Batting'; updateSaveBattingBtn(); }
@@ -1793,22 +1785,14 @@ async function rebuildAll() {
     await rebuildLineup();
     rebuildRotation();
     autoAssignBullpen();
-    updateScheduleBtn();
+    updateHeaderGlow();
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Rebuild All'; }
   }
 }
 
-/* ── Go to schedule ──────────────────────────────────────────────────────────── */
-function updateScheduleBtn() {
-  const btn = document.getElementById('schedule-btn');
-  syncPitchingSaved();
-  if (btn) btn.style.display = (battingSaved && pitchingSaved && bullpenSaved) ? 'inline-flex' : 'none';
-  updateHeaderGlow();
-}
-
 /* ── Header glow ─────────────────────────────────────────────────────────────── */
-// Same green as Go to Schedule. Save All Lineups glows while any unsaved bar
+// Green (.lu-glow). Save All Lineups glows while any unsaved bar
 // is up; Rebuild All glows while something has a hole Rebuild All would fill.
 function needsRebuild() {
   const ok = p => p && !sitsOut(p);
@@ -1827,6 +1811,7 @@ function needsRebuild() {
   return ALL_PITCHERS.some(p => !sitsOut(p) && !inRot.has(p.player_id) && !bullpen[p.player_id]);
 }
 function updateHeaderGlow() {
+  syncPitchingSaved();
   const anyBar = unsavedHands().length > 0 || !pitchingSaved || !bullpenSaved;
   document.getElementById('save-all-btn')?.classList.toggle('lu-glow', anyBar);
   document.getElementById('rebuild-all-btn')?.classList.toggle('lu-glow', needsRebuild());
@@ -1885,7 +1870,7 @@ function updatePitchingBanners() {
   if (rotRevert) rotRevert.style.display = savedRot     ? 'inline-flex' : 'none';
   if (bpRevert)  bpRevert.style.display  = savedBullpen ? 'inline-flex' : 'none';
   updatePitchSeg();
-  updateScheduleBtn();
+  updateHeaderGlow();
 }
 
 /* ── Feedback ────────────────────────────────────────────────────────────────── */
@@ -1908,7 +1893,7 @@ function saveToStorage() {
       rosterFilter, activeTab, pitchCol,
       rosterSort: { s1, s2, s3 },
       bullpenSort: { s1: bs1, s2: bs2 },
-      battingSaved, pitchingSaved, bullpenSaved,
+      pitchingSaved, bullpenSaved,
     }));
   } catch(e) {}
 }
@@ -2004,7 +1989,6 @@ if (stored) {
   if (stored.bullpen && typeof stored.bullpen === 'object' && Object.keys(SAVED_BP).length > 0) {
     bullpen = stored.bullpen;
   }
-  if (stored.battingSaved)  battingSaved  = true;
   if (stored.pitchingSaved) pitchingSaved = true;
   if (stored.bullpenSaved)  bullpenSaved  = true;
   if (stored.pitchCol === 'bp') showPitchCol('bp');

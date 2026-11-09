@@ -10,7 +10,6 @@ from src.api.view_models.player_cards import attach_injuries, attach_moods, line
 from src.db.repositories.bullpen_roles_repo import BullpenRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.injury_repo import InjuryRepository
-from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.lineup_preference_repo import LineupPreferenceRepository
 from src.db.repositories.player_games import PlayerGameRepository
 from src.db.repositories.player_repo import PlayerRepository
@@ -94,8 +93,6 @@ def lineup_context(db, league_id: str, gm: dict, season_id: str | None) -> dict:
         rust,
     )
     attach_rusty_grades(pitchers, rows, rust)
-    # Tell template whether we're in playoffs so the nav button points the right way
-    league_row = LeagueRepository(db).get_by_id(league_id)
     profile = ManagerProfile.from_row(GMRepository(db).get_profile(gm["id"]))
     return {
         "hitters": hitters,
@@ -105,7 +102,6 @@ def lineup_context(db, league_id: str, gm: dict, season_id: str | None) -> dict:
         "saved_rotation": saved_rotation,
         "saved_bullpen": saved_bullpen,
         "saved_rotation_pointer": saved_rotation_pointer,
-        "is_playoffs": league_row and league_row["state"] == "playoffs",
         # How many starters Auto-fill and Rebuild put in the rotation (Strategy tab)
         "rotation_size": profile.rotation_size,
         # Auto builds leave rusty players out (Strategy tab)
