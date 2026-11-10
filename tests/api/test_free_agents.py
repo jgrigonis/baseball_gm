@@ -518,3 +518,40 @@ def test_re_sign_all_re_signs_every_expiring_deal(lg, client):
     assert d["count"] == 2
     assert all(d["rows"][pid]["choice"] == "resign" for pid in ids)
     assert d["all"] is None  # nothing left to re-sign
+
+
+def _icon_seasons(lg, pid, team):
+    from src.api.services import icons
+
+    for i in range(icons.ICON_SEASONS):
+        s = lg.factory.season(year=2010 + i)
+        lg.db.execute(
+            """INSERT INTO player_season_stats
+                 (player_id, season_id, team_id, bat_games_played)
+               VALUES (%s, %s, %s, 100)""",
+            (pid, s.id, team.id),
+        )
+
+
+def test_expiring_icons_carry_the_icon_tag(lg, client):
+    lg.db.execute(
+        "UPDATE leagues SET state = 'offseason' WHERE id = %s", (lg.league.id,)
+    )
+    star = lg.factory.rated_player(lg.mine, lg.league, level=85, name="Legend").id
+    lg.contracts.insert_deal(
+        star, lg.league.id, lg.mine.id, ct.Deal(5_000_000, 3, "standard"), 2024
+    )
+    _icon_seasons(lg, star, lg.mine)
+    html = client.get(f"/leagues/{lg.league.id}/free-agents").text
+    assert '"icon_seasons": 5' in html
+    assert "${iconTag(p)}" in html
+
+
+def test_our_icon_in_the_pool_carries_the_icon_tag(lg, client):
+    star = lg.factory.rated_player(
+        lg.mine, lg.league, level=85, status="free_agent", name="Legend"
+    ).id
+    lg.db.execute("DELETE FROM team_players WHERE player_id = %s", (star,))
+    _icon_seasons(lg, star, lg.mine)
+    html = client.get(f"/leagues/{lg.league.id}/free-agents").text
+    assert '"icon_seasons": 5' in html
