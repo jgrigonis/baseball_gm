@@ -12,7 +12,7 @@
       {% if f.message %}<span class="fired-quote">“{{ f.message }}”</span>{% endif %}
     {% endif %}
     {% if can_take_over %}
-      {{ open_team_count }} owner{{ "s" if open_team_count != 1 }} {{ "have" if open_team_count != 1 else "has" }} offered you a job. You can take one until Opening Day.
+      {{ open_team_count }} owner{{ "s" if open_team_count != 1 }} {{ "have" if open_team_count != 1 else "has" }} offered you a job. You have until Opening Day to take {{ "one of these jobs" if open_team_count != 1 else "it" }}, otherwise you'll have to wait until next offseason.
     {% elif fired_reentry %}
       Between seasons, owners around the league can offer you a job. Until then, you're watching.
     {% else %}
