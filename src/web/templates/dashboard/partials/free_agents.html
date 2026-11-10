@@ -39,25 +39,6 @@
 </div>
 
 <div class="tab-body">
-  {% if expiring %}
-  <div class="fa-section-title">Your expiring deals</div>
-  <div class="fa-note">
-    These deals end with this season. Veterans ({{ market_seasons }}+ seasons) and unhappy
-    players go to free agency unless you re-sign them now. The rest re-sign when the
-    offseason runs unless you let them go, best first, as far as your owner's limit
-    stretches; anyone it can't cover goes to free agency. Either way the price is the one shown.
-    Your owner judges re-signs on next season: these salaries come off, and each player
-    you keep costs his whole new salary, so letting one go makes room for another.
-    Players you re-sign yourself can go past the limit, paid from your owner's bank,
-    but the losses will cost you with your owner.
-  </div>
-  <div class="fa-note fa-room" id="fa-room" style="display:none;"></div>
-  <div class="fa-all" id="fa-resign-all-wrap" style="display:none;">
-    <button type="button" class="btn btn-secondary as-btn-sm" id="fa-resign-all"
-            title="Re-sign every expiring deal at the prices shown">Re-sign all my expiring deals</button>
-  </div>
-  <div class="fa-list card" id="fa-expiring" style="margin-bottom:16px;"></div>
-  {% endif %}
   {% if bidding %}
   <div class="fa-note fa-open">
     Free agency is open. Bid a salary and a number of seasons; each player picks one bid
@@ -81,70 +62,13 @@
   {% endif %}
 </div>
 
-<style>
-.fa-filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-.fa-seg { display: flex; border: 1px solid var(--border); }
-.fa-seg-btn {
-  font-family: var(--font-mono); font-size: 10px; letter-spacing: .04em;
-  text-transform: uppercase; padding: 4px 9px;
-  background: var(--bg-2); border: none; border-right: 1px solid var(--border);
-  color: var(--text-dim); cursor: pointer;
-}
-.fa-seg-btn:last-child { border-right: none; }
-.fa-seg-btn:hover { color: var(--text); background: var(--bg-3); }
-.fa-seg-btn.active { color: var(--amber); background: var(--amber-lo); }
-.fa-list { padding: 0; }
-.fa-row {
-  display: grid; grid-template-columns: 28px 36px minmax(0, 1fr) auto;
-  gap: 0 8px; align-items: center; padding: 7px 10px;
-  border-bottom: 1px solid var(--border); cursor: pointer;
-}
-.fa-row:last-child { border-bottom: none; }
-.fa-season { font-family: var(--font-mono); font-size: 10px; color: var(--text-hi); margin-top: 2px; display: flex; gap: 8px; flex-wrap: wrap; }
-.fa-season .gl { color: var(--muted); }
-.fa-row:hover { background: var(--bg-3); }
-.fa-ask { font-family: var(--font-mono); font-size: 11px; color: var(--text); text-align: right; white-space: nowrap; }
-.fa-ask small { display: block; color: var(--text-dim); font-size: 10px; }
-.fa-right { display: flex; align-items: center; gap: 10px; }
-.fa-sign { font-size: 10px; padding: 4px 10px; border-color: var(--green); color: var(--green); }
-.fa-claim { font-size: 10px; padding: 4px 10px; border-color: var(--amber); color: var(--amber); }
-.fa-claimed { font-size: 10px; padding: 4px 10px; border-color: var(--green); color: var(--green); background: var(--green-dim); }
-.fa-waiver { color: var(--amber); }
-.fa-section-title { font-family: var(--font-sans); font-weight: 700; font-size: 14px; color: var(--text-hi); margin: 2px 0 4px; }
-.fa-note { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); line-height: 1.5; margin: 0 0 8px; max-width: 640px; }
-.fa-open { color: var(--amber); }
-.fa-fate { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); text-align: right; }
-.fa-fate.go { color: var(--red); }
-.fa-fate.resign { color: var(--green); }
-.fa-fate.no_room { color: var(--amber); }
-.fa-all { margin: 0 0 10px; }
-.fa-room b { color: var(--text); font-weight: 600; }
-.fa-room.over b { color: var(--red); }
-.fa-choice { display: flex; border: 1px solid var(--border); }
-.fa-choice button { font-family: var(--font-mono); font-size: 10px; padding: 4px 9px; background: var(--bg-2); border: none; border-right: 1px solid var(--border); color: var(--text-dim); cursor: pointer; }
-.fa-choice button:last-child { border-right: none; }
-.fa-choice button.on.resign { color: var(--green); background: var(--green-dim); }
-.fa-choice button.on.go { color: var(--red); background: var(--red-dim); }
-.fa-bids { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); }
-.fa-empty { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); padding: 12px 0; max-width: 520px; line-height: 1.5; }
-@media (max-width: 700px) {
-  .fa-row { grid-template-columns: 26px 34px minmax(0, 1fr) auto; padding: 8px; }
-  .fa-right { flex-direction: column; align-items: flex-end; gap: 4px; }
-  .fa-sign, .fa-claim, .fa-claimed { font-size: 11px; padding: 6px 11px; }
-  .fa-choice button { font-size: 11px; padding: 6px 10px; }
-  .fa-exp .fa-right { grid-column: 1 / -1; flex-direction: row; justify-content: space-between; align-items: center; margin-top: 6px; }
-  .fa-exp .fa-ask { text-align: left; }
-  .fa-exp .fa-fate { text-align: left; }
-  #fa-q { width: 100% !important; }
-}
-</style>
+{% include "dashboard/partials/_fa_style.html" %}
 
 <script>
 (function () {
 const FA = {{ players | tojson }};
 const CAN_SIGN = {{ 'true' if can_sign else 'false' }};
 const BIDDING = {{ 'true' if bidding else 'false' }};
-const EXPIRING = {{ expiring | tojson }};
 let faTypeVal = '';
 
 function shown() {
@@ -206,143 +130,6 @@ function row(p) {
   });
   return el;
 }
-
-const FATE = {
-  resign: 'Re-signing',
-  go: 'Going to free agency',
-  auto: 'Re-signs when the offseason runs',
-  no_room: 'No room under your owner\'s limit',
-};
-// The season just played, on its own line under the name (Josh, 2026-11-09).
-function seasonLineHtml(p) {
-  const bit = (v, label, tip) => `<span title="${tip}">${v}<span class="gl"> ${label}</span></span>`;
-  let parts;
-  if (p.player_type === 'pitcher') {
-    if (p.stat_ip == null) return '<div class="fa-season">No games this season</div>';
-    parts = [
-      bit(`${p.stat_w}-${p.stat_l}`, 'W-L', 'Wins and losses'),
-      bit(p.stat_era, 'ERA', 'Earned run average'),
-      bit(p.stat_ip, 'IP', 'Innings pitched'),
-      p.stat_gs ? bit(p.stat_gs, 'GS', 'Games started') : bit(p.stat_g, 'G', 'Games pitched'),
-    ];
-    if (p.stat_sv) parts.push(bit(p.stat_sv, 'SV', 'Saves'));
-  } else {
-    if (p.stat_avg == null) return '<div class="fa-season">No at-bats this season</div>';
-    parts = [
-      bit(p.stat_avg.replace(/^0\./, '.'), 'AVG', 'Batting average'),
-      bit(p.stat_hr, 'HR', 'Home runs'),
-      bit(p.stat_rbi, 'RBI', 'Runs batted in'),
-    ];
-    if (p.stat_ops) parts.push(bit(p.stat_ops, 'OPS', 'On-base plus slugging'));
-    parts.push(bit(p.stat_g, 'G', 'Games played'));
-  }
-  return `<div class="fa-season">${parts.join('')}</div>`;
-}
-function expiringRow(p) {
-  const el = document.createElement('div');
-  el.className = 'fa-row fa-exp';
-  const isPitcher = p.player_type === 'pitcher';
-  const trail = [posLabel(p.position) || '?', `Age ${p.age}`, `${p.seasons} season${p.seasons === 1 ? '' : 's'}`];
-  if (p.kind === 'arbitration') {
-    // Which of his team-controlled seasons it is (Josh, 2026-11-09).
-    const n = p.arb_season ? ` (${p.arb_season}/${p.arb_of})` : '';
-    const tip = p.arb_season
-      ? `Arbitration, season ${p.arb_season} of ${p.arb_of}: one season at ${p.arb_share}% of his ${p.market_salary_text} market price. ` +
-        `He can't leave while he's under team control; he reaches free agency after season ${p.arb_of}.`
-      : 'Arbitration: one season at part of his market price, more each season until he reaches free agency';
-    trail.push(`<span class="fa-waiver" title="${tip}">Arbitration${n}</span>`);
-  }
-  if (p.market === 'veteran') trail.push(`<span class="fa-waiver" title="${p.seasons} seasons under contract: he can test free agency">Free agent if not re-signed</span>`);
-  if (p.market === 'unhappy') trail.push(`<span class="fa-waiver" title="He's unhappy here and will test free agency">Unhappy · free agent if not re-signed</span>`);
-  // Lit: what happens if you do nothing more (no room goes to free agency too).
-  const on = c => (p.fate === c || (c === 'go' && p.fate === 'no_room') ? ` on ${c}` : '');
-  el.innerHTML = `
-    <span class="${gradeClass(p.overall)} lu-grade">${p.overall}</span>
-    ${faceImgHtml(p, false)}
-    <div style="min-width:0;">
-      <div class="lu-name"${p.injured ? ' style="color:var(--red);"' : ''}>${p.first_name} ${p.last_name}${ilTag(p)}${iconTag(p)}${wantsTradeTag(p)}${nameTrailHtml(p, trail, '')}</div>
-      ${seasonLineHtml(p)}
-      ${isPitcher ? `<div class="lu-skills">${pitcherGradesHtml(p)}</div>` : hitterGradesHtml(p, null)}
-    </div>
-    <div class="fa-right">
-      <div class="fa-ask" title="His new deal from next season (now ${p.old_salary_text})">${p.salary_text}<small>${p.years} yr${p.years === 1 ? '' : 's'}${p.arb_share ? ` · ${p.arb_share}% of ${p.market_salary_text}` : ''}</small>
-        <div class="fa-fate ${p.fate}">${FATE[p.fate]}</div></div>
-      <div class="fa-choice">
-        <button class="resign${on('resign')}" data-c="resign" title="Re-sign him now at this price">Re-sign</button>
-        <button class="go${on('go')}" data-c="let_go" title="Let him go to free agency">Let go</button>
-      </div>
-    </div>`;
-  el.addEventListener('click', e => {
-    const b = e.target.closest('.fa-choice button');
-    if (b) {
-      // Pressing the call already made takes it back.
-      const c = b.dataset.c;
-      expiringChoice(p.player_id, p.choice === c ? null : c);
-      return;
-    }
-    openPlayerPanel(p.player_id);
-  });
-  return el;
-}
-const exBox = document.getElementById('fa-expiring');
-function roomLine(m) {
-  const el = document.getElementById('fa-room');
-  if (!el) return;
-  if (!m) { el.style.display = 'none'; return; }
-  el.classList.toggle('over', m.over);
-  el.innerHTML = m.over
-    ? `Over your owner's limit next season: <b>${m.left_text}</b>. They'll pay that from their bank, ` +
-      `and can spend up to ${m.bank_left_text} more from it to keep your own players.`
-    : `Room left next season: <b>${m.left_text}</b>. ` +
-      `Your owner will also spend up to ${m.bank_left_text} from their bank to keep your own players.`;
-  el.style.display = '';
-}
-function renderExpiring() {
-  if (exBox) exBox.replaceChildren(...EXPIRING.map(expiringRow));
-}
-// Re-sign All (Josh, 2026-11-09): shown only when the owner's limit plus
-// their bank covers every expiring deal; warns first if it takes bank money.
-let ALL = {{ resign_all | default(none) | tojson }};
-const allBtn = document.getElementById('fa-resign-all');
-function allButton(plan) {
-  ALL = plan;
-  if (allBtn) allBtn.parentElement.style.display = plan ? '' : 'none';
-}
-if (allBtn) allBtn.addEventListener('click', async () => {
-  if (!ALL) return;
-  const n = ALL.count === 1 ? '1 player' : `${ALL.count} players`;
-  if (ALL.from_bank > 0) {
-    const ok = await gmConfirm({
-      title: `Re-sign all ${n}?`,
-      lines: [
-        `Re-signing everyone costs ${ALL.cost_text} next season.`,
-        `That's ${ALL.from_bank_text} over your owner's limit, paid from their bank. ` +
-        `They have ${ALL.bank_text} in it.`,
-      ],
-      warn: 'Your owner will feel the losses.',
-      ok: 'Re-sign all',
-    });
-    if (!ok) return;
-  }
-  let d;
-  try { d = await postJson('/leagues/{{ league_id }}/expiring/resign-all', {}); }
-  catch (e) { gmAlert(e.message); return; }
-  if (!window.faExpiringUpdate(d)) reloadTab();
-  gmToast(`Re-signed ${n}`, 'ok');
-});
-renderExpiring();
-roomLine({{ next_money | default(none) | tojson }});
-allButton(ALL);
-// After a Re-sign or Let go (shell.html expiringChoice): the new calls and
-// fates, without reloading the tab, so the list stays where it was.
-window.faExpiringUpdate = function (d) {
-  if (!exBox || !exBox.isConnected || !d || !d.rows) return false;
-  EXPIRING.forEach(p => Object.assign(p, d.rows[p.player_id] || {}));
-  renderExpiring();
-  roomLine(d.money);
-  allButton(d.all || null);
-  return true;
-};
 
 function faRender() {
   const box = document.getElementById('fa-list');

@@ -1,0 +1,238 @@
+{# templates/dashboard/partials/expiring.html
+  The GM's expiring deals (routers/free_agents.py expiring_tab), from the
+  champion's crowning until the offseason runs: re-sign or let go, Re-sign
+  All, and the room left under the owner's limit next season. Its own tab
+  so the sorts work on it (Josh, 2026-11-10); the rows match Free Agents.
+#}
+<div class="tab-head">
+  <div class="page-header" style="margin-bottom:0;">
+    <h1 class="page-title">Expiring Deals</h1>
+    {% if expiring %}
+    <span class="page-subtitle" style="margin-left:8px;">
+      {{ expiring | length }} {{ 'deal ends' if expiring | length == 1 else 'deals end' }} with this season
+    </span>
+    {% endif %}
+  </div>
+  {% if expiring %}
+  <div class="fa-filters">
+    <div class="fa-seg">
+      <button class="fa-seg-btn active" data-type="" onclick="exType(this)">All</button>
+      <button class="fa-seg-btn" data-type="hitter" onclick="exType(this)">Hit</button>
+      <button class="fa-seg-btn" data-type="pitcher" onclick="exType(this)">Pit</button>
+    </div>
+    <select id="ex-pos" onchange="exRender()" style="width:auto;font-size:11px;">
+      <option value="">Any position</option>
+      {% for pos in ['C','1B','2B','3B','SS','LF','CF','RF','DH'] %}<option value="{{ pos }}">{{ pos }}</option>{% endfor %}
+    </select>
+    <select id="ex-sort" onchange="exRender()" style="width:auto;font-size:11px;">
+      <option value="overall">Best first</option>
+      <option value="young">Youngest first</option>
+      <option value="cheap">Cheapest first</option>
+      <option value="dear">Priciest first</option>
+    </select>
+    <input id="ex-q" type="search" placeholder="Name" oninput="exRender()"
+           style="width:120px;font-size:11px;">
+  </div>
+  {% endif %}
+</div>
+
+<div class="tab-body">
+  {% if expiring %}
+  <div class="fa-note">
+    These deals end with this season. Veterans ({{ market_seasons }}+ seasons) and unhappy
+    players go to free agency unless you re-sign them now. The rest re-sign when the
+    offseason runs unless you let them go, best first, as far as your owner's limit
+    stretches; anyone it can't cover goes to free agency. Either way the price is the one shown.
+    Your owner judges re-signs on next season: these salaries come off, and each player
+    you keep costs his whole new salary, so letting one go makes room for another.
+    Players you re-sign yourself can go past the limit, paid from your owner's bank,
+    but the losses will cost you with your owner.
+  </div>
+  <div class="fa-note fa-room" id="fa-room" style="display:none;"></div>
+  <div class="fa-all" id="fa-resign-all-wrap" style="display:none;">
+    <button type="button" class="btn btn-secondary as-btn-sm" id="fa-resign-all"
+            title="Re-sign every expiring deal at the prices shown">Re-sign all my expiring deals</button>
+  </div>
+  <div class="fa-list card" id="fa-expiring" style="margin-bottom:16px;"></div>
+  <div class="fa-empty" id="ex-none" style="display:none;">No one matches.</div>
+  {% elif offseason and not is_viewer %}
+  <div class="fa-empty">None of your deals end with this season.</div>
+  {% else %}
+  <div class="fa-empty">
+    Your expiring deals show here once the champion is crowned, until the offseason runs.
+  </div>
+  {% endif %}
+</div>
+
+{% include "dashboard/partials/_fa_style.html" %}
+
+{% if expiring %}
+<script>
+(function () {
+const EXPIRING = {{ expiring | tojson }};
+const FATE = {
+  resign: 'Re-signing',
+  go: 'Going to free agency',
+  auto: 'Re-signs when the offseason runs',
+  no_room: 'No room under your owner\'s limit',
+};
+// The season just played, on its own line under the name (Josh, 2026-11-09).
+function seasonLineHtml(p) {
+  const bit = (v, label, tip) => `<span title="${tip}">${v}<span class="gl"> ${label}</span></span>`;
+  let parts;
+  if (p.player_type === 'pitcher') {
+    if (p.stat_ip == null) return '<div class="fa-season">No games this season</div>';
+    parts = [
+      bit(`${p.stat_w}-${p.stat_l}`, 'W-L', 'Wins and losses'),
+      bit(p.stat_era, 'ERA', 'Earned run average'),
+      bit(p.stat_ip, 'IP', 'Innings pitched'),
+      p.stat_gs ? bit(p.stat_gs, 'GS', 'Games started') : bit(p.stat_g, 'G', 'Games pitched'),
+    ];
+    if (p.stat_sv) parts.push(bit(p.stat_sv, 'SV', 'Saves'));
+  } else {
+    if (p.stat_avg == null) return '<div class="fa-season">No at-bats this season</div>';
+    parts = [
+      bit(p.stat_avg.replace(/^0\./, '.'), 'AVG', 'Batting average'),
+      bit(p.stat_hr, 'HR', 'Home runs'),
+      bit(p.stat_rbi, 'RBI', 'Runs batted in'),
+    ];
+    if (p.stat_ops) parts.push(bit(p.stat_ops, 'OPS', 'On-base plus slugging'));
+    parts.push(bit(p.stat_g, 'G', 'Games played'));
+  }
+  return `<div class="fa-season">${parts.join('')}</div>`;
+}
+function expiringRow(p) {
+  const el = document.createElement('div');
+  el.className = 'fa-row fa-exp';
+  const isPitcher = p.player_type === 'pitcher';
+  const trail = [posLabel(p.position) || '?', `Age ${p.age}`, `${p.seasons} season${p.seasons === 1 ? '' : 's'}`];
+  if (p.kind === 'arbitration') {
+    // Which of his team-controlled seasons it is (Josh, 2026-11-09).
+    const n = p.arb_season ? ` (${p.arb_season}/${p.arb_of})` : '';
+    const tip = p.arb_season
+      ? `Arbitration, season ${p.arb_season} of ${p.arb_of}: one season at ${p.arb_share}% of his ${p.market_salary_text} market price. ` +
+        `He can't leave while he's under team control; he reaches free agency after season ${p.arb_of}.`
+      : 'Arbitration: one season at part of his market price, more each season until he reaches free agency';
+    trail.push(`<span class="fa-waiver" title="${tip}">Arbitration${n}</span>`);
+  }
+  if (p.market === 'veteran') trail.push(`<span class="fa-waiver" title="${p.seasons} seasons under contract: he can test free agency">Free agent if not re-signed</span>`);
+  if (p.market === 'unhappy') trail.push(`<span class="fa-waiver" title="He's unhappy here and will test free agency">Unhappy · free agent if not re-signed</span>`);
+  // Lit: what happens if you do nothing more (no room goes to free agency too).
+  const on = c => (p.fate === c || (c === 'go' && p.fate === 'no_room') ? ` on ${c}` : '');
+  el.innerHTML = `
+    <span class="${gradeClass(p.overall)} lu-grade">${p.overall}</span>
+    ${faceImgHtml(p, false)}
+    <div style="min-width:0;">
+      <div class="lu-name"${p.injured ? ' style="color:var(--red);"' : ''}>${p.first_name} ${p.last_name}${ilTag(p)}${iconTag(p)}${wantsTradeTag(p)}${nameTrailHtml(p, trail, '')}</div>
+      ${seasonLineHtml(p)}
+      ${isPitcher ? `<div class="lu-skills">${pitcherGradesHtml(p)}</div>` : hitterGradesHtml(p, null)}
+    </div>
+    <div class="fa-right">
+      <div class="fa-ask" title="His new deal from next season (now ${p.old_salary_text})">${p.salary_text}<small>${p.years} yr${p.years === 1 ? '' : 's'}${p.arb_share ? ` · ${p.arb_share}% of ${p.market_salary_text}` : ''}</small>
+        <div class="fa-fate ${p.fate}">${FATE[p.fate]}</div></div>
+      <div class="fa-choice">
+        <button class="resign${on('resign')}" data-c="resign" title="Re-sign him now at this price">Re-sign</button>
+        <button class="go${on('go')}" data-c="let_go" title="Let him go to free agency">Let go</button>
+      </div>
+    </div>`;
+  el.addEventListener('click', e => {
+    const b = e.target.closest('.fa-choice button');
+    if (b) {
+      // Pressing the call already made takes it back.
+      const c = b.dataset.c;
+      expiringChoice(p.player_id, p.choice === c ? null : c);
+      return;
+    }
+    openPlayerPanel(p.player_id);
+  });
+  return el;
+}
+const exBox = document.getElementById('fa-expiring');
+function roomLine(m) {
+  const el = document.getElementById('fa-room');
+  if (!el) return;
+  if (!m) { el.style.display = 'none'; return; }
+  el.classList.toggle('over', m.over);
+  el.innerHTML = m.over
+    ? `Over your owner's limit next season: <b>${m.left_text}</b>. They'll pay that from their bank, ` +
+      `and can spend up to ${m.bank_left_text} more from it to keep your own players.`
+    : `Room left next season: <b>${m.left_text}</b>. ` +
+      `Your owner will also spend up to ${m.bank_left_text} from their bank to keep your own players.`;
+  el.style.display = '';
+}
+// The bar's filters and sorts (Josh, 2026-11-10: they used to sit on the
+// Free Agents tab and leave this list alone).
+let exTypeVal = '';
+function shown() {
+  const pos = document.getElementById('ex-pos').value;
+  const q = document.getElementById('ex-q').value.trim().toLowerCase();
+  const sort = document.getElementById('ex-sort').value;
+  const list = EXPIRING.filter(p =>
+    (!exTypeVal || p.player_type === exTypeVal) &&
+    (!pos || (p.position || '').toUpperCase() === pos) &&
+    (!q || `${p.first_name} ${p.last_name}`.toLowerCase().includes(q)));
+  const better = (a, b) => (b.overall_score ?? -1) - (a.overall_score ?? -1);
+  if (sort === 'young') list.sort((a, b) => a.age - b.age || better(a, b));
+  else if (sort === 'cheap') list.sort((a, b) => (a.salary || 0) - (b.salary || 0) || better(a, b));
+  else if (sort === 'dear') list.sort((a, b) => (b.salary || 0) - (a.salary || 0) || better(a, b));
+  return list;  // the server sends them best first, by the grade shown
+}
+function renderExpiring() {
+  if (!exBox) return;
+  const list = shown();
+  exBox.replaceChildren(...list.map(expiringRow));
+  exBox.style.display = list.length ? '' : 'none';
+  document.getElementById('ex-none').style.display = list.length ? 'none' : '';
+}
+window.exRender = renderExpiring;
+window.exType = function (btn) {
+  exTypeVal = btn.dataset.type;
+  btn.parentElement.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+  renderExpiring();
+};
+// Re-sign All (Josh, 2026-11-09): shown only when the owner's limit plus
+// their bank covers every expiring deal; warns first if it takes bank money.
+let ALL = {{ resign_all | default(none) | tojson }};
+const allBtn = document.getElementById('fa-resign-all');
+function allButton(plan) {
+  ALL = plan;
+  if (allBtn) allBtn.parentElement.style.display = plan ? '' : 'none';
+}
+if (allBtn) allBtn.addEventListener('click', async () => {
+  if (!ALL) return;
+  const n = ALL.count === 1 ? '1 player' : `${ALL.count} players`;
+  if (ALL.from_bank > 0) {
+    const ok = await gmConfirm({
+      title: `Re-sign all ${n}?`,
+      lines: [
+        `Re-signing everyone costs ${ALL.cost_text} next season.`,
+        `That's ${ALL.from_bank_text} over your owner's limit, paid from their bank. ` +
+        `They have ${ALL.bank_text} in it.`,
+      ],
+      warn: 'Your owner will feel the losses.',
+      ok: 'Re-sign all',
+    });
+    if (!ok) return;
+  }
+  let d;
+  try { d = await postJson('/leagues/{{ league_id }}/expiring/resign-all', {}); }
+  catch (e) { gmAlert(e.message); return; }
+  if (!window.faExpiringUpdate(d)) reloadTab();
+  gmToast(`Re-signed ${n}`, 'ok');
+});
+renderExpiring();
+roomLine({{ next_money | default(none) | tojson }});
+allButton(ALL);
+// After a Re-sign or Let go (shell.html expiringChoice): the new calls and
+// fates, without reloading the tab, so the list stays where it was.
+window.faExpiringUpdate = function (d) {
+  if (!exBox || !exBox.isConnected || !d || !d.rows) return false;
+  EXPIRING.forEach(p => Object.assign(p, d.rows[p.player_id] || {}));
+  renderExpiring();
+  roomLine(d.money);
+  allButton(d.all || null);
+  return true;
+};
+})();
+</script>
+{% endif %}

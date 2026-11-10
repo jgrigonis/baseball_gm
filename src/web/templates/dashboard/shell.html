@@ -237,7 +237,7 @@ window.expiringChoice = async function(pid, choice) {
   let d;
   try { d = await postJson(`/leagues/{{ league_id }}/players/${pid}/expiring`, {choice}); }
   catch (e) { gmAlert(e.message); return; }
-  // On the Free Agents tab the rows update in place; elsewhere, reload.
+  // On the Expiring Deals tab the rows update in place; elsewhere, reload.
   if (!(window.faExpiringUpdate && window.faExpiringUpdate(d))) reloadTab();
 };
 window.pinForCompare = function(pid, name) { _pinned = [{id: pid}]; closeAndBrowse(name); };
@@ -560,7 +560,8 @@ document.body.addEventListener('htmx:beforeSwap', function(e) {
 });
 document.body.addEventListener('htmx:afterSwap', function(e) {
   if (e.detail.target.id === 'tab-content' && _quietScroll !== null) {
-    // Tabs whose rows are built by their inline script (Free Agents, Lineup)
+    // Tabs whose rows are built by their inline script (Free Agents,
+    // Expiring Deals, Lineup)
     // are still short here, since htmx runs that script at settle. A spacer
     // holds the old height so the scroll sticks; afterSettle takes it away.
     var spacer = document.createElement('div');
@@ -754,7 +755,7 @@ window.nextMoveAct = function(el) {
   var arg = el.dataset.arg || '';
   if (arg === '') fn(); else fn(/^\d+$/.test(arg) ? Number(arg) : arg);
 };
-// Begin Offseason: the next move on the Free Agents tab once the champion
+// Begin Offseason: the next move on the Expiring Deals tab once the champion
 // is crowned (next_move.py). Once it's run, on to the retirements.
 function beginOffseason() {
   window.nextMoveBusy('begin-offseason-btn', 'Running offseason…');

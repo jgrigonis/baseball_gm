@@ -1,0 +1,59 @@
+{# templates/dashboard/partials/_fa_style.html
+  The row and filter styles the Free Agents and Expiring Deals tabs share. #}
+<style>
+.fa-filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.fa-seg { display: flex; border: 1px solid var(--border); }
+.fa-seg-btn {
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: .04em;
+  text-transform: uppercase; padding: 4px 9px;
+  background: var(--bg-2); border: none; border-right: 1px solid var(--border);
+  color: var(--text-dim); cursor: pointer;
+}
+.fa-seg-btn:last-child { border-right: none; }
+.fa-seg-btn:hover { color: var(--text); background: var(--bg-3); }
+.fa-seg-btn.active { color: var(--amber); background: var(--amber-lo); }
+.fa-list { padding: 0; }
+.fa-row {
+  display: grid; grid-template-columns: 28px 36px minmax(0, 1fr) auto;
+  gap: 0 8px; align-items: center; padding: 7px 10px;
+  border-bottom: 1px solid var(--border); cursor: pointer;
+}
+.fa-row:last-child { border-bottom: none; }
+.fa-season { font-family: var(--font-mono); font-size: 10px; color: var(--text-hi); margin-top: 2px; display: flex; gap: 8px; flex-wrap: wrap; }
+.fa-season .gl { color: var(--muted); }
+.fa-row:hover { background: var(--bg-3); }
+.fa-ask { font-family: var(--font-mono); font-size: 11px; color: var(--text); text-align: right; white-space: nowrap; }
+.fa-ask small { display: block; color: var(--text-dim); font-size: 10px; }
+.fa-right { display: flex; align-items: center; gap: 10px; }
+.fa-sign { font-size: 10px; padding: 4px 10px; border-color: var(--green); color: var(--green); }
+.fa-claim { font-size: 10px; padding: 4px 10px; border-color: var(--amber); color: var(--amber); }
+.fa-claimed { font-size: 10px; padding: 4px 10px; border-color: var(--green); color: var(--green); background: var(--green-dim); }
+.fa-waiver { color: var(--amber); }
+.fa-section-title { font-family: var(--font-sans); font-weight: 700; font-size: 14px; color: var(--text-hi); margin: 2px 0 4px; }
+.fa-note { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); line-height: 1.5; margin: 0 0 8px; max-width: 640px; }
+.fa-open { color: var(--amber); }
+.fa-fate { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); text-align: right; }
+.fa-fate.go { color: var(--red); }
+.fa-fate.resign { color: var(--green); }
+.fa-fate.no_room { color: var(--amber); }
+.fa-all { margin: 0 0 10px; }
+.fa-room b { color: var(--text); font-weight: 600; }
+.fa-room.over b { color: var(--red); }
+.fa-choice { display: flex; border: 1px solid var(--border); }
+.fa-choice button { font-family: var(--font-mono); font-size: 10px; padding: 4px 9px; background: var(--bg-2); border: none; border-right: 1px solid var(--border); color: var(--text-dim); cursor: pointer; }
+.fa-choice button:last-child { border-right: none; }
+.fa-choice button.on.resign { color: var(--green); background: var(--green-dim); }
+.fa-choice button.on.go { color: var(--red); background: var(--red-dim); }
+.fa-bids { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); }
+.fa-empty { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); padding: 12px 0; max-width: 520px; line-height: 1.5; }
+@media (max-width: 700px) {
+  .fa-row { grid-template-columns: 26px 34px minmax(0, 1fr) auto; padding: 8px; }
+  .fa-right { flex-direction: column; align-items: flex-end; gap: 4px; }
+  .fa-sign, .fa-claim, .fa-claimed { font-size: 11px; padding: 6px 11px; }
+  .fa-choice button { font-size: 11px; padding: 6px 10px; }
+  .fa-exp .fa-right { grid-column: 1 / -1; flex-direction: row; justify-content: space-between; align-items: center; margin-top: 6px; }
+  .fa-exp .fa-ask { text-align: left; }
+  .fa-exp .fa-fate { text-align: left; }
+  #fa-q { width: 100% !important; }
+}
+</style>

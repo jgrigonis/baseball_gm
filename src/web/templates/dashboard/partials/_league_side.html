@@ -5,11 +5,11 @@
    links (Leagues, Profile, Account, Sign Out) live in its footer menu.
    Tab links keep class .tab-link and their badge ids, so setActiveTab,
    goToTab, the badges and the sim's greying work on them as before. #}
-{% set icons = {'draft':'📋','standings':'🏆','power':'⚡','leaders':'📊','roster':'👥','lineup':'✏️','schedule':'📅','stats':'📈','playoffs':'🥇','strategy':'🎛','trades':'🔁','allstar':'★','headlines':'📰','free-agents':'✍️','owner':'🎩','budget':'💰'} %}
-{% set labels = {'draft':'Draft','standings':'Standings','power':'Power','leaders':'Leaders','roster':'Roster','lineup':'Lineup','schedule':'Schedule','stats':'Stats','playoffs':'Playoffs','strategy':'Strategy','trades':'Trades','allstar':'All-Stars','headlines':'News','free-agents':'Free Agents','owner':'Owner','budget':'Budget'} %}
+{% set icons = {'draft':'📋','standings':'🏆','power':'⚡','leaders':'📊','roster':'👥','lineup':'✏️','schedule':'📅','stats':'📈','playoffs':'🥇','strategy':'🎛','trades':'🔁','allstar':'★','headlines':'📰','free-agents':'✍️','expiring':'📝','owner':'🎩','budget':'💰'} %}
+{% set labels = {'draft':'Draft','standings':'Standings','power':'Power','leaders':'Leaders','roster':'Roster','lineup':'Lineup','schedule':'Schedule','stats':'Stats','playoffs':'Playoffs','strategy':'Strategy','trades':'Trades','allstar':'All-Stars','headlines':'News','free-agents':'Free Agents','expiring':'Expiring Deals','owner':'Owner','budget':'Budget'} %}
 {% set groups = [
   ('My team', ['roster', 'lineup', 'strategy', 'owner', 'budget']),
-  ('Moves', ['trades', 'free-agents', 'draft']),
+  ('Moves', ['trades', 'free-agents', 'expiring', 'draft']),
   ('League', ['headlines', 'schedule', 'standings', 'power', 'allstar', 'playoffs']),
   ('Numbers', ['leaders', 'stats']),
 ] %}

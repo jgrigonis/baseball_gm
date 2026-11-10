@@ -422,8 +422,12 @@ def test_the_offseason_tab_shows_next_seasons_room(lg, client):
     lg.contracts.insert_deal(
         pid, lg.league.id, lg.mine.id, ct.Deal(5_000_000, 3, "standard"), 2024
     )
-    html = client.get(f"/leagues/{lg.league.id}/free-agents").text
-    assert "Your expiring deals" in html
+    # Its own tab (Josh, 2026-11-10), so the pool's sorts leave it alone.
+    assert "fa-expiring" not in client.get(f"/leagues/{lg.league.id}/free-agents").text
+    html = client.get(f"/leagues/{lg.league.id}/expiring").text
+    assert '<h1 class="page-title">Expiring Deals</h1>' in html
+    assert 'id="ex-sort"' in html
+    assert f'href="/leagues/{lg.league.id}/expiring"' in html
     assert "Room left next season:" in html
     assert "from their bank to keep your own players." in html
     assert '"fate": "auto"' in html
@@ -469,7 +473,7 @@ def test_expiring_rows_show_the_season_line_and_who_is_hurt(lg, client):
         " VALUES (%s, %s, '2099-01-01')",
         (arm, lg.league.id),
     )
-    html = client.get(f"/leagues/{lg.league.id}/free-agents").text
+    html = client.get(f"/leagues/{lg.league.id}/expiring").text
     assert '"stat_avg": "0.300"' in html
     assert '"stat_hr": 25' in html
     assert '"stat_rbi": 90' in html
@@ -509,7 +513,7 @@ def test_re_sign_all_re_signs_every_expiring_deal(lg, client):
             pid, lg.league.id, lg.mine.id, ct.Deal(5_000_000, 3, "standard"), 2024
         )
         ids.append(pid)
-    html = client.get(f"/leagues/{lg.league.id}/free-agents").text
+    html = client.get(f"/leagues/{lg.league.id}/expiring").text
     assert 'id="fa-resign-all"' in html
     assert '"count": 2' in html
     r = client.post(f"/leagues/{lg.league.id}/expiring/resign-all")
@@ -542,7 +546,7 @@ def test_expiring_icons_carry_the_icon_tag(lg, client):
         star, lg.league.id, lg.mine.id, ct.Deal(5_000_000, 3, "standard"), 2024
     )
     _icon_seasons(lg, star, lg.mine)
-    html = client.get(f"/leagues/{lg.league.id}/free-agents").text
+    html = client.get(f"/leagues/{lg.league.id}/expiring").text
     assert '"icon_seasons": 5' in html
     assert "${iconTag(p)}" in html
 
@@ -573,9 +577,21 @@ def test_expiring_players_who_want_a_trade_carry_the_tag(lg, client):
                    '2026-06-01')""",
         (pid, lg.season.id, lg.league.id, lg.mine.id),
     )
-    html = client.get(f"/leagues/{lg.league.id}/free-agents").text
+    html = client.get(f"/leagues/{lg.league.id}/expiring").text
     assert f'"player_id": "{pid}"' in html
     # Keys are sorted, so his mood badge comes just before his id.
     card = html.split(f'"player_id": "{pid}"', 1)[0].rsplit('"first_name"', 1)[1]
     assert '"wants_trade": true' in card.split('"mood_badge"', 1)[1]
     assert "${wantsTradeTag(p)}" in html
+
+
+def test_the_expiring_tab_only_in_the_offseason(lg, client):
+    html = client.get(f"/leagues/{lg.league.id}/standings").text
+    assert f'href="/leagues/{lg.league.id}/expiring"' not in html
+    html = client.get(f"/leagues/{lg.league.id}/expiring").text
+    assert "once the champion is crowned" in html
+    lg.db.execute(
+        "UPDATE leagues SET state = 'offseason' WHERE id = %s", (lg.league.id,)
+    )
+    html = client.get(f"/leagues/{lg.league.id}/expiring").text
+    assert "None of your deals end with this season." in html
