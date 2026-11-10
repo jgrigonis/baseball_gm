@@ -243,7 +243,15 @@ function expiringRow(p) {
   el.className = 'fa-row fa-exp';
   const isPitcher = p.player_type === 'pitcher';
   const trail = [posLabel(p.position) || '?', `Age ${p.age}`, `${p.seasons} season${p.seasons === 1 ? '' : 's'}`];
-  if (p.kind === 'arbitration') trail.push(`<span class="fa-waiver" title="Arbitration: one season at part of his market price, more each season until he reaches free agency">Arbitration</span>`);
+  if (p.kind === 'arbitration') {
+    // Which of his team-controlled seasons it is (Josh, 2026-11-09).
+    const n = p.arb_season ? ` (${p.arb_season}/${p.arb_of})` : '';
+    const tip = p.arb_season
+      ? `Arbitration, season ${p.arb_season} of ${p.arb_of}: one season at ${p.arb_share}% of his ${p.market_salary_text} market price. ` +
+        `He can't leave while he's under team control; he reaches free agency after season ${p.arb_of}.`
+      : 'Arbitration: one season at part of his market price, more each season until he reaches free agency';
+    trail.push(`<span class="fa-waiver" title="${tip}">Arbitration${n}</span>`);
+  }
   if (p.market === 'veteran') trail.push(`<span class="fa-waiver" title="${p.seasons} seasons under contract: he can test free agency">Free agent if not re-signed</span>`);
   if (p.market === 'unhappy') trail.push(`<span class="fa-waiver" title="He's unhappy here and will test free agency">Unhappy · free agent if not re-signed</span>`);
   // Lit: what happens if you do nothing more (no room goes to free agency too).
@@ -257,7 +265,7 @@ function expiringRow(p) {
       ${isPitcher ? `<div class="lu-skills">${pitcherGradesHtml(p)}</div>` : hitterGradesHtml(p, null)}
     </div>
     <div class="fa-right">
-      <div class="fa-ask" title="His new deal from next season (now ${p.old_salary_text})">${p.salary_text}<small>${p.years} yr${p.years === 1 ? '' : 's'}</small>
+      <div class="fa-ask" title="His new deal from next season (now ${p.old_salary_text})">${p.salary_text}<small>${p.years} yr${p.years === 1 ? '' : 's'}${p.arb_share ? ` · ${p.arb_share}% of ${p.market_salary_text}` : ''}</small>
         <div class="fa-fate ${p.fate}">${FATE[p.fate]}</div></div>
       <div class="fa-choice">
         <button class="resign${on('resign')}" data-c="resign" title="Re-sign him now at this price">Re-sign</button>

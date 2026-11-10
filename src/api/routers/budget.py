@@ -97,6 +97,30 @@ def _sponsor_note(b: dict) -> str:
     return f"{name} sponsor deal so far: " + ", ".join(parts)
 
 
+def _popularity_note(b: dict) -> str:
+    """What fan interest is, what it is now, what each point over the line
+    is worth and how to raise it (fn.popularity_money)."""
+    fans, line = b["fans"], b["popularity_from"]
+    point, top = b.get("popularity_point"), b.get("popularity_top")
+    text = (
+        "Fan interest, how keen your fans are on a 0 to 100 scale,"
+        f" came into the season at {fans}. "
+    )
+    over = fans - line
+    if over > 0:
+        text += f"That's {over} point{'' if over == 1 else 's'} over {line}"
+    else:
+        text += f"Only points over {line} pay"
+    if point:
+        text += f", each worth {_money(point)}"
+    if top:
+        text += f", up to {_money(top)} at {b['fans_max']}"
+    return (
+        text + ". Winning, the playoffs, a title, All-Stars, cheaper tickets,"
+        " marketing and ballpark upgrades raise it after each season."
+    )
+
+
 def _books_view(b: dict, names: dict | None = None) -> dict:
     """One season's money in and out (BudgetRepository.books), as text."""
     names = names or {}
@@ -132,11 +156,7 @@ def _books_view(b: dict, names: dict | None = None) -> dict:
         {
             "label": "Popularity",
             "amount": _money(b["popularity"]) if b["popularity"] else None,
-            "note": (
-                f"Fan interest {b['fans']}: keen fans bring in extra money"
-                if b["popularity"]
-                else f"Earned once fan interest is over {b['popularity_from']}"
-            ),
+            "note": _popularity_note(b),
         },
         {
             "label": "Broadcast deal",

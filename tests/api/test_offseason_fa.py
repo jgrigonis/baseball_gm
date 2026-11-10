@@ -436,3 +436,39 @@ def test_older_players_value_years_more():
     young = offseason_fa.bid_value(10_000_000, 5, ask, 26, 0, 0) - 1
     old = offseason_fa.bid_value(10_000_000, 5, ask, 33, 0, 0) - 1
     assert old > young > 0
+
+
+def _rookie_expiring(lg, team, start, years):
+    """A player who came up on a rookie deal (start..start+years-1) ending
+    with 2026, so his next deal is an arbitration one."""
+    pid = lg.factory.rated_player(team, lg.league, level=70, status="40man").id
+    lg.contracts.insert_deal(
+        pid, lg.league.id, team.id, ct.Deal(780_000, years, "rookie"), start
+    )
+    return pid
+
+
+def test_an_unhappy_arbitration_player_cant_walk(lg, monkeypatch):
+    from src.db.repositories.happiness_repo import HappinessRepository
+
+    arb = _rookie_expiring(lg, lg.mine, 2024, 3)  # 2027 is his 4th season
+    vet_unhappy = _expiring(lg, lg.mine, 2024, 3)
+    monkeypatch.setattr(
+        HappinessRepository, "latest_moods", lambda self, ids: {i: -0.9 for i in ids}
+    )
+    rows = {r["player_id"]: r for r in offseason_fa.expiring(lg.db, lg.league.id, 2026)}
+    assert rows[arb]["deal"].kind == "arbitration"
+    assert rows[arb]["arb_season"] == 4
+    assert rows[arb]["market"] is None
+    assert rows[arb]["market_salary"] > rows[arb]["deal"].salary
+    # A non-arbitration unhappy player still goes to market.
+    assert rows[vet_unhappy]["market"] == "unhappy"
+
+    view = {
+        v["player_id"]: v
+        for v in offseason_fa.expiring_view(lg.db, lg.league.id, lg.mine.id)
+    }
+    assert view[arb]["arb_season"] == 4 and view[arb]["arb_of"] == 6
+    assert view[arb]["arb_share"] == 55
+    assert view[arb]["fate"] == "auto"
+    assert view[vet_unhappy]["arb_season"] is None

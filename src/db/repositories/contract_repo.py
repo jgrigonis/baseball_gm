@@ -624,6 +624,18 @@ class ContractRepository:
         now = self.price_level(league_id, year)
         return {k: now[k] - base[k] for k in now if k in base}
 
+    @staticmethod
+    def market_salary(
+        p, year: int, scale: float = 1.0, shifts: dict | None = None
+    ) -> int:
+        """What a player's next deal from `year` would pay on the open
+        market, before arbitration or his mood: the price renewal starts
+        from (shifts: the season's price_shifts)."""
+        rng = random.Random(f"contract:{p.id}:{year}")
+        kind = "pitcher" if p.is_pitcher() else "hitter"
+        value = ct.shifted(role_rating(p), kind, shifts)
+        return ct.standard_deal(p.age, value, kind, rng, scale).salary
+
     def arbitration_seasons(self, player_ids, year: int) -> dict[str, int]:
         """For players who came up on a rookie deal in this league: which
         season in the league a new deal from `year` would be (his rookie
