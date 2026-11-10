@@ -137,6 +137,30 @@ BATTING_ROLES: dict[str, list[dict[str, int]]] = {
     ],
 }
 LINEUP_STYLES = tuple(BATTING_ROLES)
+# What each style does with the batting order, in a line, for the Lineup
+# tab's Rebuild All menu. Keep in step with BATTING_ROLES. "Best bat" is the
+# best overall hitter still left; unnamed slots go by bat, best first.
+STYLE_GUIDE: dict[str, tuple[str, str]] = {
+    "traditional": (
+        "Traditional",
+        "1 on-base, 2 contact and bunting, 3 best all-round hitter, "
+        "4-5 power, 6-9 by bat",
+    ),
+    "analytics": (
+        "Analytics",
+        "1 on-base, 2 best bat, 3 contact and eye, 4-5 power, 6 speed and eye, "
+        "7-8 by bat, 9 a second leadoff man",
+    ),
+    "speed-first": (
+        "Speed-first",
+        "1 on-base, 2 speed and contact, 3 best bat, 4 power, 5 contact, "
+        "6 speed, 7-8 by bat, 9 speed",
+    ),
+    "power-first": (
+        "Power-first",
+        "1 on-base, 2 best bat, 3-5 power, 6-9 by bat",
+    ),
+}
 DEFAULT_STYLE = "analytics"
 
 

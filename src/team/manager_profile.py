@@ -34,6 +34,16 @@ PLAYOFF_ROTATION = ("3", "4", "same")
 TIRED_STARTERS = ("push", "standard", "protect")
 REST_DAYS = ("iron-man", "standard", "rest-often")
 STATS_VS_SCOUTING = (0, 25, 50, 75, 100)
+# Injury lineup: auto-fill outs up to this many days, rebuild longer ones.
+INJURY_FILL_DAYS = (10, 7, 5, 3, 2, 1)
+INJURY_LINEUP = ("fill", *(f"fill-{d}" for d in INJURY_FILL_DAYS), "rebuild")
+# A hitter out longer than this many days gets the batting orders rebuilt
+# (src/league/injury_lineup.py); None never rebuilds.
+REBUILD_AFTER_DAYS = {
+    "fill": None,
+    **{f"fill-{d}": d for d in INJURY_FILL_DAYS},
+    "rebuild": 0,
+}
 
 # Baserunning: how often runners steal (and hit and run), and how often they
 # try for the extra base on a hit. Extra-base tries beyond the standard
@@ -91,6 +101,10 @@ class ManagerProfile:
     # Rebuild and Auto-fill, given no bullpen role, and treated like the
     # injured on game day. Off plays them through it.
     rest_rusty: bool = False
+    # What happens to a person's saved batting orders when a hitter is hurt:
+    # auto-fill his slot for the day, or rebuild them for outs longer than
+    # some number of days, or for any out (INJURY_LINEUP).
+    injury_lineup: str = "fill"
 
     @classmethod
     def from_row(cls, row: dict | None) -> ManagerProfile:
@@ -110,6 +124,7 @@ class ManagerProfile:
             "playoff_rotation": PLAYOFF_ROTATION,
             "tired_starters": TIRED_STARTERS,
             "rest_days": REST_DAYS,
+            "injury_lineup": INJURY_LINEUP,
         }
         values = {k: row[k] for k, ok in allowed.items() if row.get(k) in ok}
         if row.get("skip_fifth_starter") is not None:
@@ -125,6 +140,12 @@ class ManagerProfile:
     def stats_weight(self) -> float:
         """The share of a player's value that comes from his stats."""
         return self.stats_vs_scouting / 100
+
+    @property
+    def rebuild_after_days(self) -> int | None:
+        """A hitter out longer than this many days gets the batting orders
+        rebuilt; None never rebuilds."""
+        return REBUILD_AFTER_DAYS[self.injury_lineup]
 
     @property
     def steal_factor(self) -> float:

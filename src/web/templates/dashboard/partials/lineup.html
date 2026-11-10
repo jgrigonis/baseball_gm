@@ -10,9 +10,28 @@
     <div class="spacer"></div>
     {# per-tab buttons rendered by JS into these slots #}
     <span id="tab-buttons"></span>
-    <button class="btn btn-secondary" id="rebuild-all-btn" onclick="rebuildAll()"
-            title="Start over on everything: rebuild both batting orders (vs RHP and vs LHP), then the rotation, then auto-assign the bullpen. Nothing is saved until you save."
-            style="margin-left:8px;">Rebuild All</button>
+    {# Rebuild All, and a menu to rebuild with any of the four lineup styles
+       (STYLE_GUIDE in src/team/lineup_optimizer.py) to see how each orders
+       your hitters. #}
+    <span class="lu-split" id="rebuild-all-wrap">
+      <button class="btn btn-secondary" id="rebuild-all-btn" onclick="rebuildAll()"
+              title="Start over on everything: rebuild both batting orders (vs RHP and vs LHP), then the rotation, then auto-assign the bullpen. Nothing is saved until you save.">Rebuild All</button>
+      <button class="btn btn-secondary lu-split-caret" id="rebuild-style-btn" type="button"
+              onclick="toggleStyleMenu(event)" aria-haspopup="menu" aria-expanded="false"
+              aria-label="Rebuild All with a lineup style"
+              title="Rebuild All with a lineup style, to see how each one orders your hitters">▾</button>
+      <div class="lu-style-menu" id="rebuild-style-menu" role="menu" hidden>
+        <div class="lu-style-head">Rebuild All with a lineup style</div>
+        {% for st in lineup_styles | default([]) %}
+        <button type="button" role="menuitem" class="lu-style-item{% if st.value == lineup_style %} mine{% endif %}"
+                data-style="{{ st.value }}" onclick="rebuildAll('{{ st.value }}')">
+          <span class="lu-style-name">{{ st.label }}{% if st.value == lineup_style %}<span class="lu-style-tag">Your style</span>{% endif %}</span>
+          <span class="lu-style-slots">{{ st.slots }}</span>
+        </button>
+        {% endfor %}
+        <div class="lu-style-foot">Every style uses your platoon and stats settings. Your style (Strategy tab) is what Rebuild All, Auto-fill and the sim use. Nothing is saved until you save.</div>
+      </div>
+    </span>
     <button class="btn btn-secondary" id="save-all-btn" onclick="saveAll()"
             style="margin-left:8px;">Save All Lineups</button>
   </div>
@@ -293,6 +312,45 @@
 
 <style>
 #lu-header .lu-glow { border-color: var(--green); color: var(--green); }
+/* Rebuild All + its style menu */
+.lu-split { position: relative; display: inline-flex; margin-left: 8px; }
+.lu-split #rebuild-all-btn { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.lu-split .lu-split-caret {
+  border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: -1px;
+  padding-left: 9px; padding-right: 9px;
+}
+#lu-header .lu-split:has(#rebuild-all-btn.lu-glow) .lu-split-caret { border-color: var(--green); color: var(--green); }
+.lu-style-menu {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 60;
+  width: 340px; max-width: calc(100vw - 32px);
+  background: var(--bg-2); border: 1px solid var(--border-hi);
+  box-shadow: 0 8px 24px rgba(0,0,0,.45); padding: 6px 0;
+}
+.lu-style-menu[hidden] { display: none; }
+.lu-style-head, .lu-style-foot {
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: .08em;
+  color: var(--text-dim); padding: 6px 12px;
+}
+.lu-style-head { text-transform: uppercase; }
+.lu-style-foot { letter-spacing: 0; line-height: 1.6; border-top: 1px solid var(--border); margin-top: 4px; padding-top: 8px; }
+.lu-style-item {
+  display: flex; flex-direction: column; gap: 3px; width: 100%; text-align: left;
+  background: none; border: none; padding: 8px 12px; cursor: pointer; color: var(--text);
+}
+.lu-style-item:hover, .lu-style-item:focus-visible { background: var(--bg-3); outline: none; }
+.lu-style-name { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--text-hi); display: flex; align-items: center; gap: 8px; }
+.lu-style-tag {
+  font-size: 9px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--amber); border: 1px solid var(--amber-dim); padding: 1px 5px;
+}
+.lu-style-slots { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); line-height: 1.5; }
+/* Phones: the header buttons wrap to their own row at the left, so the menu
+   opens from the left edge of Rebuild All. */
+@media (max-width: 700px) {
+  .lu-split { margin-left: 0; }
+  .lu-style-menu { left: 0; right: auto; width: min(340px, calc(100vw - 32px)); }
+  .lu-style-item { padding: 10px 12px; }
+}
 /* ── Layout ────────────────────────────────────────────────────────────────── */
 .lu-tab {
   font-family: var(--font-mono); font-size: 12px; padding: 8px 18px;
@@ -563,6 +621,7 @@ window.saveBatting     = saveBatting;
 window.saveRotation    = saveRotation;
 window.saveAll         = saveAll;
 window.rebuildAll      = rebuildAll;
+window.toggleStyleMenu = toggleStyleMenu;
 window.saveBullpen     = saveBullpen;
 window.autoFill        = autoFill;
 window.rebuildLineup   = rebuildLineup;
@@ -1080,7 +1139,7 @@ function renderRoster() {
 // already in the lineup and fills the gaps; Rebuild starts over.
 // Fills lineups[hand] in place from the server; false (with feedback shown)
 // when the server says no.
-async function _fetchLineup(hand, rebuild) {
+async function _fetchLineup(hand, rebuild, style) {
   try {
     const res = await fetch(`/leagues/${LEAGUE_ID}/lineup/autofill`, {
       method: 'POST',
@@ -1088,6 +1147,7 @@ async function _fetchLineup(hand, rebuild) {
       body: JSON.stringify({
         rebuild,
         vs_hand: hand,
+        style: style || null,
         lineup: lineups[hand].slice(0, 9).map(s => s ? { player_id: s.player_id, position: s.position } : null),
       }),
     });
@@ -1111,10 +1171,12 @@ async function autoFill() {
   if (ok.some(Boolean)) _afterLineupFetch();
 }
 
-// Rebuild starts both lineups over: vs RHP and vs LHP.
-async function rebuildLineup() {
-  const ok = await Promise.all(['R', 'L'].map(h => _fetchLineup(h, true)));
+// Rebuild starts both lineups over: vs RHP and vs LHP. style, from the
+// Rebuild All menu, builds with that lineup style instead of the Strategy tab's.
+async function rebuildLineup(style) {
+  const ok = await Promise.all(['R', 'L'].map(h => _fetchLineup(h, true, style)));
   if (ok.some(Boolean)) _afterLineupFetch();
+  return ok.some(Boolean);
 }
 
 /* ── Batting: Show Def toggle ───────────────────────────────────────────────── */
@@ -1862,18 +1924,58 @@ async function saveAll() {
 // Batting orders (both hands), then the rotation, then the bullpen roles for
 // whoever is left. Like each Rebuild on its own, nothing is saved: the unsaved
 // bars show what changed.
-async function rebuildAll() {
+// style (from the menu) builds the batting orders with that lineup style;
+// the rotation and bullpen don't depend on it.
+const LINEUP_STYLE  = {{ lineup_style | default('analytics') | tojson }};  // Strategy tab
+const STYLE_LABELS  = {{ (lineup_styles | default([])) | map(attribute='label') | list | tojson }};
+const STYLE_VALUES  = {{ (lineup_styles | default([])) | map(attribute='value') | list | tojson }};
+const styleLabel = v => STYLE_LABELS[STYLE_VALUES.indexOf(v)] || v;
+async function rebuildAll(style) {
+  closeStyleMenu();
   const btn = document.getElementById('rebuild-all-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Rebuilding…'; }
   try {
-    await rebuildLineup();
+    const built = await rebuildLineup(style);
     rebuildRotation();
     autoAssignBullpen();
     updateHeaderGlow();
+    if (built && style) {
+      gmToast(style === LINEUP_STYLE
+        ? `Rebuilt with ${styleLabel(style)}, your style`
+        : `Rebuilt with ${styleLabel(style)}. Your style is still ${styleLabel(LINEUP_STYLE)} (Strategy tab)`, 'info');
+    }
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Rebuild All'; }
   }
 }
+
+function closeStyleMenu() {
+  const menu = document.getElementById('rebuild-style-menu');
+  if (!menu || menu.hidden) return;
+  menu.hidden = true;
+  document.getElementById('rebuild-style-btn')?.setAttribute('aria-expanded', 'false');
+}
+function toggleStyleMenu(e) {
+  e?.stopPropagation();
+  const menu = document.getElementById('rebuild-style-menu');
+  if (!menu) return;
+  if (!menu.hidden) { closeStyleMenu(); return; }
+  menu.hidden = false;
+  document.getElementById('rebuild-style-btn')?.setAttribute('aria-expanded', 'true');
+  menu.querySelector('.lu-style-item')?.focus();
+}
+// A click anywhere else, or Escape, closes the menu. Installed once per page
+// (the tab is swapped in and out by htmx).
+if (!window._luStyleMenuHooked) {
+  window._luStyleMenuHooked = true;
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#rebuild-all-wrap')) window._luCloseStyleMenu?.();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') window._luCloseStyleMenu?.();
+  });
+}
+window._luCloseStyleMenu = closeStyleMenu;
 
 /* ── Header glow ─────────────────────────────────────────────────────────────── */
 // Green (.lu-glow). Save All Lineups glows while any unsaved bar

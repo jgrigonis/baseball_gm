@@ -188,3 +188,25 @@ def test_rest_rusty_players_leaves_them_out(db_conn, team_setup):
         lineup = autofill(db_conn, league.id, team.id, current, rebuild=rebuild)
         assert rusty.id not in ids(lineup)
         assert {s["position"] for s in lineup} == POSITIONS
+
+
+def test_rebuild_can_use_another_lineup_style(db_conn, team_setup, monkeypatch):
+    league, team, *_ = team_setup
+    import src.api.services.lineup_autofill as svc
+
+    seen = []
+    real = svc.LineupOptimizer.fill
+
+    def spy(*a, **kw):
+        seen.append(kw["style"])
+        return real(*a, **kw)
+
+    monkeypatch.setattr(svc.LineupOptimizer, "fill", spy)
+    db_conn.execute(
+        "UPDATE gm_profiles SET lineup_style = 'analytics'"
+        " WHERE gm_id IN (SELECT id FROM gms WHERE team_id = %s)",
+        (team.id,),
+    )
+    autofill(db_conn, league.id, team.id, [None] * 9, rebuild=True)
+    autofill(db_conn, league.id, team.id, [None] * 9, True, style="speed-first")
+    assert seen == ["analytics", "speed-first"]

@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from src.api.database import get_db
 from src.api.dependencies import get_current_gm, get_current_user
 from src.api.main import app
-from src.api.routers.strategy import SETTINGS
+from src.api.routers.strategy import PANEL_SETTINGS, SETTINGS
 from src.db.repositories.gm_repo import GMRepository
 
 
@@ -129,3 +129,24 @@ def test_rest_rusty_checkbox_saves_and_shows(client, db_conn, gm):
     # An unticked box isn't posted: that's off.
     client.post(url, data={"baserunning": 2})
     assert GMRepository(db_conn).get_profile(gm.id)["rest_rusty"] is False
+
+
+def test_injury_lineup_slider_saves_and_resets_the_watch(client, db_conn, gm):
+    url = f"/leagues/{gm.league_id}/strategy"
+    html = client.get(url).text
+    assert 'name="injury_lineup"' in html and "Always auto-fill" in html
+    db_conn.execute(
+        "UPDATE gm_profiles SET injury_lineup_key = 'x:out' WHERE gm_id = %s",
+        (gm.id,),
+    )
+    # Same step: who's out is kept
+    client.post(url, data={"injury_lineup": 0})
+    assert GMRepository(db_conn).get_profile(gm.id)["injury_lineup_key"] == "x:out"
+    # A new step starts fresh
+    client.post(url, data={"injury_lineup": 5})  # Auto-fill up to 2 days
+    row = GMRepository(db_conn).get_profile(gm.id)
+    assert row["injury_lineup"] == "fill-2"
+    assert row["injury_lineup_key"] is None
+    for _, settings in PANEL_SETTINGS.items():
+        for s in settings:
+            assert len(s.labels) == len(s.values)

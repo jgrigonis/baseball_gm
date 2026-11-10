@@ -228,6 +228,25 @@ class InjuryRepository:
             for r in rows
         }
 
+    def get_lengths(self, player_ids) -> dict[str, dict]:
+        """Each player's latest injury: {player_id: {"length": the injury in
+        days, "rust_days": days the rust lasts if he plays every day (0 for
+        none)}}. Players never hurt aren't listed."""
+        if not player_ids:
+            return {}
+        rows = self.conn.execute(
+            """SELECT player_id, games_remaining, rust_days FROM player_injuries
+               WHERE league_id = %s AND player_id = ANY(%s)""",
+            (self.league_id, list(player_ids)),
+        ).fetchall()
+        return {
+            r["player_id"]: {
+                "length": r["games_remaining"] or 0,
+                "rust_days": r["rust_days"] or 0,
+            }
+            for r in rows
+        }
+
     def get_team_injuries(self, team_id: str, as_of=None) -> dict[str, int]:
         """Return {player_id: days_remaining} for all injured players on a team."""
         if not team_id:

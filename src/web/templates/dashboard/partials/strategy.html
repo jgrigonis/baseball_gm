@@ -26,12 +26,13 @@
   <p class="ss-hint" onclick="this.classList.toggle('open')">{{ c.hint }}</p>
 </div>
 {% endmacro %}
-{% macro checkbox_card(title, boxes) %}
+{% macro checkbox_card(title, boxes, sliders=[]) %}
 <div class="card">
   <div class="card-header">
     <span class="card-title">{{ title }}</span>
   </div>
   <div class="card-body" style="display: flex; flex-direction: column; gap: 20px;">
+    {% for s in sliders %}{{ slider(s) }}{% endfor %}
     {% for c in boxes %}{{ checkbox(c) }}{% endfor %}
   </div>
 </div>
@@ -80,8 +81,8 @@
         {% for title, settings in cards if title in ("Pitching", "Rotation") %}
           {{ card(title, settings) }}
         {% endfor %}
-        {% for title, boxes in checkbox_cards %}
-          {{ checkbox_card(title, boxes) }}
+        {% for title, boxes, sliders in checkbox_cards %}
+          {{ checkbox_card(title, boxes, sliders) }}
         {% endfor %}
 
         {# Save + feedback #}

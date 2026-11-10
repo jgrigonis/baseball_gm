@@ -40,7 +40,7 @@ from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.db.repositories.team_state_repo import TeamStateRepository
 from src.game.game import Game
 from src.game.game_event_logger import GameEventLogger
-from src.league import front_office, performance
+from src.league import front_office, injury_lineup, performance
 from src.league.league_modes import is_blitz_style
 from src.league.personas import Leanings
 from src.league.statistics.print_standings import print_standings
@@ -580,6 +580,7 @@ def _play_game(
     # whether or not their team plays in the meantime.
     injury_repo = InjuryRepository(conn, league_id=league_id)
     injured_ids = injury_repo.get_injured_ids(all_player_ids, as_of=game_date)
+    hurt_ids = set(injured_ids)
     # Players back from an injury play with some ratings down until the rust
     # fades (src/player/injury_types.py).
     rust = injury_repo.get_rust(all_player_ids, as_of=game_date)
@@ -591,8 +592,11 @@ def _play_game(
     happy_repo = HappinessRepository(conn, league_id)
     injured_ids = injured_ids | happy_repo.refusing(all_player_ids, game_date)
     # Strategy tab "Rest rusty players": that team's rusty players sit too.
+    out_ids = set(hurt_ids)
     for team, eligible in ((home_team, home_eligible), (away_team, away_eligible)):
-        injured_ids = injured_ids | _rested_rusty(team, eligible, rust, injured_ids)
+        rested = _rested_rusty(team, eligible, rust, injured_ids)
+        injured_ids = injured_ids | rested
+        out_ids |= rested
     moods = happy_repo.moods(all_player_ids, season_id)
     for player in home_team.players + away_team.players:
         row = moods.get(player.id)
@@ -692,6 +696,12 @@ def _play_game(
     # that hand, and the platoon setting, go by his throwing hand.
     home_vs = _throws(away_team, away_starter_id)
     away_vs = _throws(home_team, home_starter_id)
+    # Strategy tab "Injury Lineup": a person whose hitter is out long enough
+    # gets both batting orders rebuilt and saved (src/league/injury_lineup.py).
+    for team, eligible in ((home_team, home_eligible), (away_team, away_eligible)):
+        injury_lineup.rebuild_if_needed(
+            conn, league_id, team, eligible, hurt_ids, out_ids, rust
+        )
     lpr = LineupPreferenceRepository(conn)
     home_saved = lpr.get_preferences(home_team.record.id, league_id, home_vs)
     away_saved = lpr.get_preferences(away_team.record.id, league_id, away_vs)
