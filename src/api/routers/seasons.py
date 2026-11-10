@@ -8,11 +8,16 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
 from src.api.dependencies import DB, GMOrViewer, IsHTMX, User
+from src.db.repositories.career_repo import CareerRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.api.view_models.seasons import retirement_context, season_summary_context
 from src.web.utils import _shell_ctx, tab_response
 
 router = APIRouter(tags=["web"])
+
+# Offseasons a person has been through (in any league) before the new-job
+# intro on the season summary drops to a short hint.
+EXPERIENCED_OFFSEASONS = 2
 
 
 @router.get("/leagues/{league_id}/season-summary", response_class=HTMLResponse)
@@ -41,6 +46,14 @@ def season_summary(
         and joined
         and joined > (ctx.get("season_year") or joined)
         else None
+    )
+    # Someone who's been through a few offseasons gets a one-line hint
+    # instead of the walkthrough.
+    ctx["new_gm_experienced"] = bool(
+        ctx["new_gm_year"]
+        and gm.get("user_id")
+        and CareerRepository(db).offseasons_done(gm["user_id"])
+        >= EXPERIENCED_OFFSEASONS
     )
     # The GM has seen how the season ended: from here the next-move button
     # points on to Expiring Deals on every page (next_move.pick).

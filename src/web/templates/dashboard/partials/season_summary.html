@@ -21,15 +21,17 @@
   <div class="card ss-new-gm">
     <div class="ss-new-gm-title">You've taken over the {{ my_team_name }}</div>
     <div class="ss-new-gm-body">
-      Here's how {{ season_year }} went for them, and for the league. Your first
-      season is {{ new_gm_year }}.
+      Here's how {{ season_year }} went. Your first season is {{ new_gm_year }}.
       {% if multiplayer %}
-        The offseason runs once every GM is ready. After it come the
-        retirements, then your {{ new_gm_year }} season preview and the draft.
+        The offseason runs once every GM is ready.
+        {% if not new_gm_experienced %}Retirements, your season preview and
+        the draft follow.{% endif %}
+      {% elif new_gm_experienced %}
+        Expiring Deals is up next.
       {% else %}
-        Next, Expiring Deals at the top takes you to the Free Agents tab to
-        re-sign or let go the players whose deals are up. Begin Offseason there
-        ages players and retires veterans. Then you'll see the retirements, your {{ new_gm_year }} season preview and the draft.
+        Next, use Expiring Deals at the top to re-sign or let go players whose
+        deals are up, then Begin Offseason. Retirements, your season preview
+        and the draft follow.
       {% endif %}
     </div>
   </div>

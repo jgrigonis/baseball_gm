@@ -200,6 +200,11 @@ def client(db_conn):
     app.dependency_overrides.clear()
 
 
+def _intro(page):
+    """The new-GM intro card's text on the season summary."""
+    return page.text.split('class="ss-new-gm-body">')[1].split("</div>")[0]
+
+
 def _as(user):
     app.dependency_overrides[get_current_user] = lambda: {
         **user,
@@ -329,7 +334,30 @@ class TestLandingAfterTakeOver:
         assert self._home(c, setup).endswith("/season-summary")
         page = c.get(f"/leagues/{setup['league'].id}/season-summary")
         assert "taken over the Tokyo Samurai" in page.text
-        assert "2026 season preview" in page.text
+        intro = _intro(page)
+        assert "Your first season is 2026" in intro
+        assert "season preview and" in intro
+
+    def test_experienced_gms_get_a_short_hint(self, db_conn, setup, client):
+        c = self._joined(db_conn, setup, "offseason")
+        bob_id = _gm(db_conn, setup["ai"].id)["user_id"]
+        repo = CareerRepository(db_conn)
+        for year in (2020, 2021, 2022):  # two offseasons in another league
+            repo.save({
+                "user_id": bob_id, "league_id": "elsewhere",
+                "season_id": f"s{year}", "league_name": "Other",
+                "season_year": year, "team_city": "X", "team_mascot": "Y",
+                "wins": 0, "losses": 0, "division_title": False,
+                "finish": None, "finish_of": None, "playoff_result": None,
+                "sweeps": 0, "trades": 0, "front_office": None,
+                "final": True, "custom_teams": False,
+            })
+        assert repo.offseasons_done(bob_id) == 2
+        page = c.get(f"/leagues/{setup['league'].id}/season-summary")
+        assert "taken over the Tokyo Samurai" in page.text
+        intro = _intro(page)
+        assert "Your first season is 2026" in intro
+        assert "season preview" not in intro
 
     def test_people_already_in_it_land_on_the_summary_too(self, db_conn, setup, client):
         c = _as(setup["alice_user"])

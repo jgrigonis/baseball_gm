@@ -88,6 +88,22 @@ class CareerRepository:
         ).fetchall()
         return {r["season_id"] for r in rows}
 
+    def offseasons_done(self, user_id: str) -> int:
+        """How many offseasons the person has been through, in any league:
+        each season of theirs that another season of theirs in the same
+        league follows. (A season gets its row once games are played, so
+        an offseason just finished counts once the next season starts.)"""
+        row = self.conn.execute(
+            """SELECT COUNT(*) AS n FROM gm_career_seasons a
+               WHERE a.user_id = %s
+                 AND EXISTS (SELECT 1 FROM gm_career_seasons b
+                             WHERE b.user_id = a.user_id
+                               AND b.league_id = a.league_id
+                               AND b.season_year > a.season_year)""",
+            (user_id,),
+        ).fetchone()
+        return row["n"] if row else 0
+
     def rename_league(self, league_id: str, name: str) -> None:
         self.conn.execute(
             "UPDATE gm_career_seasons SET league_name = %s WHERE league_id = %s",
