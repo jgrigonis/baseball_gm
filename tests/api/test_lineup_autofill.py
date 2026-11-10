@@ -202,6 +202,11 @@ def test_rebuild_can_use_another_lineup_style(db_conn, team_setup, monkeypatch):
         return real(*a, **kw)
 
     monkeypatch.setattr(svc.LineupOptimizer, "fill", spy)
+    db_conn.execute(
+        "UPDATE gm_profiles SET lineup_style = 'analytics'"
+        " WHERE gm_id IN (SELECT id FROM gms WHERE team_id = %s)",
+        (team.id,),
+    )
     autofill(db_conn, league.id, team.id, [None] * 9, rebuild=True)
     autofill(db_conn, league.id, team.id, [None] * 9, True, style="speed-first")
     assert seen == ["analytics", "speed-first"]
