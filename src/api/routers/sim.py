@@ -89,10 +89,15 @@ WORKER_MISSING_SECONDS = 15
 
 
 @router.get("/leagues/{league_id}/jobs/{job_id}")
-def job_status(league_id: str, job_id: str, db: DB, gm: GM):
+def job_status(league_id: str, job_id: str, db: DB, gm: GMOrViewer):
     """Where a queued sim has got to. Once it's done, its result in the shape
     the page expects, plus this GM's injury news for the sims that have
-    any."""
+    any.
+
+    A viewer can poll too: the sim that ends the playoffs is where owners
+    fire GMs (src/api/services/firing.py), so the GM who asked for it may be
+    a viewer by the time it's done. They still get the result, flagged
+    fired, so the page can show the finals and their new view."""
     job = SimJobRepository(db).get(job_id)
     if not job or job["league_id"] != league_id:
         raise HTTPException(status_code=404, detail="No such sim.")
@@ -112,7 +117,10 @@ def job_status(league_id: str, job_id: str, db: DB, gm: GM):
     if job["kind"] in ("sim", "playoffs"):
         league = LeagueRepository(db).get_by_id(league_id)
         body["league_state"] = league["state"] if league else "lobby"
-        body.update(take_injury_news(db, gm["id"]))
+        if gm.get("fired"):
+            body["fired"] = True
+        if gm.get("id"):
+            body.update(take_injury_news(db, gm["id"]))
     if job["kind"] == "sim":
         season_id = SeasonRepository(db).get_current_id_for_league(league_id)
         body["current_date"] = _current_league_date(db, season_id, body["league_state"])

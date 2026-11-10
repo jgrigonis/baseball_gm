@@ -268,7 +268,7 @@ async function _simPlayoffsRun(mode) {
   window._simStop = false;
   if (multi && window.schedSetSimMode) window.schedSetSimMode(true);
   else window.nextMoveBusy('po-day-btn', 'Simming…');
-  var days = 0, games = 0, startRound = null, champion = null, stopped = false;
+  var days = 0, games = 0, startRound = null, champion = null, stopped = false, fired = false;
   try {
     while (true) {
       if (multi) _status('Simming playoff day ' + (days + 1) + '…' + (games ? '  (' + games + ' games played)' : ''));
@@ -280,6 +280,10 @@ async function _simPlayoffsRun(mode) {
       games += d.games_played;
       if (startRound === null) startRound = d.played_round;
       champion = d.champion;
+      // The owners judge the season once the Finals end, and may have let
+      // this GM go: the page they're on is a GM's, so load it again as the
+      // viewer they now are, with the finished bracket and the New job link.
+      if (d.fired) { fired = true; break; }
 
       if (d.current_date) {
         var dateEl = document.querySelector('.topbar-date');
@@ -307,6 +311,7 @@ async function _simPlayoffsRun(mode) {
     if (fb) fb.textContent = '';
     gmToast('✗ Network error. Try again.', 'err');
   }
+  if (fired) { window.location.reload(); return; }
   if (multi && window.schedSetSimMode) window.schedSetSimMode(false);
   else window.nextMoveIdle('po-day-btn');
   window._simStop = false;
