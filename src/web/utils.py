@@ -509,6 +509,22 @@ def _shell_ctx(
         ctx["budget_due"] = year is not None and not BudgetRepository(db).budget_seen(
             league_id, ctx["team_id"], year
         )
+    # Then the Roster and Lineup tabs, once each before Opening Day (Josh,
+    # 2026-11-10): opening one marks it, so the button moves on from there.
+    if (
+        ctx["league_state"] == "preseason"
+        and not ctx["is_viewer"]
+        and ctx["team_id"]
+        and gm.get("id")
+        and ctx["season_id"]
+    ):
+        gms = GMRepository(db)
+        seen = gms.preseason_seen(gm["id"], ctx["season_id"])
+        if page in gms.PRESEASON_TABS and page not in seen:
+            gms.mark_preseason_seen(gm["id"], ctx["season_id"], page)
+            seen.add(page)
+        ctx["roster_due"] = "roster" not in seen
+        ctx["lineup_due"] = "lineup" not in seen
     ctx["next_move"] = next_move.pick(ctx, page, weekend_ready, stops)
     ctx["all_star_ids"] = (
         AllStarRepository(db).ids(ctx["season_id"]) if ctx["season_id"] else set()

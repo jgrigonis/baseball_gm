@@ -691,6 +691,26 @@ def test_the_preseason_asks_for_the_budget_until_its_seen(lg, client_for):
     assert "Set Your Budget" not in r.text
 
 
+def test_after_the_budget_the_preseason_goes_to_roster_then_lineup(lg, client_for):
+    # Josh, 2026-11-10: not straight to Opening Day; each tab once.
+    x = lg()
+    x.budgets.for_league(x.league.id, 2026)
+    client = client_for(x)
+    x.db.execute("UPDATE leagues SET state = 'preseason' WHERE id = %s", (x.league.id,))
+    r = client.get(f"/leagues/{x.league.id}/budget")
+    assert "Check Your Roster" in r.text
+    r = client.get(f"/leagues/{x.league.id}/standings")
+    assert "Check Your Roster" in r.text
+    r = client.get(f"/leagues/{x.league.id}/roster")
+    assert "Set Your Lineup" in r.text
+    r = client.get(f"/leagues/{x.league.id}/standings")
+    assert "Set Your Lineup" in r.text
+    r = client.get(f"/leagues/{x.league.id}/lineup")
+    assert "Play Opening Day" in r.text
+    r = client.get(f"/leagues/{x.league.id}/standings")
+    assert "Play Opening Day" in r.text
+
+
 def test_coaching_helps_the_young_most():
     assert bg.coaching_growth(4, 21) == 1.15
     assert bg.coaching_growth(0, 21) == 0.85

@@ -200,6 +200,13 @@ def pick(
     # gets one look at the Budget tab first (Josh, 2026-11-09).
     if state == "preseason" and ctx.get("budget_due") and page != "budget":
         return _go("set-budget", "💰 Set Your Budget →", "Budget →", f"{base}/budget")
+    # Then a look at the roster and the batting order before the first game
+    # (Josh, 2026-11-10). Opening the tab marks it seen (web/utils.py), so
+    # on the Roster tab the button already points on to the Lineup.
+    if state == "preseason" and ctx.get("roster_due") and page != "roster":
+        return _go("go-roster", "📋 Check Your Roster →", "Roster →", f"{base}/roster")
+    if state == "preseason" and ctx.get("lineup_due") and page != "lineup":
+        return _go("go-lineup", "📝 Set Your Lineup →", "Lineup →", f"{base}/lineup")
 
     if state in ("preseason", "season"):
         stops = stops or [{"kind": "playoffs", "note": STOP_NOTES["playoffs"]}]
