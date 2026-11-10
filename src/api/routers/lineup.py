@@ -101,7 +101,13 @@ def autofill_lineup(
     current = [slot.model_dump() if slot else None for slot in body.lineup]
     try:
         lineup = autofill(
-            db, league_id, gm["team_id"], current, body.rebuild, body.vs_hand
+            db,
+            league_id,
+            gm["team_id"],
+            current,
+            body.rebuild,
+            body.vs_hand,
+            style=body.style,
         )
     except ValueError:
         return JSONResponse(

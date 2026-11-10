@@ -56,9 +56,11 @@ def autofill(
     current: list[dict | None],
     rebuild: bool,
     vs_hand: str = "R",
+    style: str | None = None,
 ) -> list[dict]:
     """The filled lineup as [{player_id, position}], one per batting slot.
-    current is the lineup on screen, one entry (or None) per slot. Raises
+    current is the lineup on screen, one entry (or None) per slot. style
+    overrides the Strategy tab's lineup style (the Rebuild All menu). Raises
     ValueError if there aren't enough healthy hitters."""
     hitters = eligible_hitters(db, league_id, team_id)
     profile = ManagerProfile.from_row(
@@ -86,7 +88,7 @@ def autofill(
     lineup = LineupOptimizer.fill(
         locked,
         hitters,
-        style=profile.lineup_style,
+        style=style or profile.lineup_style,
         dh=True,
         vs_hand=vs_hand,
         platoon=profile.platoon_usage,

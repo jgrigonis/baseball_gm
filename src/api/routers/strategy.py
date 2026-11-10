@@ -42,7 +42,8 @@ SETTINGS: tuple[tuple[str, tuple[Setting, ...]], ...] = (
                 "How Auto-fill, Rebuild and the AI order your lineup. Every style "
                 "leads off with your best on-base hitter. Traditional bats the best "
                 "hitter 3rd; Analytics bats him 2nd; Speed-first puts speed 2nd "
-                "and 9th; Power-first stacks power 3rd through 5th.",
+                "and 9th; Power-first stacks power 3rd through 5th. The Lineup tab's "
+                "Rebuild All menu (▾) rebuilds with any style so you can compare.",
             ),
             Setting(
                 "baserunning",
@@ -214,6 +215,38 @@ class Checkbox:
     hint: str
 
 
+# Settings shown in a checkbox panel, above its checkboxes, by panel title.
+PANEL_SETTINGS: dict[str, tuple[Setting, ...]] = {
+    "Injuries": (
+        Setting(
+            "injury_lineup",
+            "Injury Lineup",
+            mp.INJURY_LINEUP,
+            (
+                "Always auto-fill",
+                *(
+                    f"Auto-fill up to {d} day{'s' if d > 1 else ''}"
+                    for d in mp.INJURY_FILL_DAYS
+                ),
+                "Always rebuild",
+            ),
+            ("Keep my lineup", "Rebuild it"),
+            "What the coach does to your saved batting orders when a hitter is "
+            "hurt during a sim. Auto-fill plays your lineup and puts someone in "
+            "his slot for the day; he's back in it when he returns. Rebuild "
+            "redoes both lineups (vs RHP and vs LHP) the way the Lineup tab's "
+            "Rebuild does and saves them: when he goes out, when he's back in "
+            "the lineup, and when his rust wears off. In between, outs up to "
+            "that many days are auto-filled and longer ones rebuild. Days out "
+            "is the injury's length; with Rest rusty players on, the days he "
+            "sits out rust count too (rust fades twice as fast while he sits, "
+            "so a 1-day injury with 4 days of rust is a 3-day out). Pitchers "
+            "aren't changed: a hurt starter's turn goes to the next healthy one.",
+        ),
+    ),
+}
+
+
 # Checkbox panels: (title, checkboxes). A box left unticked isn't posted, so
 # the save reads each one as on when it's in the form and off when it isn't.
 CHECKBOXES: tuple[tuple[str, tuple[Checkbox, ...]], ...] = (
@@ -243,6 +276,17 @@ def _index(values: tuple, current) -> int:
     return min(range(len(values)), key=lambda i: abs(values[i] - current))
 
 
+def _slider(s: Setting, current: dict) -> dict:
+    return {
+        "name": s.name,
+        "label": s.label,
+        "labels": s.labels,
+        "ends": s.ends,
+        "hint": s.hint,
+        "index": _index(s.values, current[s.name]),
+    }
+
+
 @router.get("/leagues/{league_id}/strategy", response_class=HTMLResponse)
 def strategy(
     request: Request,
@@ -257,21 +301,7 @@ def strategy(
     row = GMRepository(db).get_profile(gm["id"]) if gm else None
     current = vars(mp.ManagerProfile.from_row(row))
     ctx["cards"] = [
-        (
-            title,
-            [
-                {
-                    "name": s.name,
-                    "label": s.label,
-                    "labels": s.labels,
-                    "ends": s.ends,
-                    "hint": s.hint,
-                    "index": _index(s.values, current[s.name]),
-                }
-                for s in settings
-            ],
-        )
-        for title, settings in SETTINGS
+        (title, [_slider(s, current) for s in settings]) for title, settings in SETTINGS
     ]
     ctx["checkbox_cards"] = [
         (
@@ -285,6 +315,7 @@ def strategy(
                 }
                 for c in boxes
             ],
+            [_slider(s, current) for s in PANEL_SETTINGS.get(title, ())],
         )
         for title, boxes in CHECKBOXES
     ]
@@ -307,7 +338,8 @@ async def save_strategy(
 
     form = await request.form()
     updates = {}
-    for _, settings in SETTINGS:
+    all_settings = [*SETTINGS, *PANEL_SETTINGS.items()]
+    for _, settings in all_settings:
         for s in settings:
             if s.name in form:
                 try:
@@ -319,8 +351,16 @@ async def save_strategy(
         for c in boxes:
             updates[c.name] = c.name in form
 
+    repo = GMRepository(db)
+    saved = repo.get_profile(gm["id"]) or {}
+    if "injury_lineup" in updates and updates["injury_lineup"] != saved.get(
+        "injury_lineup"
+    ):
+        # A new Injury Lineup step starts fresh: the next game notes who's
+        # out, and only a change after that rebuilds (src/league/injury_lineup.py).
+        updates["injury_lineup_key"] = None
     if updates:
-        GMRepository(db).save_profile(gm["id"], updates)
+        repo.save_profile(gm["id"], updates)
         db.commit()
     # Shown as a toast (gmToast in dialogs.js).
     return HTMLResponse(

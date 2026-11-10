@@ -971,6 +971,11 @@ CREATE TABLE IF NOT EXISTS gm_profiles (
                           CHECK (stats_vs_scouting BETWEEN 0 AND 100),
     -- Players still rusty from an injury sit until it fades (migration 097).
     rest_rusty BOOLEAN NOT NULL DEFAULT FALSE,
+    -- What the coach does to the saved lineup when a hitter is hurt, and who
+    -- was out the last time the sim checked (migration 111).
+    injury_lineup TEXT NOT NULL DEFAULT 'fill'
+                      CHECK (injury_lineup IN ('fill', 'fill-10', 'fill-7', 'fill-5', 'fill-3', 'fill-2', 'fill-1', 'rebuild')),
+    injury_lineup_key TEXT,
 
     updated_at TEXT NOT NULL DEFAULT (NOW()),
 

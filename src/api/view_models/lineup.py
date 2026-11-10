@@ -21,6 +21,7 @@ from src.player.face import face_url
 from src.player.skill_map import SKILL_MIN
 from src.stats import formulas
 from src.team.manager_profile import ManagerProfile
+from src.team.lineup_optimizer import STYLE_GUIDE
 
 
 def lineup_context(
@@ -108,6 +109,13 @@ def lineup_context(
         "rotation_size": auto_rotation_size(profile, league_state),
         # Auto builds leave rusty players out (Strategy tab)
         "rest_rusty": profile.rest_rusty,
+        # The Rebuild All menu: each lineup style and what it does with the
+        # batting order; the Strategy tab's is marked.
+        "lineup_styles": [
+            {"value": k, "label": label, "slots": slots}
+            for k, (label, slots) in STYLE_GUIDE.items()
+        ],
+        "lineup_style": profile.lineup_style,
     }
 
 
