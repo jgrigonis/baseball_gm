@@ -179,6 +179,9 @@ def take_over(conn, league_id: str, user: dict, team_id: str) -> str:
         gm_repo.take_over_team(
             ai["gm_id"], user["id"], user["display_name"], joined_year(conn, league)
         )
+        # The owner's messages were to the AI GMs who ran the team before, so
+        # the new GM starts with an empty office, not a pile of unread mail.
+        conn.execute("DELETE FROM owner_messages WHERE gm_id = %s", (ai["gm_id"],))
         # The News tab's badge counts from now, not from the league's start.
         news = NewsRepository(conn)
         news.mark_seen(ai["gm_id"], news.newest_id(league_id))

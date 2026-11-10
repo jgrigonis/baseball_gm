@@ -96,6 +96,7 @@ def _fire(conn, league_id: str, season_id: str, year: int, r: dict) -> dict:
     if not person:
         # A new AI GM: a different persona, starting fresh with the owner.
         personas.give_persona(conn, league_id, gm_id, rng)
+        conn.execute("DELETE FROM owner_messages WHERE gm_id = %s", (gm_id,))
         return firing
 
     # Their record so far, before the team stops being theirs.

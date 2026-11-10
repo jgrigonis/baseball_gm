@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 from src.api.database import get_db
 from src.api.dependencies import get_current_user
 from src.api.main import app
-from src.api.services import career, takeover
+from src.api.services import career, owner_office, takeover
 from src.db.repositories.career_repo import CareerRepository
 from src.db.repositories.gm_repo import GMRepository
 
@@ -146,6 +146,29 @@ class TestTakeOver:
             setup["mine"].id,
             setup["theirs"].id,
         }
+
+    def test_old_owner_messages_dont_come_with_the_team(self, db_conn, setup):
+        # The owner wrote to the AI GM all season; none of it is the new GM's.
+        for n in range(3):
+            db_conn.execute(
+                """INSERT INTO owner_messages
+                       (league_id, team_id, gm_id, season_id, key, kind, body)
+                   VALUES (%s, %s, %s, %s, %s, 'checkin', 'Old news.')""",
+                (
+                    setup["league"].id,
+                    setup["theirs"].id,
+                    setup["ai"].id,
+                    setup["season"].id,
+                    f"check:{setup['season'].id}:{n}",
+                ),
+            )
+        bob = _user(db_conn, "Bob")
+        gm_id = takeover.take_over(db_conn, setup["league"].id, bob, setup["theirs"].id)
+        assert owner_office.unseen(db_conn, gm_id) == 0
+        office = owner_office.office(
+            db_conn, setup["league"].id, setup["theirs"].id, gm_id
+        )
+        assert office["messages"] == []
 
     def test_draft_state_starts_with_the_new_season(self, db_conn, factory, setup):
         new = factory.season(year=2026)
