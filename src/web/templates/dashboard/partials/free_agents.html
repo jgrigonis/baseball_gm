@@ -187,7 +187,7 @@ function row(p) {
     <span class="${gradeClass(p.overall)} lu-grade">${p.overall}</span>
     ${faceImgHtml(p, false)}
     <div style="min-width:0;">
-      <div class="lu-name">${p.first_name} ${p.last_name}${nameTrailHtml(p, trail, '')}</div>
+      <div class="lu-name">${p.first_name} ${p.last_name}${iconTag(p)}${nameTrailHtml(p, trail, '')}</div>
       ${isPitcher ? `<div class="lu-skills">${pitcherGradesHtml(p)}</div>` : hitterGradesHtml(p, null)}
     </div>
     <div class="fa-right">
@@ -260,7 +260,7 @@ function expiringRow(p) {
     <span class="${gradeClass(p.overall)} lu-grade">${p.overall}</span>
     ${faceImgHtml(p, false)}
     <div style="min-width:0;">
-      <div class="lu-name"${p.injured ? ' style="color:var(--red);"' : ''}>${p.first_name} ${p.last_name}${ilTag(p)}${nameTrailHtml(p, trail, '')}</div>
+      <div class="lu-name"${p.injured ? ' style="color:var(--red);"' : ''}>${p.first_name} ${p.last_name}${ilTag(p)}${iconTag(p)}${nameTrailHtml(p, trail, '')}</div>
       ${seasonLineHtml(p)}
       ${isPitcher ? `<div class="lu-skills">${pitcherGradesHtml(p)}</div>` : hitterGradesHtml(p, null)}
     </div>

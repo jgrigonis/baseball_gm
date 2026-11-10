@@ -10,7 +10,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 
 from src.api.dependencies import DB, GM, ActiveLeague, GMOrViewer, IsHTMX, User
-from src.api.services import free_agents, offseason_fa, waivers
+from src.api.services import free_agents, icons, offseason_fa, waivers
 from src.api.view_models.player_cards import (
     attach_injuries,
     attach_roster_stats,
@@ -99,6 +99,9 @@ def free_agents_tab(
         last = last_team.get(row["id"])
         card["last_team"] = names.get(last) if last else None
         players.append(card)
+    # Our own franchise icons in the pool (let go or released), tagged like
+    # Roster and Lineup (Josh, 2026-11-10).
+    icons.attach(db, team_id, players)
 
     # Offseason free agency (src/api/services/offseason_fa.py): bids during
     # the draft, and the GM's expiring deals in the offseason.
@@ -144,6 +147,8 @@ def free_agents_tab(
                 inj.get_team_injuries(team_id),
                 inj.get_team_injury_types(team_id),
             )
+        # Franchise icons whose deals are up (Josh, 2026-11-10).
+        icons.attach(db, team_id, exp)
         if ctx["expiring"]:
             ctx["next_money"] = offseason_fa.next_season_money(db, league_id, team_id)
             ctx["resign_all"] = offseason_fa.resign_all_plan(db, league_id, team_id)
