@@ -287,6 +287,31 @@ class GMRepository:
             (season_id, gm_id),
         )
 
+    PRESEASON_TABS = {
+        "roster": "roster_seen_season_id",
+        "lineup": "lineup_seen_season_id",
+    }
+
+    def preseason_seen(self, gm_id: str, season_id: str) -> set[str]:
+        """The preseason tabs (roster, lineup) the GM has opened before this
+        season's Opening Day."""
+        row = self.conn.execute(
+            "SELECT roster_seen_season_id, lineup_seen_season_id FROM gms"
+            " WHERE id = %s",
+            (gm_id,),
+        ).fetchone()
+        if not row:
+            return set()
+        return {
+            tab for tab, col in self.PRESEASON_TABS.items() if row[col] == season_id
+        }
+
+    def mark_preseason_seen(self, gm_id: str, season_id: str, tab: str) -> None:
+        col = self.PRESEASON_TABS[tab]
+        self.conn.execute(
+            f"UPDATE gms SET {col} = %s WHERE id = %s", (season_id, gm_id)
+        )
+
     def needs_setup_bar(self, gm_id: str) -> bool:
         """True until the GM first saves their roster."""
         row = self.conn.execute(

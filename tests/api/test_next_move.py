@@ -190,6 +190,31 @@ def test_preseason_sends_the_gm_to_set_the_budget_first():
     assert move["label"] == "▶ Play Day"
 
 
+def test_preseason_goes_budget_then_roster_then_lineup():
+    # Josh, 2026-11-10: after the budget, a look at the roster and the
+    # lineup before Opening Day, each until the GM has opened it.
+    pre = dict(league_state="preseason", roster_due=True, lineup_due=True)
+    move = pick(_ctx(budget_due=True, **pre), "standings")
+    assert move["key"] == "set-budget"
+    move = pick(_ctx(budget_due=True, **pre), "budget")
+    assert move["key"] == "go-roster" and move["href"] == "/leagues/L1/roster"
+    # Opening the Roster tab marks it seen, so there it points on.
+    move = pick(_ctx(league_state="preseason", lineup_due=True), "roster")
+    assert move["key"] == "go-lineup" and move["href"] == "/leagues/L1/lineup"
+    move = pick(_ctx(league_state="preseason", lineup_due=True), "standings")
+    assert move["key"] == "go-lineup"
+    move = pick(_ctx(league_state="preseason"), "lineup")
+    assert move["label"] == "▶ Play Opening Day"
+    # The lineup first: the roster is still to see.
+    move = pick(_ctx(league_state="preseason", roster_due=True), "lineup")
+    assert move["key"] == "go-roster"
+    # Several GMs keep the ready button; the season ignores the flags.
+    move = pick(_ctx(multiplayer=True, **pre), "budget")
+    assert move["key"] == "ready"
+    move = pick(_ctx(league_state="season", roster_due=True), "standings")
+    assert move["label"] == "▶ Play Day"
+
+
 def test_once_the_summary_is_seen_every_page_points_on_to_expiring_deals():
     ctx = _ctx(league_state="offseason", summary_seen=True)
     for page in ("roster", "standings", "budget", "playoffs"):
