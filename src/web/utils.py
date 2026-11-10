@@ -315,6 +315,10 @@ def _shell_ctx(
                 }
             )
             tabs = _compute_visible_tabs(league["state"], draft_complete)
+            # The GM's expiring deals: from the champion's crowning until the
+            # offseason runs (routers/free_agents.py expiring_tab).
+            if league["state"] == "offseason" and "free-agents" in tabs:
+                tabs.insert(tabs.index("free-agents") + 1, "expiring")
             # Leagues that trade get a Trades tab once the draft is done, after
             # the lineup. It stays for the trade history once trades close.
             # The offseason window is open through the draft too, so it's
