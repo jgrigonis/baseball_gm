@@ -10,7 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from src.api.database import get_db
-from src.api.dependencies import get_current_gm
+from src.api.dependencies import get_current_gm, get_gm_or_viewer
 from src.api.main import app
 from src.api.services import sim_jobs
 from src.db.locks import LeagueBusy
@@ -224,6 +224,7 @@ class TestPolling:
     def client(self, db_conn):
         app.dependency_overrides[get_db] = lambda: db_conn
         app.dependency_overrides[get_current_gm] = lambda: {"id": "gm-1"}
+        app.dependency_overrides[get_gm_or_viewer] = lambda: {"id": "gm-1"}
         yield TestClient(app)
         app.dependency_overrides.clear()
 
@@ -280,6 +281,29 @@ class TestPolling:
         assert body["league_state"] == "season"
         assert "current_date" in body
         assert body["new_injuries"] == []
+
+    def test_gm_fired_by_the_finals_still_gets_the_result(
+        self, client, db_conn, league
+    ):
+        # The sim that ends the playoffs is where owners fire GMs: the GM who
+        # asked for it is a viewer by the time they poll. The page needs the
+        # result (or it sits at 3 wins in the Finals) and to know they're out.
+        app.dependency_overrides[get_gm_or_viewer] = lambda: {
+            "id": None,
+            "team_id": None,
+            "is_viewer": True,
+            "fired": True,
+        }
+        repo = SimJobRepository(db_conn)
+        job_id = repo.add(league.id, "playoffs", {"mode": "game"}, None)
+        repo.finish(job_id, {"games_played": 1, "champion": "team-1"})
+
+        body = self._poll(client, league, job_id)
+
+        assert body["state"] == "done"
+        assert body["champion"] == "team-1"
+        assert body["fired"] is True
+        assert "new_injuries" not in body
 
     def test_another_leagues_job_is_not_found(self, client, db_conn, factory, league):
         job_id = SimJobRepository(db_conn).add(factory.league().id, "sim", {}, None)
