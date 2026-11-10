@@ -121,8 +121,14 @@ function moodTag(p) {
   const b = p.mood_badge;
   if (!b) return '';
   if (b.refusing) return '<span class="lu-mood lu-mood-bad" title="Unhappy enough to bench himself for a few days">SITTING OUT</span>';
-  if (b.wants_trade) return '<span class="lu-mood lu-mood-bad" title="He has asked to be traded">WANTS TRADE</span>';
+  if (b.wants_trade) return wantsTradeTag(p);
   return `<span class="lu-mood" title="He's ${b.mood}. Open his card to see why.">${b.mood.toUpperCase()}</span>`;
+}
+
+// "WANTS TRADE" alone, for lists that skip the mood word (Free Agents).
+function wantsTradeTag(p) {
+  if (!(p.mood_badge && p.mood_badge.wants_trade)) return '';
+  return '<span class="lu-mood lu-mood-bad" title="He has asked to be traded">WANTS TRADE</span>';
 }
 
 // "ICON" after a franchise icon's name (src/api/services/icons.py): years
