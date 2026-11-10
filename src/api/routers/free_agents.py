@@ -13,6 +13,7 @@ from src.api.dependencies import DB, GM, ActiveLeague, GMOrViewer, IsHTMX, User
 from src.api.services import free_agents, icons, offseason_fa, waivers
 from src.api.view_models.player_cards import (
     attach_injuries,
+    attach_moods,
     attach_roster_stats,
     roster_card,
 )
@@ -149,6 +150,8 @@ def free_agents_tab(
             )
         # Franchise icons whose deals are up (Josh, 2026-11-10).
         icons.attach(db, team_id, exp)
+        # Players who asked us for a trade (Josh, 2026-11-10).
+        attach_moods(db, league_id, exp)
         if ctx["expiring"]:
             ctx["next_money"] = offseason_fa.next_season_money(db, league_id, team_id)
             ctx["resign_all"] = offseason_fa.resign_all_plan(db, league_id, team_id)

@@ -555,3 +555,27 @@ def test_our_icon_in_the_pool_carries_the_icon_tag(lg, client):
     _icon_seasons(lg, star, lg.mine)
     html = client.get(f"/leagues/{lg.league.id}/free-agents").text
     assert '"icon_seasons": 5' in html
+
+
+def test_expiring_players_who_want_a_trade_carry_the_tag(lg, client):
+    lg.db.execute(
+        "UPDATE leagues SET state = 'offseason' WHERE id = %s", (lg.league.id,)
+    )
+    pid = lg.factory.rated_player(lg.mine, lg.league, level=70, name="Grumpy").id
+    lg.contracts.insert_deal(
+        pid, lg.league.id, lg.mine.id, ct.Deal(2_000_000, 3, "standard"), 2024
+    )
+    lg.db.execute(
+        """INSERT INTO player_moods (player_id, season_id, league_id, team_id,
+                                     mood, target, detail, updated_on,
+                                     trade_request_on)
+           VALUES (%s, %s, %s, %s, -0.8, -0.8, '{}', '2026-06-01',
+                   '2026-06-01')""",
+        (pid, lg.season.id, lg.league.id, lg.mine.id),
+    )
+    html = client.get(f"/leagues/{lg.league.id}/free-agents").text
+    assert f'"player_id": "{pid}"' in html
+    # Keys are sorted, so his mood badge comes just before his id.
+    card = html.split(f'"player_id": "{pid}"', 1)[0].rsplit('"first_name"', 1)[1]
+    assert '"wants_trade": true' in card.split('"mood_badge"', 1)[1]
+    assert "${wantsTradeTag(p)}" in html
