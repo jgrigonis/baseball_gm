@@ -26,8 +26,9 @@ M = 1_000_000
 # ── Rules ─────────────────────────────────────────────────────────────────────
 
 
-def test_the_first_cap_is_the_average_payroll_rounded():
-    assert bg.first_cap([150 * M, 170 * M, 161 * M]) == 160 * M
+def test_the_first_cap_is_the_average_payroll_grown_and_rounded():
+    # 160.3M average, plus 5% for the free agents and rookies to come.
+    assert bg.first_cap([150 * M, 170 * M, 161 * M]) == 170 * M
 
 
 def test_the_cap_grows_five_percent_a_season():
@@ -126,7 +127,7 @@ def test_next_seasons_cap_grows_from_this_ones_before_it_ends(lg):
     assert x.budgets.cap(x.league.id, 2027) == bg.grown(now)
 
 
-def test_after_a_season_the_cap_follows_its_average_payroll(lg):
+def test_after_a_season_the_cap_follows_what_teams_owe_next_season(lg):
     x = lg()
     x.budgets.for_league(x.league.id, 2026)
     now = x.budgets.cap(x.league.id, 2026)
@@ -144,11 +145,14 @@ def test_after_a_season_the_cap_follows_its_average_payroll(lg):
         ]
     )
     x.budgets.assess(x.league.id, 2026)
-    pays = [x.contracts.payroll(t.id, 2026) for t in (x.mine, x.theirs)]
-    assert sum(pays) / 2 > now
-    assert x.budgets.cap(x.league.id, 2027) == bg.next_cap(now, pays)
-    # Seasons further out grow from there.
-    assert x.budgets.cap(x.league.id, 2028) == bg.grown(bg.next_cap(now, pays))
+    # Not last season's final payrolls: what's already owed next season.
+    nxt = [x.contracts.payroll(t.id, 2027) for t in (x.mine, x.theirs)]
+    assert sum(nxt) / 2 * (1 + bg.CAP_GROWTH) > now
+    assert x.budgets.cap(x.league.id, 2027) == bg.next_cap(now, nxt)
+    # Never lower than the last cap, grown for a season further out.
+    later = [x.contracts.payroll(t.id, 2028) for t in (x.mine, x.theirs)]
+    assert x.budgets.cap(x.league.id, 2028) == bg.next_cap(bg.grown(now), later)
+    assert x.budgets.cap(x.league.id, 2028) >= bg.grown(now)
 
 
 def test_speed_blitz_has_no_budgets(lg):
@@ -292,8 +296,8 @@ def test_the_season_end_records_fans_and_profit(lg):
     assert stored["popularity_revenue"] is not None
     assert (stored["popularity_revenue"] > 0) == (stored["fans_before"] > 55)
     assert money["payroll"] == x.contracts.payroll(x.mine.id, 2026)
-    # Next season's cap follows the season's final payrolls.
-    pays = [x.contracts.payroll(t.id, 2026) for t in (x.mine, x.theirs)]
+    # Next season's cap follows what teams already owe that season.
+    pays = [x.contracts.payroll(t.id, 2027) for t in (x.mine, x.theirs)]
     x.budgets.for_league(x.league.id, 2027)
     assert x.budgets.cap(x.league.id, 2027) == bg.next_cap(
         x.budgets.cap(x.league.id, 2026), pays

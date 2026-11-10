@@ -60,25 +60,32 @@ MARKET_FLOOR = 0.50
 FRINGE_GRADE = "C-"
 
 
-def is_fringe(player) -> bool:
-    """C- or worse: the kind of player free agency has plenty of."""
+def is_fringe(player, shifts: dict | None = None) -> bool:
+    """C- or worse: the kind of player free agency has plenty of. shifts:
+    the season's price_shifts, so it's his rank in the league that counts."""
     kind = "pitcher" if player.is_pitcher() else "hitter"
-    return ct.grade_position(role_rating(player), kind) >= ct.GRADES.index(FRINGE_GRADE)
+    value = ct.shifted(role_rating(player), kind, shifts)
+    return ct.grade_position(value, kind) >= ct.GRADES.index(FRINGE_GRADE)
 
 
 def asking_deal(
-    player, year: int, scale: float = 1.0, discount: float = 1.0
+    player,
+    year: int,
+    scale: float = 1.0,
+    discount: float = 1.0,
+    shifts: dict | None = None,
 ) -> ct.Deal:
     """What a free agent asks for: a standard deal at his value, times how
     far his price has fallen (market_discount), or the minimum for one
     season when he's a fringe player. The same for a whole step, so the
     price doesn't change each time you look. scale is the league's
-    price_scale for the season."""
-    if is_fringe(player):
+    price_scale for the season, shifts its price_shifts."""
+    if is_fringe(player, shifts):
         return ct.Deal(ct.round_salary(ct.MIN_SALARY * scale, scale), 1, "standard")
     kind = "pitcher" if player.is_pitcher() else "hitter"
     rng = random.Random(f"ask:{player.id}:{year}")
-    deal = ct.standard_deal(player.age, role_rating(player), kind, rng, scale)
+    value = ct.shifted(role_rating(player), kind, shifts)
+    deal = ct.standard_deal(player.age, value, kind, rng, scale)
     if discount >= 1.0:
         return deal
     return ct.Deal(
@@ -121,6 +128,12 @@ def market_discount(conn, league_id: str) -> float:
 def price_scale(conn, league_id: str, year: int) -> float:
     """How far contract prices have grown with the league's cap."""
     return BudgetRepository(conn).salary_scale(league_id, year)
+
+
+def price_shifts(conn, league_id: str, year: int) -> dict[str, float]:
+    """How far the league's price level has moved since its first season
+    (ContractRepository.price_shifts): prices follow league rank."""
+    return ContractRepository(conn).price_shifts(league_id, year)
 
 
 def _context(conn, league_id: str) -> tuple[str, int]:
@@ -206,6 +219,7 @@ def sign_preview(conn, league_id: str, team_id: str, player_id: str) -> dict:
         year,
         price_scale(conn, league_id, year),
         market_discount(conn, league_id),
+        price_shifts(conn, league_id, year),
     )
     return {
         "salary_text": ct.format_salary(deal.salary),
@@ -262,6 +276,7 @@ def sign(conn, league_id: str, team_id: str, player_id: str) -> dict:
             year,
             price_scale(conn, league_id, year),
             market_discount(conn, league_id),
+            price_shifts(conn, league_id, year),
         )
         refusal = BudgetRepository(conn).refusal(league_id, team_id, year, deal.salary)
         if refusal:

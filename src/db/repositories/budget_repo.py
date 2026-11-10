@@ -362,10 +362,11 @@ class BudgetRepository:
 
     def cap(self, league_id: str, year: int) -> int:
         """The league's payroll cap for the season, the same for every
-        team: the one already set; else the newest season's followed to its
-        teams' average final payroll (src/league/budget.py next_cap), or
-        grown when that season isn't finished; else the league's average
-        payroll."""
+        team: the one already set; else, once the newest season with a cap
+        is finished, the average payroll teams have already committed to
+        this season (src/league/budget.py next_cap), or that cap grown when
+        it isn't finished; else the league's average payroll
+        (first_cap)."""
         row = self.conn.execute(
             """SELECT year, MAX(cap) AS cap FROM team_budgets
                WHERE league_id = %s AND year <= %s AND cap IS NOT NULL
@@ -376,18 +377,23 @@ class BudgetRepository:
             cap, gap = int(row["cap"]), year - row["year"]
             if gap <= 0:
                 return cap
-            finals = [
-                int(r["payroll"])
-                for r in self.conn.execute(
-                    """SELECT payroll FROM team_budgets
-                       WHERE league_id = %s AND year = %s
-                         AND payroll IS NOT NULL AND profit IS NOT NULL""",
-                    (league_id, row["year"]),
-                ).fetchall()
+            finished = self.conn.execute(
+                """SELECT 1 FROM team_budgets
+                   WHERE league_id = %s AND year = %s
+                     AND payroll IS NOT NULL AND profit IS NOT NULL
+                   LIMIT 1""",
+                (league_id, row["year"]),
+            ).fetchone()
+            if not finished:
+                return bg.grown(cap, gap)
+            # Josh, 2026-11-09: a cap set off last season's final payrolls
+            # ran a season late (season 2 left most teams far under it,
+            # later seasons nearly all over). It follows what teams owe
+            # this season instead, after the re-sign window.
+            committed = [
+                self.contracts.payroll(t, year) for t in self._team_ids(league_id)
             ]
-            if finals:
-                return bg.grown(bg.next_cap(cap, finals), gap - 1)
-            return bg.grown(cap, gap)
+            return bg.next_cap(bg.grown(cap, gap - 1), committed)
         payrolls = [self.contracts.payroll(t, year) for t in self._team_ids(league_id)]
         return bg.first_cap(payrolls)
 

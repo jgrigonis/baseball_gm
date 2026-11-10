@@ -140,6 +140,11 @@ class HappinessRepository:
         pers = self.personalities(ids)
         contracts = self._contracts(ids, year)
         first_cap_year = self._first_cap_year()
+        # Worth follows his rank in the league, like his price
+        # (src/player/contracts.py shifted).
+        from src.db.repositories.contract_repo import ContractRepository
+
+        shifts = ContractRepository(self.conn).price_shifts(self.league_id, year)
         records = self._records(season_id, team_ids)
         states = self._states(season_id)
         usage = self._usage(season_id, team_ids, players, as_of)
@@ -182,7 +187,8 @@ class HappinessRepository:
             u = usage.get(pid, hp.Usage())
             rank, size = ranks[pid]
             c = contracts.get(pid)
-            worth = ct.prime_salary(p["rating"], p["kind"]) * ct.age_factor(p["age"])
+            rating = ct.shifted(p["rating"], p["kind"], shifts)
+            worth = ct.prime_salary(rating, p["kind"]) * ct.age_factor(p["age"])
             if c and first_cap_year is not None:
                 # Judged at prices from when he signed: a deal doesn't sour
                 # just because the league's prices grew with the cap.

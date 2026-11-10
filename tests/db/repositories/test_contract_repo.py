@@ -134,3 +134,38 @@ def test_free_agents_go_unsigned_and_payroll_counts_the_roster(env):
     assert repo.active(gone, 2026) is None
     assert repo.payroll(team.id, 2026) == repo.active(on, 2026)["salary"]
     assert repo.current_year(league.id) == 2026
+
+
+def test_prices_follow_league_rank_not_raw_rating(env):
+    """Josh, 2026-11-09: as a league's ratings climb, the same rank in the
+    league costs the same (src/player/contracts.py shifted)."""
+    db, factory, league, _, team = env
+    for _ in range(10):
+        factory.rated_player(team, league, level=55, status="26man")
+    repo = ContractRepository(db)
+    # The first season priced sets the base: nothing moves.
+    assert repo.price_shifts(league.id, 2026) == {}
+    base = repo.price_level(league.id, 2026)["hitter"]
+    # Two seasons on, every big leaguer is 8 points better.
+    db.execute(
+        "UPDATE player_status SET status = 'minors' WHERE player_id IN"
+        " (SELECT player_id FROM team_players WHERE team_id = %s)",
+        (team.id,),
+    )
+    for _ in range(10):
+        factory.rated_player(team, league, level=63, status="26man")
+    shift = repo.price_shifts(league.id, 2028)["hitter"]
+    assert shift == repo.price_level(league.id, 2028)["hitter"] - base > 0
+    # Stored: asking again gives the same, whatever the roster does.
+    factory.rated_player(team, league, level=90, status="26man")
+    assert repo.price_shifts(league.id, 2028)["hitter"] == shift
+    # The same rank costs the same: a 63 in 2028 is priced like a 55 was.
+    assert ct.shifted(63, "hitter", {"hitter": shift}) == pytest.approx(55, abs=1)
+
+
+def test_price_level_is_the_rating_at_the_price_line():
+    ratings = list(range(1, 101))  # 100 players
+    assert ct.price_level(ratings) == 100 - int(100 * ct.PRICE_LINE)
+    assert ct.price_level([]) is None
+    assert ct.shifted(60, "hitter", None) == 60
+    assert ct.shifted(60, "pitcher", {"hitter": 5}) == 60
