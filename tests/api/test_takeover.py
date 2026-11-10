@@ -343,15 +343,28 @@ class TestLandingAfterTakeOver:
         bob_id = _gm(db_conn, setup["ai"].id)["user_id"]
         repo = CareerRepository(db_conn)
         for year in (2020, 2021, 2022):  # two offseasons in another league
-            repo.save({
-                "user_id": bob_id, "league_id": "elsewhere",
-                "season_id": f"s{year}", "league_name": "Other",
-                "season_year": year, "team_city": "X", "team_mascot": "Y",
-                "wins": 0, "losses": 0, "division_title": False,
-                "finish": None, "finish_of": None, "playoff_result": None,
-                "sweeps": 0, "trades": 0, "front_office": None,
-                "final": True, "custom_teams": False,
-            })
+            repo.save(
+                {
+                    "user_id": bob_id,
+                    "league_id": "elsewhere",
+                    "season_id": f"s{year}",
+                    "league_name": "Other",
+                    "season_year": year,
+                    "team_city": "X",
+                    "team_mascot": "Y",
+                    "wins": 0,
+                    "losses": 0,
+                    "division_title": False,
+                    "finish": None,
+                    "finish_of": None,
+                    "playoff_result": None,
+                    "sweeps": 0,
+                    "trades": 0,
+                    "front_office": None,
+                    "final": True,
+                    "custom_teams": False,
+                }
+            )
         assert repo.offseasons_done(bob_id) == 2
         page = c.get(f"/leagues/{setup['league'].id}/season-summary")
         assert "taken over the Tokyo Samurai" in page.text
