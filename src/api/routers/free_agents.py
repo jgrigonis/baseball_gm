@@ -1,7 +1,7 @@
 # src/api/routers/free_agents.py
 #
-# The Free Agents tab, and releasing and signing players
-# (src/api/services/free_agents.py).
+# The Free Agents tab, the Expiring Deals tab, and releasing and signing
+# players (src/api/services/free_agents.py).
 
 from __future__ import annotations
 
@@ -119,8 +119,42 @@ def free_agents_tab(
                     "salary_text": format_salary(b["salary"]),
                     "years": b["years"],
                 }
-    ctx["expiring"] = []
-    if state == "offseason" and team_id and not ctx.get("is_viewer"):
+    ctx["players"] = players
+    ctx["market_step_pct"] = round(free_agents.MARKET_STEP * 100)
+    ctx["market_floor_pct"] = round(free_agents.MARKET_FLOOR * 100)
+    ctx["pool_size"] = len(rows)
+    ctx["max_shown"] = MAX_SHOWN
+    ctx["minors_limit"] = MINORS_LIMIT
+    ctx["waiver_count"] = len(on_waivers)
+    ctx["can_sign"] = bool(team_id) and not ctx.get("is_viewer")
+    if ctx["can_sign"] and year is not None:
+        ctx["minors_count"] = len(
+            PlayerStatusRepository(db).get_by_team_and_status(team_id, "minors")
+        )
+        ctx["payroll_text"] = format_salary(contracts.payroll(team_id, year))
+        ctx["budget"] = BudgetRepository(db).standing(league_id, team_id, year)
+    return tab_response(request, htmx, "dashboard/partials/free_agents.html", ctx)
+
+
+@router.get("/leagues/{league_id}/expiring", response_class=HTMLResponse)
+def expiring_tab(
+    request: Request,
+    htmx: IsHTMX,
+    league_id: str,
+    db: DB,
+    user: User,
+    gm: GMOrViewer,
+):
+    """The GM's expiring deals, from the champion's crowning until the
+    offseason runs. Its own tab so its sorts and filters work on it, apart
+    from the pool's (Josh, 2026-11-10)."""
+    ctx = _shell_ctx(request, db, gm, league_id, "expiring", user)
+    team_id = gm.get("team_id") if gm else None
+    player_repo = PlayerRepository(db)
+    ctx["offseason"] = ctx.get("league_state") == "offseason"
+    ctx["market_seasons"] = offseason_fa.MARKET_SEASONS
+    ctx["expiring"] = exp = []
+    if ctx["offseason"] and team_id and not ctx.get("is_viewer"):
         for e in offseason_fa.expiring_view(db, league_id, team_id):
             row = player_repo.get_with_skills(e["player_id"])
             if not row:
@@ -129,10 +163,9 @@ def free_agents_tab(
             card = roster_card(row)
             card["face_url"] = face_url(row["id"], card.get("age"), None, None)
             card.update(e)
-            ctx["expiring"].append(card)
-        ctx["expiring"].sort(key=lambda c: -c.get("overall_score", -1.0))
+            exp.append(card)
+        exp.sort(key=lambda c: -c.get("overall_score", -1.0))
         # The season just played, and who's hurt (Josh, 2026-11-09).
-        exp = ctx["expiring"]
         if exp and ctx.get("season_id"):
             attach_roster_stats(
                 exp,
@@ -149,26 +182,10 @@ def free_agents_tab(
             )
         # Franchise icons whose deals are up (Josh, 2026-11-10).
         icons.attach(db, team_id, exp)
-        if ctx["expiring"]:
+        if exp:
             ctx["next_money"] = offseason_fa.next_season_money(db, league_id, team_id)
             ctx["resign_all"] = offseason_fa.resign_all_plan(db, league_id, team_id)
-
-    ctx["players"] = players
-    ctx["market_step_pct"] = round(free_agents.MARKET_STEP * 100)
-    ctx["market_floor_pct"] = round(free_agents.MARKET_FLOOR * 100)
-    ctx["pool_size"] = len(rows)
-    ctx["max_shown"] = MAX_SHOWN
-    ctx["market_seasons"] = offseason_fa.MARKET_SEASONS
-    ctx["minors_limit"] = MINORS_LIMIT
-    ctx["waiver_count"] = len(on_waivers)
-    ctx["can_sign"] = bool(team_id) and not ctx.get("is_viewer")
-    if ctx["can_sign"] and year is not None:
-        ctx["minors_count"] = len(
-            PlayerStatusRepository(db).get_by_team_and_status(team_id, "minors")
-        )
-        ctx["payroll_text"] = format_salary(contracts.payroll(team_id, year))
-        ctx["budget"] = BudgetRepository(db).standing(league_id, team_id, year)
-    return tab_response(request, htmx, "dashboard/partials/free_agents.html", ctx)
+    return tab_response(request, htmx, "dashboard/partials/expiring.html", ctx)
 
 
 @router.get("/leagues/{league_id}/free-agents/{player_id}/sign")
@@ -267,7 +284,7 @@ def release_player(
 
 def _expiring_result(db, league_id: str, team_id: str, result: dict) -> dict:
     """Every expiring row's call and fate, since one call moves the room for
-    the rest, the room line, and the Re-sign All plan, for the Free Agents
+    the rest, the room line, and the Re-sign All plan, for the Expiring Deals
     tab to update in place."""
     result["rows"] = {
         e["player_id"]: {"choice": e["choice"], "fate": e["fate"]}

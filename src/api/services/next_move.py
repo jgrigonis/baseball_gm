@@ -272,11 +272,11 @@ def pick(
         )
 
     # offseason: the champion is crowned and the offseason hasn't run. The
-    # summary, then the Free Agents tab to decide on expiring deals (Josh,
-    # 2026-11-09), then the offseason runs. Once the GM has opened the
+    # summary, then the Expiring Deals tab to decide on expiring deals (Josh,
+    # 2026-11-09; its own tab since 2026-11-10), then the offseason runs. Once the GM has opened the
     # summary (summary_seen), every page points on to the next step and the
     # summary is a sidebar link.
-    if page == "free-agents":
+    if page == "expiring":
         return _act(
             "begin-offseason",
             "Begin Offseason →",
@@ -286,10 +286,10 @@ def pick(
         )
     if page == "season-summary" or ctx.get("summary_seen"):
         return _go(
-            "go-free-agents",
-            "✍️ Expiring Deals →",
+            "go-expiring",
+            "📝 Expiring Deals →",
             "Deals →",
-            f"{base}/free-agents",
+            f"{base}/expiring",
         )
     return _go(
         "go-summary", "📜 Season Summary →", "Summary →", f"{base}/season-summary"

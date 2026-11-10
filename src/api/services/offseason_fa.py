@@ -14,7 +14,7 @@ Offseason free agency (free agency phase 2, PR 3; Josh's decisions
      them go, as long as the owner's hard limit has room for him next
      season (Josh, 2026-11-07: re-signs answer to the owner; 2026-11-09:
      judged on next season, when the expiring salaries are gone).
-   A GM makes the call on the Free Agents tab (contract_choices). AI teams
+   A GM makes the call on the Expiring Deals tab (contract_choices). AI teams
    re-sign the best first while their owner's budget has room (market-bound
    players only from the 40-man) and let fringe players go rather than pay
    them more than the minimum (_keeps). The window closes when the
@@ -281,7 +281,7 @@ def _resign_refusal(
 
 
 def next_season_money(conn, league_id: str, team_id: str) -> dict | None:
-    """For the Free Agents tab: what's left under the owner's limit next
+    """For the Expiring Deals tab: what's left under the owner's limit next
     season after the re-signs called so far, and how much of their bank is
     left to go past it. None without budgets."""
     year = _year(conn, league_id)
@@ -333,7 +333,7 @@ def _all_plan(
 
 
 def resign_all_plan(conn, league_id: str, team_id: str) -> dict | None:
-    """For the Free Agents tab's Re-sign All button: shown only when the plan
+    """For the Expiring Deals tab's Re-sign All button: shown only when the plan
     fits. Adds the money as text for the warning."""
     year = _year(conn, league_id)
     plan = _all_plan(
@@ -596,7 +596,7 @@ def _news_departures(
 
 
 def expiring_view(conn, league_id: str, team_id: str) -> list[dict]:
-    """A GM's expiring deals for the Free Agents tab."""
+    """A GM's expiring deals for the Expiring Deals tab."""
     year = _year(conn, league_id)
     out = []
     rows = expiring(conn, league_id, year, [team_id])
