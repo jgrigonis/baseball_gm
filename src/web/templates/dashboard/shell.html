@@ -83,10 +83,12 @@ window.closePlayerPanel = function() {
   if (hint) hint.remove();
 };
 // Releasing a player and signing a free agent (routers/free_agents.py).
-// Both confirm first, then reload the tab so its lists catch up.
+// Both confirm first, then reload the tab so its lists catch up. The reload
+// is quiet (no fade, scroll kept), so signing someone far down the Free
+// Agents tab doesn't throw you back to the top (Josh, 2026-11-10).
 function reloadTab() {
   const url = location.pathname + location.search;
-  if (window.htmx) htmx.ajax('GET', url, {target: '#tab-content', swap: 'innerHTML'});
+  if (window.htmx && document.getElementById('tab-content')) _reloadTab(url, true);
   else location.reload();
 }
 async function postJson(url, data) {
@@ -542,6 +544,8 @@ document.body.addEventListener('htmx:historyRestore', function(e) {
 // keeps the scroll of the tab's own scrolling table (#stats-scroll).
 var _quietScroll = null;
 var _quietInner = null;
+var _quietHeight = 0;
+var _quietSettle = null;
 document.body.addEventListener('htmx:beforeSwap', function(e) {
   if (e.detail.target.id !== 'tab-content') return;
   var elt = e.detail.requestConfig && e.detail.requestConfig.elt;
@@ -550,12 +554,21 @@ document.body.addEventListener('htmx:beforeSwap', function(e) {
   var quiet = live || !!(elt && elt.closest && elt.closest('[data-quiet-swap]'));
   e.detail.target.classList.toggle('tab-quiet', quiet);
   _quietScroll = quiet ? e.detail.target.scrollTop : null;
+  _quietHeight = e.detail.target.scrollHeight;
   var inner = live && document.getElementById('stats-scroll');
   _quietInner = inner ? {top: inner.scrollTop, left: inner.scrollLeft} : null;
 });
 document.body.addEventListener('htmx:afterSwap', function(e) {
   if (e.detail.target.id === 'tab-content' && _quietScroll !== null) {
+    // Tabs whose rows are built by their inline script (Free Agents, Lineup)
+    // are still short here, since htmx runs that script at settle. A spacer
+    // holds the old height so the scroll sticks; afterSettle takes it away.
+    var spacer = document.createElement('div');
+    spacer.id = 'quiet-swap-spacer';
+    spacer.style.height = _quietHeight + 'px';
+    e.detail.target.appendChild(spacer);
     e.detail.target.scrollTop = _quietScroll;
+    _quietSettle = _quietScroll;
     _quietScroll = null;
     var inner = _quietInner && document.getElementById('stats-scroll');
     if (inner) { inner.scrollTop = _quietInner.top; inner.scrollLeft = _quietInner.left; }
@@ -573,6 +586,12 @@ document.body.addEventListener('htmx:afterSwap', function(e) {
 // afterSettle fires after inline scripts in the swapped content have run,
 // so this overrides sessionStorage-based tab restoration in lineup.html
 document.body.addEventListener('htmx:afterSettle', function(e) {
+  if (e.detail.target.id === 'tab-content' && _quietSettle !== null) {
+    var spacer = document.getElementById('quiet-swap-spacer');
+    if (spacer) spacer.remove();
+    e.detail.target.scrollTop = _quietSettle;
+    _quietSettle = null;
+  }
   if (e.detail.target.id === 'tab-content') {
     var landing = window._lineupLandingTab;
     if (landing && typeof window.switchTab === 'function') {
