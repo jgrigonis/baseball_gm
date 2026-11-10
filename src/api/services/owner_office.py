@@ -134,6 +134,18 @@ def _recent(conn, league_id: str, team_id: str, n: int = 4) -> list[str]:
     return [r["body"] for r in rows]
 
 
+def _checkins(conn, league_id: str, team_id: str, season_id: str) -> list[str]:
+    """The team's owner's check-ins this season, newest first."""
+    rows = conn.execute(
+        """SELECT body FROM owner_messages
+           WHERE league_id = %s AND team_id = %s AND season_id = %s
+             AND kind = 'checkin'
+           ORDER BY id DESC""",
+        (league_id, team_id, season_id),
+    ).fetchall()
+    return [r["body"] for r in rows]
+
+
 def moods(conn, league_id: str, season_id: str) -> dict[str, dict]:
     rows = conn.execute(
         """SELECT team_id, mood, as_of FROM owner_moods
@@ -308,6 +320,7 @@ def catch_up(conn, league_id: str, today: str | None = None) -> int:
                 body = om.checkin(
                     scores, owner["weights"], fields, _rng(sid, team_id, n), money,
                     _recent(conn, league_id, team_id), mood, said,
+                    _checkins(conn, league_id, team_id, sid),
                 )  # fmt: skip
                 written += _write(
                     conn, league_id, team_id, gm["id"], sid, key, "checkin", body,

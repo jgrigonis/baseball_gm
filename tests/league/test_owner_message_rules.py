@@ -169,3 +169,61 @@ def test_homegrown_talk_names_the_count_and_what_most_teams_have():
     assert om._homegrown(none) == (
         "Not one player on our 40-man roster came through our own draft."
     )
+
+
+def _three_checkins(scores, w, seasons, mood=0.3):
+    earlier: list[str] = []
+    for i, season in enumerate(seasons):
+        body = om.checkin(
+            scores, w, FIELDS, random.Random(i), recent=earlier[:4], mood=mood,
+            season=season, earlier=earlier,
+        )  # fmt: skip
+        earlier.insert(0, body)
+    return earlier[::-1]
+
+
+HOMEGROWN = {"homegrown_players": 35, "roster_players": 40, "league_homegrown": 0.72}
+
+
+def test_checkins_dont_repeat_a_fact_that_hasnt_changed():
+    w = owners.clean_weights({"homegrown": 100, "stars": 70, "icons": 60})
+    scores = {"homegrown": 0.8, "stars": 0.5, "icons": 0.0}
+    season = om.facts(HOMEGROWN)
+    bodies = _three_checkins(scores, w, [season] * 3)
+    said = [b for b in bodies if "35 of our 40 players" in b]
+    assert len(said) == 1, bodies
+    # Different lines each time, and each still opens pleased and leads good.
+    assert len(set(bodies)) == 3
+    for b in bodies:
+        assert any(
+            b.startswith(om._fill(o, FIELDS)) for o in om.CHECKIN_OPEN["pleased"]
+        )
+        assert not _lines_in(b, {k: v["bad"] for k, v in om.NOTES.items()})
+
+
+def test_a_fact_that_moved_is_said_again():
+    w = owners.clean_weights({"homegrown": 100})
+    scores = {"homegrown": 0.8}
+    later = om.facts({**HOMEGROWN, "homegrown_players": 38})
+    bodies = _three_checkins(scores, w, [om.facts(HOMEGROWN), later])
+    assert "35 of our 40 players" in bodies[0]
+    assert "38 of our 40 players" in bodies[1]
+
+
+def test_a_lone_topic_comes_back_as_a_callback():
+    w = owners.clean_weights({"homegrown": 100})
+    bodies = _three_checkins({"homegrown": 0.8}, w, [om.facts(HOMEGROWN)] * 2)
+    assert "came through our own draft" not in bodies[1]
+    assert _lines_in(bodies[1], {"g": om.AGAIN["homegrown"]["good"]})
+
+
+def test_a_topic_whose_tone_turned_is_news():
+    w = owners.clean_weights({"wins": 100, "stars": 60})
+    season = om.facts({"wins": 20, "losses": 10})
+    first = om.checkin({"wins": 0.8, "stars": 0.4}, w, FIELDS, random.Random(1),
+                       mood=0.3, season=season)  # fmt: skip
+    second = om.checkin(
+        {"wins": -0.8, "stars": 0.4}, w, FIELDS, random.Random(1), mood=-0.3,
+        season=om.facts({"wins": 22, "losses": 16}), earlier=[first],
+    )  # fmt: skip
+    assert "We're 22-16." in second

@@ -22,6 +22,7 @@ messages.
 from __future__ import annotations
 
 import random
+import re
 
 from src.league import owners
 from src.player.contracts import format_salary
@@ -173,7 +174,10 @@ NOTES = {
     },
     "profit": {
         "good": ("The books look healthy. Good.", "We're making money. Keep it up."),
-        "ok": ("The money's fine. Just fine.",),
+        "ok": (
+            "The money's fine. Just fine.",
+            "The books are holding steady. Nothing to celebrate.",
+        ),
         "bad": (
             "We're bleeding money. Fix it.",
             "I've looked at the numbers. I don't like them.",
@@ -184,7 +188,10 @@ NOTES = {
             "The park's buzzing. Love it.",
             "Big crowds lately. That's the stuff.",
         ),
-        "ok": ("The crowds are OK. OK isn't great.",),
+        "ok": (
+            "The crowds are OK. OK isn't great.",
+            "Decent crowds. I want packed ones.",
+        ),
         "bad": ("Too many empty seats.", "Nobody's coming to the ballpark. Why?"),
     },
     "fans": {
@@ -192,7 +199,10 @@ NOTES = {
             "The town's talking about us again.",
             "The fans are fired up. Keep feeding them.",
         ),
-        "ok": ("The fans are waiting for a reason to care.",),
+        "ok": (
+            "The fans are waiting for a reason to care.",
+            "The town's lukewarm on us. Give them something.",
+        ),
         "bad": (
             "The fans are turning on us.",
             "This town is losing interest. So am I.",
@@ -203,7 +213,10 @@ NOTES = {
             "The kids coming up look good. Smart work.",
             "We're set up well for the years ahead.",
         ),
-        "ok": ("The future looks... fine. I'd like better than fine.",),
+        "ok": (
+            "The future looks... fine. I'd like better than fine.",
+            "The farm's thin in spots. Keep an eye on it.",
+        ),
         "bad": (
             "The cupboard's bare. What's the plan for next year?",
             "You're selling off our future. Stop.",
@@ -213,8 +226,12 @@ NOTES = {
         "good": (
             "Our own kids are carrying this team. That's what I want.",
             "Love seeing players we drafted out there.",
+            "This is a team we built ourselves. I'm proud of that.",
         ),
-        "ok": ("I'd like to see more of our own on the field.",),
+        "ok": (
+            "I'd like to see more of our own on the field.",
+            "A few more of our draft picks out there wouldn't hurt.",
+        ),
         "bad": (
             "Where are our draft picks? I want our own players out there.",
             "This roster could belong to anyone. Where are our kids?",
@@ -222,23 +239,38 @@ NOTES = {
     },
     "stars": {
         "good": ("Now that's star power.", "People are coming to see our stars."),
-        "ok": ("We could use a real star.",),
+        "ok": (
+            "We could use a real star.",
+            "We've got good players. I want a great one.",
+        ),
         "bad": (
             "Nobody outside this town knows a single player on this team.",
             "Where are the stars? I want names.",
         ),
     },
     "icons": {
-        "good": ("Good to see the core still here.",),
-        "ok": ("Treat our veterans right.",),
+        "good": (
+            "Good to see the core still here.",
+            "The guys who built this club are still wearing our uniform. Good.",
+        ),
+        "ok": (
+            "Treat our veterans right.",
+            "Look after the players who've been here the longest.",
+        ),
         "bad": (
             "You let one of our icons go. I won't forget that.",
             "Trading a franchise player? Without asking me?",
         ),
     },
     "stability": {
-        "good": ("Nice and steady. Just how I like it.",),
-        "ok": ("Easy on the trades.",),
+        "good": (
+            "Nice and steady. Just how I like it.",
+            "Same faces every week. The fans like that, and so do I.",
+        ),
+        "ok": (
+            "Easy on the trades.",
+            "Let this group settle in before you make more moves.",
+        ),
         "bad": (
             "Another trade? I can't keep track of who plays for us.",
             "This roster's a revolving door. Enough.",
@@ -249,11 +281,108 @@ NOTES = {
             "We own the {rival}. Beautiful.",
             "Beating the {rival} never gets old.",
         ),
-        "ok": ("Even with the {rival} isn't good enough.",),
+        "ok": (
+            "Even with the {rival} isn't good enough.",
+            "Splitting with the {rival} doesn't cut it.",
+        ),
         "bad": (
             "We keep losing to the {rival}. Unacceptable.",
             "The {rival}?! Again?!",
         ),
+    },
+}
+
+# A topic the owner already raised this season, when nothing about it has
+# changed but it's still what explains their mood: a short callback, without
+# saying the same fact again.
+AGAIN = {
+    "wins": {
+        "good": (
+            "Still winning. Still happy about it.",
+            "The wins keep coming.",
+            "Keep that record pointed up.",
+        ),
+        "ok": ("Still a middling record.", "Still treading water."),
+        "bad": ("Still losing too much.", "The losing hasn't stopped."),
+    },
+    "postseason": {
+        "good": ("Still in the playoff picture.", "Keep us in the October hunt."),
+        "ok": ("Still on the edge of the race.", "The race is still right there."),
+        "bad": ("Still not in the race.", "October's still slipping away."),
+    },
+    "profit": {
+        "good": ("The books still look good.", "Still making money. Good."),
+        "ok": ("The money's still fine.", "Books are still about even."),
+        "bad": ("The money still worries me.", "I haven't forgotten the books."),
+    },
+    "attendance": {
+        "good": ("The crowds are still great.", "Still a full house most nights."),
+        "ok": ("The crowds are still just OK.", "Still room in the stands."),
+        "bad": ("Still too many empty seats.", "The seats are still empty."),
+    },
+    "fans": {
+        "good": ("The fans are still with us.", "This town's still buzzing."),
+        "ok": ("The fans are still waiting on us.", "The town's still lukewarm."),
+        "bad": ("The fans are still cool on us.", "We're still losing the town."),
+    },
+    "future": {
+        "good": ("The farm still looks good.", "The kids are still coming along."),
+        "ok": ("The farm's still just fine.", "The farm could still use help."),
+        "bad": (
+            "I'm still worried about the next few years.",
+            "The farm's still thin.",
+        ),
+    },
+    "homegrown": {
+        "good": (
+            "Still love how many of our own kids are out there.",
+            "Our homegrown core is still the heart of this team.",
+            "Still a roster full of our own draft picks. Keep it that way.",
+        ),
+        "ok": (
+            "I'd still like a few more of our own out there.",
+            "Still room for more of our draft picks.",
+        ),
+        "bad": (
+            "Still not enough of our own players on this roster.",
+            "I'm still waiting to see more of our draft picks.",
+        ),
+    },
+    "stars": {
+        "good": (
+            "Our stars are still drawing people in.",
+            "Still love the star power.",
+            "People still come to see our big names.",
+        ),
+        "ok": ("We still need a real star.", "Still waiting on a star."),
+        "bad": ("Still no stars on this team.", "Still no names people know."),
+    },
+    "icons": {
+        "good": ("The core's still here. Good.", "Glad the old guard's still here."),
+        "ok": (
+            "Keep treating the veterans right.",
+            "Remember who built this club.",
+        ),
+        "bad": (
+            "I still haven't forgotten that icon you let go.",
+            "I'm still sore about losing that icon.",
+        ),
+    },
+    "stability": {
+        "good": ("Still nice and steady.", "Still the same faces. Good."),
+        "ok": ("Still easy on the trades, please.", "Keep the trades to a minimum."),
+        "bad": ("Still too many trades.", "The trades still haven't stopped."),
+    },
+    "rivalry": {
+        "good": (
+            "Still handling the {rival}. Good.",
+            "The {rival} still can't beat us.",
+        ),
+        "ok": (
+            "Still even with the {rival}. Not good enough.",
+            "I still want more against the {rival}.",
+        ),
+        "bad": ("Still losing to the {rival}.", "The {rival} still have our number."),
     },
 }
 
@@ -446,8 +575,11 @@ def _fill(text: str, fields: dict) -> str:
         return text
 
 
-def _pick(rng: random.Random, options: tuple[str, ...], fields: dict) -> str:
-    return _fill(rng.choice(options), fields)
+def _pick(rng: random.Random, options: tuple[str, ...], fields: dict, avoid=()) -> str:
+    """One of the options, filled. avoid: earlier messages; a wording one of
+    them already used is picked only when every wording has been."""
+    fresh = tuple(o for o in options if not any(_fill(o, fields) in b for b in avoid))
+    return _fill(rng.choice(fresh or options), fields)
 
 
 def _speakable(weights: dict, fields: dict, money: bool) -> list[str]:
@@ -581,11 +713,122 @@ def _context(key: str, t: str, f: dict, fields: dict, used: set) -> str:
     return ""
 
 
+def _number(word: str) -> int | None:
+    if word.isdigit():
+        return int(word)
+    words = [c.lower() for c in _COUNTS]
+    return words.index(word.lower()) if word.lower() in words else None
+
+
+def _games(record: str | None) -> int | None:
+    if not record:
+        return None
+    w, l = record.split("-")
+    return int(w) + int(l)
+
+
+def _said_tone(key: str, body: str, fields: dict) -> str | None:
+    """The tone of the line this message said on this dimension, or None if
+    it didn't talk about it."""
+    for t in ("good", "ok", "bad"):
+        lines = NOTES[key].get(t, ()) + AGAIN[key].get(t, ())
+        aside = ASIDES[key].get(t)
+        if aside:
+            lines += (aside,)
+        if any(_fill(line, fields) in body for line in lines):
+            return t
+    return None
+
+
+def _old_fact(key: str, f: dict, fields: dict, earlier):
+    """The newest earlier value of the fact behind this dimension, or None
+    if no earlier message said it."""
+    for body in earlier:
+        if key in ("wins", "postseason"):
+            m = re.search(r"We're (\d+-\d+)\.", body)
+            old = _games(m[1]) if m else None
+        elif key == "homegrown":
+            m = re.search(r"(\w+) of our \d+ players came through our own draft", body)
+            old = _number(m[1]) if m else None
+            if "Not one player on our 40-man roster" in body:
+                old = 0
+        elif key == "stability":
+            m = re.search(r"(\w+) trades? so far", body)
+            old = _number(m[1]) if m else None
+        elif key == "rivalry":
+            m = re.search(r"We are (\d+-\d+) against", body)
+            old = _games(m[1]) if m else None
+        elif key == "profit":
+            m = re.search(r"Payroll's at (\S+)\. I gave you", body)
+            old = m[1] if m else None
+        else:
+            return None
+        if old is not None:
+            return old
+    return None
+
+
+def _moved(key: str, f: dict, fields: dict, earlier) -> bool:
+    """Whether the fact behind this dimension changed enough since the owner
+    last said it to be worth saying again."""
+    old = _old_fact(key, f, fields, earlier)
+    if old is None:
+        return False
+    if key in ("wins", "postseason"):
+        now = _games(f.get("record"))
+        return now is not None and now - old >= 10
+    if key == "homegrown" and f.get("roster"):
+        avg = f.get("homegrown_avg")
+        crossed = avg is not None and (old < avg) != (f["homegrown"] < avg)
+        return crossed or abs(f["homegrown"] - old) >= 2
+    if key == "stability" and f.get("trades") is not None:
+        return old != f["trades"]
+    if key == "rivalry" and f.get("rival_record"):
+        return _games(f["rival_record"]) - old >= 3
+    if key == "profit" and f.get("over_budget"):
+        return old != f["payroll"]
+    return False
+
+
+def _stale(keys: list[str], scores: dict, f: dict, fields: dict, earlier) -> set[str]:
+    """The dimensions the owner already talked about this season (earlier:
+    their earlier check-ins, newest first) in the same tone, with nothing
+    about them changed enough since to say again."""
+    out = {}
+    for k in keys:
+        for i, body in enumerate(earlier):
+            said = _said_tone(k, body, fields)
+            if said is None:
+                continue
+            if said == tone(scores[k]) and not _moved(k, f, fields, earlier):
+                out[k] = i
+            break
+    return out
+
+
+def _rotate(keys: list[str], scores: dict, stale: dict, n: int) -> list[str]:
+    """The n dimensions to talk about: fresh ones before ones the owner
+    already raised, and of those, the one raised longest ago first (stale:
+    how many check-ins back each was last said). The lead still explains
+    the mood: a dimension in the same tone takes it, fresh before stale."""
+    if not keys or not stale:
+        return keys[:n]
+
+    def order(k):
+        return (k in stale, -stale.get(k, 0))
+
+    want = tone(scores[keys[0]])
+    same = sorted((k for k in keys if tone(scores[k]) == want), key=order)
+    lead = same[0]
+    rest = sorted((k for k in keys if k != lead), key=order)
+    return [lead, *rest][:n]
+
+
 def _choose(
-    scores: dict, weights: dict, fields: dict, n: int, money: bool, lean: int | None
+    scores: dict, weights: dict, fields: dict, money: bool, lean: int | None
 ) -> tuple[str, int, list[str]]:
-    """The overall tone, the way the message leans, and the n dimensions to
-    talk about, among the six the owner weighs most. The first is what most
+    """The overall tone, the way the message leans, and the dimensions to
+    talk about, in order, among the six the owner weighs most. The first is what most
     explains the owner's feeling: the worst of it when they lean down, the
     best when they lean up, the biggest either way when flat (lean None:
     read the lean from these scores)."""
@@ -607,7 +850,7 @@ def _choose(
         keys.sort(key=lambda k: -impact(k))
     else:
         keys.sort(key=lambda k: -abs(impact(k)))
-    return feel, lean, keys[:n]
+    return feel, lean, keys
 
 
 _LEAN_OF_TONE = {"good": 1, "ok": 0, "bad": -1}
@@ -622,13 +865,22 @@ def _notes(
     money: bool,
     lean: int | None = None,
     season: dict | None = None,
+    earlier: list[str] | tuple[str, ...] = (),
 ) -> tuple[str, list[str], list[str]]:
     """The overall tone, up to n lines on what the owner cares about most,
     and their tones, told so they agree with each other and with how the
     owner feels (_choose). Each line says the fact it's about when there is
     one (season: facts()). A line that runs against the message's direction
-    becomes one short aside ("At least...", "But..."), said last."""
-    feel, lean, keys = _choose(scores, weights, fields, n, money, lean)
+    becomes one short aside ("At least...", "But..."), said last.
+
+    earlier: the owner's earlier check-ins this season, newest first. The
+    message rotates away from what those already said, and a dimension it
+    comes back to without news is a short callback (AGAIN), not the same
+    fact again."""
+    feel, lean, keys = _choose(scores, weights, fields, money, lean)
+    f = season or {}
+    stale = _stale(keys, scores, f, fields, earlier) if earlier else {}
+    keys = _rotate(keys, scores, stale, n)
     if not keys:
         return feel, [], []
     # The message's direction: the lead line's, or the mood's when the lead
@@ -636,7 +888,6 @@ def _notes(
     # it when everything does; checkin's opener then says things turned.)
     way = _LEAN_OF_TONE[tone(scores[keys[0]])] or lean
     against = "good" if way < 0 else "bad" if way > 0 else None
-    f = season or {}
     used: set = set()
     lines, asides, tones = [], [], []
     for i, k in enumerate(keys):
@@ -645,14 +896,18 @@ def _notes(
             if not asides:
                 aside = _fill(ASIDES[k][t], fields)
                 # Homegrown talk is vague without the count, so the aside
-                # says it too.
-                if k == "homegrown":
+                # says it too (unless it said it already this season).
+                if k == "homegrown" and k not in stale:
                     said = _context(k, t, f, fields, used)
                     aside = f"{aside} {said}" if said else aside
                 asides.append(aside)
                 tones.append(t)
             continue
-        line = _pick(rng, NOTES[k][t], fields)
+        if k in stale:
+            lines.append(_pick(rng, AGAIN[k][t], fields, earlier))
+            tones.insert(len(lines) - 1, t)
+            continue
+        line = _pick(rng, NOTES[k][t], fields, earlier)
         said = _context(k, t, f, fields, used)
         lines.append(f"{said} {line}" if said else line)
         tones.insert(len(lines) - 1, t)
@@ -668,14 +923,19 @@ def checkin(
     recent: list[str] | tuple[str, ...] = (),
     mood: float | None = None,
     season: dict | None = None,
+    earlier: list[str] | tuple[str, ...] = (),
 ) -> str:
     """A mid-season check-in. mood: the owner's mood now, so the opener
     matches the word on the owner card (None: read from these scores).
     season: facts() for the lines to point at. recent: the owner's last few
-    messages, so the opener doesn't repeat one of theirs."""
+    messages, so the opener doesn't repeat one of theirs. earlier: the
+    owner's earlier check-ins this season, so it doesn't say the same
+    things again (_notes)."""
     word = mood_word(mood) if mood is not None else None
     lean = LEAN[word] if word else None
-    feel, lines, tones = _notes(scores, weights, fields, rng, 2, money, lean, season)
+    feel, lines, tones = _notes(
+        scores, weights, fields, rng, 2, money, lean, season, earlier
+    )
     if word is None:
         word = {"good": "pleased", "ok": "content", "bad": "frustrated"}[feel]
     openers = CHECKIN_OPEN[word]
