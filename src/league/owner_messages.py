@@ -561,6 +561,119 @@ TRADE_REACTIONS = {
     ),
 }
 
+# Meddlers (the meddling trait at MEDDLES or more) have an opinion on every
+# trade, even one that touches nothing they weigh heavily.
+MEDDLES = 70
+TRADE_REACTIONS["meddling"] = (
+    "Nobody ran that trade by me. Next time, call me first.",
+    "I read about that trade in the paper, {gm}. I'd like to hear it from you.",
+    "I'm not sure I'd have made that trade. Ask me before the next one.",
+)
+
+# A reaction to releasing players (Josh, 2026-11-11: "I'm quite surprised the
+# Meddler Owner allowed all these releases"), by what bothers the owner, each
+# with wordings for one player ({player}) and for several ({players}).
+# {owed}: the guaranteed money the team still pays them.
+RELEASE_REACTIONS = {
+    "icons": (
+        (
+            "You released {player}. That player was this franchise. I'm stunned.",
+            "Releasing {player}? The fans will never forgive that, and neither will I.",
+        ),
+        (
+            "You released {players}. One of them was this franchise. I'm stunned.",
+            "{players}, all released, and one of them was the face of this team. Explain that to me.",
+        ),
+    ),
+    "meddling_money": (
+        (
+            "We're still paying {player} {owed}, and he doesn't play for us anymore. Nobody asked me.",
+            "{owed} for a player we released. I sign those checks, {gm}. Run moves like that by me first.",
+        ),
+        (
+            "We're paying {owed} to players who don't play here anymore: {players}. I didn't sign off on any of it.",
+            "{players}, all released, and {owed} still on our books. Next time you call me first.",
+        ),
+    ),
+    "meddling": (
+        (
+            "You released {player}? Nobody ran that by me. I want a call before you cut a player that good.",
+            "{player} was one of our better players, and I had to read about his release in the paper. That's not how this works, {gm}.",
+            "Why is {player} gone? I'd have said no if you'd asked me. Next time, ask me.",
+        ),
+        (
+            "{players}, all gone. Nobody asked me about any of it. I want a say before you clear out the roster.",
+            "You released {players}, and I heard about it in the paper. I'd like a call before the next one, {gm}.",
+        ),
+    ),
+    "dead_money": (
+        (
+            "Releasing {player} leaves {owed} on our books for nothing. Money matters here, {gm}.",
+            "{owed} in dead money for {player}. I hope that was worth it.",
+        ),
+        (
+            "Releasing {players} leaves {owed} on our books for nothing. Money matters here, {gm}.",
+            "{owed} in dead money, for {players}. I hope that was worth it.",
+        ),
+    ),
+    "stars": (
+        (
+            "{player} was one of the few names people knew on this team. Why is he gone?",
+            "You let {player} go? People bought tickets to see him.",
+        ),
+        (
+            "{players}: names people knew, and all of them gone. Why?",
+            "You let {players} go? People bought tickets to see them.",
+        ),
+    ),
+    "stability": (
+        (
+            "Another player out the door. I'd like a roster I recognize.",
+            "First trades, now releases. Easy on the changes, {gm}.",
+        ),
+        (
+            "{players}, all out the door. I'd like a roster I recognize.",
+            "That's a lot of players released at once, {gm}. Easy on the changes.",
+        ),
+    ),
+}
+
+# A reaction to a winning or losing streak (the ones the news runs,
+# src/api/services/news/games.py), by how long it is. {n}: "Twelve".
+LOSING_STREAK = {
+    8: (
+        "{n} straight losses. What's the plan, {gm}?",
+        "We haven't won in over a week. I'm watching.",
+    ),
+    12: (
+        "{n} in a row. I'm not going to sit here and watch this much longer.",
+        "{n} straight. People are asking me what's going on, and I don't have an answer. Do you?",
+    ),
+    16: (
+        "{n} straight losses. This is an embarrassment to the franchise.",
+        "{n} in a row, {gm}. I'm running out of patience.",
+    ),
+}
+_STREAK_WORDS = {
+    8: "Eight",
+    9: "Nine",
+    10: "Ten",
+    11: "Eleven",
+    12: "Twelve",
+    13: "Thirteen",
+    14: "Fourteen",
+    15: "Fifteen",
+    16: "Sixteen",
+    17: "Seventeen",
+    18: "Eighteen",
+    19: "Nineteen",
+    20: "Twenty",
+}
+WINNING_STREAK = (
+    "{n} straight wins. Now that's what I like to see.",
+    "{n} in a row! Keep it going, {gm}.",
+)
+
 OVER_BUDGET = (
     "Payroll's at {payroll}. I gave you {budget} for players. I didn't sign off on that.",
     "We're over budget: {payroll} in payroll against the {budget} I gave you. Fix it.",
@@ -986,3 +1099,15 @@ def trade_reaction(key: str, fields: dict, rng: random.Random) -> str:
 
 def over_budget(fields: dict, rng: random.Random) -> str:
     return _pick(rng, OVER_BUDGET, fields)
+
+
+def release_reaction(key: str, fields: dict, several: bool, rng: random.Random) -> str:
+    return _pick(rng, RELEASE_REACTIONS[key][1 if several else 0], fields)
+
+
+def streak_reaction(won: bool, length: int, fields: dict, rng: random.Random) -> str:
+    n = {"n": _STREAK_WORDS.get(length, str(length))}
+    if won:
+        return _pick(rng, WINNING_STREAK, {**fields, **n})
+    mark = max(k for k in LOSING_STREAK if k <= length)
+    return _pick(rng, LOSING_STREAK[mark], {**fields, **n})

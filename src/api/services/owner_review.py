@@ -256,6 +256,7 @@ def gather(
         (season_id, season_id),
     )
     lost_icons = _icons_lost(conn, league_id, season_id, year)
+    good_releases = _good_releases(conn, league_id, year)
     teams = list(by_team)
     share = {t: mine / n if n else 0.0 for t, (mine, n) in homegrown.items()}
     league_home = sum(share.get(t, 0.0) for t in teams) / max(1, len(teams))
@@ -300,6 +301,7 @@ def gather(
             award_winners=awards.get(team_id, 0),
             icons_lost=lost_icons.get(team_id, 0),
             trades=trades.get(team_id, 0),
+            releases=good_releases.get(team_id, 0),
             rival_wins=rw,
             rival_losses=rl,
         )
@@ -418,6 +420,28 @@ def _icons_lost(conn, league_id: str, season_id: str, year: int) -> dict[str, in
     out: dict[str, int] = {}
     for _, team_id in icons.find(conn, [(r["player_id"], r["team_id"]) for r in rows]):
         out[team_id] = out.get(team_id, 0) + 1
+    return out
+
+
+def _good_releases(conn, league_id: str, year: int) -> dict[str, int]:
+    """How many players each team released this season who were B- or
+    better (graded now): roster turnover, like trades."""
+    from src.api.grade_curves import GRADES
+    from src.api.services.news.moves import is_notable
+
+    rows = conn.execute(
+        """SELECT DISTINCT c.released_team_id AS team_id, c.player_id
+           FROM player_contracts c
+           WHERE c.league_id = %s AND c.released_year = %s
+             AND c.released_team_id IS NOT NULL""",
+        (league_id, year),
+    ).fetchall()
+    grades = icons._grades(conn, list({r["player_id"] for r in rows}))
+    out: dict[str, int] = {}
+    for r in rows:
+        g = grades.get(r["player_id"])
+        if g in GRADES and is_notable(g):
+            out[r["team_id"]] = out.get(r["team_id"], 0) + 1
     return out
 
 

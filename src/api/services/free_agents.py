@@ -24,8 +24,10 @@ agents are later phases.
 
 from __future__ import annotations
 
+import logging
 import random
 from datetime import date
+
 from src.api.services import trades, waivers
 from src.api.services.news import moves as move_news
 from src.db.locks import league_lock
@@ -40,6 +42,8 @@ from src.league import budget as bg
 from src.league.offseason.roster_trimmer import MINORS_LIMIT
 from src.player import contracts as ct
 from src.player.player_value import role_rating
+
+log = logging.getLogger(__name__)
 
 # How long a release or signing waits for a sim day to finish (league_lock).
 MOVE_WAIT = 20
@@ -221,6 +225,7 @@ def release(
                 was_up,
                 waiver["clears_on"] if waiver else None,
             )
+        _owner_reacts(conn, league_id, team_id, season_id)
         conn.commit()
     return {
         "name": player.name if player else "",
@@ -228,6 +233,20 @@ def release(
         "clears_on": waiver["clears_on"] if waiver else None,
         **_owed_view(owed),
     }
+
+
+def _owner_reacts(conn, league_id: str, team_id: str, season_id: str) -> None:
+    """The owner's word on the release, right away (owner_office.reactions).
+    In a savepoint, so a problem there never undoes the release."""
+    from src.api.services import owner_office
+
+    try:
+        with conn.transaction():
+            owner_office.reactions(
+                conn, league_id, move_news.today(conn, season_id), [team_id]
+            )
+    except Exception:
+        log.exception("League %s: owner reaction to a release failed", league_id)
 
 
 def sign_preview(conn, league_id: str, team_id: str, player_id: str) -> dict:
