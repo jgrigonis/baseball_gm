@@ -294,7 +294,16 @@ def next_season_money(conn, league_id: str, team_id: str) -> dict | None:
     called = sum(r["deal"].salary for r in rows if r["choice"] == "resign")
     left = int(room - called)
     bank = _bank(conn, league_id, team_id)
+    # Next season's payroll so far (Josh, 2026-11-11: the Budget tab shows
+    # it too, so a Re-sign or Let go shows there right away): the deals that
+    # carry over plus the re-signs called.
+    payroll = BudgetRepository(conn).contracts.payroll(team_id, year)
+    payroll += called - sum(r["old_salary"] for r in rows)
     return {
+        "payroll_text": ct.format_salary(max(0, int(payroll))),
+        "resigned": sum(1 for r in rows if r["choice"] == "resign"),
+        "let_go": sum(1 for r in rows if r["choice"] == "let_go"),
+        "bank_text": ct.format_salary(bank),
         "left": left,
         "left_text": ct.format_salary(abs(left)),
         "over": left < 0,

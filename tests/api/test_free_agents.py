@@ -11,7 +11,7 @@ from src.api.database import get_db
 from src.api.dependencies import get_current_gm, get_current_user, get_gm_or_viewer
 from src.api.main import app
 from src.player import contracts as ct
-from src.api.services import free_agents, waivers
+from src.api.services import free_agents, offseason_fa, waivers
 from src.api.services.free_agents import FreeAgentError
 from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.player_repo import PlayerRepository
@@ -449,9 +449,31 @@ def test_the_offseason_tab_shows_next_seasons_room(lg, client):
     # The room line is pinned under the header (Josh, 2026-11-11).
     assert 'id="ex-room-bar"' in html
     assert f'href="/leagues/{lg.league.id}/expiring"' in html
-    assert "Room left next season:" in html
+    assert "Room left under your owner's spending limit next season:" in html
     assert "from their bank to keep your own players." in html
     assert '"fate": "auto"' in html
+
+
+def test_the_budget_tab_follows_the_expiring_calls(lg, client):
+    """Josh, 2026-11-11: a Re-sign or Let go saves at once, so the Budget tab
+    shows next season so far with it."""
+    budget = f"/leagues/{lg.league.id}/budget"
+    assert "Next season so far" not in client.get(budget).text
+    lg.db.execute(
+        "UPDATE leagues SET state = 'offseason' WHERE id = %s", (lg.league.id,)
+    )
+    pid = lg.factory.rated_player(lg.mine, lg.league, level=60, name="Expiring").id
+    lg.contracts.insert_deal(
+        pid, lg.league.id, lg.mine.id, ct.Deal(5_000_000, 3, "standard"), 2024
+    )
+    html = client.get(budget).text
+    assert "Next season so far" in html
+    assert "Room under the owner&#39;s limit" in html
+    assert "plus 1 re-sign<" not in html
+    offseason_fa.choose(lg.db, lg.league.id, lg.mine.id, pid, "resign")
+    assert "plus 1 re-sign<" in client.get(budget).text
+    offseason_fa.choose(lg.db, lg.league.id, lg.mine.id, pid, "let_go")
+    assert "1 let go<" in client.get(budget).text
 
 
 def test_expiring_rows_show_the_season_line_and_who_is_hurt(lg, client):

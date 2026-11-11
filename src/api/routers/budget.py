@@ -831,6 +831,13 @@ def _render(
             "owed_text": _money(bank["owed"]) if bank["owed"] else None,
             "floor_text": _money(round(standing["cap"] * fn.BALLPARK_FLOOR)),
         }
+    if standing and ctx.get("league_state") == "offseason":
+        # Next season so far, while the expiring deals are being called
+        # (Josh, 2026-11-11: a Re-sign or Let go saves at once, so it shows
+        # here too).
+        from src.api.services import offseason_fa
+
+        ctx["next_money"] = offseason_fa.next_season_money(db, league_id, team_id)
     if standing and ctx.get("league_state") in FRONT_OFFICE_STATES:
         # The GM has had their chance to set the budget before it locks:
         # the preseason's next move stops asking (next_move.pick).

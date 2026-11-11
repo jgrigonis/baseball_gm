@@ -173,8 +173,8 @@ function roomLine(m) {
   el.innerHTML = m.over
     ? `Over your owner's limit next season: <b>${m.left_text}</b>. They'll pay that from their bank, ` +
       `and can spend up to ${m.bank_left_text} more from it to keep your own players.`
-    : `Room left next season: <b>${m.left_text}</b>. ` +
-      `Your owner will also spend up to ${m.bank_left_text} from their bank to keep your own players.`;
+    : `Room left under your owner's spending limit next season: <b>${m.left_text}</b>. ` +
+      `Past that, they'll spend up to ${m.bank_left_text} more from their bank to keep your own players.`;
   roomBar.style.display = '';
 }
 // The bar's filters and sorts (Josh, 2026-11-10: they used to sit on the
