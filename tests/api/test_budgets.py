@@ -1589,3 +1589,20 @@ def test_a_new_stadium_needs_half_its_price_over_the_reserve():
     # Everything else still needs its whole price.
     suites = fn.project_cost("suites", cap)
     assert fn.can_build(cap + suites // 2, suites, cap, "suites") > 0
+
+
+def test_ticket_prices_show_current_fan_interest(lg, client_for):
+    """The Ticket prices card shows today's fan interest next to what the
+    price does to it (Josh, 2026-11-11)."""
+    x = lg()
+    x.budgets.for_league(x.league.id, 2026)
+    x.db.execute(
+        "UPDATE team_budgets SET fans_before = 63 WHERE league_id = %s AND team_id = %s",
+        (x.league.id, x.mine.id),
+    )
+    assert x.budgets.fans_now(x.league.id, x.mine.id, 2026) == 63
+    x.budgets.set_ticket_price(x.league.id, x.mine.id, 2026, 6)
+    html = client_for(x).get(f"/leagues/{x.league.id}/budget").text
+    card = html.split('id="tickets"')[1].split("</form>")[0]
+    assert "63 <span" in card and "of 100" in card
+    assert "-3 to where fans head each season" in card
