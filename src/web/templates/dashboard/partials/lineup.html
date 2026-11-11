@@ -1562,11 +1562,9 @@ function renderBullpen() {
   const s1 = document.getElementById('bp-s1')?.value || 'sp_grade';
   const s2 = document.getElementById('bp-s2')?.value || '';
 
-  // Relievers first; the starters (dimmed, role "Starter") go last so the
-  // bullpen itself is at the top of the list.
+  // Everyone follows the chosen sort; starters stay in place, dimmed with
+  // role "Starter", like players already in the batting order's roster list.
   const allPitchers = ALL_PITCHERS.slice().sort((a, b) => {
-    const ds = inRot.has(a.player_id) - inRot.has(b.player_id);
-    if (ds !== 0) return ds;
     const d1 = skillVal(a, s1) - skillVal(b, s1);
     if (d1 !== 0) return d1;
     if (s2) return skillVal(a, s2) - skillVal(b, s2);
