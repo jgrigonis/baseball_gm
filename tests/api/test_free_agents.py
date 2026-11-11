@@ -449,7 +449,7 @@ def test_the_offseason_tab_shows_next_seasons_room(lg, client):
     # The room line is pinned under the header (Josh, 2026-11-11).
     assert 'id="ex-room-bar"' in html
     assert f'href="/leagues/{lg.league.id}/expiring"' in html
-    assert "Room left next season:" in html
+    assert "Room left under your owner's spending limit next season:" in html
     assert "from their bank to keep your own players." in html
     assert '"fate": "auto"' in html
 
