@@ -77,6 +77,7 @@ class BudgetRepository:
         carried = self._prior_settings(
             league_id, year, [t for t in made if t not in ai]
         )
+        newcomers = self._new_gm_teams(league_id, year)
         for team_id, amount in made.items():
             revenue, fans = self._pending.get(team_id, (None, None))
             # AI GMs fund their front office by their owner (src/league/
@@ -90,6 +91,12 @@ class BudgetRepository:
                 if team_id in ai
                 else carried.get(team_id, {})
             )
+            if team_id in newcomers:
+                # A GM new to the team starts the front office at Standard,
+                # not at what the GMs before them picked (Josh, 2026-11-11).
+                levels = {
+                    k: v for k, v in levels.items() if k not in bg.DEPARTMENT_KEYS
+                }
             self.conn.execute(
                 """INSERT INTO team_budgets
                        (league_id, team_id, year, cap, budget, revenue, fans_before,
@@ -131,6 +138,43 @@ class BudgetRepository:
             }
             for r in rows
         }
+
+    def _new_gm_teams(self, league_id: str, year: int) -> set[str]:
+        """Teams whose person GM took over for this season (gms.joined_year),
+        so last season's front office was someone else's."""
+        return {
+            r["team_id"]
+            for r in self.conn.execute(
+                """SELECT team_id FROM gms
+                   WHERE league_id = %s AND NOT is_ai AND joined_year >= %s""",
+                (league_id, year),
+            ).fetchall()
+        }
+
+    def reset_levels(
+        self, league_id: str, team_id: str, from_year: int, *, ai: bool = False
+    ) -> None:
+        """Give the team's front office fresh levels for its seasons from
+        from_year on, when it changes GMs: Standard for a person, the owner's
+        usual levels (ai_levels) for an AI GM. Ticket prices stay; they're
+        the team's, not the GM's."""
+        spending = self._spending(league_id).get(team_id, 50) if ai else None
+        for r in self.conn.execute(
+            """SELECT year FROM team_budgets
+               WHERE league_id = %s AND team_id = %s AND year >= %s""",
+            (league_id, team_id, from_year),
+        ).fetchall():
+            levels = bg.ai_levels(spending, f"fo:{team_id}:{r['year']}") if ai else {}
+            self.conn.execute(
+                """UPDATE team_budgets
+                   SET coaching = %s, facilities = %s, analytics = %s, marketing = %s
+                   WHERE league_id = %s AND team_id = %s AND year = %s""",
+                (
+                    levels.get("coaching"), levels.get("facilities"),
+                    levels.get("analytics"), levels.get("marketing"),
+                    league_id, team_id, r["year"],
+                ),
+            )  # fmt: skip
 
     def custom_team_ids(self, league_id: str) -> set[str]:
         """The league's teams that play with a custom team's players

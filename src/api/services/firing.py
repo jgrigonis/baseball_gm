@@ -25,6 +25,7 @@ from __future__ import annotations
 import random
 
 from src.api.services import badges, career, personas, trades
+from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.gm_repo import GMRepository
 
 
@@ -103,6 +104,9 @@ def _fire(conn, league_id: str, season_id: str, year: int, r: dict) -> dict:
     career.record_league(conn, league_id, leaving_gm_id=gm_id)
     badges.award(conn, r["user_id"])
     gm_repo.hand_team_to_ai(gm_id)
+    # Any season already set up past this one goes back to the owner's usual
+    # front office, not the fired GM's picks.
+    BudgetRepository(conn).reset_levels(league_id, r["team_id"], year + 1, ai=True)
     personas.give_persona(conn, league_id, gm_id, rng)
     # The owner's messages were to them, not to the new GM.
     conn.execute("DELETE FROM owner_messages WHERE gm_id = %s", (gm_id,))

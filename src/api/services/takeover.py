@@ -28,6 +28,7 @@ from __future__ import annotations
 
 from src.api.services import firing, job_offers, sim_jobs, trades
 from src.db.locks import league_lock
+from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.news_repo import NewsRepository
@@ -176,9 +177,13 @@ def take_over(conn, league_id: str, user: dict, team_id: str) -> str:
             if league["commissioner_gm_id"] == mine["id"]:
                 gm_repo.set_commissioner(ai["gm_id"], league_id)
             firing.rehired(conn, league_id, user["id"], team_id)
+        first_year = joined_year(conn, league)
         gm_repo.take_over_team(
-            ai["gm_id"], user["id"], user["display_name"], joined_year(conn, league)
+            ai["gm_id"], user["id"], user["display_name"], first_year
         )
+        # The new GM's front office starts at Standard, not at the levels the
+        # GMs before them picked (Josh, 2026-11-11).
+        BudgetRepository(conn).reset_levels(league_id, team_id, first_year)
         # The owner's messages were to the AI GMs who ran the team before, so
         # the new GM starts with an empty office, not a pile of unread mail.
         conn.execute("DELETE FROM owner_messages WHERE gm_id = %s", (ai["gm_id"],))

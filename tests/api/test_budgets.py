@@ -703,6 +703,40 @@ def test_a_persons_front_office_carries_into_next_season(lg):
     assert theirs  # (and had levels the season before)
 
 
+def test_a_gm_new_to_the_team_starts_at_standard(lg):
+    """Someone who took the team over for 2027 doesn't get the levels the GM
+    before them picked; ticket prices are the team's and still carry."""
+    x = lg()
+    x.budgets.for_league(x.league.id, 2026)
+    x.budgets.set_level(x.league.id, x.mine.id, 2026, "coaching", 4)
+    x.budgets.set_ticket_price(x.league.id, x.mine.id, 2026, 8)
+    x.db.execute("UPDATE gms SET joined_year = 2027 WHERE id = %s", (x.gm.id,))
+    x.budgets.for_league(x.league.id, 2027)
+    assert x.budgets.levels(x.league.id, x.mine.id, 2027) == dict.fromkeys(
+        bg.DEPARTMENT_KEYS, bg.STANDARD
+    )
+    assert x.budgets.ticket_price(x.league.id, x.mine.id, 2027) == 8
+    # A season later they're theirs and carry again.
+    x.budgets.set_level(x.league.id, x.mine.id, 2027, "coaching", 3)
+    x.budgets.for_league(x.league.id, 2028)
+    assert x.budgets.levels(x.league.id, x.mine.id, 2028)["coaching"] == 3
+
+
+def test_reset_levels_for_a_new_gm(lg):
+    x = lg()
+    x.budgets.for_league(x.league.id, 2026)
+    x.budgets.set_level(x.league.id, x.mine.id, 2026, "analytics", 0)
+    x.budgets.reset_levels(x.league.id, x.mine.id, 2026)
+    assert x.budgets.levels(x.league.id, x.mine.id, 2026) == dict.fromkeys(
+        bg.DEPARTMENT_KEYS, bg.STANDARD
+    )
+    # Handed to an AI GM, the owner's usual levels.
+    x.budgets.reset_levels(x.league.id, x.mine.id, 2026, ai=True)
+    assert x.budgets.levels(x.league.id, x.mine.id, 2026) == bg.ai_levels(
+        50, f"fo:{x.mine.id}:2026"
+    )
+
+
 def test_setting_the_front_office_on_the_budget_tab(lg, client_for):
     x = lg()
     x.budgets.for_league(x.league.id, 2026)
