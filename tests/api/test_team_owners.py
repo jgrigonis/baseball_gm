@@ -199,6 +199,35 @@ def test_owners_review_the_season(lg, factory):
     )
 
 
+def test_tearing_the_roster_down_doesnt_lower_the_bar(lg, factory):
+    # Josh, 2026-11-11: a 90-72 team, gutted, was expected to play .428.
+    from src.api.services import owner_review
+    from src.db.repositories.team_state_repo import TeamStateRepository
+
+    x = lg(n=2)
+    a = x.teams[0]
+    last = factory.season(year=2025)
+    factory.league_season(x.league, last)
+    by_team = service.ensure(x.db, x.league.id)
+    repo = TeamStateRepository(x.db)
+
+    def state(season, day, rank, gb):
+        repo.add(x.league.id, season.id, a.id, day, "contending", 0, "contending",
+                 {"rank_now": rank, "games_back": gb})  # fmt: skip
+
+    state(last, "2025-09-01", 0.1, 0.0)  # strong all last season
+    state(last, "2025-11-01", 0.9, None)  # torn down in the offseason
+    state(x.season, "2026-03-01", 0.9, None)
+    season = owner_review.gather(x.db, x.league.id, x.season.id, 2026, by_team)[a.id]
+    assert season.rank_before == 0.1
+    assert (season.rank_start, season.rank_last_season) == (0.9, 0.1)
+    # A roster that got better is judged on where it is now.
+    state(x.season, "2026-04-01", 0.05, 0.0)
+    x.db.execute("DELETE FROM team_states WHERE as_of = '2026-03-01'")
+    season = owner_review.gather(x.db, x.league.id, x.season.id, 2026, by_team)[a.id]
+    assert season.rank_before == 0.05
+
+
 def test_a_new_gm_starts_fresh(lg):
     from src.api.services import owner_review
     from src.league import owner_scoring as sc

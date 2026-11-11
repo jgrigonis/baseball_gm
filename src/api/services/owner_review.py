@@ -205,6 +205,13 @@ def gather(
         ).fetchall()
     }
     first = _team_state(conn, league_id, season_id, "ASC")
+    # Where each roster stood at the end of last season's games (before any
+    # offseason moves): the owner doesn't
+    # expect less than that this year, so a GM can't lower the bar by
+    # gutting the roster (Josh, 2026-11-11: a 90-72 team, torn down, was
+    # expected to play .428).
+    prev = _previous_season(conn, league_id, year)
+    ended = _team_state(conn, league_id, prev, "DESC", in_season=True) if prev else {}
     last = _team_state(conn, league_id, season_id, "DESC")
     playoffs = _playoffs(conn, season_id)
     money = {
@@ -278,7 +285,9 @@ def gather(
         out[team_id] = sc.TeamSeason(
             wins=w,
             losses=l,
-            rank_before=first.get(team_id, {}).get("rank_now", 0.5),
+            rank_before=_expected_rank(first.get(team_id), ended.get(team_id)),
+            rank_start=first.get(team_id, {}).get("rank_now"),
+            rank_last_season=ended.get(team_id, {}).get("rank_now"),
             rank_future=last.get(team_id, {}).get("rank_future", 0.5),
             farm_rank=last.get(team_id, {}).get("farm_rank", 0.5),
             made_playoffs=bool(p),
@@ -344,11 +353,37 @@ def _count(conn, sql: str, params: tuple) -> dict[str, int]:
     return {r["team_id"]: int(r["n"]) for r in conn.execute(sql, params).fetchall()}
 
 
-def _team_state(conn, league_id: str, season_id: str, order: str) -> dict[str, dict]:
-    """Each team's first (ASC) or last (DESC) team-state inputs this season."""
+def _previous_season(conn, league_id: str, year: int) -> str | None:
+    row = conn.execute(
+        """SELECT s.id FROM seasons s
+           JOIN league_seasons ls ON ls.season_id = s.id
+           WHERE ls.league_id = %s AND s.year < %s AND NOT s.is_backstory
+           ORDER BY s.year DESC LIMIT 1""",
+        (league_id, year),
+    ).fetchone()
+    return row["id"] if row else None
+
+
+def _expected_rank(start: dict | None, ended: dict | None) -> float:
+    """The roster strength the owner judges the record against (0 best, 1
+    worst): the stronger of where it started this season and where it
+    ended last season."""
+    ranks = [
+        r["rank_now"] for r in (start, ended) if r and r.get("rank_now") is not None
+    ]
+    return min(ranks) if ranks else 0.5
+
+
+def _team_state(
+    conn, league_id: str, season_id: str, order: str, in_season: bool = False
+) -> dict[str, dict]:
+    """Each team's first (ASC) or last (DESC) team-state inputs this season.
+    in_season: only checkpoints taken during the season's games (with
+    standings), not the offseason ones stored under it after."""
+    played = "AND inputs->>'games_back' IS NOT NULL" if in_season else ""
     rows = conn.execute(
         f"""SELECT DISTINCT ON (team_id) team_id, inputs FROM team_states
-            WHERE league_id = %s AND season_id = %s
+            WHERE league_id = %s AND season_id = %s {played}
             ORDER BY team_id, id {order}""",
         (league_id, season_id),
     ).fetchall()
