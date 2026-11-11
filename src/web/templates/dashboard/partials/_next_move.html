@@ -4,14 +4,16 @@
    move happens; on that page it does the move by calling the page's own
    function (data-fn), e.g. schedSim, simPlayoffs, beginOffseason, runDraft.
    The ▾ menu has the other ways to do it. The shell reloads this after each
-   tab swap and sim (refreshNextMove); data-sig says whether it changed.
+   tab swap and sim (refreshNextMove); data-sig says whether it changed,
+   counting the ▾ menu's notes and boxes (the trade boxes go once the
+   deadline is behind, the All-Star box once the break is).
    data-mp is solo (0) or several human GMs (1): the page's scripts differ
    (_play_script vs _ready_bar), so the shell reloads the page when it flips,
    e.g. a second GM joined a solo league. #}
 {% set nm = next_move %}
 <div id="next-move" class="next-move{% if nm %} nm-{{ nm.kind }}{% endif %}"
      data-mp="{{ 1 if multiplayer else 0 }}"
-     data-sig="{% if nm %}{{ nm.key }}|{{ nm.label }}|{{ nm.pill.label if nm.pill else '' }}{% endif %}">
+     data-sig="{% if nm %}{{ nm.key }}|{{ nm.label }}|{{ nm.pill.label if nm.pill else '' }}|{{ 1 if nm.trade_stops else 0 }}{{ 1 if nm.through_break else 0 }}|{{ nm.menu|map(attribute='note')|join('/') }}{% endif %}">
 {% if nm %}
   {% if nm.pill %}
   <a class="nm-pill" href="{{ nm.pill.href }}" title="{{ nm.pill.title }}" aria-label="{{ nm.pill.label }}"><span class="nm-long">{{ nm.pill.label }}</span><span class="nm-short" aria-hidden="true">{{ nm.pill.short or "★" }}</span></a>

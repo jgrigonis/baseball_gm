@@ -101,4 +101,12 @@ def test_no_trade_stop_boxes_past_the_deadline(db_conn, factory, monkeypatch):
         "get_next_unplayed_date",
         lambda self, sid: {"game_date": "2025-06-30"},
     )
-    assert 'id="sched-stop-offers-box"' in _schedule_html(db_conn, factory, "blitz")
+    on_deadline_day = _schedule_html(db_conn, factory, "blitz")
+    assert 'id="sched-stop-offers-box"' in on_deadline_day
+    # The button's signature differs, so the page swaps in the new menu
+    # after a sim instead of keeping the old boxes until a reload.
+    assert _sig(html) != _sig(on_deadline_day)
+
+
+def _sig(html: str) -> str:
+    return html.split('data-sig="', 1)[1].split('"', 1)[0]
