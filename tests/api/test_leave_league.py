@@ -467,3 +467,118 @@ class TestLastOneOut:
         assert db_conn.execute(
             "SELECT 1 FROM leagues WHERE id = %s", (league.id,)
         ).fetchone()
+
+
+# ── A GM their owner fired ────────────────────────────────────────────────────
+
+
+def _fire(db, gm):
+    """What firing.py leaves behind for a person: a teamless row, fired."""
+    db.execute(
+        "UPDATE gms SET team_id = NULL, fired_at = NOW() WHERE id = %s", (gm.id,)
+    )
+
+
+class TestFired:
+    @pytest.fixture
+    def client(self, db_conn):
+        app.dependency_overrides[get_db] = lambda: db_conn
+        yield TestClient(app, follow_redirects=False)
+        app.dependency_overrides.clear()
+
+    def test_leave_route(self, client, db_conn, factory):
+        league = factory.league(state="offseason")
+        fired, user_id = _human(db_conn, factory, league, "Alice")
+        _human(db_conn, factory, league, "Bob", team=factory.team())
+        _fire(db_conn, fired)
+        app.dependency_overrides[get_current_user] = lambda: {"id": user_id}
+
+        r = client.post(f"/leagues/{league.id}/leave")
+
+        assert r.status_code == 200
+        assert _gm(db_conn, fired) is None
+        assert GMRepository(db_conn).get_users_leagues(user_id) == []
+        assert db_conn.execute(
+            "SELECT 1 FROM leagues WHERE id = %s", (league.id,)
+        ).fetchone()
+
+    def test_doesnt_wait_on_a_running_sim(self, db_conn, factory):
+        league = factory.league(state="season")
+        fired, _ = _human(db_conn, factory, league, "Alice")
+        _human(db_conn, factory, league, "Bob", team=factory.team())
+        _fire(db_conn, fired)
+        other = psycopg.connect(os.environ["DATABASE_TEST_URL"], row_factory=dict_row)
+        try:
+            with league_lock(other, league.id):
+                leave_league(db_conn, league.id, fired.id)
+        finally:
+            other.close()
+
+        assert _gm(db_conn, fired) is None
+
+    def test_job_offers_go(self, db_conn, factory):
+        league = factory.league(state="offseason")
+        fired, user_id = _human(db_conn, factory, league, "Alice")
+        _human(db_conn, factory, league, "Bob", team=factory.team())
+        _fire(db_conn, fired)
+        db_conn.execute(
+            "INSERT INTO gm_job_offers (league_id, user_id, year, team_id, message)"
+            " VALUES (%s, %s, 2030, %s, 'Come run my team')",
+            (league.id, user_id, factory.team().id),
+        )
+
+        leave_league(db_conn, league.id, fired.id)
+
+        assert not db_conn.execute(
+            "SELECT 1 FROM gm_job_offers WHERE user_id = %s", (user_id,)
+        ).fetchone()
+
+    def test_commissioner_passes_on(self, db_conn, factory):
+        league = factory.league(state="offseason")
+        fired, _ = _human(db_conn, factory, league, "Alice")
+        bob, _ = _human(db_conn, factory, league, "Bob", team=factory.team())
+        _fire(db_conn, fired)
+        _set_commissioner(db_conn, league, fired)
+
+        leave_league(db_conn, league.id, fired.id)
+
+        assert _commissioner(db_conn, league) == bob.id
+
+    def test_last_one_out_deletes_the_league(self, db_conn, factory):
+        league = factory.league(state="offseason")
+        fired, _ = _human(db_conn, factory, league, "Alice")
+        factory.gm(league=league, team=factory.team(), is_ai=True)
+        _fire(db_conn, fired)
+
+        leave_league(db_conn, league.id, fired.id)
+
+        assert not db_conn.execute(
+            "SELECT 1 FROM leagues WHERE id = %s", (league.id,)
+        ).fetchone()
+
+    def test_league_page_has_leave_button(self, client, db_conn, factory):
+        league = factory.league(state="offseason")
+        fired, user_id = _human(db_conn, factory, league, "Alice")
+        _human(db_conn, factory, league, "Bob", team=factory.team())
+        _fire(db_conn, fired)
+        app.dependency_overrides[get_current_user] = lambda: {"id": user_id}
+
+        html = client.get(f"/leagues/{league.id}/league").text
+
+        assert "Leave League</button>" in html
+        assert "takes the league off your list" in html
+
+    def test_leagues_page_says_so(self, client, db_conn, factory):
+        league = factory.league(state="offseason")
+        fired, user_id = _human(db_conn, factory, league, "Alice")
+        _human(db_conn, factory, league, "Bob", team=factory.team())
+        _fire(db_conn, fired)
+        app.dependency_overrides[get_current_user] = lambda: {
+            "id": user_id,
+            "display_name": "Alice",
+            "has_password": True,
+        }
+
+        html = client.get("/leagues/").text
+
+        assert 'data-fired="yes"' in html

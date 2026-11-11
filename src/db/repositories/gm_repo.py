@@ -149,6 +149,7 @@ class GMRepository:
                       COUNT(DISTINCT ls.season_id) FILTER (WHERE NOT s.is_backstory)
                           as season_number,
                       (l.commissioner_gm_id = g.id) as is_commissioner,
+                      (g.fired_at IS NOT NULL) as fired,
                       (SELECT COUNT(*) FROM gms o
                        WHERE o.league_id = l.id AND o.user_id IS NOT NULL) as people
             FROM leagues l

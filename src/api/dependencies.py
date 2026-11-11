@@ -86,6 +86,19 @@ def get_current_gm(league_id: str, db: DB, user: Any = Depends(get_current_user)
     return gm
 
 
+def get_member_gm(league_id: str, db: DB, user: Any = Depends(get_current_user)):
+    """The user's own row in the league, fired or not. Only for leaving: a GM
+    their owner fired has no team, but the league is still in their list and
+    they can take it off."""
+    gm = db.execute(
+        "SELECT * FROM gms WHERE user_id = %s AND league_id = %s",
+        (user["id"], league_id),
+    ).fetchone()
+    if not gm:
+        raise NotLeagueGM()
+    return gm
+
+
 def get_gm_or_viewer(league_id: str, db: DB, user: Any = Depends(get_current_user)):
     """For read-only league pages. A GM gets their own row. Anyone else signed
     in can view a public league once it has started, someone who entered a
@@ -180,6 +193,7 @@ OptionalUser = Annotated[Any, Depends(get_optional_user)]
 Admin = Annotated[Any, Depends(get_admin)]
 GM = Annotated[Any, Depends(get_current_gm)]
 GMOrViewer = Annotated[Any, Depends(get_gm_or_viewer)]
+MemberGM = Annotated[Any, Depends(get_member_gm)]
 Commissioner = Annotated[Any, Depends(get_commissioner)]
 SinglePlayer = Annotated[None, Depends(require_single_player)]
 ActiveLeague = Annotated[None, Depends(require_active_league)]

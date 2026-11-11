@@ -71,7 +71,7 @@
           {% if active_tab in ('running', 'completed') %}<td style="font-family:var(--font-mono);letter-spacing:.1em;color:var(--amber);">{{ l.join_code or '—' }}</td>{% endif %}
           <td style="text-align:right;display:flex;gap:6px;justify-content:flex-end;align-items:center;">
             {% if mine %}
-            <button data-league-id="{{ l.id }}" data-league-name="{{ l.name }}" data-started="{{ 'yes' if l.state != 'lobby' else '' }}" data-last="{{ 'yes' if l.people <= 1 else '' }}" onclick="leaveLeague(this)" class="btn btn-danger" style="font-size:10px;padding:4px 10px;">Leave</button>
+            <button data-league-id="{{ l.id }}" data-league-name="{{ l.name }}" data-started="{{ 'yes' if l.state != 'lobby' else '' }}" data-fired="{{ 'yes' if l.fired else '' }}" data-last="{{ 'yes' if l.people <= 1 else '' }}" onclick="leaveLeague(this)" class="btn btn-danger" style="font-size:10px;padding:4px 10px;">Leave</button>
             {% elif active_tab == 'join' %}
             <form method="POST" action="/leagues/{{ l.id }}/join" style="display:inline;">
               <button type="submit" class="btn btn-primary" style="font-size:10px;padding:4px 10px;"{% if l.takeover %} title="It has started: pick a team an AI GM runs"{% endif %}>{{ 'Pick a team →' if l.takeover else 'Join →' }}</button>
@@ -157,8 +157,9 @@ async function leaveLeague(btn) {
   const id = btn.dataset.leagueId, name = btn.dataset.leagueName;
   const ok = await gmConfirm({
     title: 'Leave ' + name + '?',
-    lines: btn.dataset.started && !btn.dataset.last
-      ? ['An AI manager will take over your team, and you can\'t come back.'] : [],
+    lines: btn.dataset.last ? []
+      : btn.dataset.fired ? ['You were fired here, so this just takes the league off your list.']
+      : btn.dataset.started ? ['An AI manager will take over your team, and you can\'t come back.'] : [],
     warn: btn.dataset.last ? 'You\'re the last GM in it, so the league will be deleted for good.' : '',
     ok: btn.dataset.last ? 'Leave and delete' : 'Leave',
     tone: 'danger',
