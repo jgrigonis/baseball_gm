@@ -427,6 +427,8 @@ def test_the_offseason_tab_shows_next_seasons_room(lg, client):
     html = client.get(f"/leagues/{lg.league.id}/expiring").text
     assert '<h1 class="page-title">Expiring Deals</h1>' in html
     assert 'id="ex-sort"' in html
+    # The room line is pinned under the header (Josh, 2026-11-11).
+    assert 'id="ex-room-bar"' in html
     assert f'href="/leagues/{lg.league.id}/expiring"' in html
     assert "Room left next season:" in html
     assert "from their bank to keep your own players." in html
