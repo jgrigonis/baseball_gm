@@ -406,7 +406,9 @@ def standing(
         "at_limit": spend >= limit,
         # Past the limit by at least $100K (less reads as "at the limit").
         "over_limit": max(0, spend - limit),
-        "over_limit_text": (format_salary(spend - limit) if spend - limit >= 100_000 else None),
+        "over_limit_text": (
+            format_salary(spend - limit) if spend - limit >= 100_000 else None
+        ),
         "front_office": front_office,
         "front_office_text": format_salary(front_office),
         "minors": minors,
