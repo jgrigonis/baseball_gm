@@ -124,6 +124,9 @@ def test_the_owner_tab(lg, client_for):
     assert "Your Owner" in text
     assert mine["name"] in text and mine["wants"] in text
     assert "Owners around the league" in text
+    # The league's owners sit behind a toggle that starts closed.
+    assert '<details class="ow-older ow-league" id="ow-league"' in text
+    assert f"Show all {len(service.league_table(x.db, x.league.id))} owners" in text
     assert f'href="/leagues/{x.league.id}/owner"' in text  # in the tab bar
     for o in service.league_table(x.db, x.league.id):
         assert o["name"] in text

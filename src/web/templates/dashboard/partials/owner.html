@@ -181,7 +181,11 @@
 {% if owners %}
 <div class="card" style="margin-bottom:16px;">
   <div class="card-header"><span class="card-title">Owners around the league</span></div>
-  <div class="card-body" style="overflow-x:auto;">
+  <div class="card-body">
+    {# Closed by default; the open/closed choice is remembered per browser. #}
+    <details class="ow-older ow-league" id="ow-league" style="padding-top:0;">
+      <summary class="btn btn-secondary"><span class="ow-older-show">Show all {{ owners | length }} owners</span><span class="ow-older-hide">Hide owners</span></summary>
+    <div style="overflow-x:auto;">
     <table class="data-table ow-table">
       <thead><tr><th>Team</th><th>Owner</th><th>Kind</th></tr></thead>
       <tbody>
@@ -194,6 +198,19 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
+    </details>
+    <script>
+      (function () {
+        var KEY = 'ownerLeagueOpen';
+        var el = document.getElementById('ow-league');
+        if (!el) return;
+        try { if (localStorage.getItem(KEY) === '1') el.open = true; } catch (e) {}
+        el.addEventListener('toggle', function () {
+          try { localStorage.setItem(KEY, el.open ? '1' : '0'); } catch (e) {}
+        });
+      })();
+    </script>
   </div>
 </div>
 {% else %}
