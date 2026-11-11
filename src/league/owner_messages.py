@@ -565,9 +565,9 @@ TRADE_REACTIONS = {
 # trade, even one that touches nothing they weigh heavily.
 MEDDLES = 70
 TRADE_REACTIONS["meddling"] = (
-    "Nobody ran that trade by me. Next time, call me first.",
-    "I read about that trade in the paper, {gm}. I'd like to hear it from you.",
-    "I'm not sure I'd have made that trade. Ask me before the next one.",
+    "Another trade I had nothing to do with. I hope you know what you're doing.",
+    "I read about that trade in the paper, {gm}. I'll be watching how it works out.",
+    "I'm not sure I'd have made that trade. It had better work.",
 )
 
 # A reaction to releasing players (Josh, 2026-11-11: "I'm quite surprised the
@@ -587,23 +587,23 @@ RELEASE_REACTIONS = {
     ),
     "meddling_money": (
         (
-            "We're still paying {player} {owed}, and he doesn't play for us anymore. Nobody asked me.",
-            "{owed} for a player we released. I sign those checks, {gm}. Run moves like that by me first.",
+            "We're still paying {player} {owed}, and he doesn't play for us anymore. I don't like it.",
+            "{owed} for a player we released. I sign those checks, {gm}, and I don't sign them for nothing.",
         ),
         (
             "We're paying {owed} to players who don't play here anymore: {players}. I didn't sign off on any of it.",
-            "{players}, all released, and {owed} still on our books. Next time you call me first.",
+            "{players}, all released, and {owed} still on our books. That's my money.",
         ),
     ),
     "meddling": (
         (
-            "You released {player}? Nobody ran that by me. I want a call before you cut a player that good.",
+            "You released {player}? A player that good? I don't understand it.",
             "{player} was one of our better players, and I had to read about his release in the paper. That's not how this works, {gm}.",
-            "Why is {player} gone? I'd have said no if you'd asked me. Next time, ask me.",
+            "Why is {player} gone? I'd never have let him go.",
         ),
         (
-            "{players}, all gone. Nobody asked me about any of it. I want a say before you clear out the roster.",
-            "You released {players}, and I heard about it in the paper. I'd like a call before the next one, {gm}.",
+            "{players}, all gone. I don't like watching the roster cleared out.",
+            "You released {players}, and I heard about it in the paper. That's not how I like to find out, {gm}.",
         ),
     ),
     "dead_money": (
@@ -649,7 +649,7 @@ RELEASE_VETO = {
     "talent": (
         "No. {player} stays. I'm not paying a player that good to play for someone else.",
         "You're not releasing {player}, {gm}. Find another way.",
-        "Release {player}? Absolutely not. Talk to me before you try that again.",
+        "Release {player}? Absolutely not.",
     ),
 }
 
