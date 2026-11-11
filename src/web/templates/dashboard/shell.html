@@ -446,21 +446,24 @@ window.closeGamePanel = function() {
 {% if multiplayer and not is_viewer %}{% include "dashboard/partials/_ready_bar.html" %}{% endif %}
 {% if is_viewer %}{% include "dashboard/partials/_viewer_refresh.html" %}{% endif %}
 {% if fired is defined and fired %}{% include "dashboard/partials/_fired_banner.html" %}{% elif can_take_over %}{% include "dashboard/partials/_join_banner.html" %}{% endif %}
-<div id="sim-status" style="display:none;padding:6px 24px;
-     background:var(--green-dim);border-bottom:1px solid var(--green-mid);
-     font-family:var(--font-mono);font-size:11px;color:var(--green);
-     align-items:center;gap:12px;">
-  <span id="sim-status-text"></span>
-  <button onclick="document.getElementById('sim-status').style.display='none';"
-          style="margin-left:auto;background:none;border:none;color:var(--muted);
-                 cursor:pointer;font-size:14px;line-height:1;padding:0 4px;">×</button>
+{# The sim card (simCard in this page's script): a card floating in the
+   bottom corner with the sim's line ("Simming day 35… · 13-21 (72-64) · 3rd
+   in Europe West, 7 back"), a progress bar for runs of a set length, and the
+   run's news (injuries, returns, trades), newest first. × folds it to a
+   small pill that opens it again; the next sim starts it fresh. #}
+<div id="sim-card" class="sim-card" hidden>
+  <div class="sim-card-head">
+    <span class="sim-card-dot" aria-hidden="true"></span>
+    <span id="sim-status-text" class="sim-card-text"></span>
+    <button type="button" class="sim-card-x" onclick="simCard.fold()" title="Hide" aria-label="Hide">×</button>
+  </div>
+  <div class="sim-card-bar" hidden><i></i></div>
+  <div id="sim-injury-news" class="sim-card-news" onclick="injuryNewsClick(event)"></div>
 </div>
-<div id="sim-injury-news"
-     style="display:none;padding:5px 24px;
-            background:var(--bg-2);border-bottom:1px solid var(--border);
-            font-family:var(--font-mono);font-size:11px;color:var(--amber);
-            cursor:pointer;"
-     onclick="injuryNewsClick(event)"></div>
+<div id="sim-card-pill" class="sim-card-pill" hidden>
+  <button type="button" class="sim-card-open" onclick="simCard.unfold()"></button>
+  <button type="button" class="sim-card-x" onclick="simCard.clear()" title="Clear" aria-label="Clear">×</button>
+</div>
 <div id="tab-content" class="tab-fade">
   {% if tab_template %}{% include tab_template %}{% endif %}
 </div>
@@ -527,8 +530,6 @@ window.refreshRosterBadge = function() {
 function setActiveTab(el) {
   document.querySelectorAll('.tab-link, .side-link').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
-  var sb = document.getElementById('sim-status');
-  if (sb) sb.style.display = 'none';
 }
 // A link inside a tab (a team in a news story, say) can open another tab's
 // page: highlight that tab. Pages no tab owns (a GM's profile) keep the
@@ -621,25 +622,108 @@ document.body.addEventListener('htmx:afterSettle', function(e) {
   }
 });
 
-// ── Injury news bar (always available, element lives in shell) ─────────────────
+// ── Sim card (#sim-card, floating in the bottom corner) ──────────────────────
+// One place for a sim's line and its news. The news piles up over a run,
+// newest first: the card shows the newest few and folds the rest into
+// "+N earlier". A clicked item dims (it's been seen to). Nothing falls off
+// on its own: the list lasts until the next sim starts (simCard.newRun) or
+// the GM clears it. × folds the card to a pill that opens it again.
+var SIM_CARD_SHOWN = 4;
+window.simCard = (function () {
+  var news = [];         // {text, dest, seen}, newest first
+  var folded = false;    // the GM hid the card this run
+  var expanded = false;  // "+N earlier" opened
+  var running = false;
+  var progress = null;   // {done, of} for runs of a set length
+  function el(id) { return document.getElementById(id); }
+  function statusText() { var t = el('sim-status-text'); return t ? t.textContent : ''; }
+  // Out of the way of the tutorial coach, which has the same corner.
+  function place(card) {
+    var coach = el('coach-panel');
+    card.style.right = ''; card.style.bottom = '';
+    if (!coach || !coach.getClientRects().length) return;
+    if (window.innerWidth <= 600) card.style.bottom = (coach.offsetHeight + 26) + 'px';
+    else card.style.right = (coach.offsetWidth + 34) + 'px';
+  }
+  function render() {
+    var card = el('sim-card'), pill = el('sim-card-pill');
+    if (!card || !pill) return;
+    var list = el('sim-injury-news');
+    list.textContent = '';
+    var shown = expanded ? news : news.slice(0, SIM_CARD_SHOWN);
+    shown.forEach(function (item, i) {
+      var row = document.createElement('div');
+      row.className = 'inj-news-item' + (item.seen ? ' seen' : '');
+      row.textContent = item.text;
+      row.dataset.dest = item.dest || 'batting';
+      row.dataset.i = i;
+      list.appendChild(row);
+    });
+    if (news.length > SIM_CARD_SHOWN) {
+      var more = document.createElement('button');
+      more.type = 'button';
+      more.className = 'sim-card-more';
+      more.textContent = expanded ? 'Show fewer ▴' : '+' + (news.length - SIM_CARD_SHOWN) + ' earlier ▾';
+      more.onclick = function (ev) { ev.stopPropagation(); expanded = !expanded; render(); };
+      list.appendChild(more);
+    }
+    list.hidden = !news.length;
+    card.classList.toggle('running', running);
+    var bar = card.querySelector('.sim-card-bar');
+    bar.hidden = !(running && progress);
+    if (progress) bar.firstElementChild.style.width = Math.min(100, 100 * progress.done / progress.of) + '%';
+    var any = !!(statusText() || news.length);
+    card.hidden = !any || folded;
+    pill.hidden = !any || !folded;
+    if (!card.hidden) place(card);
+    if (!pill.hidden) {
+      place(pill);
+      // "✓ 7 days · 3 news": the line's first part and the news count.
+      var lead = statusText().split(' · ')[0];
+      var bits = [];
+      if (lead) bits.push(lead);
+      if (news.length) bits.push(news.length + (news.length === 1 ? ' news' : ' news'));
+      pill.querySelector('.sim-card-open').textContent = bits.join(' · ') + ' ▴';
+      pill.classList.toggle('running', running);
+    }
+  }
+  return {
+    // A new sim: its news starts fresh and the card opens again.
+    newRun: function () { news = []; folded = false; expanded = false; progress = null; render(); },
+    running: function (on) { running = !!on; if (!on) progress = null; render(); },
+    progress: function (done, of) { progress = of ? {done: done, of: of} : null; render(); },
+    add: function (items) {
+      if (!items || !items.length) return;
+      // The newest day on top, its items in their own order.
+      news = items.map(function (it) { return {text: it.text, dest: it.dest, seen: false}; }).concat(news);
+      render();
+    },
+    seen: function (i) { if (news[i]) { news[i].seen = true; render(); } },
+    fold: function () { folded = true; render(); },
+    unfold: function () { folded = false; render(); },
+    // The pill's ×: the line and the news go.
+    clear: function () {
+      news = []; folded = false; expanded = false;
+      var t = el('sim-status-text'); if (t) t.textContent = '';
+      render();
+    },
+    render: render,
+  };
+})();
+
+// The sim's line in the card. color 'red' for errors; an empty msg clears it.
+window.simCardStatus = function (msg, color) {
+  var text = document.getElementById('sim-status-text');
+  if (!text) return;
+  text.textContent = msg || '';
+  text.style.color = color === 'red' ? 'var(--red)' : (color && color !== 'green' ? color : '');
+  simCard.render();
+};
+
 // Each item is {text, dest} and links to its own place, so a hitter's injury
 // opens the batting lineup even when a pitcher came back in the same sim.
-// dest: 'batting' | 'pitching' | 'roster' | 'trades'
-function setInjuryNews(items) {
-  var el = document.getElementById('sim-injury-news');
-  if (!el) return;
-  el.textContent = '';
-  (items || []).forEach(function (item) {
-    var span = document.createElement('span');
-    span.className = 'inj-news-item';
-    span.textContent = item.text;
-    span.dataset.dest = item.dest || 'batting';
-    el.appendChild(span);
-  });
-  // A click between items goes where the first one does.
-  el.dataset.dest = items && items.length ? items[0].dest : 'batting';
-  el.style.display = items && items.length ? 'block' : 'none';
-}
+// dest: 'batting' | 'pitching' | 'roster' | 'trades' | 'league'
+function setInjuryNews(items) { simCard.add(items); }
 window.setInjuryNews = setInjuryNews;
 
 // A 1-day knock isn't worth stopping a sim that runs until an injury, and
@@ -719,7 +803,7 @@ function showInjuryNews(d) {
   });
   if ((d.settings || []).length && document.getElementById('league-settings') && window.refreshActiveTab)
     window.refreshActiveTab();
-  setInjuryNews(items);  // clears if empty, shows if not
+  setInjuryNews(items);  // adds to the sim card's news, if any
   return stops;
 }
 window.showInjuryNews = showInjuryNews;
@@ -744,9 +828,10 @@ function goToTab(name) {
 window.goToTab = goToTab;
 
 function injuryNewsClick(ev) {
-  var el = document.getElementById('sim-injury-news');
   var item = ev && ev.target && ev.target.closest ? ev.target.closest('.inj-news-item') : null;
-  var dest = (item || el || {}).dataset ? (item || el).dataset.dest : 'batting';
+  if (!item) return;
+  var dest = item.dataset.dest || 'batting';
+  simCard.seen(+item.dataset.i);
   if (dest === 'league') {
     // goToTab('league') would match every /leagues/ link.
     var link = document.querySelector(`[hx-get="/leagues/${LEAGUE_ID}/league"]`);
@@ -816,17 +901,8 @@ window.nextMoveIdle = function(id) {
   var caret = document.querySelector('#next-move .nm-caret');
   if (caret) caret.style.pointerEvents = '';
 };
-// A line in the status strip under the tabs.
-window.nextMoveStatus = function(msg, color) {
-  var bar = document.getElementById('sim-status');
-  var text = document.getElementById('sim-status-text');
-  if (!bar || !text) return;
-  if (!msg) { bar.style.display = 'none'; return; }
-  text.classList.remove('sim-status-one-line');
-  text.textContent = msg;
-  text.style.color = color === 'red' ? 'var(--red)' : '';
-  bar.style.setProperty('display', 'flex', 'important');
-};
+// A line in the sim card (#sim-card).
+window.nextMoveStatus = function(msg, color) { window.simCardStatus(msg, color); };
 // Reload the button for the page now showing: the league may have moved on
 // (the champion is crowned), or a tab swap changed go-to into do-it. Not
 // while a sim runs, which owns the button (Stop).

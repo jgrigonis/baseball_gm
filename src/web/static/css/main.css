@@ -1863,9 +1863,6 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
 .ss-sev-moderate { color:var(--amber); }
 .ss-sev-severe, .ss-sev-surgery { color:var(--red); }
 
-/* Sim news bar: each item links to its own tab */
-.inj-news-item:hover { text-decoration:underline; }
-.inj-news-item + .inj-news-item { margin-left:18px; }
 
 /* Player rows on the Lineup and Roster tabs */
 .lu-grade  { font-family: var(--font-mono); font-size: 14px; font-weight: 600; min-width: 28px; }
@@ -1988,11 +1985,39 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
    left as they are (still sent, so a vote doesn't propose changing them). */
 .solo-settings .toggle-row.trade-off { opacity: 0.4; pointer-events: none; }
 
-/* The running sim line ("Simming day 94… · 3-1 (42-31) · 1st in East") stays
-   on one line; on a phone its end is cut with "…" instead of wrapping. */
-#sim-status-text.sim-status-one-line {
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+/* The sim card (shell.html simCard): the sim's line and its news, floating
+   in the bottom corner, under the side panels. × folds it to a pill. */
+.sim-card, .sim-card-pill {
+  position: fixed; right: 20px; bottom: 20px; z-index: 150;
+  background: var(--bg-2); border: 1px solid var(--border-hi);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .5);
+  font-family: var(--font-mono); font-size: 11px;
+}
+.sim-card { width: 340px; }
+.sim-card[hidden], .sim-card-pill[hidden], .sim-card [hidden] { display: none; }
+.sim-card-head { display: flex; align-items: flex-start; gap: 8px; padding: 9px 6px 9px 12px; }
+.sim-card-text { flex: 1; min-width: 0; color: var(--green); line-height: 1.5; }
+.sim-card-dot { display: none; width: 8px; height: 8px; margin-top: 4px; flex-shrink: 0; border-radius: 50%;
+  background: var(--green); box-shadow: 0 0 0 3px rgba(95, 217, 138, .2); animation: simCardPulse 1s infinite alternate; }
+.sim-card.running .sim-card-dot { display: block; }
+@keyframes simCardPulse { to { opacity: .35; } }
+.sim-card-x { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 15px; line-height: 1; padding: 0 6px; }
+.sim-card-x:hover { color: var(--text); }
+.sim-card-bar { height: 4px; background: var(--tile); margin: 0 12px 9px; }
+.sim-card-bar i { display: block; height: 100%; width: 0; background: var(--green); transition: width .3s; }
+.sim-card-news { max-height: 40vh; overflow-y: auto; }
+.inj-news-item { padding: 6px 12px; border-top: 1px solid var(--border); color: var(--amber); cursor: pointer; }
+.inj-news-item:hover { background: var(--bg-3); }
+.inj-news-item.seen { opacity: .45; }
+.sim-card-more { display: block; width: 100%; text-align: left; padding: 6px 12px; border: none; border-top: 1px solid var(--border);
+  background: none; color: var(--text-dim); font: inherit; cursor: pointer; }
+.sim-card-more:hover { color: var(--amber); }
+.sim-card-pill { display: flex; align-items: center; }
+.sim-card-open { background: none; border: none; color: var(--amber); font: inherit; cursor: pointer; padding: 7px 4px 7px 12px; white-space: nowrap; }
+.sim-card-pill.running .sim-card-open { color: var(--green); }
+.sim-card-pill .sim-card-x { padding: 0 8px; }
+@media (max-width: 600px) {
+  .sim-card { left: 10px; right: 10px; bottom: 10px; width: auto; }
+  .sim-card-pill { right: 10px; bottom: 10px; }
+  .sim-card-news { max-height: 30vh; }
 }
