@@ -15,6 +15,7 @@
 
 from __future__ import annotations
 
+import time
 from collections.abc import Generator
 from contextlib import contextmanager
 
@@ -35,18 +36,35 @@ def _key(league_id: str) -> str:
     return f"league:{league_id}"
 
 
-@contextmanager
-def league_lock(conn, league_id: str) -> Generator[None]:
-    """
-    Hold the league's lock for the duration of the block.
+# How often a waiting request tries the lock again (see league_lock's wait).
+# Short, so it slips in between sim days: the page asks for the next day only
+# after it has polled the last one as done, which takes longer than this.
+WAIT_STEP = 0.1
 
-    Doesn't wait: raises LeagueBusy at once if another request holds it,
-    rather than queueing behind a sim that may take minutes.
-    """
-    got = conn.execute(
+
+def _try(conn, league_id: str) -> bool:
+    return conn.execute(
         "SELECT pg_try_advisory_lock(hashtextextended(%s, 0)) AS got",
         (_key(league_id),),
     ).fetchone()["got"]
+
+
+@contextmanager
+def league_lock(conn, league_id: str, wait: float = 0) -> Generator[None]:
+    """
+    Hold the league's lock for the duration of the block.
+
+    By default doesn't wait: raises LeagueBusy at once if another request
+    holds it, rather than queueing behind a sim that may take minutes. With
+    ``wait`` (seconds), keeps trying that long first. Quick roster moves
+    (releasing, signing) use it so they go through during a multi-day sim:
+    each day is its own job, and the move lands between two days.
+    """
+    deadline = time.monotonic() + wait
+    got = _try(conn, league_id)
+    while not got and time.monotonic() < deadline:
+        time.sleep(WAIT_STEP)
+        got = _try(conn, league_id)
     if not got:
         raise LeagueBusy(league_id)
     try:

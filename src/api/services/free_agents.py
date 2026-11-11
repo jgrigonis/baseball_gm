@@ -40,6 +40,9 @@ from src.league.offseason.roster_trimmer import MINORS_LIMIT
 from src.player import contracts as ct
 from src.player.player_value import role_rating
 
+# How long a release or signing waits for a sim day to finish (league_lock).
+MOVE_WAIT = 20
+
 # League states a GM can release or sign in.
 OPEN_STATES = ("preseason", "season", "playoffs", "offseason", "draft")
 
@@ -161,12 +164,27 @@ def release_preview(conn, league_id: str, team_id: str, player_id: str) -> dict:
     }
 
 
-def release(conn, league_id: str, team_id: str, player_id: str) -> dict:
-    """Release him to free agency. Returns what the team still owes him."""
-    with league_lock(conn, league_id):
+class NowGuaranteed(FreeAgentError):
+    """A release asked for as free, but his deal became guaranteed first."""
+
+
+def release(
+    conn, league_id: str, team_id: str, player_id: str, free: bool = False
+) -> dict:
+    """Release him to free agency. Returns what the team still owes him.
+
+    ``free``: the GM released him without a confirm because it cost nothing
+    (shell.html releasePlayer). The release can wait out a sim day, and a
+    game in it can guarantee his deal, so check again here and refuse
+    rather than leave money owed nobody agreed to."""
+    with league_lock(conn, league_id, wait=MOVE_WAIT):
         season_id, year = _context(conn, league_id)
         if not _on_team(conn, team_id, player_id):
             raise FreeAgentError("He isn't on your team.")
+        if free and ContractRepository(conn).release_cost(player_id, year)["total"]:
+            raise NowGuaranteed(
+                "He just played a game on the 40-man, so his deal is guaranteed now."
+            )
         player = PlayerRepository(conn).look_up(player_id)
         status_repo = PlayerStatusRepository(conn)
         was_up = status_repo.get_status(player_id) in FORTY_MAN_STATUSES
@@ -250,7 +268,7 @@ def budget_warning(
 
 def sign(conn, league_id: str, team_id: str, player_id: str) -> dict:
     """Sign a free agent at his asking price."""
-    with league_lock(conn, league_id):
+    with league_lock(conn, league_id, wait=MOVE_WAIT):
         _, year = _context(conn, league_id)
         if LeagueRepository(conn).get_by_id(league_id)["state"] == "draft":
             # Offseason free agency (src/api/services/offseason_fa.py).
