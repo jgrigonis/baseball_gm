@@ -150,6 +150,22 @@ def test_defensive_style_takes_the_glove_up_the_middle():
     assert "bat" in by_position(lineup).values()
 
 
+@pytest.mark.parametrize(
+    "style,skill", [("speed-first", "speed"), ("power-first", "power")]
+)
+def test_speed_and_power_styles_start_their_kind_of_bench_bat(style, skill):
+    """A slightly weaker bat who is fast (or strong) sits in Analytics but
+    starts in the style that wants him."""
+    special = hitter("special", bat=48, **{skill: 90})
+    players = [hitter(f"h{i}") for i in range(9)] + [special]
+
+    assert (
+        "special" not in by_position(LineupOptimizer.fill([None] * 9, players)).values()
+    )
+    lineup = LineupOptimizer.fill([None] * 9, players, style=style)
+    assert "special" in by_position(lineup).values()
+
+
 def test_big_bat_without_glove_still_plays():
     slugger = hitter("slugger", bat=90, glove={p: 10 for p in FIELD_POSITIONS})
 
@@ -330,8 +346,8 @@ def test_position_value_scales_the_glove():
 @pytest.mark.parametrize("style", LINEUP_STYLES)
 def test_best_on_base_hitter_leads_off_every_style(style):
     # The best contact + eye leads off even over a faster hitter or a
-    # better all-around bat.
-    on_base = hitter("on_base", bat=55, contact=80, eye=80, speed=50, power=30)
+    # better all-around bat. (Average power, so Power-first still plays him.)
+    on_base = hitter("on_base", bat=55, contact=80, eye=80, speed=50, power=50)
     burner = hitter("burner", bat=55, contact=50, eye=40, speed=99, base_running=99)
     slugger = hitter("slugger", bat=75, contact=60, eye=60, power=99)
     lineup = LineupOptimizer.fill(

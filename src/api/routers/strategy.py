@@ -41,8 +41,9 @@ SETTINGS: tuple[tuple[str, tuple[Setting, ...]], ...] = (
                 ("Traditional", "Defensive"),
                 "How Auto-fill, Rebuild and the AI build your lineup. Every style "
                 "leads off with your best on-base hitter. Traditional bats the best "
-                "hitter 3rd; Analytics bats him 2nd; Speed-first puts speed 2nd "
-                "and 9th; Power-first stacks power 3rd through 5th. Defensive plays "
+                "hitter 3rd; Analytics bats him 2nd; Speed-first plays faster bats "
+                "and puts speed 2nd and 9th; Power-first plays bigger bats and "
+                "stacks power 3rd through 5th. Defensive plays "
                 "the best gloves, above all at C, 2B, SS and CF, even when that "
                 "costs some bat, then bats them in the Traditional order. The "
                 "Lineup tab's Rebuild All menu (▾) rebuilds with any style so you "

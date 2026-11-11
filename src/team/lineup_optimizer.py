@@ -19,7 +19,8 @@ It works in two steps:
    DH is all bat. Defense counts most up the middle, so the solve fills C, SS
    and CF well without a hard-coded order, and a big bat with no glove ends up
    at 1B or DH. The Defensive style weighs gloves more again (STYLE_DEFENSE),
-   most of all at C, 2B, SS and CF. A left-handed thrower is only put at C, 2B, SS or 3B when
+   most of all at C, 2B, SS and CF; Speed-first and Power-first add speed or
+   power to a hitter's bat (STYLE_BAT), so they can start a different nine. A left-handed thrower is only put at C, 2B, SS or 3B when
    nobody else can play there.
 
 2. Batting order. The chosen hitters fill the batting slots top-down: slot 1
@@ -156,6 +157,14 @@ LINEUP_STYLES = tuple(BATTING_ROLES)
 # plays where: a good glove counts a bit more everywhere and far more up the
 # middle (C, 2B, SS, CF).
 KEY_DEFENSE = ("c", "2b", "ss", "cf")
+# A style's taste in hitters when it picks who plays: rating points added to
+# a hitter's offense for each point a skill sits above (or below) 50.
+# Speed-first wants runners and Power-first wants pop, so they can start a
+# bench bat the other styles would leave out.
+STYLE_BAT: dict[str, dict[str, float]] = {
+    "speed-first": {"speed": 0.35, "base_running": 0.15},
+    "power-first": {"power": 0.4},
+}
 STYLE_DEFENSE: dict[str, dict[str, float]] = {
     "defensive": {pos: 2.0 if pos in KEY_DEFENSE else 1.25 for pos in FIELD_POSITIONS},
 }
@@ -175,12 +184,12 @@ STYLE_GUIDE: dict[str, tuple[str, str]] = {
     ),
     "speed-first": (
         "Speed-first",
-        "1 on-base, 2 speed and contact, 3 best bat, 4 power, 5 contact, "
-        "6 speed, 7-8 by bat, 9 speed",
+        "Starts speed off the bench; 1 on-base, 2 speed and contact, 3 best "
+        "bat, 4 power, 5 contact, 6 speed, 7-8 by bat, 9 speed",
     ),
     "power-first": (
         "Power-first",
-        "1 on-base, 2 best bat, 3-5 power, 6-9 by bat",
+        "Starts power off the bench; 1 on-base, 2 best bat, 3-5 power, 6-9 by bat",
     ),
     "defensive": (
         "Defensive",
@@ -344,11 +353,13 @@ class LineupOptimizer:
         style: str | None = None,
     ) -> float:
         """What a player is worth at a spot: his bat (against today's starter,
-        if given), plus his glove there weighted by how much defense matters
+        if given, and tilted by the style's STYLE_BAT), plus his glove there weighted by how much defense matters
         at that spot (times defense, the GM's taste, and the style's
         STYLE_DEFENSE)."""
         offense = player.ratings.get("overall_offense", 0)
         offense -= LineupOptimizer.matchup(player, vs_hand)
+        for skill, w in STYLE_BAT.get(style, {}).items():
+            offense += w * (player.skills.get(skill, 50) - 50)
         if pos == "dh":
             return offense
         weight = DEFENSE_IMPORTANCE[pos] * STYLE_DEFENSE.get(style, {}).get(pos, 1.0)
