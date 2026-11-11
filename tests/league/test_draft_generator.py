@@ -392,3 +392,34 @@ class TestDraftGeneratorRun:
         ids1 = [p["id"] for p in DraftRepository(db_conn).get_prospects(lid1)]
         ids2 = [p["id"] for p in DraftRepository(db_conn).get_prospects(lid2)]
         assert sorted(ids1) == sorted(ids2)
+
+
+# ---------------------------------------------------------------------------
+# Draft class talent
+# ---------------------------------------------------------------------------
+
+
+def test_draft_class_skills_weaken_and_spread():
+    from src.league.offseason.draft_generator import (
+        DRAFT_OFFSET,
+        DRAFT_SKILL_OFFSETS,
+        DRAFT_SPREAD,
+        draft_class_skills,
+    )
+
+    out = draft_class_skills({"power": 70, "infield": 50, "stamina": 10}, False)
+    power = (
+        50 + 20 * DRAFT_SPREAD - DRAFT_OFFSET - DRAFT_SKILL_OFFSETS["hitter"]["power"]
+    )
+    assert out["power"] == round(power)
+    assert out["stamina"] == 10  # a non-skill is left alone
+    # A pitcher's skill offsets are his own.
+    pit = draft_class_skills({"strikes": 60}, True)
+    assert pit["strikes"] < 60 + 10 * DRAFT_SPREAD - DRAFT_OFFSET
+
+
+def test_draft_class_skills_stay_in_range():
+    from src.league.offseason.draft_generator import draft_class_skills
+
+    out = draft_class_skills({"power": 100, "contact": 26}, False)
+    assert all(1 <= v <= 100 for v in out.values())
