@@ -14,9 +14,12 @@ blocked; the game warns before a move that takes a team over.
 
 Each team's owner sets how far from the cap they'll let payroll go, by
 their Spending trait: a miser wants payroll under the cap, an owner who
-spends to win gives a long leash over it. That's the GM's budget. Going
-past it costs no more tax; the owner feels it in their profit, and AI GMs
-keep to it. Past a hard limit above the budget, the owner refuses moves
+spends to win gives a long leash over it. That's the GM's budget, and it
+pays the luxury tax too (Josh, 2026-11-11: the tax is spending): it holds
+the tax a payroll at the end of the leash would owe (tax_allowance), so
+spending counts payroll, tax, the front office and the minor leagues.
+Going past the budget costs no more tax than the payroll owes; the owner
+feels it in their profit, and AI GMs keep to it. Past a hard limit above the budget, the owner refuses moves
 that add money (hard_limit, refusal), for people too.
 
 Each owner has a bank that carries over between seasons. It starts rich,
@@ -137,14 +140,15 @@ def hard_limit(cap: int, budget: int, bank: int | None) -> int:
 
 
 def refusal(spend: int, limit: int, added: int) -> str | None:
-    """Why the owner refuses a move that adds this much spending, or None
-    when it stays inside their hard limit (or takes payroll off)."""
-    # spend: payroll plus the front office and the minor leagues.
+    """Why the owner refuses a move that adds this much spending (with any
+    luxury tax it adds, added_cost), or None when it stays inside their
+    hard limit (or takes money off)."""
+    # spend: payroll, its tax, the front office and the minor leagues.
     if added <= 0 or spend + added <= limit:
         return None
     return (
-        f"Your owner won't allow it: that takes spending (payroll, front "
-        f"office and minor leagues) to {format_salary(spend + added)}, past their "
+        f"Your owner won't allow it: that takes spending (payroll, luxury "
+        f"tax, front office and minor leagues) to {format_salary(spend + added)}, past their "
         f"{format_salary(limit)} limit."
     )
 
@@ -329,6 +333,31 @@ def ai_levels(spending: int, seed: str) -> dict[str, int]:
     return {k: clean_level(base + rng.choice((-1, 0, 0, 1))) for k in DEPARTMENT_KEYS}
 
 
+def tax_allowance(cap: int, budget: int) -> int:
+    """What an owner adds to their budget for luxury tax: the tax a payroll
+    at their leash (the stored budget less the standard front office) would
+    owe."""
+    return luxury_tax(budget - standard_front_office(cap), cap)
+
+
+def payroll_within(money: int, cap: int) -> int:
+    """The most payroll this much money pays for, luxury tax included:
+    every dollar over the cap costs 1 + LUXURY_TAX_RATE."""
+    if money <= cap:
+        return money
+    return cap + int((money - cap) / (1 + LUXURY_TAX_RATE))
+
+
+def payroll_cost(payroll: int, cap: int) -> int:
+    """A payroll plus the luxury tax it owes."""
+    return payroll + luxury_tax(payroll, cap)
+
+
+def added_cost(payroll: int, cap: int, added: int) -> int:
+    """What adding this much payroll costs, with the extra luxury tax."""
+    return payroll_cost(payroll + added, cap) - payroll_cost(payroll, cap)
+
+
 def standing(
     payroll: int,
     cap: int,
@@ -338,16 +367,20 @@ def standing(
     minors: int = 0,
     farm_allowance: int = 0,
 ) -> dict:
-    """A team's payroll against the league's cap, and its spending (payroll
-    plus the front office and the minor leagues) against its owner's budget
-    and hard limit, for the views."""
+    """A team's payroll against the league's cap, and its spending (payroll,
+    its luxury tax, the front office and the minor leagues) against its
+    owner's budget and hard limit, for the views."""
     limit = hard_limit(cap, budget, None) if limit is None else limit
-    spend = payroll + front_office + minors
-    # What's left of the budget for payroll once the front office and the
-    # farm are paid.
-    payroll_budget = budget - front_office - minors
     over = max(0, payroll - cap)
     tax = luxury_tax(payroll, cap)
+    spend = payroll + tax + front_office + minors
+    # What's left of the budget for payroll (and its tax) once the front
+    # office and the farm are paid.
+    payroll_budget = payroll_within(budget - front_office - minors, cap)
+    # How much more payroll fits under the budget and under the limit, with
+    # the tax it adds (negative: that much over).
+    budget_payroll_room = payroll_budget - payroll
+    limit_payroll_room = payroll_within(limit - front_office - minors, cap) - payroll
     over_budget = max(0, spend - budget)
     return {
         "payroll": payroll,
@@ -380,6 +413,8 @@ def standing(
         "farm_allowance_text": format_salary(farm_allowance),
         "spend": spend,
         "spend_text": format_salary(spend),
+        "budget_payroll_room": budget_payroll_room,
+        "limit_payroll_room": limit_payroll_room,
     }
 
 
@@ -393,8 +428,8 @@ def warning(
 ) -> str | None:
     """What to warn a GM about a move that adds this much payroll: luxury
     tax past the league's cap, and the owner's budget (which pays the front
-    office and the minor leagues too). None when it leaves him under both
-    (or takes payroll off)."""
+    office, the minor leagues and the luxury tax too). None when it leaves
+    him under both (or takes payroll off)."""
     front_office += minors
     if added <= 0:
         return None
@@ -413,8 +448,8 @@ def warning(
                 f"{format_salary(cap)} cap: {format_salary(extra)} in "
                 "luxury tax."
             )
-    if after + front_office > budget:
-        if payroll + front_office > budget:
+    if payroll_cost(after, cap) + front_office > budget:
+        if payroll_cost(payroll, cap) + front_office > budget:
             parts.append("You're already past what your owner will spend.")
         else:
             parts.append(

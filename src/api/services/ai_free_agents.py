@@ -113,12 +113,12 @@ def _rated_team(conn, league_id: str, team_id: str) -> dict[str, dict]:
 
 
 def _budget_room(conn, league_id: str, team_id: str, year: int) -> float:
-    """What the owner's budget has left for payroll. Unlimited without
-    budgets (Speed Blitz)."""
+    """What the owner's budget has left for payroll, after the luxury tax it
+    would add. Unlimited without budgets (Speed Blitz)."""
     s = BudgetRepository(conn).standing(league_id, team_id, year)
     if s is None:
         return float("inf")
-    return s["budget"] - s["spend"]
+    return s["budget_payroll_room"]
 
 
 def _make_room(conn, league_id: str, team_id: str) -> bool:

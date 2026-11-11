@@ -178,9 +178,15 @@ class BudgetRepository:
     ) -> dict[str, int]:
         """The stored budgets plus each owner's farm allowance, worked out
         live from the league's minor league salaries now, so the draft or a
-        release moves it (src/league/budget.py farm_allowance)."""
+        release moves it (src/league/budget.py farm_allowance), and their
+        allowance for luxury tax (tax_allowance), worked out live so running
+        leagues get it too."""
         allowances = self.farm_allowances(league_id, year)
-        return {t: b + allowances.get(t, 0) for t, b in budgets.items()}
+        cap = self.cap(league_id, year)
+        return {
+            t: b + allowances.get(t, 0) + bg.tax_allowance(cap, b)
+            for t, b in budgets.items()
+        }
 
     def farm_allowances(self, league_id: str, year: int) -> dict[str, int]:
         """What each owner adds to their budget for the minor leagues, by
@@ -598,15 +604,24 @@ class BudgetRepository:
         )
 
     def refusal(
-        self, league_id: str, team_id: str, year: int, added: int
+        self,
+        league_id: str,
+        team_id: str,
+        year: int,
+        added: int,
+        payroll: bool = True,
     ) -> str | None:
-        """Why the owner refuses a move that adds this much payroll (past
-        their hard limit), or None. Always None without budgets."""
+        """Why the owner refuses a move that adds this much payroll (or, with
+        payroll False, front office money) past their hard limit, or None.
+        Added payroll brings its luxury tax with it. Always None without
+        budgets."""
         if added <= 0:
             return None
         standing = self.standing(league_id, team_id, year)
         if standing is None:
             return None
+        if payroll:
+            added = bg.added_cost(standing["payroll"], standing["cap"], added)
         return bg.refusal(standing["spend"], standing["limit"], added)
 
     def history(self, league_id: str, team_id: str) -> list[dict]:

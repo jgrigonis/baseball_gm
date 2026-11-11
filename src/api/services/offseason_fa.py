@@ -225,15 +225,16 @@ def choose(
 
 
 def _room(conn, league_id: str, team_id: str, year: int, human: bool) -> float:
-    """What a team can spend this season before its owner balks: up to the
-    hard limit for a person, the budget for an AI GM. Unlimited without
-    budgets."""
+    """How much more payroll a team can carry before its owner balks: up to
+    the hard limit for a person, the budget for an AI GM, after the front
+    office, the minor leagues and the luxury tax on payroll over the cap.
+    Unlimited without budgets."""
     if not human:
         return ai_free_agents._budget_room(conn, league_id, team_id, year)
     s = BudgetRepository(conn).standing(league_id, team_id, year)
     if s is None:
         return float("inf")
-    return s["limit"] - s["spend"]
+    return s["limit_payroll_room"]
 
 
 def _next_room(
