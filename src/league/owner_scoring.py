@@ -56,6 +56,10 @@ class TeamSeason:
     profit_par: int | None = None
     fans_before: int | None = None
     fans_after: int | None = None
+    # The season's home crowds as an Attendance reading, -1 to 1
+    # (src/league/finances.py attendance_score); None for a season played
+    # before crowds were counted, which reads fan interest instead.
+    crowd_score: float | None = None
     homegrown_share: float = 0.0
     # The count behind the share: players on the 40-man roster the team
     # drafted itself, and players on it, so the owner can name them.
@@ -143,13 +147,18 @@ def score_dimensions(
             out["profit"] = _clamp((margin - PROFIT_TARGET) / PROFIT_SCALE)
     else:
         out["profit"] = None
-    if has_money and s.fans_after is not None:
-        # No ballpark to count yet: a full park is fans who care.
+    if has_money and s.crowd_score is not None:
+        out["attendance"] = _clamp(s.crowd_score)
+    elif has_money and s.fans_after is not None:
+        # Before crowds were counted: a full park is fans who care.
         out["attendance"] = _clamp((s.fans_after - 50) / 30)
+    else:
+        out["attendance"] = None
+    if has_money and s.fans_after is not None:
         before = s.fans_before if s.fans_before is not None else 50
         out["fans"] = _clamp((s.fans_after - before) / 8)
     else:
-        out["attendance"] = out["fans"] = None
+        out["fans"] = None
 
     # Two years out, and the farm, against the middle of the league.
     out["future"] = _clamp((0.5 - s.rank_future) * 1.5 + (0.5 - s.farm_rank) * 0.8)

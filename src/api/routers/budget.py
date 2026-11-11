@@ -143,6 +143,24 @@ def _books_view(b: dict, names: dict | None = None) -> dict:
             "bad": b["tickets"] < 0,
         },
         {
+            "label": "Crowds",
+            "amount": (
+                (f"+{_money(b['crowds'])}" if b["crowds"] > 0 else _money(b["crowds"]))
+                if b["crowds"]
+                else None
+            ),
+            "note": (
+                f"{round(fn.GATE_SHARE * 100)}% of the gate follows the crowds:"
+                + (" bigger" if b["crowds"] > 0 else " smaller")
+                + " than your fans were expected to bring"
+                + (" so far" if b["projected"] else "")
+                if b["crowds"]
+                else f"{round(fn.GATE_SHARE * 100)}% of the gate follows the crowds,"
+                " against what your fans are expected to bring"
+            ),
+            "bad": b["crowds"] < 0,
+        },
+        {
             "label": "Playoff gate",
             "amount": _money(b["playoff_gate"]) if b["playoff_gate"] else None,
             "note": (
@@ -242,7 +260,7 @@ def _past_seasons(past: list[dict], books: list[dict]) -> list[dict]:
         fixed = b["costs"] - b["farm_help"]
         park = r["bank_spent"] or 0
         lines = [
-            ("Regular season tickets", b["revenue"] + b["tickets"]),
+            ("Regular season tickets", b["revenue"] + b["tickets"] + b["crowds"]),
             ("Playoff gate", b["playoff_gate"]),
             ("Popularity", b["popularity"]),
             ("Broadcast deal", b["broadcast"]),
@@ -273,6 +291,16 @@ def _past_seasons(past: list[dict], books: list[dict]) -> list[dict]:
                 "gain": b["profit"] > 0,
                 "park": _money(park) if park else None,
                 "fans": r["fans_after"],
+                "crowd": (
+                    f"{round(r['attendance'] / r['crowd_games']):,}"
+                    if r.get("crowd_games")
+                    else None
+                ),
+                "crowd_full": (
+                    round(100 * r["attendance"] / (r["crowd_games"] * r["capacity"]))
+                    if r.get("crowd_games") and r.get("capacity")
+                    else None
+                ),
                 "bank": _money(r["bank_after"]),
             }
         )
@@ -493,7 +521,54 @@ def build_ballpark(
     )  # fmt: skip
 
 
-def _ballpark_view(offers: list[dict], year: int, open_: bool) -> dict:
+def _crowds_view(now: dict | None, past: list[dict], year: int, seats: int) -> dict:
+    """The Crowds card: this season's home crowds so far, or last season's
+    before the first home game."""
+    view = {"seats": f"{seats:,}", "year": year, "so_far": True}
+    if now and now["counted"]:
+        c = now
+        view.update(
+            counted=c["counted"],
+            games=c["games"],
+            average=c["average"],
+            full=c["full"],
+            sellouts=c["sellouts"],
+            best=c["best"],
+            expected=round(c["in_park"] / c["counted"]),
+        )
+    else:
+        last = next((r for r in past if r.get("crowd_games")), None)
+        if last is None:
+            return view
+        n = last["crowd_games"]
+        view.update(
+            year=last["year"],
+            so_far=False,
+            counted=n,
+            games=n,
+            average=round(last["attendance"] / n),
+            full=last["attendance"] / (n * last["capacity"])
+            if last["capacity"]
+            else None,
+            sellouts=last["sellouts"] or 0,
+            best=None,
+            expected=None,
+        )
+    view["average_text"] = f"{view['average']:,}"
+    view["full_pct"] = round(100 * view["full"]) if view["full"] is not None else None
+    view["best_text"] = f"{view['best']:,}" if view.get("best") else None
+    if view.get("expected"):
+        diff = view["average"] - view["expected"]
+        view["vs_text"] = (
+            f"{abs(diff):,} a game {'over' if diff >= 0 else 'under'} expected"
+        )
+        view["vs_good"] = diff >= 0
+    return view
+
+
+def _ballpark_view(
+    offers: list[dict], year: int, open_: bool, seats: int | None = None
+) -> dict:
     rows = []
     for o in offers:
         if o["payback"] is None:
@@ -543,6 +618,7 @@ def _ballpark_view(offers: list[dict], year: int, open_: bool) -> dict:
         "floor_caps": fn.BALLPARK_FLOOR,
         "life": fn.STADIUM_LIFE,
         "rebuild_pct": round((fn.STADIUM_REBUILD - 1) * 100),
+        "seats": seats,
     }
 
 
@@ -726,6 +802,7 @@ def _render(
     )
     ctx["year"] = year
     ctx["money"] = standing
+    past = budgets.history(league_id, team_id) if standing else []
     if standing:
         from src.player.contracts import minors_salary
 
@@ -790,16 +867,25 @@ def _render(
         sponsor = budgets.sponsors(league_id, year, [team_id]).get(team_id)
         ctx["sponsor"] = _sponsor_view(sponsor, ctx["fo_open"]) if sponsor else None
         offers = budgets.ballpark_offers(league_id, team_id, year)
+        seats = fn.capacity(budgets.ballparks(league_id, year).get(team_id, ()))
         ctx["ballpark"] = (
-            _ballpark_view(offers, year, ctx["fo_open"]) if offers and bank else None
+            _ballpark_view(offers, year, ctx["fo_open"], seats)
+            if offers and bank
+            else None
+        )
+        ctx["crowds"] = _crowds_view(
+            budgets.crowds(league_id, year, [team_id]).get(team_id),
+            past,
+            year,
+            seats,
         )
     ctx["rules"] = {
         "tax_pct": round(bg.LUXURY_TAX_RATE * 100),
         "pull_pct": round(bg.BANK_PULL * 100),
         "swing_pct": round(bg.BANK_SWING * 100),
         "margin_pct": round(bg.HARD_MARGIN * 100),
+        "gate_pct": round(fn.GATE_SHARE * 100),
     }
-    past = budgets.history(league_id, team_id) if standing else []
     books = budgets.books(league_id, team_id, year) if standing else []
     names = _seller_names(db, books)
     ctx["books"] = [_books_view(b, names) for b in books]

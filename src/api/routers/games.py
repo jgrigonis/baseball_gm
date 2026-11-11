@@ -20,16 +20,34 @@ from src.api.view_models.box_score import (
 from src.api.view_models.line_score import headline, line_score
 from src.api.view_models import play_by_play
 from src.api.view_models.standouts import standouts
+from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.player_games import PlayerGameRepository
 from src.db.repositories.all_star_repo import AllStarRepository
 from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
+from src.league import finances as fn
 from src.stats import formulas
 from src.web.utils import _shell_ctx, templates
 
 log = logging.getLogger(__name__)
 
 router = APIRouter(tags=["web"])
+
+
+def _crowd_text(db, league_id: str, game: dict) -> str | None:
+    """The game's attendance line ("Attendance 38,412, sellout")."""
+    if not game.get("attendance"):
+        return None
+    row = db.execute(
+        "SELECT year FROM seasons WHERE id = %s", (game["season_id"],)
+    ).fetchone()
+    seats = fn.capacity(
+        BudgetRepository(db)
+        .ballparks(league_id, row["year"] if row else None)
+        .get(game["home_team_id"], ())
+    )
+    text = f"Attendance {game['attendance']:,}"
+    return text + (", sellout" if game["attendance"] >= seats else "")
 
 
 @router.get("/leagues/{league_id}/games/{game_id}/panel", response_class=HTMLResponse)
@@ -126,6 +144,7 @@ def game_panel(
         ]
 
     ctx = _shell_ctx(request, db, gm, league_id, user=user)
+    ctx["crowd"] = _crowd_text(db, league_id, game)
     ctx.update(
         {
             "game": game,

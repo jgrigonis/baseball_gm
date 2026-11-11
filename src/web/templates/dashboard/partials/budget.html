@@ -180,6 +180,7 @@
         <div class="bud-note">
           {%- if p.earns_text %}About {{ p.earns_text }} a season for you{% if p.payback_text %} · {{ p.payback_text }}{% endif %}{% endif %}
           {%- if p.fans %}{% if p.earns_text %} · {% endif %}+{{ p.fans }} fan interest a season{% endif %}
+          {%- if p.seats %} · {{ "{:,}".format(p.seats) }} seats{% if ballpark.seats and p.seats > ballpark.seats %} ({{ "{:+,}".format(p.seats - ballpark.seats) }}){% endif %}{% endif %}
         </div>
         {% if p.build_text and (p.built is none or p.can) %}<div class="bud-note">{{ p.build_text }}</div>{% endif %}
         {% if p.built is not none and p.can %}<div class="bud-note bud-good">{{ p.status }}</div>{% endif %}
@@ -279,6 +280,37 @@
   };
 </script>
 {% if ticket_saved %}<script>if (window.gmToast) gmToast('Ticket prices saved');</script>{% endif %}
+
+{% if crowds %}
+<div class="card" style="margin-bottom:16px;" id="crowds">
+  <div class="card-header"><span class="card-title">Crowds</span>
+    <span class="admin-dim" style="margin-left:auto;font-size:11px;">{% if crowds.counted %}{{ crowds.year }}{% if crowds.so_far %}, {{ crowds.counted }} of {{ crowds.games }} home games{% endif %}{% endif %}</span></div>
+  <div class="card-body">
+    <div class="bud-grid">
+      <div class="bud-stat">
+        <div class="bud-label">Seats</div>
+        <div class="bud-value">{{ crowds.seats }}</div>
+        <div class="bud-note">A new stadium holds more</div>
+      </div>
+      {% if crowds.counted %}
+      <div class="bud-stat">
+        <div class="bud-label">Average crowd</div>
+        <div class="bud-value">{{ crowds.average_text }}</div>
+        <div class="bud-note">{% if crowds.full_pct is not none %}{{ crowds.full_pct }}% full{% endif %}{% if crowds.vs_text %} · <span class="{{ 'bud-good' if crowds.vs_good else 'bud-bad' }}">{{ crowds.vs_text }}</span>{% endif %}</div>
+      </div>
+      <div class="bud-stat">
+        <div class="bud-label">Sellouts</div>
+        <div class="bud-value">{{ crowds.sellouts }}</div>
+        <div class="bud-note">{% if crowds.best_text %}Best crowd {{ crowds.best_text }}{% else %}Of {{ crowds.counted }} home games{% endif %}</div>
+      </div>
+      {% endif %}
+    </div>
+    <div class="bud-line">
+      Every home game draws a crowd from your fan interest, your market, who's visiting, how you're playing, the day of the week and your ticket prices, up to the seats you have. Cheap tickets fill seats, and the home opener sells out. {{ rules.gate_pct }}% of your regular season gate follows the crowds: draw more than your fans were expected to and you earn more, draw fewer and you earn less. A park that's full turns the rest away. Owners who care about attendance watch how full the park is and whether you beat what was expected.
+    </div>
+  </div>
+</div>
+{% endif %}
 {% endif %}
 
 {% if broadcast %}
@@ -468,6 +500,7 @@
         {% if history_park %}<th class="num" title="Paid from the owner's bank for ballpark upgrades">Ballpark</th>{% endif %}
         <th class="num">Profit</th>
         <th class="num">Bank after</th>
+        <th class="num" title="Average home crowd, and how full the park was">Crowd</th>
         <th class="num" title="Fan interest after the season, 0 to 100">Fans</th>
       </tr></thead>
       <tbody>
@@ -485,10 +518,11 @@
           {% if history_park %}<td class="num">{{ r.park or '—' }}</td>{% endif %}
           <td class="num {% if r.loss %}bud-bad{% elif r.gain %}bud-good{% endif %}">{{ r.profit }}</td>
           <td class="num">{{ r.bank or '—' }}</td>
+          <td class="num" style="white-space:nowrap;">{% if r.crowd %}{{ r.crowd }}{% if r.crowd_full is not none %} <span class="admin-dim">{{ r.crowd_full }}%</span>{% endif %}{% else %}—{% endif %}</td>
           <td class="num">{{ r.fans if r.fans is not none else '—' }}</td>
         </tr>
         <tr class="bud-rev-row" id="bud-rev-{{ r.year }}" hidden>
-          <td colspan="{{ 10 + (1 if history_other else 0) + (1 if history_park else 0) }}">
+          <td colspan="{{ 11 + (1 if history_other else 0) + (1 if history_park else 0) }}">
             <div class="bud-rev-lines">
               {% for l in r.revenue_lines %}<span class="bud-rev-line"><span>{{ l.label }}</span> <b>{{ l.amount }}</b></span>{% endfor %}
             </div>

@@ -200,6 +200,8 @@ class Project:
     # order it: a new stadium is paid a season at a time, so half will do
     # (Josh, 2026-11-09).
     upfront: float = 1.0
+    # Seats once it's open (0: it doesn't change the park's CROWD_CAPACITY).
+    capacity: int = 0
 
 
 BALLPARK = (
@@ -227,19 +229,19 @@ BALLPARK = (
         "stadium_basic", "New stadium: Basic",
         "A plain, modern park with more good seats. Takes three seasons to build.",
         cost=6.25, revenue=0.50, fans=5, build=3, group="stadium", upfront=0.5,
-        replaces=("renovation",),
+        capacity=45_000, replaces=("renovation",),
     ),
     Project(
         "stadium_modern", "New stadium: Modern",
         "Wide concourses, great sight lines and food worth the trip. Four seasons to build.",
         cost=9.375, revenue=0.75, fans=8, build=4, group="stadium", upfront=0.5,
-        replaces=("renovation",),
+        capacity=48_000, replaces=("renovation",),
     ),
     Project(
         "stadium_showpiece", "New stadium: Showpiece",
         "A landmark the whole city shows off: a roof, a skyline view, the works. Four seasons to build.",
         cost=12.5, revenue=1.00, fans=12, build=4, group="stadium", upfront=0.5,
-        replaces=("renovation",),
+        capacity=52_000, replaces=("renovation",),
     ),
 )  # fmt: skip
 BALLPARK_KEYS = tuple(p.key for p in BALLPARK)
@@ -259,6 +261,46 @@ BALLPARK_PER_SEASON = 1
 # What the AI reckons a point of fan interest is worth a season, as a share
 # of its regular season revenue (fan_mult: 0.4 of revenue over 100 points).
 FAN_POINT_VALUE = FAN_MULT_SPAN / 100
+
+
+# Attendance (Josh, 2026-11-11): a crowd for every home game, from the
+# home team's fan interest, its market, who's visiting, how the team is
+# playing, the day of the week and ticket prices, capped by the park's seats.
+# Every park holds CROWD_CAPACITY until a new stadium opens (Project.capacity).
+# Fan interest 50 in a mid-size market draws about 30,000 on an average day.
+CROWD_CAPACITY = 42_000
+CROWD_BASE = 0.35  # share of CROWD_CAPACITY at fan interest 0
+CROWD_PER_FAN = 0.0075  # and for every point of fan interest
+CROWD_MARKET = {1: 0.92, 2: 0.96, 3: 1.00, 4: 1.04, 5: 1.08}
+# A visitor whose fans are keener than the league's average draws more:
+# CROWD_OPPONENT for every CROWD_OPPONENT_FANS points, at most that much.
+CROWD_OPPONENT = 0.12
+CROWD_OPPONENT_FANS = 30
+# How the home team is playing: CROWD_FORM for every point of win % over
+# .500, eased in over its first CROWD_FORM_GAMES games, at most CROWD_FORM_MAX.
+CROWD_FORM = 0.8
+CROWD_FORM_GAMES = 20
+CROWD_FORM_MAX = 0.12
+# Friday to Sunday draw more than weekdays; over a week it evens out.
+CROWD_WEEKEND = 1.10
+CROWD_WEEKDAY = 0.925
+WEEKEND_DAYS = (4, 5, 6)  # date.weekday()
+# Crowd by ticket price level: cheap tickets fill seats.
+CROWD_TICKETS = (1.25, 1.19, 1.13, 1.07, 1.00, 0.96, 0.92, 0.87, 0.81, 0.75)
+CROWD_NOISE = 0.04
+# Playoff games draw this much more (most sell out).
+CROWD_PLAYOFFS = 1.4
+# The share of regular season ticket revenue (before the ballpark's own
+# money) that follows the crowds: drawing what the fans predicted earns what
+# it earns today, more people earn more and fewer less. A park that's full
+# turns the rest away, which is what a bigger stadium fixes.
+GATE_SHARE = 0.40
+# The owner's Attendance score: crowds against what the team was expected
+# to draw (in its park), and how full the park is.
+CROWD_FULL_MARK = 0.70  # % full that's neither good nor bad (about an average team)
+CROWD_FULL_SCALE = 0.20
+CROWD_BEAT_SCALE = 0.12
+CROWD_BEAT_WEIGHT = 0.6
 
 
 def _round(value: float) -> int:
@@ -439,6 +481,103 @@ def can_build(bank: int | None, cost: int, cap: int, key=None) -> int:
     if bank is None:
         return need
     return max(0, round(cap * BALLPARK_FLOOR) + need - bank)
+
+
+def capacity(built=()) -> int:
+    """Seats in the team's park, with these projects open: a new stadium's,
+    or CROWD_CAPACITY."""
+    seats = [
+        p.capacity for k in open_projects(built) if (p := project(k)) and p.capacity
+    ]
+    return max(seats) if seats else CROWD_CAPACITY
+
+
+def crowd_tickets(level) -> float:
+    return CROWD_TICKETS[ticket_level(level) - 1]
+
+
+def day_mult(day) -> float:
+    """Crowd multiplier for this date (a weekend or a weekday)."""
+    return CROWD_WEEKEND if day.weekday() in WEEKEND_DAYS else CROWD_WEEKDAY
+
+
+def expected_crowd(fans: float, market: int, ticket_price=None, day=None) -> float:
+    """The crowd the team's fans would come out for on an average day (or
+    this date) against an average visitor while the team plays .500, before
+    the park's seats cap it."""
+    fans = max(0.0, min(100.0, fans))
+    value = (
+        CROWD_CAPACITY
+        * (CROWD_BASE + CROWD_PER_FAN * fans)
+        * CROWD_MARKET.get(int(market), 1.0)
+        * crowd_tickets(ticket_price)
+    )
+    return value * day_mult(day) if day is not None else value
+
+
+def opponent_mult(opponent_fans: float, league_fans: float) -> float:
+    lift = (opponent_fans - league_fans) / CROWD_OPPONENT_FANS * CROWD_OPPONENT
+    return 1 + max(-CROWD_OPPONENT, min(CROWD_OPPONENT, lift))
+
+
+def form_mult(wins: int, losses: int) -> float:
+    games = wins + losses
+    if not games:
+        return 1.0
+    ease = min(1.0, games / CROWD_FORM_GAMES)
+    lift = CROWD_FORM * (wins / games - 0.5) * ease
+    return 1 + max(-CROWD_FORM_MAX, min(CROWD_FORM_MAX, lift))
+
+
+def crowd(
+    expected: float,
+    seats: int,
+    *,
+    opponent: float = 1.0,
+    form: float = 1.0,
+    noise: float = 0.0,
+    opener: bool = False,
+    playoffs: bool = False,
+) -> int:
+    """One game's crowd: the expected crowd for its date (expected_crowd
+    with day), times the visitor (opponent_mult), the home team's form
+    (form_mult) and noise (-1 to 1, CROWD_NOISE at the ends), up to the
+    park's seats. The home opener and big playoff crowds sell out."""
+    if opener:
+        return seats
+    value = expected * opponent * form * (1 + CROWD_NOISE * noise)
+    if playoffs:
+        value *= CROWD_PLAYOFFS
+    return int(round(max(0.0, min(seats, value)) / 10) * 10)
+
+
+def crowd_money(
+    tickets: int, attendance: int, expected: float, counted: int, games: int
+) -> int:
+    """What the crowds add to (or take off) a season's ticket revenue
+    (tickets: ticket_revenue). attendance and expected (uncapped) are totals
+    over the counted home games that had a crowd; games is all the season's
+    home games, and the rest count as drawing what was expected."""
+    if counted <= 0 or games <= 0 or expected <= 0:
+        return 0
+    share = (attendance - expected) * counted / (expected * max(games, counted))
+    return _round(tickets * GATE_SHARE * share)
+
+
+def attendance_score(attendance: int, expected_in_park: float, seats: int) -> float:
+    """The owner's Attendance reading, -1 to 1: crowds against what the team
+    was expected to draw in its park (expected_in_park: each game's expected
+    crowd capped at the seats), and how full the park was. attendance and
+    expected are per game."""
+    beat = (attendance / expected_in_park - 1) if expected_in_park > 0 else 0.0
+    full = attendance / seats if seats else 0.0
+
+    def clamp(v: float) -> float:
+        return max(-1.0, min(1.0, v))
+
+    return CROWD_BEAT_WEIGHT * clamp(beat / CROWD_BEAT_SCALE) + (
+        1 - CROWD_BEAT_WEIGHT
+    ) * clamp((full - CROWD_FULL_MARK) / CROWD_FULL_SCALE)
 
 
 def fan_target(
@@ -703,6 +842,7 @@ def books(
     merchandise: int = 0,
     ballpark: int = 0,
     sponsor: int = 0,
+    crowds: int = 0,
     profit: int | None = None,
     average_revenue: float = 0,
 ) -> dict:
@@ -712,7 +852,8 @@ def books(
     base is backed out of it. The league covers an average farm's salaries
     (farm_help: it comes off everyone's fixed costs in assess) and each team
     pays its own minor leaguers. Ticket prices move the regular season
-    revenue up or down (tickets). With a profit (a finished season) anything it
+    revenue up or down (tickets), and the crowds move part of it again
+    (crowds: crowd_money). With a profit (a finished season) anything it
     doesn't explain shows as other costs; without one the profit is
     projected from the lines.
     """
@@ -722,6 +863,7 @@ def books(
     total_in = (
         revenue
         + tickets
+        + crowds
         + playoff_gate
         + popularity
         + broadcast
@@ -748,6 +890,7 @@ def books(
         "ticket_name": ticket_name(level),
         "ticket_pct": round((ticket_mult(level) - 1) * 100, 1),
         "tickets": tickets,
+        "crowds": crowds,
         "playoff_gate": playoff_gate,
         "popularity": popularity,
         "popularity_from": POPULARITY_FROM,
