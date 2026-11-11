@@ -46,6 +46,9 @@ OVERALL_CUTOFFS: dict[str, list[float]] = {
     # team strength). Averaging a whole staff or
     # lineup bunches these even tighter, so every team used to grade B. They use a
     # flatter curve (about 2% A+), so most leagues have a team or two at each end.
+    # Each team is first placed on this population by where it ranks in its
+    # own league (team_grade below), so the curve holds as a league's talent
+    # climbs over the seasons.
     "team_lineup": [
         65.2,
         63.9,
@@ -141,6 +144,37 @@ def overall_to_grade(raw: float | None, kind: OverallKind) -> str:
         if raw >= cut:
             return grade
     return "F"
+
+
+# Where each team area sat on the rosters the team curves were built from
+# (mean, standard deviation): freshly generated leagues. Regenerate with
+# scripts/calibrate_overall_grades.py.
+TEAM_BASELINES: dict[str, tuple[float, float]] = {
+    "lineup": (60.28, 2.40),
+    "rotation": (60.00, 3.95),
+    "bullpen": (61.91, 4.06),
+    "defense": (71.46, 3.19),
+    "power": (57.67, 4.68),
+    "speed": (56.13, 4.72),
+}
+
+
+def team_grade(raw: float, area: str, league: list[float]) -> str:
+    """A team area's letter, curved against the teams in its own league.
+
+    Talent in a league climbs for its first decade or so (orgs fill up and
+    every team keeps the best of many draft classes), so on fixed cutoffs a
+    long-running league grades nearly every team A. Instead, the team's
+    place in its league (standard deviations from the league average) is
+    put onto the population the team curve was built from and graded there.
+    So a league average team is a C+ in year one or year twenty."""
+    mean, sd = TEAM_BASELINES[area]
+    if len(league) >= 3:
+        league_mean = sum(league) / len(league)
+        spread = (sum((v - league_mean) ** 2 for v in league) / len(league)) ** 0.5
+        if spread > 0:
+            raw = mean + sd * (raw - league_mean) / spread
+    return overall_to_grade(raw, f"team_{area}")
 
 
 def overall_score(raw: float | None, kind: OverallKind) -> float:

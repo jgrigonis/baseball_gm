@@ -23,12 +23,13 @@ which each grade starts so the population lands on TARGET_SHARES.
 Usage:
     uv run python -m scripts.calibrate_overall_grades [--classes 80] [--teams 1200]
 
-Paste the printed tables into src/api/grade_curves.py.
+Paste the printed tables (and TEAM_BASELINES) into src/api/grade_curves.py.
 """
 
 import argparse
 import collections
 import random
+import statistics
 
 from src.api.grade_curves import GRADES
 from src.api.view_models.welcome import area_scores
@@ -159,6 +160,17 @@ def main() -> None:
         print(f"# {kind}: {len(scores)} samples")
         print(f'    "{kind.removeprefix("role_")}": {cuts},')
         print("    # " + "  ".join(f"{g} {d:.1f}%" for g, d in zip(GRADES, dist)))
+
+    # Team grades are curved against each league (grade_curves.team_grade),
+    # which maps a team onto this population by its mean and spread.
+    print("TEAM_BASELINES = {")
+    for area in TEAM_AREAS:
+        scores = pops[f"team_{area}"]
+        print(
+            f'    "{area}": ({statistics.mean(scores):.2f}, '
+            f"{statistics.pstdev(scores):.2f}),"
+        )
+    print("}")
 
 
 if __name__ == "__main__":

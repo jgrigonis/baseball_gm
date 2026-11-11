@@ -12,6 +12,7 @@ from src.api.grade_curves import (
     ROLE_CUTOFFS,
     overall_to_grade,
     role_to_grade,
+    team_grade,
 )
 
 
@@ -117,3 +118,27 @@ def test_starters_spread_across_the_grades():
     assert (share["A+"] + share["A"] + share["A-"]) / n > 0.01
     assert (share["D+"] + share["D"] + share["D-"] + share["F"]) / n > 0.05
     assert max(share.values()) / n < 0.25
+
+
+def test_team_grades_are_curved_against_their_own_league():
+    """A long-running league's talent climbs; its grades shouldn't."""
+    rng = random.Random(3)
+    league = [rng.gauss(60.3, 2.4) for _ in range(30)]
+    inflated = [v + 5 for v in league]  # every team 5 points better
+    for a, b in zip(league, inflated):
+        assert team_grade(a, "lineup", league) == team_grade(b, "lineup", inflated)
+    grades = [team_grade(v, "lineup", inflated) for v in inflated]
+    assert sum(g.startswith("A") for g in grades) <= 6
+    assert any(g[0] in "DF" or g.startswith("C") for g in grades)
+
+
+def test_league_average_team_is_a_c_plus_whatever_the_talent_level():
+    league = [70.0, 72.0, 74.0, 76.0, 78.0]
+    assert team_grade(74.0, "lineup", league) in ("C+", "C")
+    assert team_grade(78.0, "lineup", league).startswith("A")
+
+
+def test_tiny_or_flat_league_falls_back_to_the_fixed_curve():
+    assert team_grade(66, "lineup", [66, 60]) == overall_to_grade(66, "team_lineup")
+    flat = [61.0] * 10
+    assert team_grade(61.0, "lineup", flat) == overall_to_grade(61.0, "team_lineup")

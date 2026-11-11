@@ -17,7 +17,7 @@ import unicodedata
 from pathlib import Path
 from statistics import mean
 
-from src.api.grade_curves import overall_to_grade
+from src.api.grade_curves import overall_to_grade, team_grade
 from src.api.schemas import skill_to_grade
 from src.api.services import owner_office, owners
 from src.api.services.draft_needs import needs_for_draft
@@ -167,7 +167,7 @@ def scouting_report(team_id: str, scores: dict[str, dict[str, float]]) -> dict:
                 "basis": basis,
                 "rank": rank,
                 "rank_text": f"{ordinal(rank)} of {n}",
-                "grade": overall_to_grade(value, f"team_{key}"),
+                "grade": team_grade(value, key, [s[key] for s in scores.values()]),
                 "style": (key, label, basis) in STYLE_AREAS,
                 # Bars run from the league's worst (short) to its best (full).
                 "bar": 100 if n == 1 else round(100 - 85 * (rank - 1) / (n - 1)),
