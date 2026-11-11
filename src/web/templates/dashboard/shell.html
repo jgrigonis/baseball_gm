@@ -118,6 +118,12 @@ window.releasePlayer = async function(pid, name) {
     cost = await r.json();
     if (!r.ok) throw new Error(cost.detail || 'Something went wrong.');
   } catch (e) { gmAlert(e.message); return; }
+  // A meddling owner won't let you release a B- or better player or an
+  // icon (Josh, 2026-11-11). Their words, and it's kept in the Owner tab.
+  if (cost.vetoed) {
+    gmAlert(`Your owner said no`, `“${cost.vetoed}” You can still trade him.`);
+    return;
+  }
   // A deal that isn't guaranteed costs nothing to cut, so there's nothing
   // to weigh: release him right away and just say so (Josh, 2026-11-11).
   // Guaranteed deals still confirm first, since you keep paying him.

@@ -638,6 +638,21 @@ RELEASE_REACTIONS = {
     ),
 }
 
+# A meddler refusing a release (Josh, 2026-11-11: meddling owners block
+# releasing B- or better players and icons). {player}: who the GM tried to
+# let go. Shown on the Release button's alert and kept in the owner's office.
+RELEASE_VETO = {
+    "icons": (
+        "No. {player} is this franchise, and he isn't going anywhere.",
+        "You're not releasing {player}. Not while I own this team.",
+    ),
+    "talent": (
+        "No. {player} stays. I'm not paying a player that good to play for someone else.",
+        "You're not releasing {player}, {gm}. Find another way.",
+        "Release {player}? Absolutely not. Talk to me before you try that again.",
+    ),
+}
+
 # A reaction to a winning or losing streak (the ones the news runs,
 # src/api/services/news/games.py), by how long it is. {n}: "Twelve".
 LOSING_STREAK = {
@@ -1111,3 +1126,7 @@ def streak_reaction(won: bool, length: int, fields: dict, rng: random.Random) ->
         return _pick(rng, WINNING_STREAK, {**fields, **n})
     mark = max(k for k in LOSING_STREAK if k <= length)
     return _pick(rng, LOSING_STREAK[mark], {**fields, **n})
+
+
+def release_veto(icon: bool, fields: dict, rng: random.Random) -> str:
+    return _pick(rng, RELEASE_VETO["icons" if icon else "talent"], fields)

@@ -158,15 +158,28 @@ def _context(conn, league_id: str) -> tuple[str, int]:
 
 
 def release_preview(conn, league_id: str, team_id: str, player_id: str) -> dict:
-    """What releasing him would cost, for the confirm dialog."""
+    """What releasing him would cost, for the confirm dialog, and "vetoed":
+    the owner's refusal, if a meddling owner won't allow it (the GM asked,
+    so the refusal goes in the owner's office too)."""
     _, year = _context(conn, league_id)
     if not _on_team(conn, team_id, player_id):
         raise FreeAgentError("He isn't on your team.")
     up = PlayerStatusRepository(conn).get_status(player_id) in FORTY_MAN_STATUSES
     return {
         "waivers": up,
+        "vetoed": _veto(conn, league_id, team_id, player_id, announce=True),
         **_owed_view(ContractRepository(conn).release_cost(player_id, year)),
     }
+
+
+class OwnerVeto(FreeAgentError):
+    """The team's owner won't allow the release (owner_office.release_veto)."""
+
+
+def _veto(conn, league_id, team_id, player_id, announce=False) -> str | None:
+    from src.api.services import owner_office
+
+    return owner_office.release_veto(conn, league_id, team_id, player_id, announce)
 
 
 class NowGuaranteed(FreeAgentError):
@@ -186,6 +199,9 @@ def release(
         season_id, year = _context(conn, league_id)
         if not _on_team(conn, team_id, player_id):
             raise FreeAgentError("He isn't on your team.")
+        vetoed = _veto(conn, league_id, team_id, player_id)
+        if vetoed:
+            raise OwnerVeto(vetoed)
         if free and ContractRepository(conn).release_cost(player_id, year)["total"]:
             raise NowGuaranteed(
                 "He just played a game on the 40-man, so his deal is guaranteed now."

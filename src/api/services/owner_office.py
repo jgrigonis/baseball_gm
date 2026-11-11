@@ -10,6 +10,7 @@
 #   release:<deal>,<deal>   a reaction to releasing players (one message for
 #                           every release since they last looked), by deal id
 #   streak:<start>:<n>      a reaction to a winning or losing streak in the news
+#   veto:<player>:<year>    a meddler refusing to let the GM release him
 #   over:<season>           payroll went over budget
 #   review:<season>         the end-of-season review and how safe the job is
 #
@@ -31,6 +32,7 @@ from src.api.services.news.moves import is_notable
 from src.api.services import owners as owner_service
 from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.contract_repo import ContractRepository
+from src.db.repositories.owner_repo import OwnerRepository
 from src.league import budget as bg
 from src.league import owner_messages as om
 from src.league import owner_scoring as sc
@@ -363,7 +365,7 @@ def reactions(conn, league_id: str, today: str | None = None, team_ids=None) -> 
     season = _season(conn, league_id)
     if not league or not season or league["state"] in ("lobby", "complete"):
         return 0
-    by_team = owner_service.ensure(conn, league_id)
+    by_team = OwnerRepository(conn).in_league(league_id)  # seated by catch_up
     if team_ids is not None:
         by_team = {t: o for t, o in by_team.items() if t in set(team_ids)}
     gms = _gms(conn, league_id)
@@ -561,6 +563,54 @@ def _release_reactions(
     if wrote:
         _nudge_mood(conn, league_id, team_id, season["id"], owner, RELEASE_MOOD[what])
     return int(wrote)
+
+
+def release_veto(
+    conn, league_id: str, team_id: str, player_id: str, announce: bool = False
+) -> str | None:
+    """A meddling owner's refusal to let a person's team release a player
+    who is B- or better or a franchise icon, in their words; None when the
+    release can go ahead. announce: also keep it in the owner's office
+    (once per player a season). AI GMs only release their worst players and
+    are never stopped."""
+    season = _season(conn, league_id)
+    league = _league(conn, league_id)
+    if not season or not league or league["state"] in ("lobby", "complete"):
+        return None
+    owner = OwnerRepository(conn).in_league(league_id).get(team_id)
+    gm = _gms(conn, league_id).get(team_id)
+    if not owner or not gm or gm["is_ai"] or season["year"] < owner["since_year"]:
+        return None
+    if owners.clean_traits(owner["traits"])["meddling"] < om.MEDDLES:
+        return None
+    grade = icons._grades(conn, [player_id]).get(player_id, "?")
+    icon = bool(icons.find(conn, [(player_id, team_id)], {player_id: grade}))
+    if not icon and not (grade in GRADES and is_notable(grade)):
+        return None
+    row = conn.execute(
+        "SELECT first_name, last_name FROM players WHERE id = %s", (player_id,)
+    ).fetchone()
+    fields = {
+        **_fields(owner, gm, _team_names(conn, [team_id]), None),
+        "player": f"{row['first_name']} {row['last_name']}" if row else "him",
+    }
+    key = f"veto:{player_id}:{season['year']}"
+    said = conn.execute(
+        """SELECT body FROM owner_messages
+           WHERE league_id = %s AND team_id = %s AND key = %s""",
+        (league_id, team_id, key),
+    ).fetchone()
+    if said:
+        return said["body"]
+    body = om.release_veto(icon, fields, _rng(key, team_id))
+    if announce:
+        from src.api.services.news.moves import today as league_today
+
+        _write(
+            conn, league_id, team_id, gm["id"], season["id"], key, "veto", body,
+            league_today(conn, season["id"]), None,
+        )  # fmt: skip
+    return body
 
 
 # Streak lengths an owner reacts to: every losing streak the news runs, and

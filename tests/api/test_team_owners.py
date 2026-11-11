@@ -348,29 +348,89 @@ def _said(x, kind):
 
 
 def test_a_meddler_has_a_word_on_releasing_a_good_player(lg, factory):
-    """Josh released his best players and his Meddler said nothing."""
+    """Josh released his best players and his Meddler said nothing. (A
+    meddler now refuses those releases; these were made before he arrived
+    at the desk, so he finds out after.)"""
     from src.api.services import owner_office
 
     x = lg(n=2)
-    _make_owner(x, meddling=95)
+    _make_owner(x, meddling=10)
     _release(x, factory, level=85, played=False)
+    _make_owner(x, meddling=95)
+    assert owner_office.reactions(x.db, x.league.id) == 1
     said = _said(x, "release")
     assert len(said) == 1 and "Test Star" in said[0]
     # Once only.
     assert owner_office.reactions(x.db, x.league.id) == 0
     # A second release later gets its own word, naming only him.
+    _make_owner(x, meddling=10)
     _release(x, factory, level=85, played=False, name="Again")
+    _make_owner(x, meddling=95)
+    owner_office.reactions(x.db, x.league.id)
     said = _said(x, "release")
     assert len(said) == 2 and any("Test Again" in s and "Star" not in s for s in said)
 
 
 def test_a_meddler_counts_the_dead_money(lg, factory):
+    from src.api.services import owner_office
+
     x = lg(n=2)
-    _make_owner(x, meddling=95)
+    _make_owner(x, meddling=10)
     out = _release(x, factory, level=85)
+    _make_owner(x, meddling=95)
+    owner_office.reactions(x.db, x.league.id)
     (said,) = _said(x, "release")
     # Everything still owed him, every season left.
     assert out["total_text"] in said
+
+
+def test_a_profit_minded_owner_minds_dead_money_right_away(lg, factory):
+    x = lg(n=2)
+    _make_owner(x, {"profit": 90}, meddling=10)
+    out = _release(x, factory, level=85)
+    (said,) = _said(x, "release")
+    assert out["total_text"] in said
+
+
+def test_a_meddler_wont_let_you_release_a_good_player(lg, factory, client_for):
+    """Josh, 2026-11-11: vetoes in this PR."""
+    from src.api.services import free_agents
+
+    x = lg(n=2)
+    _make_owner(x, meddling=95)
+    pid = factory.rated_player(x.teams[0], x.league, level=85, name="Star").id
+    with pytest.raises(free_agents.OwnerVeto) as e:
+        free_agents.release(x.db, x.league.id, x.teams[0].id, pid)
+    refusal = str(e.value)
+    assert "Test Star" in refusal
+    # Still ours, and the Release button hears why before it asks anything.
+    r = client_for(x).get(f"/leagues/{x.league.id}/players/{pid}/release")
+    assert r.json().get("vetoed") == refusal, r.text
+    r = client_for(x).post(f"/leagues/{x.league.id}/players/{pid}/release")
+    assert r.status_code == 409 and r.json()["vetoed"]
+    # Kept in the owner's office, once.
+    client_for(x).get(f"/leagues/{x.league.id}/players/{pid}/release")
+    assert _said(x, "veto") == [refusal]
+    assert _said(x, "release") == []
+
+
+def test_a_meddler_lets_a_scrub_go(lg, factory):
+    from src.api.services import owner_office
+
+    x = lg(n=2)
+    _make_owner(x, meddling=95)
+    _release(x, factory, level=20, played=False)
+    pid = factory.rated_player(x.teams[0], x.league, level=20).id
+    assert owner_office.release_veto(x.db, x.league.id, x.teams[0].id, pid) is None
+
+
+def test_a_hands_off_owner_never_vetoes(lg, factory):
+    from src.api.services import owner_office
+
+    x = lg(n=2)
+    _make_owner(x, meddling=40)
+    pid = factory.rated_player(x.teams[0], x.league, level=90).id
+    assert owner_office.release_veto(x.db, x.league.id, x.teams[0].id, pid) is None
 
 
 def test_a_hands_off_owner_lets_a_release_go(lg, factory):
