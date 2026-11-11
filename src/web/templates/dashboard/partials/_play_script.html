@@ -169,18 +169,22 @@ async function schedSimRun(count) {
   var weekendPlayed = false;
   // A Full Season run fills the sim card's bar by the calendar, from today
   // to the stop it's headed for (next_move.sim_stops), when it won't stop
-  // for trade offers, which can't be known ahead (Josh, 2026-11-10). Other
+  // for trade offers, which can't be known ahead (Josh, 2026-11-10). Past
+  // the deadline there are no offers: the menu drops the box, and a run
+  // that plays through deadline day starts its bar the day after. Other
   // runs end when something happens, so they have no bar.
   var barFrom = null, barTo = null;
   var offersStop = !!document.getElementById('sched-stop-offers-box') && schedStopOffers();
-  if (count === 'season' && !offersStop) {
+  function startBar(fromDate) {
     var stop = schedNextStop();
+    if (!stop || !stop.date || !fromDate) return;
+    barFrom = Date.parse(fromDate);
+    barTo = Date.parse(stop.date);
+    if (!(barTo > barFrom)) barFrom = barTo = null;
+  }
+  if (count === 'season' && !offersStop) {
     var today = document.querySelector('.topbar-date');
-    if (stop && stop.date && today) {
-      barFrom = Date.parse(today.textContent.trim());
-      barTo = Date.parse(stop.date);
-      if (!(barTo > barFrom)) barFrom = barTo = null;
-    }
+    if (today) startBar(today.textContent.trim());
   }
 
   var totalGames = 0;
@@ -245,6 +249,8 @@ async function schedSimRun(count) {
       // (unless this run plays through it)
       var atDeadline = !skipDeadline && !!d.trade_deadline;
       if (atDeadline) window._simStop = true;
+      // Playing on past deadline day: no more offers, so the bar can start.
+      else if (count === 'season' && offersStop && barFrom === null && d.trade_deadline) startBar(d.current_date);
       // ...and the day a trade offer arrives (unless it plays on)
       var newOffer = !skipOffers && !!d.trade_offer;
       if (newOffer) window._simStop = true;
