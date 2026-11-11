@@ -150,3 +150,9 @@ def test_injury_lineup_slider_saves_and_resets_the_watch(client, db_conn, gm):
     for _, settings in PANEL_SETTINGS.items():
         for s in settings:
             assert len(s.labels) == len(s.values)
+
+
+def test_saves_the_defensive_lineup_style(client, db_conn, gm):
+    r = client.post(f"/leagues/{gm.league_id}/strategy", data={"lineup_style": 4})
+    assert r.status_code == 200
+    assert GMRepository(db_conn).get_profile(gm.id)["lineup_style"] == "defensive"
