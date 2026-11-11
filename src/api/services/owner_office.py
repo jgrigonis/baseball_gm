@@ -308,6 +308,12 @@ def catch_up(conn, league_id: str, today: str | None = None) -> int:
         p = projected.get(team_id)
         if p and so_far.profit is None:
             so_far = replace(so_far, revenue=p["revenue"], profit=p["profit"])
+        if p and so_far.fans_after is None:
+            # Fan interest moves when the books close; until then, owners
+            # read where the season so far is taking it.
+            so_far = replace(
+                so_far, fans_before=p["fans_before"], fans_after=p["fans_after"]
+            )
         said = om.facts(so_far.as_dict(), payroll, budgets.get(team_id))
         if today and (m is None or _days(m["as_of"], today) >= MOOD_DAYS):
             scores = _in_season(so_far, owner["traits"], money, league["state"])

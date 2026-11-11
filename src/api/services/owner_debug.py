@@ -88,7 +88,8 @@ def _why(key: str, s: sc.TeamSeason, traits: dict, state: str) -> str:
         if s.fans_after is None:
             return "No money numbers this season"
         before = s.fans_before if s.fans_before is not None else 50
-        return f"Fan interest {before} → {s.fans_after} (±8 = ±1)"
+        pace = " at this pace" if state == "season" else ""
+        return f"Fan interest {before} → {s.fans_after}{pace} (±8 = ±1)"
     if key == "future":
         return (
             f"Rank in two years {s.rank_future:.2f}, farm rank {s.farm_rank:.2f}"
@@ -151,6 +152,10 @@ def explain(conn, league_id: str, team_id: str) -> dict | None:
         )
         if p and s.profit is None:
             s = replace(s, revenue=p["revenue"], profit=p["profit"])
+        if p and s.fans_after is None:
+            # Fan interest moves when the books close; until then, owners
+            # read where the season so far is taking it.
+            s = replace(s, fans_before=p["fans_before"], fans_after=p["fans_after"])
         scores = oo._in_season(s, owner["traits"], money, state)
         source = "This season so far"
     else:
