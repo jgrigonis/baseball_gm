@@ -190,6 +190,14 @@ def test_owners_offer_jobs_they_think_the_gm_has_earned():
 
     text = jo.message("The Tycoon", 10, 80, True, random.Random(1))
     assert "anyway" in text or "glamour" in text
+    # One screen of offers: no two open the same way, even same-persona owners.
+    used: set[str] = set()
+    texts = [
+        jo.message(a, 80, 50, False, random.Random(i), used)
+        for i, a in enumerate(["The Meddler"] * 2 + ["The Tycoon"] * 3)
+    ]
+    openers = [t.split(".")[0] for t in texts]
+    assert len(set(openers)) == 5 and len(set(texts)) == 5
 
 
 def test_owners_grade_on_a_curve():

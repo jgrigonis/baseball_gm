@@ -132,6 +132,7 @@ def _make(conn, league_id: str, user_id: str, year: int, team_ids: list[str]):
             )
         )
     chosen, only = jo.choose(jobs, rep)
+    used: set[str] = set()  # no two offers open (or pitch) the same way
     for team_id in chosen:
         owner = owners_by_team[team_id]
         rng = random.Random(f"{league_id}:{user_id}:{year}:{team_id}")
@@ -146,6 +147,6 @@ def _make(conn, league_id: str, user_id: str, year: int, team_ids: list[str]):
                 year,
                 team_id,
                 owner["owner_id"],
-                jo.message(owner["archetype"], rep, appeal[team_id], only, rng),
+                jo.message(owner["archetype"], rep, appeal[team_id], only, rng, used),
             ),
         )
