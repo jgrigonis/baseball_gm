@@ -634,7 +634,8 @@ class BudgetRepository:
                           popularity_revenue, broadcast_revenue, merch_revenue,
                           sponsor_revenue, ballpark_revenue, luxury_tax, tax_share, front_office, minor_league,
                           profit,
-                          fans_before, fans_after, ticket_price
+                          fans_before, fans_after, ticket_price, attendance,
+                          crowd_games, capacity, sellouts
                    FROM team_budgets WHERE league_id = %s AND team_id = %s
                    ORDER BY year""",
                 (league_id, team_id),
@@ -695,6 +696,7 @@ class BudgetRepository:
         merch = self.merchandise(league_id, year)
         sponsors = self.sponsors(league_id, year)
         parks = self.ballparks(league_id, year)
+        crowds = self.crowds(league_id, year)
         taxes = {}
         for team_id in budgets:
             payroll = payrolls[team_id]
@@ -729,7 +731,9 @@ class BudgetRepository:
                 revenue[team_id],
                 rows[team_id]["ticket_price"],
             )
-            total = tickets + gate + popular + broadcast + sold + sponsor + park
+            seen = crowds.get(team_id)
+            crowd = self._crowd_money(seen, tickets)
+            total = tickets + crowd + gate + popular + broadcast + sold + sponsor + park
             self.conn.execute(
                 """UPDATE team_budgets
                    SET luxury_tax = %s, revenue = %s, fans_before = %s,
@@ -738,7 +742,9 @@ class BudgetRepository:
                        merch_revenue = %s, sponsor_revenue = %s,
                        sponsor_deal = %s, ballpark_revenue = %s, payroll = %s,
                        tax_share = %s, front_office = %s, minor_league = %s,
-                       profit = %s
+                       profit = %s, attendance = %s, crowd_games = %s,
+                       crowd_expected = %s, crowd_in_park = %s, capacity = %s,
+                       sellouts = %s, crowd_revenue = %s
                    WHERE league_id = %s AND team_id = %s AND year = %s""",
                 (
                     tax,
@@ -757,6 +763,13 @@ class BudgetRepository:
                     office,
                     farm,
                     fn.profit(total, payroll, tax, costs, share, office, farm),
+                    seen["attendance"] if seen else None,
+                    seen["counted"] if seen else None,
+                    seen["expected"] if seen else None,
+                    seen["in_park"] if seen else None,
+                    seen["capacity"] if seen else fn.capacity(parks.get(team_id, ())),
+                    seen["sellouts"] if seen else None,
+                    crowd,
                     league_id,
                     team_id,
                     year,
@@ -764,6 +777,152 @@ class BudgetRepository:
             )
             taxes[team_id] = tax
         return taxes
+
+    # ── Attendance ───────────────────────────────────────────────────────────
+
+    def _markets(self, team_ids) -> dict[str, int]:
+        out = {}
+        for t in self.conn.execute(
+            "SELECT id, city, mascot FROM teams WHERE id = ANY(%s)", (list(team_ids),)
+        ).fetchall():
+            pool = team_pool.get(t["city"], t["mascot"]) or team_pool.by_city(t["city"])
+            out[t["id"]] = pool.market if pool else 3
+        return out
+
+    def game_crowd(
+        self,
+        league_id: str,
+        season_id: str,
+        game_id: str,
+        home_id: str,
+        away_id: str,
+        day,
+        playoffs: bool = False,
+    ) -> int | None:
+        """Work out and record one game's crowd (src/league/finances.py
+        crowd). None in a league without budgets."""
+        if not league_id or not self.enabled(league_id):
+            return None
+        row = self.conn.execute(
+            "SELECT year FROM seasons WHERE id = %s", (season_id,)
+        ).fetchone()
+        if not row:
+            return None
+        year = row["year"]
+        rows = {
+            r["team_id"]: r
+            for r in self.conn.execute(
+                """SELECT team_id, fans_before, ticket_price FROM team_budgets
+                   WHERE league_id = %s AND year = %s""",
+                (league_id, year),
+            ).fetchall()
+        }
+        home = rows.get(home_id)
+        if home is None or home["fans_before"] is None:
+            return None
+        known = [
+            r["fans_before"] for r in rows.values() if r["fans_before"] is not None
+        ]
+        league_fans = sum(known) / len(known)
+        away = rows.get(away_id)
+        away_fans = (
+            away["fans_before"]
+            if away and away["fans_before"] is not None
+            else league_fans
+        )
+        market = self._markets([home_id]).get(home_id, 3)
+        seats = fn.capacity(self.ballparks(league_id, year).get(home_id, ()))
+        expected = fn.expected_crowd(
+            home["fans_before"], market, home["ticket_price"], day
+        )
+        # Only games before this one's date count: the record so far, and
+        # whether it's the home opener.
+        when = str(day)
+        record = self.conn.execute(
+            """SELECT COALESCE(SUM(tgs.win), 0) AS w, COALESCE(SUM(tgs.loss), 0) AS l
+               FROM team_game_stats tgs JOIN games g ON g.id = tgs.game_id
+               WHERE g.season_id = %s AND g.completed = 1 AND g.series_id IS NULL
+                 AND tgs.team_id = %s AND g.game_date < %s""",
+            (season_id, home_id, when),
+        ).fetchone()
+        opener = (
+            not playoffs
+            and not self.conn.execute(
+                """SELECT 1 FROM games WHERE season_id = %s AND home_team_id = %s
+                     AND series_id IS NULL AND game_date < %s LIMIT 1""",
+                (season_id, home_id, when),
+            ).fetchone()
+        )
+        rng = random.Random(f"crowd:{game_id}")
+        attendance = fn.crowd(
+            expected,
+            seats,
+            opponent=fn.opponent_mult(away_fans, league_fans),
+            form=fn.form_mult(int(record["w"]), int(record["l"])),
+            noise=rng.uniform(-1, 1),
+            opener=opener,
+            playoffs=playoffs,
+        )
+        self.conn.execute(
+            "UPDATE games SET attendance = %s, crowd_expected = %s WHERE id = %s",
+            (attendance, int(round(expected)), game_id),
+        )
+        return attendance
+
+    def crowds(self, league_id: str, year: int, team_ids=None) -> dict[str, dict]:
+        """Each team's regular season home crowds so far, by team id:
+        home games scheduled (games) and played with a crowd (counted), the
+        total crowd and what was expected (uncapped and in its park), seats,
+        sellouts, the best crowd, average and share of seats filled. Teams
+        with no crowds yet still get their seats and games."""
+        season_id = self._season_id(league_id, year)
+        if not season_id:
+            return {}
+        parks = self.ballparks(league_id, year)
+        out: dict[str, dict] = {}
+        for r in self.conn.execute(
+            """SELECT home_team_id AS team_id, COUNT(*) AS games,
+                      COUNT(attendance) AS counted,
+                      COALESCE(SUM(attendance), 0) AS attendance,
+                      COALESCE(SUM(crowd_expected) FILTER
+                          (WHERE attendance IS NOT NULL), 0) AS expected,
+                      MAX(attendance) AS best,
+                      ARRAY_AGG(attendance) FILTER (WHERE attendance IS NOT NULL) AS crowds,
+                      ARRAY_AGG(crowd_expected) FILTER (WHERE attendance IS NOT NULL) AS expect
+               FROM games
+               WHERE season_id = %s AND series_id IS NULL
+                 AND (%s::TEXT[] IS NULL OR home_team_id = ANY(%s::TEXT[]))
+               GROUP BY home_team_id""",
+            (season_id, team_ids, team_ids),
+        ).fetchall():
+            seats = fn.capacity(parks.get(r["team_id"], ()))
+            counted = int(r["counted"])
+            total = int(r["attendance"])
+            out[r["team_id"]] = {
+                "games": int(r["games"]),
+                "counted": counted,
+                "attendance": total,
+                "expected": int(r["expected"]),
+                "in_park": sum(min(seats, e or 0) for e in (r["expect"] or [])),
+                "capacity": seats,
+                "sellouts": sum(1 for c in (r["crowds"] or []) if c >= seats),
+                "best": int(r["best"]) if r["best"] is not None else None,
+                "average": round(total / counted) if counted else None,
+                "full": total / (counted * seats) if counted and seats else None,
+            }
+        return out
+
+    @staticmethod
+    def _crowd_money(crowds: dict | None, tickets: int) -> int:
+        if not crowds:
+            return 0
+        return fn.crowd_money(
+            tickets,
+            crowds["attendance"],
+            crowds["expected"],
+            crowds["counted"],
+            crowds["games"],
+        )
 
     # ── Broadcast deals ──────────────────────────────────────────────────────
 
@@ -1057,6 +1216,7 @@ class BudgetRepository:
                     "cost": cost,
                     "earns": earns,
                     "fans": round(p.fans * fn.rebuild_mult(key)),
+                    "seats": p.capacity,
                     "value": fn.project_value(
                         key, average, money.market, fans, revenue, row["ticket_price"]
                     ),
@@ -1461,7 +1621,7 @@ class BudgetRepository:
                       luxury_tax, tax_share, front_office, minor_league, profit,
                       fans_before, ticket_price, popularity_revenue,
                       broadcast_revenue, merch_revenue, sponsor_revenue,
-                      sponsor_deal, ballpark_revenue
+                      sponsor_deal, ballpark_revenue, crowd_revenue
                FROM team_budgets WHERE league_id = %s AND year <= %s""",
             (league_id, year),
         ).fetchall()
@@ -1498,6 +1658,7 @@ class BudgetRepository:
                     merchandise=int(mine["merch_revenue"] or 0),
                     sponsor=int(mine["sponsor_revenue"] or 0),
                     ballpark=int(mine["ballpark_revenue"] or 0),
+                    crowds=int(mine["crowd_revenue"] or 0),
                     tax_share=int(mine["tax_share"] or 0),
                     payroll=int(mine["payroll"] or 0),
                     front_office=int(mine["front_office"] or 0),
@@ -1540,6 +1701,10 @@ class BudgetRepository:
                         mine["ticket_price"],
                     ),
                     sponsor=sponsor["total"] if sponsor else 0,
+                    crowds=self._crowd_money(
+                        self.crowds(league_id, y, [team_id]).get(team_id),
+                        fn.ticket_revenue(revenue[team_id], mine["ticket_price"]),
+                    ),
                     broadcast=deal["amount"] if deal else 0,
                     merchandise=sold["total"] if sold else 0,
                     minor_league=farms.get(team_id, 0),
@@ -1603,6 +1768,7 @@ class BudgetRepository:
         merch = self.merchandise(league_id, year)
         sponsors = self.sponsors(league_id, year)
         parks = self.ballparks(league_id, year)
+        crowds = self.crowds(league_id, year)
         out = {}
         for t, r in rows.items():
             fans = money[t].fans if r["fans_before"] is None else r["fans_before"]
@@ -1623,6 +1789,9 @@ class BudgetRepository:
                 broadcast=deals[t]["amount"] if t in deals else 0,
                 merchandise=merch[t]["total"] if t in merch else 0,
                 sponsor=sponsors[t]["total"] if t in sponsors else 0,
+                crowds=self._crowd_money(
+                    crowds.get(t), fn.ticket_revenue(revenue[t], r["ticket_price"])
+                ),
                 ballpark=fn.ballpark_money(
                     parks.get(t, ()),
                     average,

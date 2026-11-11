@@ -771,6 +771,8 @@ CREATE TABLE IF NOT EXISTS games (
     innings_played INTEGER,
     line_score JSONB,                 -- runs by inning, away and home
     winner_id TEXT,
+    attendance INTEGER,               -- the crowd (src/league/finances.py crowd; migration 116), NULL without budgets
+    crowd_expected INTEGER,           -- the crowd the home fans were expected to bring, before the park's seats
     created_at TEXT DEFAULT (NOW()),
     updated_at TEXT,
 
@@ -1713,6 +1715,13 @@ CREATE TABLE IF NOT EXISTS team_budgets (     -- migration 074 (src/league/budge
     budget_seen BOOLEAN,                      -- the GM opened the Budget tab between seasons, before it locked (migration 102)
     fans_before INTEGER,                      -- fan interest coming into the season (0-100)
     fans_after  INTEGER,                      -- and after it
+    attendance  BIGINT,                       -- home crowds, set when the season ends (migration 116)
+    crowd_games INTEGER,                      -- home games that had a crowd
+    crowd_expected BIGINT,                    -- what those games were expected to draw, before the park's seats
+    crowd_in_park BIGINT,                     -- and capped at them
+    capacity    INTEGER,                      -- seats in the park that season
+    sellouts    INTEGER,
+    crowd_revenue BIGINT,                     -- what the crowds added to (or took off) ticket revenue
     PRIMARY KEY (league_id, team_id, year)
 );
 CREATE INDEX IF NOT EXISTS idx_team_budgets_team ON team_budgets(team_id);

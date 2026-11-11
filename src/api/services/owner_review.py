@@ -21,6 +21,7 @@ from __future__ import annotations
 from psycopg.types.json import Jsonb
 
 from src.api.services import icons
+from src.db.repositories.budget_repo import BudgetRepository
 from src.api.services import owners as owner_service
 from src.league import budget as bg
 from src.league import finances as fn
@@ -210,11 +211,24 @@ def gather(
         r["team_id"]: dict(r)
         for r in conn.execute(
             """SELECT team_id, cap, budget, payroll, revenue, playoff_revenue,
-                      profit, fans_before, fans_after
+                      profit, fans_before, fans_after, attendance, crowd_games,
+                      crowd_in_park, capacity
                FROM team_budgets WHERE league_id = %s AND year = %s""",
             (league_id, year),
         ).fetchall()
     }
+    if any(m.get("crowd_games") is None for m in money.values()):
+        # The season's still on: its crowds so far.
+        live = BudgetRepository(conn).crowds(league_id, year)
+        for team_id, m in money.items():
+            c = live.get(team_id)
+            if m.get("crowd_games") is None and c:
+                m.update(
+                    attendance=c["attendance"],
+                    crowd_games=c["counted"],
+                    crowd_in_park=c["in_park"],
+                    capacity=c["capacity"],
+                )
     par = _profit_par(money)
     homegrown = _homegrown(conn, league_id, list(by_team))
     all_stars = _count(
@@ -276,6 +290,7 @@ def gather(
             profit_par=par.get(team_id),
             fans_before=m.get("fans_before"),
             fans_after=m.get("fans_after"),
+            crowd_score=_crowd_score(m),
             homegrown_share=share.get(team_id, 0.0),
             homegrown_players=homegrown.get(team_id, (0, 0))[0],
             roster_players=homegrown.get(team_id, (0, 0))[1],
@@ -289,6 +304,20 @@ def gather(
             rival_losses=rl,
         )
     return out
+
+
+# A season needs this many home crowds to be judged on them (a league that
+# picked crowds up mid-season reads fan interest, as before).
+CROWD_GAMES_TO_JUDGE = 20
+
+
+def _crowd_score(m: dict) -> float | None:
+    games = m.get("crowd_games") or 0
+    if games < CROWD_GAMES_TO_JUDGE or not m.get("capacity"):
+        return None
+    return fn.attendance_score(
+        m["attendance"] / games, (m["crowd_in_park"] or 0) / games, m["capacity"]
+    )
 
 
 def _profit_par(money: dict[str, dict]) -> dict[str, int]:

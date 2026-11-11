@@ -7,6 +7,7 @@
     <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">
       {{ game.game_date }}
       {% if game.innings_played and game.innings_played != 9 %} · F/{{ game.innings_played }}{% endif %}
+      {% if crowd %} · {{ crowd }}{% endif %}
     </div>
     <div style="font-size:16px;font-weight:700;margin-top:2px;">
       <a href="/leagues/{{ league_id }}/stats?team_id={{ game.away_team_id }}&season_id={{ game.season_id }}"

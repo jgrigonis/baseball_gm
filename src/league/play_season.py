@@ -804,6 +804,16 @@ def _play_game(
         else game_info["away_team_id"]
     )
     game_repo.save_game_result(game_info["game_id"], result, winner_id)
+    # The crowd (src/league/finances.py crowd), in leagues with budgets.
+    BudgetRepository(conn).game_crowd(
+        league_id,
+        season_id,
+        game_info["game_id"],
+        game_info["home_team_id"],
+        game_info["away_team_id"],
+        game_date,
+        playoffs=playoffs,
+    )
     if home_advance:
         rotations_repo.advance_rotation_pointer(
             home_team.record.id, season_id, after_player_id=home_starter_id
