@@ -21,7 +21,13 @@ async function runLeagueJob(url, init, onWaiting) {
   } catch (e) {
     return {failed: true, detail: 'Network error'};
   }
+  return pollLeagueJob(queued.poll, onWaiting);
+}
+window.runLeagueJob = runLeagueJob;
 
+// The polling half of runLeagueJob, for a page that finds a job already
+// under way when it loads (e.g. the lobby while the league is starting).
+async function pollLeagueJob(poll, onWaiting) {
   // Poll quickly at first (a day of games takes a second or two), then
   // back off. A few failed polls in a row (the network, a restart) give up.
   let delay = 250;
@@ -30,7 +36,7 @@ async function runLeagueJob(url, init, onWaiting) {
     await new Promise(r => setTimeout(r, delay));
     delay = Math.min(delay * 1.5, 1500);
     try {
-      const res = await fetch(queued.poll);
+      const res = await fetch(poll);
       const job = await res.json();
       errors = 0;
       if (!res.ok) return {failed: true, detail: job.detail || 'Server error'};
@@ -48,7 +54,7 @@ async function runLeagueJob(url, init, onWaiting) {
     }
   }
 }
-window.runLeagueJob = runLeagueJob;
+window.pollLeagueJob = pollLeagueJob;
 
 // The usual onWaiting: a line for a status message when the worker seems
 // to be missing, else null.
