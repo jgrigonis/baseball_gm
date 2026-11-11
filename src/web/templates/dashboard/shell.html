@@ -803,6 +803,7 @@ window.nextMoveStatus = function(msg, color) {
   var text = document.getElementById('sim-status-text');
   if (!bar || !text) return;
   if (!msg) { bar.style.display = 'none'; return; }
+  text.classList.remove('sim-status-one-line');
   text.textContent = msg;
   text.style.color = color === 'red' ? 'var(--red)' : '';
   bar.style.setProperty('display', 'flex', 'important');
