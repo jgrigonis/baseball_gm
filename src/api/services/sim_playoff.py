@@ -221,6 +221,29 @@ def end_playoffs(conn, league: dict, season_id: str) -> None:
         lr.set_state(league["id"], "offseason")
 
 
+def _round_progress(playoff_repo, season_id: str) -> list[dict]:
+    """How far each round has got, in series wins: done is the leading
+    team's wins in each series (capped at what clinches it), need is what
+    every series takes to clinch. A round not drawn yet has done 0. The sim
+    card's bar fills from it on Sim Round and Full Playoffs; a sweep moves
+    it as far as a long series does, so it only ever goes up."""
+    out = []
+    for rd in ROUND_DEFS:
+        need = rd["best_of"] // 2 + 1
+        done = 0
+        for sn in rd["series_names"]:
+            sid = playoff_repo.get_series_id(season_id, sn)
+            if sid:
+                wins = [
+                    r["wins"] for r in playoff_repo.get_win_count(sid) if r["winner_id"]
+                ]
+                done += min(need, max(wins, default=0))
+        out.append(
+            {"name": rd["name"], "done": done, "need": need * len(rd["series_names"])}
+        )
+    return out
+
+
 def sim_playoff(
     league_id: str,
     conn,
@@ -390,6 +413,7 @@ def sim_playoff(
     return {
         "games_played": games_played,
         "results": results,
+        "progress": _round_progress(playoff_repo, season_id),
         "played_round": played_round,
         "current_round": current_round,
         "champion": champion,
