@@ -166,7 +166,12 @@
   <div class="roster-col-wrap phone-off" data-col="org">
     <div class="roster-col-hdr">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;">
-        <span class="r-col-label" style="color:var(--text-dim);">Organization</span>
+        <span style="white-space:nowrap;">
+          <span class="r-col-label" style="color:var(--text-dim);">Organization</span>
+          <span id="org-count" title="Minor leaguers (everyone in your organization not on the 40-man)"
+                style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);
+                       margin-left:8px;"></span>
+        </span>
         <div style="display:flex;align-items:center;gap:3px;
                     font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">
           <select id="org-s1" onchange="render()" style="width:auto;font-size:10px;">
@@ -378,7 +383,7 @@
   /* The filter groups wrap; a bar left hanging at a line end looks stray. */
   .r-filter-sep { display: none; }
   .roster-drop-col { overflow: visible; }
-  .roster-col-hdr .r-col-label { display: none; }
+  .roster-col-hdr .r-col-label, #org-count { display: none; }
   .drag-zone { display: none; }
   .r-card { grid-template-columns: 26px 34px minmax(0, 1fr) auto; padding: 8px; }
   .r-action-btn { font-size: 16px; padding: 6px 11px; }
@@ -743,6 +748,8 @@ function render() {
   document.getElementById('empty-org').style.display   = orgIds.length === 0  ? 'block' : 'none';
   document.getElementById('seg-40-count').textContent = fortyMan.size;
   document.getElementById('seg-org-count').textContent = orgIds.length;
+  document.getElementById('org-count').textContent =
+    `${orgIds.length} player${orgIds.length === 1 ? '' : 's'}`;
   const fortyCount = document.getElementById('forty-count');
   fortyCount.textContent = `${fortyMan.size} / 40`;
   // An unfilled 40-man shows in bold red so open spots are hard to miss.
