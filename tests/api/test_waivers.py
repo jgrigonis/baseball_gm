@@ -272,3 +272,39 @@ def test_a_fringe_ai_release_stays_out_of_the_news(lg, monkeypatch):
     waivers.after_day(lg.db, lg.league.id, GAME_DAYS[1])
     assert waivers.on_waivers(lg.db, pid) is None
     assert _stories(lg, "fa-") == []
+
+
+def test_other_people_hear_when_a_person_releases_a_good_player(lg, monkeypatch):
+    from src.api.services.injury_news import take_injury_news
+    from src.api.services.news import moves
+
+    monkeypatch.setattr(moves, "shown_grade", lambda p: "B+")
+    lg.db.execute(
+        "UPDATE gms SET is_ai = false WHERE league_id = %s AND team_id = %s",
+        (lg.league.id, lg.bad.id),
+    )
+    other = lg.db.execute(
+        "SELECT id FROM gms WHERE league_id = %s AND team_id = %s",
+        (lg.league.id, lg.bad.id),
+    ).fetchone()["id"]
+    _released(lg)
+    [note] = take_injury_news(lg.db, other)["waivers"]
+    assert "B+" in note["text"] and "on waivers until after the games" in note["text"]
+    assert take_injury_news(lg.db, lg.gm.id)["waivers"] == []
+
+
+def test_nobody_hears_about_a_fringe_release(lg, monkeypatch):
+    from src.api.services.injury_news import take_injury_news
+    from src.api.services.news import moves
+
+    monkeypatch.setattr(moves, "shown_grade", lambda p: "C")
+    lg.db.execute(
+        "UPDATE gms SET is_ai = false WHERE league_id = %s AND team_id = %s",
+        (lg.league.id, lg.bad.id),
+    )
+    other = lg.db.execute(
+        "SELECT id FROM gms WHERE league_id = %s AND team_id = %s",
+        (lg.league.id, lg.bad.id),
+    ).fetchone()["id"]
+    _released(lg)
+    assert take_injury_news(lg.db, other)["waivers"] == []

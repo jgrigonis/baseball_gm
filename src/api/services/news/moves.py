@@ -21,8 +21,10 @@ import logging
 from datetime import date
 
 from src.api.grade_curves import GRADES, overall_to_grade
-from src.api.services.news.names import Names
+from src.api.services.news.names import Names, plain
+from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.news_repo import NewsRepository
+from src.db.repositories.notification_repo import NotificationRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.player import contracts as ct
 from src.player.player_evaluator import PlayerEvaluator
@@ -77,8 +79,17 @@ def _describe(player, grade: str) -> str:
     return f"{grade} {player.position}, age {player.age}"
 
 
-def released(conn, league_id: str, team_id: str, player, waivers: bool) -> None:
-    """A team released a notable player."""
+def released(
+    conn,
+    league_id: str,
+    team_id: str,
+    player,
+    waivers: bool,
+    clears_on: str | None = None,
+) -> None:
+    """A team released a notable player. When a person's team did, every
+    other person in the league gets a notification too, so they can put in
+    a claim before he clears (Josh, 2026-11-11)."""
 
     def write():
         grade = shown_grade(player)
@@ -106,8 +117,29 @@ def released(conn, league_id: str, team_id: str, player, waivers: bool) -> None:
             player_ids=[player.id],
             gm_ids=nm.gm_ids(team_id),
         )
+        if human:
+            _tell_people(
+                conn, league_id, nm, team_id, player, grade, waivers, clears_on
+            )
 
     _write(league_id, conn, "release", write)
+
+
+def _tell_people(conn, league_id, nm, team_id, player, grade, waivers, clears_on):
+    """A notification for each other person running a team in the league."""
+    who = plain(nm.gm_team(team_id))
+    name = plain(nm.player(player.id))
+    if waivers:
+        until = f"after the games on {clears_on}" if clears_on else "this phase ends"
+        what = f"He's on waivers until {until}. Claim him on Free Agents."
+    else:
+        what = "He's a free agent now. Sign him on Free Agents."
+    text = f"The {who} released {name} ({grade} {player.position}). {what}"
+    notes = NotificationRepository(conn)
+    for gm_id, team in GMRepository(conn).get_human_gm_teams(league_id).items():
+        if team == team_id or not nm.is_human(team) or nm.gm_of(team)["id"] != gm_id:
+            continue
+        notes.add(gm_id, "waivers", {"text": text, "player_id": player.id})
 
 
 def claimed(
