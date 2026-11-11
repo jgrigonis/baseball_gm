@@ -740,7 +740,7 @@ window.simCardStatus = function (msg, color) {
 
 // Each item is {text, dest} and links to its own place, so a hitter's injury
 // opens the batting lineup even when a pitcher came back in the same sim.
-// dest: 'batting' | 'pitching' | 'roster' | 'trades' | 'league'
+// dest: 'batting' | 'pitching' | 'roster' | 'trades' | 'free-agents' | 'league'
 function setInjuryNews(items) { simCard.add(items); }
 window.setInjuryNews = setInjuryNews;
 
@@ -821,6 +821,12 @@ function showInjuryNews(d) {
   });
   if ((d.settings || []).length && document.getElementById('league-settings') && window.refreshActiveTab)
     window.refreshActiveTab();
+  // Another person released a B- or better player (news/moves.py). Stops a
+  // sim run, like a trade offer, so there's time to claim him.
+  (d.waivers || []).forEach(function (w) {
+    items.push({ text: `✍️ ${w.text}`, dest: 'free-agents' });
+    stops = true;
+  });
   setInjuryNews(items);  // adds to the sim card's news, if any
   return stops;
 }
@@ -855,7 +861,7 @@ function injuryNewsClick(ev) {
     var link = document.querySelector(`[hx-get="/leagues/${LEAGUE_ID}/league"]`);
     if (link) { setActiveTab(link); link.click(); }
     else window.location.href = `/leagues/${LEAGUE_ID}/league`;
-  } else if (dest === 'roster' || dest === 'trades') {
+  } else if (dest === 'roster' || dest === 'trades' || dest === 'free-agents') {
     goToTab(dest);
   } else {
     window._lineupLandingTab = dest;

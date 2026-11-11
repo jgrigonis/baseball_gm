@@ -55,6 +55,7 @@ def test_every_human_gm_gets_their_own_news(db_conn, factory):
         "roster_moves": [],
         "trades": [],
         "settings": [],
+        "waivers": [],
     }
     assert b == {
         "new_injuries": [],
@@ -65,6 +66,7 @@ def test_every_human_gm_gets_their_own_news(db_conn, factory):
         "roster_moves": [],
         "trades": [],
         "settings": [],
+        "waivers": [],
     }
 
 
@@ -100,6 +102,7 @@ def test_news_is_shown_once(db_conn, factory):
         "roster_moves": [],
         "trades": [],
         "settings": [],
+        "waivers": [],
     }
 
 

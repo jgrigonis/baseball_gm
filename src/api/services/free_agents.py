@@ -213,7 +213,14 @@ def release(
                 "a player in it was released.",
             )
         if player:
-            move_news.released(conn, league_id, team_id, player, was_up)
+            move_news.released(
+                conn,
+                league_id,
+                team_id,
+                player,
+                was_up,
+                waiver["clears_on"] if waiver else None,
+            )
         conn.commit()
     return {
         "name": player.name if player else "",
