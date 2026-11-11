@@ -96,12 +96,13 @@
   {% endif %}
 
   {% if trade_window.open %}
+  {# Only worth saying when trades have left the 40-man short. #}
+  {% if my_playing_count < min_roster %}
   <div class="trade-note">
-    Traded players join your organization, not your 40-man. Your 40-man has
-    <strong id="tr-playing">{{ my_playing_count }}</strong> players
-    ({{ min_roster }} to {{ max_roster }} allowed). If it's under {{ min_roster }}
-    before your next game, your best healthy players are called up for you.
+    Your 40-man is down to <strong>{{ my_playing_count }}</strong> (minimum {{ min_roster }}).
+    Your best healthy players will be called up before your next game.
   </div>
+  {% endif %}
 
   {# Shop a player: every AI team's best offer for him at once
      (src/api/services/trade_shop.py). #}
