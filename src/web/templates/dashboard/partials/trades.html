@@ -97,10 +97,11 @@
 
   {% if trade_window.open %}
   <div class="trade-note">
-    Traded players join your organization, not your 40-man. Your 40-man has
-    <strong id="tr-playing">{{ my_playing_count }}</strong> players
-    ({{ min_roster }} to {{ max_roster }} allowed). If it's under {{ min_roster }}
-    before your next game, your best healthy players are called up for you.
+    Players you trade for land in your organization. Move them to your 40-man on the Roster tab to use them.
+    {% if my_playing_count < min_roster %}
+    <br>Your 40-man is down to <strong>{{ my_playing_count }}</strong> (minimum {{ min_roster }}).
+    Your best healthy players will be called up before your next game.
+    {% endif %}
   </div>
 
   {# Shop a player: every AI team's best offer for him at once
