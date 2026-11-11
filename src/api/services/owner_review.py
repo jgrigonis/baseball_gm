@@ -301,6 +301,7 @@ def gather(
             fans_before=m.get("fans_before"),
             fans_after=m.get("fans_after"),
             crowd_score=_crowd_score(m),
+            **_crowd_detail(m),
             homegrown_share=share.get(team_id, 0.0),
             homegrown_players=homegrown.get(team_id, (0, 0))[0],
             roster_players=homegrown.get(team_id, (0, 0))[1],
@@ -329,6 +330,18 @@ def _crowd_score(m: dict) -> float | None:
     return fn.attendance_score(
         m["attendance"] / games, (m["crowd_in_park"] or 0) / games, m["capacity"]
     )
+
+
+def _crowd_detail(m: dict) -> dict:
+    """The per-game numbers behind _crowd_score, for the admin's owner card."""
+    games = m.get("crowd_games") or 0
+    if not games:
+        return {}
+    return {
+        "crowd_avg": round((m.get("attendance") or 0) / games),
+        "crowd_expected": round((m.get("crowd_in_park") or 0) / games),
+        "crowd_seats": m.get("capacity"),
+    }
 
 
 def _profit_par(money: dict[str, dict]) -> dict[str, int]:

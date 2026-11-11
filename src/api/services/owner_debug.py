@@ -17,6 +17,7 @@ from src.api.services import owner_review
 from src.api.services import owners as owner_service
 from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.contract_repo import ContractRepository
+from src.league import finances as fn
 from src.league import owner_messages as om
 from src.league import owner_scoring as sc
 from src.league import owners
@@ -79,6 +80,20 @@ def _why(key: str, s: sc.TeamSeason, traits: dict, state: str) -> str:
             f" ±{sc.PROFIT_SCALE:.0%} of revenue = ±1"
         )
     if key == "attendance":
+        if s.crowd_score is not None and s.crowd_expected:
+            beat = s.crowd_avg / s.crowd_expected - 1
+            full = s.crowd_avg / s.crowd_seats if s.crowd_seats else 0
+            return (
+                f"Avg crowd {s.crowd_avg:,} vs {s.crowd_expected:,} expected"
+                f" ({beat:+.0%}; ±{fn.CROWD_BEAT_SCALE:.0%} = ±1, counts"
+                f" {fn.CROWD_BEAT_WEIGHT:.0%}), park {full:.0%} full of"
+                f" {s.crowd_seats:,} ({fn.CROWD_FULL_MARK:.0%} = 0,"
+                f" ±{fn.CROWD_FULL_SCALE:.0%} = ±1, counts"
+                f" {1 - fn.CROWD_BEAT_WEIGHT:.0%}). Expected: what this fan"
+                " interest, market and ticket price draw at .500 against an"
+                " average visitor; winning or losing moves crowds up to"
+                f" {fn.CROWD_FORM_MAX:.0%}"
+            )
         if s.crowd_score is not None:
             return f"Home crowds read {s.crowd_score:+.2f}"
         if s.fans_after is not None:

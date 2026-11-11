@@ -605,3 +605,16 @@ def test_releasing_good_players_is_turnover():
         "stability"
     ]
     assert churn < calm
+
+
+def test_the_admin_card_says_what_attendance_was_read_from():
+    from src.api.services import owner_debug
+    from src.league import owner_scoring as sc
+
+    s = sc.TeamSeason(
+        wins=30, losses=40, crowd_score=-0.37, crowd_avg=34_000,
+        crowd_expected=39_000, crowd_seats=42_000,
+    )  # fmt: skip
+    why = owner_debug._why("attendance", s, owners.clean_traits({}), "season")
+    assert "Avg crowd 34,000 vs 39,000 expected (-13%" in why
+    assert "park 81% full of 42,000" in why
