@@ -489,6 +489,36 @@ def test_the_bank_card_shows_each_season(lg, client_for):
     assert bg.format_salary(start + profit) in rows
 
 
+def test_past_seasons_rows_add_up_to_profit(lg, client_for):
+    """Each Past seasons row adds up: revenue less payroll, the signed tax,
+    front office, minors and fixed costs is the profit, and the revenue
+    opens its breakdown."""
+    from src.api.routers.budget import _past_seasons
+
+    x = lg()
+    _owned(x, spending=95)
+    x.budgets.for_league(x.league.id, 2026)
+    x.budgets.assess(x.league.id, 2026)
+    x.budgets.for_league(x.league.id, 2027)
+    books = x.budgets.books(x.league.id, x.mine.id, 2027)
+    b = next(b for b in books if b["year"] == 2026)
+    revenue = b["total_in"] - b["tax_share"] - b["farm_help"]
+    out = (
+        b["payroll"] - b["tax_share"] + b["luxury_tax"] + b["front_office"]
+        + b["minor_league"] + b["costs"] - b["farm_help"] + b["other"]
+    )  # fmt: skip
+    assert revenue - out == b["profit"]
+    assert b["other"] == 0
+    rows = _past_seasons(x.budgets.history(x.league.id, x.mine.id), books)
+    assert [r["year"] for r in rows] == [2026]
+    assert rows[0]["revenue"] == bg.format_salary(revenue)
+    assert rows[0]["revenue_lines"][0]["label"] == "Regular season tickets"
+    html = client_for(x).get(f"/leagues/{x.league.id}/budget").text
+    past = html[html.index("Past seasons") :]
+    assert 'id="bud-rev-2026"' in past and "Fixed costs" in past
+    assert "Tax share" not in past
+
+
 def test_the_owner_refuses_a_signing_past_the_limit(lg):
     x = lg()
     pid = x.factory.rated_player(x.theirs, x.league, level=70, status="free_agent").id
