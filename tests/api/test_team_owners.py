@@ -639,3 +639,17 @@ def test_october_is_judged_once_the_standings_settle_it():
     assert october("spot") == october("division") > 0
     # Once the playoffs start, the bracket decides, as before.
     assert owner_office._in_season(s, traits, True, "playoffs")["postseason"] == -0.6
+
+
+def test_a_furious_owner_stays_angry_after_a_few_games():
+    # Josh, 2026-11-11: Furious to uneasy after a 2-2 start.
+    from src.api.services import owner_office
+    from src.league import owner_messages as om
+
+    reading = owner_office.early_reading(0.04, 4, -0.8)
+    assert reading < -0.6
+    assert om.mood_word(om.next_mood(-0.8, reading, 88)) in ("furious", "frustrated")
+    # By 40 games the season speaks for itself.
+    assert owner_office.early_reading(0.04, 40, -0.8) == pytest.approx(0.04)
+    # A first season starts from neutral, as before.
+    assert owner_office.early_reading(0.5, 10, 0.0) == pytest.approx(0.125)
