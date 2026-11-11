@@ -32,6 +32,7 @@ LINEUP_STYLE = {
     "analytics": "Analytics",
     "speed-first": "Speed first",
     "power-first": "Power first",
+    "defensive": "Defensive",
 }
 BASERUNNING = {
     "very-conservative": "Very careful on the bases",

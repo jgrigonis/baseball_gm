@@ -561,6 +561,134 @@ TRADE_REACTIONS = {
     ),
 }
 
+# Meddlers (the meddling trait at MEDDLES or more) have an opinion on every
+# trade, even one that touches nothing they weigh heavily.
+MEDDLES = 70
+TRADE_REACTIONS["meddling"] = (
+    "Nobody ran that trade by me. Next time, call me first.",
+    "I read about that trade in the paper, {gm}. I'd like to hear it from you.",
+    "I'm not sure I'd have made that trade. Ask me before the next one.",
+)
+
+# A reaction to releasing players (Josh, 2026-11-11: "I'm quite surprised the
+# Meddler Owner allowed all these releases"), by what bothers the owner, each
+# with wordings for one player ({player}) and for several ({players}).
+# {owed}: the guaranteed money the team still pays them.
+RELEASE_REACTIONS = {
+    "icons": (
+        (
+            "You released {player}. That player was this franchise. I'm stunned.",
+            "Releasing {player}? The fans will never forgive that, and neither will I.",
+        ),
+        (
+            "You released {players}. One of them was this franchise. I'm stunned.",
+            "{players}, all released, and one of them was the face of this team. Explain that to me.",
+        ),
+    ),
+    "meddling_money": (
+        (
+            "We're still paying {player} {owed}, and he doesn't play for us anymore. Nobody asked me.",
+            "{owed} for a player we released. I sign those checks, {gm}. Run moves like that by me first.",
+        ),
+        (
+            "We're paying {owed} to players who don't play here anymore: {players}. I didn't sign off on any of it.",
+            "{players}, all released, and {owed} still on our books. Next time you call me first.",
+        ),
+    ),
+    "meddling": (
+        (
+            "You released {player}? Nobody ran that by me. I want a call before you cut a player that good.",
+            "{player} was one of our better players, and I had to read about his release in the paper. That's not how this works, {gm}.",
+            "Why is {player} gone? I'd have said no if you'd asked me. Next time, ask me.",
+        ),
+        (
+            "{players}, all gone. Nobody asked me about any of it. I want a say before you clear out the roster.",
+            "You released {players}, and I heard about it in the paper. I'd like a call before the next one, {gm}.",
+        ),
+    ),
+    "dead_money": (
+        (
+            "Releasing {player} leaves {owed} on our books for nothing. Money matters here, {gm}.",
+            "{owed} in dead money for {player}. I hope that was worth it.",
+        ),
+        (
+            "Releasing {players} leaves {owed} on our books for nothing. Money matters here, {gm}.",
+            "{owed} in dead money, for {players}. I hope that was worth it.",
+        ),
+    ),
+    "stars": (
+        (
+            "{player} was one of the few names people knew on this team. Why is he gone?",
+            "You let {player} go? People bought tickets to see him.",
+        ),
+        (
+            "{players}: names people knew, and all of them gone. Why?",
+            "You let {players} go? People bought tickets to see them.",
+        ),
+    ),
+    "stability": (
+        (
+            "Another player out the door. I'd like a roster I recognize.",
+            "First trades, now releases. Easy on the changes, {gm}.",
+        ),
+        (
+            "{players}, all out the door. I'd like a roster I recognize.",
+            "That's a lot of players released at once, {gm}. Easy on the changes.",
+        ),
+    ),
+}
+
+# A meddler refusing a release (Josh, 2026-11-11: meddling owners block
+# releasing B- or better players and icons). {player}: who the GM tried to
+# let go. Shown on the Release button's alert and kept in the owner's office.
+RELEASE_VETO = {
+    "icons": (
+        "No. {player} is this franchise, and he isn't going anywhere.",
+        "You're not releasing {player}. Not while I own this team.",
+    ),
+    "talent": (
+        "No. {player} stays. I'm not paying a player that good to play for someone else.",
+        "You're not releasing {player}, {gm}. Find another way.",
+        "Release {player}? Absolutely not. Talk to me before you try that again.",
+    ),
+}
+
+# A reaction to a winning or losing streak (the ones the news runs,
+# src/api/services/news/games.py), by how long it is. {n}: "Twelve".
+LOSING_STREAK = {
+    8: (
+        "{n} straight losses. What's the plan, {gm}?",
+        "We haven't won in over a week. I'm watching.",
+    ),
+    12: (
+        "{n} in a row. I'm not going to sit here and watch this much longer.",
+        "{n} straight. People are asking me what's going on, and I don't have an answer. Do you?",
+    ),
+    16: (
+        "{n} straight losses. This is an embarrassment to the franchise.",
+        "{n} in a row, {gm}. I'm running out of patience.",
+    ),
+}
+_STREAK_WORDS = {
+    8: "Eight",
+    9: "Nine",
+    10: "Ten",
+    11: "Eleven",
+    12: "Twelve",
+    13: "Thirteen",
+    14: "Fourteen",
+    15: "Fifteen",
+    16: "Sixteen",
+    17: "Seventeen",
+    18: "Eighteen",
+    19: "Nineteen",
+    20: "Twenty",
+}
+WINNING_STREAK = (
+    "{n} straight wins. Now that's what I like to see.",
+    "{n} in a row! Keep it going, {gm}.",
+)
+
 OVER_BUDGET = (
     "Payroll's at {payroll}. I gave you {budget} for players. I didn't sign off on that.",
     "We're over budget: {payroll} in payroll against the {budget} I gave you. Fix it.",
@@ -655,14 +783,21 @@ def _word(n: int) -> str:
     return _COUNTS[n].lower() if n < len(_COUNTS) else str(n)
 
 
-def _homegrown(f: dict) -> str:
+def _homegrown(f: dict, t: str = "bad") -> str:
     """How many of the 40-man roster the team drafted itself, against what
     most teams have: "Only two of our 39 players came through our own
-    draft. Most teams have about seven." """
+    draft. Most teams have about seven." t: the line's tone. "Only" is for
+    a real shortfall (a bad line); within a player or two of most teams it
+    says so instead of sounding short."""
     mine, n, avg = f["homegrown"], f["roster"], f.get("homegrown_avg")
     if not mine:
-        text = "Not one player on our 40-man roster came through our own draft."
-    elif avg is not None and mine < avg:
+        return "Not one player on our 40-man roster came through our own draft."
+    if avg is not None and abs(mine - avg) <= max(1, n // 20):
+        return (
+            f"{_word(mine).capitalize()} of our {n} players came through our own"
+            " draft, about what most teams have."
+        )
+    if avg is not None and mine < avg and t == "bad":
         text = f"Only {_word(mine)} of our {n} players came through our own draft."
     else:
         text = (
@@ -687,7 +822,7 @@ def _context(key: str, t: str, f: dict, fields: dict, used: set) -> str:
         return f"{_count(n, 'trade')} so far." if n else "No trades so far."
     if key == "homegrown" and f.get("roster") and "homegrown" not in used:
         used.add("homegrown")
-        return _homegrown(f)
+        return _homegrown(f, t)
     if key == "rivalry" and f.get("rival_record") and fields.get("rival"):
         verb = "went" if final else "are"
         return f"We {verb} {f['rival_record']} against the {fields['rival']}."
@@ -979,3 +1114,19 @@ def trade_reaction(key: str, fields: dict, rng: random.Random) -> str:
 
 def over_budget(fields: dict, rng: random.Random) -> str:
     return _pick(rng, OVER_BUDGET, fields)
+
+
+def release_reaction(key: str, fields: dict, several: bool, rng: random.Random) -> str:
+    return _pick(rng, RELEASE_REACTIONS[key][1 if several else 0], fields)
+
+
+def streak_reaction(won: bool, length: int, fields: dict, rng: random.Random) -> str:
+    n = {"n": _STREAK_WORDS.get(length, str(length))}
+    if won:
+        return _pick(rng, WINNING_STREAK, {**fields, **n})
+    mark = max(k for k in LOSING_STREAK if k <= length)
+    return _pick(rng, LOSING_STREAK[mark], {**fields, **n})
+
+
+def release_veto(icon: bool, fields: dict, rng: random.Random) -> str:
+    return _pick(rng, RELEASE_VETO["icons" if icon else "talent"], fields)

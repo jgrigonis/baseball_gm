@@ -763,11 +763,16 @@ function render() {
 }
 
 /* ── Phones: which list shows (the other column is hidden) ─────────────────── */
+// Phones show one column at a time. Remember which, so releasing farm
+// players one after another (the tab reloads after each) stays on the
+// Organization list instead of jumping back to the 40-man.
 function showRosterCol(col) {
+  window._rosterCol = col;
   document.querySelectorAll('.roster-seg button').forEach(b => b.classList.toggle('on', b.dataset.col === col));
   document.querySelectorAll('.roster-col-wrap').forEach(w => w.classList.toggle('phone-off', w.dataset.col !== col));
 }
 window.showRosterCol = showRosterCol;
+if (window._rosterCol) showRosterCol(window._rosterCol);
 
 /* ── Commit helper (save + render + banner) ─────────────────────────────────── */
 function commit() {

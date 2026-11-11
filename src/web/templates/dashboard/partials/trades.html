@@ -58,6 +58,23 @@
             The <strong>{{ o.from_name }}</strong>{{ ai_gm(o.from_team_id) }} give {{ plist(o.sent) }}</div>
           <div>You give {{ plist(o.received) }}</div>
           {% if o.expires_on %}<div class="tr-reason">Expires after the games on {{ o.expires_on }}</div>{% endif %}
+          {% if o.caps %}
+          {# Both teams' payroll against the cap, now and after the trade. #}
+          <table class="tr-cap">
+            <thead><tr><th>Cap {{ budget.cap_text }}</th><th>Now</th><th>After</th></tr></thead>
+            <tbody>
+              {% for c in o.caps %}
+              <tr>
+                <td class="tr-cap-team">{{ c.name }}</td>
+                {% for side in (c.now, c.after) %}
+                <td><span class="tr-cap-pay">{{ side.payroll_text }}</span>
+                  <span class="{{ 'tr-cap-over' if side.over else 'tr-cap-under' }}">{{ side.room_text }}</span>{% if side.tax_text %}<span class="tr-cap-tax">{{ side.tax_text }} tax</span>{% endif %}</td>
+                {% endfor %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% endif %}
           {% if o.budget_warning %}<div class="tr-reason tr-budget">{{ o.budget_warning }}</div>{% endif %}
         </div>
         <div class="tr-offer-btns">
@@ -97,10 +114,11 @@
 
   {% if trade_window.open %}
   <div class="trade-note">
-    Traded players join your organization, not your 40-man. Your 40-man has
-    <strong id="tr-playing">{{ my_playing_count }}</strong> players
-    ({{ min_roster }} to {{ max_roster }} allowed). If it's under {{ min_roster }}
-    before your next game, your best healthy players are called up for you.
+    Players you trade for land in your organization. Move them to your 40-man on the Roster tab to use them.
+    {% if my_playing_count < min_roster %}
+    <br>Your 40-man is down to <strong>{{ my_playing_count }}</strong> (minimum {{ min_roster }}).
+    Your best healthy players will be called up before your next game.
+    {% endif %}
   </div>
 
   {# Shop a player: every AI team's best offer for him at once
@@ -695,6 +713,9 @@ window.trShop = function(pid) {
   pid = sel.value;
   if (!pid) return;
   window._shopPlayer = null;
+  // Setting sel.value from the player card's Shop him skips its onchange,
+  // so turn Dump salary on here too.
+  document.getElementById('tr-dump-btn').disabled = false;
   btn.disabled = true;
   btn.textContent = 'Asking around…';
   var el = document.getElementById('tr-shop-results');
@@ -738,18 +759,42 @@ var DUMP = null;  // the last dump: {pid, player, salary_text, offers, why}
 var DUMP_WHY = [
   ['pay', 'No room in their budget for his salary'],
   ['price', 'Wouldn\'t take him for anything you could add'],
+  ['more', 'Would only send back someone paid as much or more'],
   ['traded', 'Traded him away this season'],
 ];
+
+// What the trade does to your payroll this season (trade_shop._payroll_effects).
+// A farm throw-in's deal (not guaranteed) counts once he's on your 40-man.
+function dumpSavedLine(o) {
+  var line, cls = 'tr-dump-saved';
+  if (o.saved > 0) line = 'Saves you ' + esc(o.saved_text) + ' in payroll this season';
+  else if (o.saved < 0) { line = 'Adds ' + esc(o.saved_text) + ' to your payroll this season'; cls += ' tr-dump-adds'; }
+  else line = 'Doesn\'t change your payroll this season';
+  var html = '<div class="' + cls + '">' + line + '</div>';
+  if (o.unguaranteed > 0) {
+    var p = o.players[0];
+    var who = o.players.length === 1 && p ? esc((p.first_name + ' ' + p.last_name).trim()) + '\'s' : 'Their';
+    html += '<div class="tr-dump-note">' + who + ' ' + esc(o.unguaranteed_text) +
+      ' deal isn\'t guaranteed yet: he\'s a farm player, so it counts only once you put him on your 40-man.</div>';
+  }
+  return html;
+}
 
 function renderDump() {
   var el = document.getElementById('tr-shop-results');
   if (!DUMP) { el.innerHTML = ''; return; }
+  if (DUMP.guaranteed === false) {
+    // Not guaranteed: no salary to dump (trade_shop.dump).
+    el.innerHTML = '<div class="tr-empty">' + esc(DUMP.player) + '\'s deal isn\'t guaranteed yet: he hasn\'t played a game on your 40-man. ' +
+      'Send him to the minors or release him and it costs you nothing, no trade needed.</div>';
+    return;
+  }
   var html = '<div class="tr-shop-close-head">Who would take ' + esc(DUMP.player) +
-    (DUMP.salary ? ' (' + esc(DUMP.salary_text) + ' this season)' : '') +
+    ' (' + esc(DUMP.salary_text) + ' this season)' +
     ' off your hands. Each sends back one cheap player, since every trade needs someone going each way. ' +
     'Teams that take him alone come first, then those that want a sweetener, the cheapest one for you first.</div>';
   if (!DUMP.offers.length)
-    html += '<div class="tr-empty">No AI team would take ' + esc(DUMP.player) + ' today.</div>';
+    html += '<div class="tr-empty">No AI team would take ' + esc(DUMP.player) + '\'s salary off your books today.</div>';
   DUMP.offers.forEach(function(o, i) {
     html += '<div class="tr-offer tr-shop-offer">' +
       '<div class="tr-offer-text">' +
@@ -758,9 +803,10 @@ function renderDump() {
           roomText(o) + '</div>' +
         (o.adds.length ? '<div class="tr-dump-label">If you add</div>' + o.adds.map(shopRow).join('') : '') +
         '<div class="tr-dump-label">They send back</div>' + o.players.map(shopRow).join('') +
-        '<div class="tr-dump-saved">' + (o.saved > 0 ? 'Saves you ' + esc(o.saved_text) + ' in payroll this season' : 'Doesn\'t lower your payroll: he isn\'t on it') + '</div>' +
+        dumpSavedLine(o) +
       '</div>' +
       '<div class="tr-offer-btns">' +
+        '<button class="btn btn-secondary" title="Compare the players side by side" onclick="trDumpCompare(' + i + ')">Compare ↔</button>' +
         '<button class="btn btn-secondary" title="Open it in the builder to change it" onclick="trDumpTweak(' + i + ')">Tweak</button>' +
         '<button class="btn btn-primary" onclick="trDumpTake(' + i + ')">Make this trade</button>' +
       '</div>' +
@@ -788,7 +834,7 @@ window.trDump = function() {
     var ok = res[0], d = res[1];
     btn.disabled = false; btn.textContent = 'Dump salary';
     if (!ok) { DUMP = null; saveShop(); el.innerHTML = '<div class="tr-empty">✗ ' + esc(d.detail || 'Something went wrong.') + '</div>'; return; }
-    DUMP = {pid: pid, player: d.player, salary: d.salary, salary_text: d.salary_text, offers: d.offers, why: d.why || {}};
+    DUMP = {pid: pid, player: d.player, salary: d.salary, salary_text: d.salary_text, guaranteed: d.guaranteed, offers: d.offers, why: d.why || {}};
     saveShop(d.stamp);
     renderDump();
   }).catch(function() {
@@ -833,6 +879,13 @@ window.trShopTweak = function(i) {
   render('mine');
   trLoadTeam(o.team_id, o.give);
   document.getElementById('tr-bar').scrollIntoView({behavior: 'smooth', block: 'center'});
+};
+
+// Compare a dump offer: their throw-in against your player and any sweetener.
+window.trDumpCompare = function(i) {
+  var o = DUMP && DUMP.offers[i];
+  if (!o) return;
+  compareTrade(o.players.map(function(p) { return p.player_id; }), [DUMP.pid].concat(o.add));
 };
 
 // Open a dump offer in the builder: your player and any sweetener, their throw-in.
@@ -918,6 +971,15 @@ if (done) { showResult(done.msg, done.kind, done.dest); window._tradeResult = nu
 #trades-page .tr-offer:last-child { border-bottom: none; }
 #trades-page .tr-offer-text { flex: 1; min-width: 0; line-height: 1.6; }
 #trades-page .tr-offer-text a { color: var(--sky); text-decoration: none; }
+#trades-page .tr-cap { border-collapse: collapse; margin: 6px 0 2px; font-size: 11px; line-height: 1.35; }
+#trades-page .tr-cap th { font-family: var(--font-mono); font-size: 10px; font-weight: normal; color: var(--text-dim);
+  text-transform: uppercase; text-align: left; padding: 0 14px 2px 0; white-space: nowrap; }
+#trades-page .tr-cap td { padding: 3px 14px 3px 0; vertical-align: top; border-top: 1px solid var(--border); }
+#trades-page .tr-cap-team { font-weight: 600; max-width: 180px; }
+#trades-page .tr-cap-pay { font-family: var(--font-mono); margin-right: 6px; }
+#trades-page .tr-cap-under { color: var(--green); white-space: nowrap; }
+#trades-page .tr-cap-over { color: var(--red); white-space: nowrap; }
+#trades-page .tr-cap-tax { display: block; color: var(--text-dim); white-space: nowrap; }
 #trades-page .tr-offer-btns { display: flex; flex-wrap: wrap; gap: 6px; flex: none; }
 #trades-page .tr-offer-btns .btn { font-size: 11px; padding: 4px 10px; }
 #trades-page .tr-tag { font-family: var(--font-mono); font-size: 10px; color: var(--amber); border: 1px solid var(--amber-dim);
@@ -937,6 +999,8 @@ if (done) { showResult(done.msg, done.kind, done.dest); window._tradeResult = nu
 #trades-page .tr-room { color: var(--text-dim); font-size: 11px; }
 #trades-page .tr-dump-label { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
 #trades-page .tr-dump-saved { font-size: 12px; color: var(--green, var(--text)); margin-top: 4px; }
+#trades-page .tr-dump-saved.tr-dump-adds { color: var(--red); }
+#trades-page .tr-dump-note { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
 #trades-page .tr-link { background: none; border: none; padding: 0; color: var(--sky); cursor: pointer;
   font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; }
 @media (max-width: 760px) {
@@ -944,5 +1008,8 @@ if (done) { showResult(done.msg, done.kind, done.dest); window._tradeResult = nu
   #trades-page .trade-bar { flex-direction: column; align-items: stretch; }
   #trades-page .tr-offer { flex-direction: column; align-items: stretch; }
   #trades-page .tr-hint { margin-left: 0; }
+  #trades-page .tr-cap { width: 100%; }
+  #trades-page .tr-cap td { padding-right: 8px; }
+  #trades-page .tr-cap-pay { display: block; margin-right: 0; }
 }
 </style>

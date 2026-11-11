@@ -1037,9 +1037,14 @@ def execute(
         _clear_roles(conn, from_team, season_id, players, effective_date)
 
     gm_repo = GMRepository(conn)
-    for team_id in (team_a, team_b):
-        if not gm_repo.get_human_gm_for_team(league_id, team_id):
+    for team_id, gets in ((team_a, give_b), (team_b, give_a)):
+        gm_id = gm_repo.get_human_gm_for_team(league_id, team_id)
+        if not gm_id:
             _replan_ai_team(conn, league_id, season_id, team_id, effective_date)
+        elif any(not draft_picks.parse(i) for i in gets):
+            # The players they got wait in the organization: the next-move
+            # button sends the GM to the Roster tab (services/next_move).
+            gm_repo.mark_trade_roster_due(gm_id, season_id)
 
     trade_repo = TradeRepository(conn)
     for offer_id in trade_repo.open_offers_with_players(league_id, give_a + give_b):

@@ -102,7 +102,8 @@ def test_a_claim_takes_over_his_whole_deal(lg):
     assert waivers.after_day(lg.db, lg.league.id, GAME_DAYS[0]) == 0  # not yet
     assert waivers.after_day(lg.db, lg.league.id, GAME_DAYS[1]) == 1
 
-    assert lg.status.get_status(pid) == "minors"
+    # An AI claimer puts him on its roster rather than leaving him down.
+    assert lg.status.get_status(pid) in ("26man", "40man")
     assert pid in PlayerRepository(lg.db).get_player_ids_from_team_players(lg.good.id)
     now = lg.contracts.active(pid, 2026)
     assert (now["id"], now["team_id"]) == (deal["id"], lg.good.id)
@@ -212,3 +213,149 @@ def test_the_release_preview_says_when_he_goes_on_waivers(lg, client):
     base = f"/leagues/{lg.league.id}/players"
     assert client.get(f"{base}/{up}/release").json()["waivers"] is True
     assert client.get(f"{base}/{down}/release").json()["waivers"] is False
+
+
+# ── News (Josh, 2026-11-11: "I don't even know who got him") ─────────────────
+
+
+def _stories(lg, prefix):
+    rows = lg.db.execute(
+        """SELECT headline, body, team_ids, player_ids FROM league_news
+           WHERE league_id = %s AND key LIKE %s ORDER BY id""",
+        (lg.league.id, prefix + "%"),
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def test_a_claim_of_a_persons_released_player_makes_the_news(lg):
+    pid = _released(lg)
+    assert len(_stories(lg, "fa-release:")) == 1
+    for t in (lg.good, lg.bad):
+        waivers.claim(lg.db, lg.league.id, t.id, pid, 2026)
+    waivers.after_day(lg.db, lg.league.id, GAME_DAYS[1])
+    [story] = _stories(lg, "fa-claim:")
+    assert "claim" in story["headline"] and "off waivers" in story["headline"]
+    assert "1 other team put in a claim" in story["body"]
+    assert lg.mine.id in story["team_ids"] and pid in story["player_ids"]
+
+
+def test_nobody_claiming_a_persons_player_makes_the_news(lg):
+    _released(lg)
+    waivers.after_day(lg.db, lg.league.id, GAME_DAYS[1])
+    [story] = _stories(lg, "fa-cleared:")
+    assert "clears waivers" in story["headline"]
+    assert "free agent" in story["body"]
+
+
+def test_signing_a_persons_released_player_makes_the_news(lg):
+    pid = _released(lg)
+    waivers.after_day(lg.db, lg.league.id, GAME_DAYS[1])
+    free_agents.sign(lg.db, lg.league.id, lg.good.id, pid)
+    [story] = _stories(lg, "fa-sign-now:")
+    assert "sign free agent" in story["headline"]
+    assert "released him" in story["body"]
+    assert set(story["team_ids"]) == {lg.good.id, lg.mine.id}
+
+
+def test_a_person_claiming_keeps_him_in_the_minors(lg):
+    pid = _released(lg, team=lg.good)
+    waivers.claim(lg.db, lg.league.id, lg.mine.id, pid, 2026)
+    waivers.after_day(lg.db, lg.league.id, GAME_DAYS[1])
+    assert lg.status.get_status(pid) == "minors"
+
+
+def test_a_fringe_ai_release_stays_out_of_the_news(lg, monkeypatch):
+    from src.api.services.news import moves
+
+    monkeypatch.setattr(moves, "shown_grade", lambda p: "D")
+    pid = _released(lg, team=lg.good)
+    waivers.after_day(lg.db, lg.league.id, GAME_DAYS[1])
+    assert waivers.on_waivers(lg.db, pid) is None
+    assert _stories(lg, "fa-") == []
+
+
+def test_other_people_hear_when_a_person_releases_a_good_player(lg, monkeypatch):
+    from src.api.services.injury_news import take_injury_news
+    from src.api.services.news import moves
+
+    monkeypatch.setattr(moves, "shown_grade", lambda p: "B+")
+    lg.db.execute(
+        "UPDATE gms SET is_ai = false WHERE league_id = %s AND team_id = %s",
+        (lg.league.id, lg.bad.id),
+    )
+    other = lg.db.execute(
+        "SELECT id FROM gms WHERE league_id = %s AND team_id = %s",
+        (lg.league.id, lg.bad.id),
+    ).fetchone()["id"]
+    _released(lg)
+    [note] = take_injury_news(lg.db, other)["waivers"]
+    assert "B+" in note["text"] and "on waivers until after the games" in note["text"]
+    assert note["text"].startswith("The My Team released ")
+    assert "their B+ " in note["text"]
+    assert take_injury_news(lg.db, lg.gm.id)["waivers"] == []
+
+
+def test_nobody_hears_about_a_fringe_release(lg, monkeypatch):
+    from src.api.services.injury_news import take_injury_news
+    from src.api.services.news import moves
+
+    monkeypatch.setattr(moves, "shown_grade", lambda p: "C")
+    lg.db.execute(
+        "UPDATE gms SET is_ai = false WHERE league_id = %s AND team_id = %s",
+        (lg.league.id, lg.bad.id),
+    )
+    other = lg.db.execute(
+        "SELECT id FROM gms WHERE league_id = %s AND team_id = %s",
+        (lg.league.id, lg.bad.id),
+    ).fetchone()["id"]
+    _released(lg)
+    assert take_injury_news(lg.db, other)["waivers"] == []
+
+
+def test_move_stories_read_as_sentences(lg, monkeypatch):
+    from src.api.services.news import moves
+    from src.api.services.news.names import plain
+
+    monkeypatch.setattr(moves, "shown_grade", lambda p: "B")
+    pid = _released(lg)
+    waivers.claim(lg.db, lg.league.id, lg.good.id, pid, 2026)
+    waivers.after_day(lg.db, lg.league.id, GAME_DAYS[1])
+    [rel] = _stories(lg, "fa-release:")
+    [claim] = _stories(lg, "fa-claim:")
+    assert plain(rel["headline"]).startswith("Team release ")
+    assert plain(rel["body"]).startswith("The My Team let go of ")
+    assert "-year-old B first baseman making $" in plain(rel["body"])
+    assert plain(claim["headline"]).startswith("Club claim ")
+    assert "B first baseman the My Team released." in plain(claim["body"])
+    for s in (rel, claim):
+        assert "GM " not in plain(s["headline"] + s["body"])
+
+
+def test_a_story_tags_each_team_once(lg, monkeypatch):
+    from src.api.services.news import moves
+    from src.player import contracts as ct
+
+    monkeypatch.setattr(moves, "shown_grade", lambda p: "B")
+    p = PlayerRepository(lg.db).look_up(_released(lg))
+    season_id = lg.season.id
+    moves.signed(
+        lg.db,
+        lg.league.id,
+        season_id,
+        p,
+        lg.mine.id,
+        ct.Deal(1, 1, "standard"),
+        lg.mine.id,
+    )
+    [story] = _stories(lg, "fa-sign-now:")
+    assert story["team_ids"] == [lg.mine.id]
+
+
+def test_a_guaranteed_player_sent_down_still_goes_on_waivers(lg):
+    pid = lg.factory.rated_player(lg.mine, lg.league, level=65).id
+    lg.contracts.sign_unsigned(lg.league.id, 2026)
+    lg.contracts.guarantee_teams([lg.mine.id])
+    lg.status.set_status(pid, "minors")
+    assert free_agents.release_preview(lg.db, lg.league.id, lg.mine.id, pid)["waivers"]
+    free_agents.release(lg.db, lg.league.id, lg.mine.id, pid)
+    assert waivers.on_waivers(lg.db, pid)["from_team_id"] == lg.mine.id

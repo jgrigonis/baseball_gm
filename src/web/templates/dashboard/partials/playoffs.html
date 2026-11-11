@@ -266,6 +266,8 @@ async function _simPlayoffsRun(mode) {
   var fb = document.getElementById('po-feedback');
   var multi = mode !== 'game';
   window._simStop = false;
+  // A new run: the sim card's news starts fresh.
+  if (window.simCard) window.simCard.newRun();
   if (multi && window.schedSetSimMode) window.schedSetSimMode(true);
   else window.nextMoveBusy('po-day-btn', 'Simming…');
   var days = 0, games = 0, startRound = null, champion = null, stopped = false, fired = false;
@@ -290,6 +292,16 @@ async function _simPlayoffsRun(mode) {
         if (dateEl) dateEl.textContent = d.current_date;
       }
       showInjuryNews(d);
+      // The sim card's bar, in series wins (sim_playoff._round_progress):
+      // the round under way for Sim Round, every round for Full Playoffs.
+      if (multi && d.progress && window.simCard) {
+        var rounds = mode === 'round'
+          ? d.progress.filter(function (r) { return r.name === startRound; })
+          : d.progress;
+        var done = 0, need = 0;
+        rounds.forEach(function (r) { done += r.done; need += r.need; });
+        if (need) window.simCard.progress(done, need);
+      }
 
       // Redraw the open tab (the bracket, or whichever live tab the GM went
       // to) in place, so the day's dots appear.

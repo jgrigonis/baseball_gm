@@ -243,7 +243,7 @@ def claim_off_waivers(
 ):
     year = ContractRepository(db).current_year(league_id)
     try:
-        with league_lock(db, league_id):
+        with league_lock(db, league_id, wait=free_agents.MOVE_WAIT):
             result = waivers.claim(db, league_id, gm["team_id"], player_id, year)
             db.commit()
     except waivers.WaiverError as e:
@@ -255,7 +255,7 @@ def claim_off_waivers(
 def withdraw_claim(
     league_id: str, player_id: str, db: DB, gm: GM, _active: ActiveLeague
 ):
-    with league_lock(db, league_id):
+    with league_lock(db, league_id, wait=free_agents.MOVE_WAIT):
         waivers.withdraw(db, league_id, gm["team_id"], player_id)
         db.commit()
     return JSONResponse({"ok": True})
@@ -268,15 +268,26 @@ def release_preview(league_id: str, player_id: str, db: DB, gm: GM):
         cost = free_agents.release_preview(db, league_id, gm["team_id"], player_id)
     except free_agents.FreeAgentError as e:
         return JSONResponse({"detail": str(e)}, status_code=422)
+    if cost["vetoed"]:
+        db.commit()  # the owner's refusal, kept in their office
     return JSONResponse(cost)
 
 
 @router.post("/leagues/{league_id}/players/{player_id}/release")
 def release_player(
-    league_id: str, player_id: str, db: DB, gm: GM, _active: ActiveLeague
+    league_id: str,
+    player_id: str,
+    db: DB,
+    gm: GM,
+    _active: ActiveLeague,
+    free: bool = False,
 ):
     try:
-        result = free_agents.release(db, league_id, gm["team_id"], player_id)
+        result = free_agents.release(db, league_id, gm["team_id"], player_id, free=free)
+    except free_agents.NowGuaranteed as e:
+        return JSONResponse({"detail": str(e), "now_guaranteed": True}, status_code=409)
+    except free_agents.OwnerVeto as e:
+        return JSONResponse({"detail": str(e), "vetoed": True}, status_code=409)
     except free_agents.FreeAgentError as e:
         return JSONResponse({"detail": str(e)}, status_code=422)
     return JSONResponse(result)

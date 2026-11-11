@@ -314,6 +314,7 @@ CREATE TABLE IF NOT EXISTS gms (
     summary_seen_season_id TEXT,          -- season whose summary they last opened (migration 101)
     roster_seen_season_id TEXT,           -- season whose preseason they opened the Roster tab in (migration 112)
     lineup_seen_season_id TEXT,           -- season whose preseason they opened the Lineup tab in (migration 112)
+    trade_roster_season_id TEXT,          -- season of a trade that brought them players; cleared on the Roster tab (migration 114)
     roster_saved_at TIMESTAMPTZ,          -- first roster save; ends the getting-started bar
     lobby_city     TEXT,                  -- lobby: the team they'll run, by name (migration 042)
     lobby_mascot   TEXT,
@@ -335,7 +336,7 @@ CREATE TABLE IF NOT EXISTS gms (
 CREATE TABLE IF NOT EXISTS gm_notifications (
     id         SERIAL PRIMARY KEY,
     gm_id      TEXT NOT NULL,
-    kind       TEXT NOT NULL CHECK (kind IN ('injury', 'returned', 'roster', 'trade', 'rust', 'settings')),
+    kind       TEXT NOT NULL CHECK (kind IN ('injury', 'returned', 'roster', 'trade', 'rust', 'settings', 'waivers')),
     payload    JSONB NOT NULL,
     created_at TEXT NOT NULL DEFAULT (NOW()),
     seen_at    TEXT,                  -- NULL until shown to the GM
@@ -770,6 +771,8 @@ CREATE TABLE IF NOT EXISTS games (
     innings_played INTEGER,
     line_score JSONB,                 -- runs by inning, away and home
     winner_id TEXT,
+    attendance INTEGER,               -- the crowd (src/league/finances.py crowd; migration 116), NULL without budgets
+    crowd_expected INTEGER,           -- the crowd the home fans were expected to bring, before the park's seats
     created_at TEXT DEFAULT (NOW()),
     updated_at TEXT,
 
@@ -937,7 +940,8 @@ CREATE TABLE IF NOT EXISTS gm_profiles (
 
     -- Batting tendencies
     lineup_style     TEXT NOT NULL DEFAULT 'traditional'
-                         CHECK (lineup_style     IN ('traditional', 'analytics', 'speed-first', 'power-first')),
+                         CHECK (lineup_style     IN ('traditional', 'analytics', 'speed-first', 'power-first',
+                                                'defensive')),
     -- Replaced by baserunning (migration 023); no longer read.
     steal_aggression TEXT NOT NULL DEFAULT 'standard'
                          CHECK (steal_aggression IN ('conservative', 'standard', 'aggressive')),
@@ -1712,6 +1716,13 @@ CREATE TABLE IF NOT EXISTS team_budgets (     -- migration 074 (src/league/budge
     budget_seen BOOLEAN,                      -- the GM opened the Budget tab between seasons, before it locked (migration 102)
     fans_before INTEGER,                      -- fan interest coming into the season (0-100)
     fans_after  INTEGER,                      -- and after it
+    attendance  BIGINT,                       -- home crowds, set when the season ends (migration 116)
+    crowd_games INTEGER,                      -- home games that had a crowd
+    crowd_expected BIGINT,                    -- what those games were expected to draw, before the park's seats
+    crowd_in_park BIGINT,                     -- and capped at them
+    capacity    INTEGER,                      -- seats in the park that season
+    sellouts    INTEGER,
+    crowd_revenue BIGINT,                     -- what the crowds added to (or took off) ticket revenue
     PRIMARY KEY (league_id, team_id, year)
 );
 CREATE INDEX IF NOT EXISTS idx_team_budgets_team ON team_budgets(team_id);
@@ -1742,7 +1753,8 @@ CREATE TABLE IF NOT EXISTS ballpark_projects (
     year      INTEGER NOT NULL,             -- the season it opens (paid for just before)
     ordered   INTEGER,                      -- the season it was ordered, NULL the same as year (migration 108); paid a season at a time from then
     cost      BIGINT NOT NULL,              -- what the owner paid from their bank
-    PRIMARY KEY (league_id, team_id, project)
+    generation SMALLINT NOT NULL DEFAULT 1, -- which of the team's stadiums (a replacement is 2, 3...; migration 115)
+    PRIMARY KEY (league_id, team_id, project, generation)
 );
 CREATE INDEX IF NOT EXISTS idx_ballpark_projects_team ON ballpark_projects(team_id);
 -- league_price_levels: each season's contract price level (migration 110,

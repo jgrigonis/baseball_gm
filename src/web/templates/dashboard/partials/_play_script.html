@@ -8,20 +8,9 @@
 // Helpers that always look up fresh DOM refs
 function getBtn()  { return document.getElementById('sched-play-btn'); }
 function getStop() { return document.getElementById('sched-stop-btn'); }
-// oneLine: the running "Simming day N…" line stays on one line and is cut
-// short with "…" on a phone instead of wrapping; results can wrap.
-function setStatus(msg, color, oneLine) {
-  var bar  = document.getElementById('sim-status');
-  var text = document.getElementById('sim-status-text');
-  if (!bar || !text) return;
-  text.classList.toggle('sim-status-one-line', !!oneLine);
-  if (msg) {
-    text.textContent = msg;
-    bar.style.setProperty('display', 'flex', 'important');
-    if (color) { bar.style.background = color === 'red' ? 'var(--red-lo, #2e0a0a)' : 'var(--green-dim)'; bar.style.borderColor = color === 'red' ? 'var(--red)' : 'var(--green-mid)'; text.style.color = color === 'red' ? 'var(--red)' : 'var(--green)'; }
-  } else {
-    bar.style.display = 'none';
-  }
+// The sim's line goes in the sim card (shell.html simCard).
+function setStatus(msg, color) {
+  if (window.simCardStatus) window.simCardStatus(msg, color);
 }
 
 
@@ -29,6 +18,7 @@ function setSimMode(simming) {
   // The top bar's next-move button turns into Stop while a sim runs.
   var nm = document.getElementById('next-move');
   if (nm) nm.classList.toggle('nm-simming', simming);
+  if (window.simCard) window.simCard.running(simming);
   var stop = getStop();
   if (stop) stop.textContent = '■ Stop';
   // A run that ignores trades is over: offers pop up again.
@@ -92,20 +82,25 @@ window.schedSetThroughBreak = schedSetThroughBreak;
 // Full Season's note says where it will stop: the first of the season's
 // stops (next_move.sim_stops) that the boxes above don't skip.
 var ALL_STAR_STOPS = ['vote', 'stars', 'weekend'];
-function schedUpdateStops() {
+// The first stop a Full Season run will reach, or null.
+function schedNextStop() {
   var item = document.getElementById('sched-season-btn');
-  var note = item && item.querySelector('.nm-note');
-  if (!note || !item.dataset.stops) return;
+  if (!item || !item.dataset.stops) return null;
   var skipStars = !!document.getElementById('sched-stop-allstar-box') && schedThroughBreak();
   var skipDeadline = !!document.getElementById('sched-stop-deadline-box') && !schedStopDeadline();
   var stops = [];
-  try { stops = JSON.parse(item.dataset.stops); } catch (e) { return; }
-  var next = stops.find(function(s) {
+  try { stops = JSON.parse(item.dataset.stops); } catch (e) { return null; }
+  return stops.find(function(s) {
     if (skipStars && ALL_STAR_STOPS.indexOf(s.kind) >= 0) return false;
     if (skipDeadline && s.kind === 'deadline') return false;
     return true;
-  });
-  if (next) note.textContent = next.note;
+  }) || null;
+}
+function schedUpdateStops() {
+  var item = document.getElementById('sched-season-btn');
+  var note = item && item.querySelector('.nm-note');
+  var next = schedNextStop();
+  if (note && next) note.textContent = next.note;
 }
 // The boxes start as this browser left them (and again whenever the
 // next-move button reloads: refreshNextMove calls this).
@@ -121,17 +116,15 @@ function schedSyncBoxes() {
 window.schedSyncBoxes = schedSyncBoxes;
 schedSyncBoxes();
 
-// The GM's own team over a run, for the line under the sim buttons: the
-// run's record, the season record, the standing, the playoff race late on,
+// The GM's own team over a run, for the sim card's line: the season
+// record, the standing, the playoff race late on,
 // and the run's biggest story about the team (src/api/services/sim_summary.py).
 function newRunSummary() {
-  return {w: 0, l: 0, last: null, story: null, injury: null};
+  return {last: null, story: null, injury: null};
 }
 function addToRun(run, d) {
   var t = d.my_team;
   if (t && t.wins !== undefined) {
-    run.w += t.day_wins || 0;
-    run.l += t.day_losses || 0;
     run.last = t;
     // The biggest story wins; a later one wins a tie.
     if (t.story && (!run.story || t.story.weight >= run.story.weight)) run.story = t.story;
@@ -141,12 +134,12 @@ function addToRun(run, d) {
     if (i.days >= 10 && (!run.injury || i.days > run.injury.days)) run.injury = i;
   });
 }
-// "3-1 (42-31) · 1st in East by 2.5", plus the race and games left late on.
+// "42W-31L · 1st in East by 2.5": the season record (not the run's), plus
+// the race and games left late on.
 function runRecordText(run) {
   var t = run.last;
   if (!t) return '';
-  var span = run.w + run.l ? run.w + '-' + run.l : 'Off';
-  var parts = [span + ' (' + t.wins + '-' + t.losses + ')', t.standing];
+  var parts = [t.wins + 'W-' + t.losses + 'L', t.standing];
   if (t.race) parts.push(t.race);
   if (t.games_left > 0 && t.games_left <= 20) parts.push(t.games_left + (t.games_left === 1 ? ' game left' : ' games left'));
   return parts.join(' · ');
@@ -160,6 +153,8 @@ function runNotable(run) {
 
 async function schedSimRun(count) {
   window._simStop = false;
+  // A new run: the sim card's news starts fresh.
+  if (window.simCard) window.simCard.newRun();
   setSimMode(count !== 1);
   // Only multi-day runs skip trade stops; a single day stops anyway.
   var multi = count !== 1;
@@ -172,13 +167,32 @@ async function schedSimRun(count) {
   // Multi-day runs can also play straight through the All-Star break.
   var throughBreak = count !== 1 && !!document.getElementById('sched-stop-allstar-box') && schedThroughBreak();
   var weekendPlayed = false;
+  // A Full Season run fills the sim card's bar by the calendar, from today
+  // to the stop it's headed for (next_move.sim_stops), when it won't stop
+  // for trade offers, which can't be known ahead (Josh, 2026-11-10). Past
+  // the deadline there are no offers: the menu drops the box, and a run
+  // that plays through deadline day starts its bar the day after. Other
+  // runs end when something happens, so they have no bar.
+  var barFrom = null, barTo = null;
+  var offersStop = !!document.getElementById('sched-stop-offers-box') && schedStopOffers();
+  function startBar(fromDate) {
+    var stop = schedNextStop();
+    if (!stop || !stop.date || !fromDate) return;
+    barFrom = Date.parse(fromDate);
+    barTo = Date.parse(stop.date);
+    if (!(barTo > barFrom)) barFrom = barTo = null;
+  }
+  if (count === 'season' && !offersStop) {
+    var today = document.querySelector('.topbar-date');
+    if (today) startBar(today.textContent.trim());
+  }
 
   var totalGames = 0;
   var remaining  = null;
   var daysSimmed = 0;
   var run = newRunSummary();
 
-  // "Simming day 94… · 3-1 (42-31) · 1st in East by 2.5": the day being
+  // "Simming day 94… · 42W-31L · 1st in East by 2.5": the day being
   // played, with the team's line through the last finished day (none yet
   // on day 1). One line, so nothing flashes between two messages.
   function simmingText() {
@@ -189,7 +203,7 @@ async function schedSimRun(count) {
   }
 
   while (!window._simStop) {
-    setStatus(simmingText(), null, true);
+    setStatus(simmingText());
 
     try {
       var dayMsg = simmingText();
@@ -197,7 +211,7 @@ async function schedSimRun(count) {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({count: 1}),
-      }, function(job) { setStatus(leagueJobWaitingText(job) || dayMsg, null, true); });
+      }, function(job) { setStatus(leagueJobWaitingText(job) || dayMsg); });
       if (d.failed) { setStatus('✗ ' + (d.detail || 'Server error'), 'red'); break; }
       // The All-Star weekend was played instead of a day's games: off to
       // its results on the All-Star tab.
@@ -225,7 +239,9 @@ async function schedSimRun(count) {
 
       // On to the next day's line while the tab refreshes; a single day
       // keeps its line until the result.
-      if (multi) setStatus(simmingText(), null, true);
+      if (multi) setStatus(simmingText());
+      if (barFrom !== null && d.current_date && window.simCard)
+        window.simCard.progress(Date.parse(d.current_date) - barFrom, barTo - barFrom);
 
       var hasNews = showInjuryNews(d);
 
@@ -233,6 +249,8 @@ async function schedSimRun(count) {
       // (unless this run plays through it)
       var atDeadline = !skipDeadline && !!d.trade_deadline;
       if (atDeadline) window._simStop = true;
+      // Playing on past deadline day: no more offers, so the bar can start.
+      else if (count === 'season' && offersStop && barFrom === null && d.trade_deadline) startBar(d.current_date);
       // ...and the day a trade offer arrives (unless it plays on)
       var newOffer = !skipOffers && !!d.trade_offer;
       if (newOffer) window._simStop = true;

@@ -124,6 +124,19 @@ def test_an_opening_roster_player_who_leaves_in_free_agency(lg):
     ]
 
 
+def test_opening_day_is_the_first_real_season_not_the_backstory(lg):
+    # The league's made-up past seasons come before anyone signed.
+    old = lg.f.season(year=2017)
+    lg.db.execute("UPDATE seasons SET is_backstory = TRUE WHERE id = %s", (old.id,))
+    lg.f.league_season(lg.league, old)
+    pid = lg.f.rated_player(lg.a, lg.league).id
+    _deal(lg, pid, lg.a, "standard", 2026, 1, 2_000_000, "2026-01-01 00:00+00")
+
+    assert _texts(lg, pid) == [
+        (2026, "On the opening-day roster of the Conquistadors"),
+    ]
+
+
 def test_nothing_to_show_for_a_new_free_agent(lg):
     pid = lg.f.rated_player(lg.a, lg.league, status="free_agent").id
     assert _texts(lg, pid) == []

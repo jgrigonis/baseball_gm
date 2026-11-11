@@ -21,6 +21,7 @@ from __future__ import annotations
 from psycopg.types.json import Jsonb
 
 from src.api.services import icons
+from src.db.repositories.budget_repo import BudgetRepository
 from src.api.services import owners as owner_service
 from src.league import budget as bg
 from src.league import finances as fn
@@ -210,11 +211,24 @@ def gather(
         r["team_id"]: dict(r)
         for r in conn.execute(
             """SELECT team_id, cap, budget, payroll, revenue, playoff_revenue,
-                      profit, fans_before, fans_after
+                      profit, fans_before, fans_after, attendance, crowd_games,
+                      crowd_in_park, capacity
                FROM team_budgets WHERE league_id = %s AND year = %s""",
             (league_id, year),
         ).fetchall()
     }
+    if any(m.get("crowd_games") is None for m in money.values()):
+        # The season's still on: its crowds so far.
+        live = BudgetRepository(conn).crowds(league_id, year)
+        for team_id, m in money.items():
+            c = live.get(team_id)
+            if m.get("crowd_games") is None and c:
+                m.update(
+                    attendance=c["attendance"],
+                    crowd_games=c["counted"],
+                    crowd_in_park=c["in_park"],
+                    capacity=c["capacity"],
+                )
     par = _profit_par(money)
     homegrown = _homegrown(conn, league_id, list(by_team))
     all_stars = _count(
@@ -242,6 +256,7 @@ def gather(
         (season_id, season_id),
     )
     lost_icons = _icons_lost(conn, league_id, season_id, year)
+    good_releases = _good_releases(conn, league_id, year)
     teams = list(by_team)
     share = {t: mine / n if n else 0.0 for t, (mine, n) in homegrown.items()}
     league_home = sum(share.get(t, 0.0) for t in teams) / max(1, len(teams))
@@ -276,6 +291,7 @@ def gather(
             profit_par=par.get(team_id),
             fans_before=m.get("fans_before"),
             fans_after=m.get("fans_after"),
+            crowd_score=_crowd_score(m),
             homegrown_share=share.get(team_id, 0.0),
             homegrown_players=homegrown.get(team_id, (0, 0))[0],
             roster_players=homegrown.get(team_id, (0, 0))[1],
@@ -285,10 +301,25 @@ def gather(
             award_winners=awards.get(team_id, 0),
             icons_lost=lost_icons.get(team_id, 0),
             trades=trades.get(team_id, 0),
+            releases=good_releases.get(team_id, 0),
             rival_wins=rw,
             rival_losses=rl,
         )
     return out
+
+
+# A season needs this many home crowds to be judged on them (a league that
+# picked crowds up mid-season reads fan interest, as before).
+CROWD_GAMES_TO_JUDGE = 20
+
+
+def _crowd_score(m: dict) -> float | None:
+    games = m.get("crowd_games") or 0
+    if games < CROWD_GAMES_TO_JUDGE or not m.get("capacity"):
+        return None
+    return fn.attendance_score(
+        m["attendance"] / games, (m["crowd_in_park"] or 0) / games, m["capacity"]
+    )
 
 
 def _profit_par(money: dict[str, dict]) -> dict[str, int]:
@@ -389,6 +420,28 @@ def _icons_lost(conn, league_id: str, season_id: str, year: int) -> dict[str, in
     out: dict[str, int] = {}
     for _, team_id in icons.find(conn, [(r["player_id"], r["team_id"]) for r in rows]):
         out[team_id] = out.get(team_id, 0) + 1
+    return out
+
+
+def _good_releases(conn, league_id: str, year: int) -> dict[str, int]:
+    """How many players each team released this season who were B- or
+    better (graded now): roster turnover, like trades."""
+    from src.api.grade_curves import GRADES
+    from src.api.services.news.moves import is_notable
+
+    rows = conn.execute(
+        """SELECT DISTINCT c.released_team_id AS team_id, c.player_id
+           FROM player_contracts c
+           WHERE c.league_id = %s AND c.released_year = %s
+             AND c.released_team_id IS NOT NULL""",
+        (league_id, year),
+    ).fetchall()
+    grades = icons._grades(conn, list({r["player_id"] for r in rows}))
+    out: dict[str, int] = {}
+    for r in rows:
+        g = grades.get(r["player_id"])
+        if g in GRADES and is_notable(g):
+            out[r["team_id"]] = out.get(r["team_id"], 0) + 1
     return out
 
 

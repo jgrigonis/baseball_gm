@@ -134,6 +134,46 @@ def room_text(room: int | None) -> str | None:
     return f"{format_salary(-room)} over the cap"
 
 
+def cap_side(payroll: int, cap: int) -> dict:
+    """One team's payroll against the cap, for an offer's cap table:
+    "$172M", "$8M under" or "$5M over", and the luxury tax that payroll
+    would owe."""
+    tax = bg.luxury_tax(payroll, cap)
+    return {
+        "payroll_text": format_salary(payroll),
+        "over": payroll > cap,
+        "room_text": (
+            f"{format_salary(payroll - cap)} over"
+            if payroll > cap
+            else f"{format_salary(cap - payroll)} under"
+        ),
+        "tax_text": format_salary(tax) if tax else None,
+    }
+
+
+def offer_caps(db, league_id: str, offer: dict, team_id: str, cap: int) -> list[dict]:
+    """Both teams' payroll against the cap now and after the offer (yours
+    first). Payrolls and the cap are public (the Budget tab's League
+    payrolls)."""
+    contracts = ContractRepository(db)
+    year = contracts.current_year(league_id)
+    mine = offer_pay_change(db, league_id, offer)
+    rows = []
+    for name, tid, change in (
+        ("You", team_id, mine),
+        (offer["from_name"], offer["from_team_id"], -mine),
+    ):
+        payroll = contracts.payroll(tid, year)
+        rows.append(
+            {
+                "name": name,
+                "now": cap_side(payroll, cap),
+                "after": cap_side(payroll + change, cap),
+            }
+        )
+    return rows
+
+
 @router.get("/leagues/{league_id}/trades", response_class=HTMLResponse)
 def trades_tab(
     request: Request,
@@ -184,6 +224,7 @@ def trades_tab(
                 standing["front_office"],
                 standing["minors"],
             )
+            o["caps"] = offer_caps(db, league_id, o, team_id, standing["cap"])
     my_players = (
         team_cards(db, league_id, season_id, team_id)
         + trades.pick_cards(db, dict(league), season_id, team_id)
@@ -380,7 +421,8 @@ def dump_player(
         }
         o["players"] = [cards[pid] for pid in o["give"] if pid in cards]
         o["adds"] = [mine[pid] for pid in o["add"] if pid in mine]
-        o["saved_text"] = format_salary(o["saved"])
+        o["saved_text"] = format_salary(abs(o["saved"]))
+        o["unguaranteed_text"] = format_salary(o["unguaranteed"])
         o["room_text"] = room_text(rooms.get(o["team_id"]))
         g = ai_gms.get(o["team_id"])
         o["gm_name"] = g["name"] if g else None

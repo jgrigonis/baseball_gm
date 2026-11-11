@@ -27,6 +27,12 @@
   .ow-msg-body { font-size:13px; line-height:1.6; color:var(--text); }
   .ow-new .ow-msg-body { color:var(--text); font-weight:600; }
   .ow-new-tag { color:var(--amber); font-weight:700; font-size:12px; letter-spacing:.08em; margin-left:2px; }
+  .ow-older { padding-top:12px; }
+  .ow-older > summary { list-style:none; display:inline-block; font-size:12px; }
+  .ow-older > summary::-webkit-details-marker { display:none; }
+  .ow-older[open] > summary { margin-bottom:4px; }
+  .ow-older .ow-older-hide, .ow-older[open] .ow-older-show { display:none; }
+  .ow-older[open] .ow-older-hide { display:inline; }
   .ow-guide { font-size:12px; line-height:1.8; color:var(--text-dim); }
   .ow-guide strong { color:var(--text); }
   @media (max-width: 640px) {
@@ -54,8 +60,8 @@
         {% if my_owner.bio %}<div class="ow-bio">“{{ my_owner.bio }}”</div>{% endif %}
         {% if my_owner.wants %}<div class="ow-line">{{ my_owner.wants }}</div>{% endif %}
         {% if my_budget %}<div class="ow-line">The league's {{ my_budget.year }} payroll cap is <strong>{{ my_budget.cap_text }}</strong>. It counts player payroll only, and it's a soft cap: you can go over it, and pay {{ (my_budget.tax_rate * 100) | round | int }}% luxury tax on the difference.</div>
-        <div class="ow-line">Your owner's budget is <strong>{{ my_budget.budget_text }}</strong> for total spending: player payroll plus the front office ({{ my_budget.front_office_text }}) and the minor leagues ({{ my_budget.minors_text }}).
-          {% if my_budget.payroll_budget > 0 %}That leaves <strong>{{ my_budget.payroll_budget_text }}</strong> for player payroll.{% else %}That leaves nothing for player payroll.{% endif %}
+        <div class="ow-line">Your owner's budget is <strong>{{ my_budget.budget_text }}</strong> for total spending: player payroll and its luxury tax, plus the front office ({{ my_budget.front_office_text }}) and the minor leagues ({{ my_budget.minors_text }}).
+          {% if my_budget.payroll_budget > 0 %}That leaves <strong>{{ my_budget.payroll_budget_text }}</strong> for player payroll, after the luxury tax on anything over the cap.{% else %}That leaves nothing for player payroll.{% endif %}
           Going past their budget risks their profit, and once total spending passes <strong>{{ my_budget.limit_text }}</strong> they won't sign off on moves that add money. The Budget tab has the details.</div>
         <div class="ow-line">Your payroll now: <strong>{{ my_budget.payroll_text }}</strong>{% if my_budget.over %}, <span class="ow-over">{{ my_budget.over_text }} over the cap ({{ my_budget.tax_text }} tax if it stays there)</span>{% elif my_budget.room_text %}, {{ my_budget.room_text }} under the cap{% endif %}{% if my_budget.over_budget %}, <span class="ow-over">{{ my_budget.over_budget_text }} past your owner's budget</span>{% endif %}.</div>{% endif %}
         {% if my_owner.rival %}<div class="ow-line">Can't stand losing to the {{ my_owner.rival }}.</div>{% endif %}
@@ -70,14 +76,21 @@
 <div class="card" style="margin-bottom:16px;">
   <div class="card-header"><span class="card-title">From the owner's office</span></div>
   <div class="card-body">
-    {% for m in office.messages %}
+    {% macro ow_msg(m) %}
     <div class="ow-msg {% if not m.seen_at %}ow-new{% endif %}">
-      <div class="ow-msg-head">{{ {'preseason':'Preseason memo','checkin':'Check-in','trade':'About that trade','budget':'Payroll','review':'Season review'}.get(m.kind, 'Note') }} · {{ m.year }}{% if m.created_on %} · {{ m.created_on[5:10] | replace('-', '/') }}{% endif %}{% if not m.seen_at %} <span class="ow-new-tag">new</span>{% endif %}</div>
+      <div class="ow-msg-head">{{ {'preseason':'Preseason memo','checkin':'Check-in','trade':'About that trade','budget':'Payroll','review':'Season review','release':'Releases','streak':'The streak','veto':'Release refused'}.get(m.kind, 'Note') }} · {{ m.year }}{% if m.created_on %} · {{ m.created_on[5:10] | replace('-', '/') }}{% endif %}{% if not m.seen_at %} <span class="ow-new-tag">new</span>{% endif %}</div>
       <div class="ow-msg-body">{{ m.body }}</div>
     </div>
-    {% else %}
+    {% endmacro %}
+    {% for m in office.messages %}{{ ow_msg(m) }}{% else %}
     <div class="admin-dim" style="font-size:12px;">Nothing yet. Your owner will write before Opening Day.</div>
     {% endfor %}
+    {% if office.older %}
+    <details class="ow-older">
+      <summary class="btn btn-secondary"><span class="ow-older-show">Older messages ({{ office.older | length }})</span><span class="ow-older-hide">Hide older messages</span></summary>
+      {% for m in office.older %}{{ ow_msg(m) }}{% endfor %}
+    </details>
+    {% endif %}
   </div>
 </div>
 {% endif %}

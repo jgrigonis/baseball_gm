@@ -39,6 +39,11 @@ def test_no_until_injury_or_trade_stops_when_the_league_has_neither():
     assert _menu(move) == ["▶▶ Full Season"] and not move["trade_stops"]
 
 
+def test_no_trade_stops_once_the_deadline_is_behind():
+    # No team can offer a trade then, so there's nothing to stop for.
+    assert not pick(_ctx(trades_closed=True), "roster")["trade_stops"]
+
+
 def test_preseason_plays_opening_day():
     move = pick(_ctx(league_state="preseason"), "draft")
     assert move["label"] == "▶ Play Opening Day" and move["short"] == "▶ Play Day"
@@ -153,6 +158,18 @@ def test_stops_ahead_in_date_order():
     assert _kinds(sim_stops("2026-04-01", "none", None, None)) == ["playoffs"]
 
 
+def test_stops_carry_their_dates_for_the_sim_card_bar():
+    stops = sim_stops("2026-04-01", "upcoming", _Win(), "2026-07-31", "2026-09-27")
+    assert [s["date"] for s in stops] == [
+        "2026-06-20",
+        "2026-07-05",
+        "2026-07-31",
+        "2026-09-27",
+    ]
+    # Without the season's end, the playoffs stop has no date (and no bar).
+    assert sim_stops("2026-04-01", "none")[-1]["date"] is None
+
+
 def test_full_season_names_its_next_stop():
     stops = sim_stops("2026-04-01", "upcoming", _Win(), "2026-07-31")
     move = pick(_ctx(), "roster", stops=stops)
@@ -225,3 +242,19 @@ def test_once_the_summary_is_seen_every_page_points_on_to_expiring_deals():
     # The pool is just a page on the way now: it points on to the deals.
     assert pick(ctx, "free-agents")["href"] == "/leagues/L1/expiring"
     assert pick(ctx, "expiring")["fn"] == "beginOffseason"
+
+
+def test_after_a_trade_the_roster_then_play_day():
+    # Josh, 2026-11-11: players traded for wait in the organization, so the
+    # button goes to the Roster tab; opening it clears the flag (web/utils).
+    move = pick(_ctx(trade_roster_due=True), "trades")
+    assert move["key"] == "trade-roster" and move["href"] == "/leagues/L1/roster"
+    assert pick(_ctx(trade_roster_due=True), "standings")["key"] == "trade-roster"
+    assert pick(_ctx(trade_roster_due=True), "roster")["label"] == "▶ Play Day"
+    assert pick(_ctx(), "trades")["label"] == "▶ Play Day"
+    move = pick(_ctx(league_state="preseason", trade_roster_due=True), "budget")
+    assert move["key"] == "trade-roster"
+    # Several GMs: the ready button stays, with a Roster pill beside it.
+    move = pick(_ctx(multiplayer=True, trade_roster_due=True), "trades")
+    assert move["key"] == "ready" and move["pill"]["href"] == "/leagues/L1/roster"
+    assert pick(_ctx(multiplayer=True, trade_roster_due=True), "roster")["pill"] is None

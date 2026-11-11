@@ -33,6 +33,7 @@ from __future__ import annotations
 
 from src.api.services import owners, personas, team_states, trades
 from src.db.locks import LeagueBusy, league_lock
+from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
@@ -302,11 +303,22 @@ def take(conn, league_id: str, gm: dict, player_id: str, team_id: str) -> dict:
 
 def dump(conn, league_id: str, gm: dict, player_id: str) -> dict:
     """What every AI team would take the GM's player's salary for:
-    {"player", "salary", "offers": [{team_id, team_name, give: [ids],
-    add: [ids], saved}], those that take him alone first (most saved
-    first), then by how little the sweetener costs the GM, "why": {reason:
-    [team names]}} (reasons: ai_proposer.NO_ROOM/NO_MATCH, TRADED_HIM)."""
+    {"player", "salary", "guaranteed", "offers": [{team_id, team_name,
+    give: [ids], add: [ids], saved, unguaranteed}], those that take him
+    alone first (most saved first), then by how little the sweetener costs
+    the GM, "why": {reason: [team names]}} (reasons: ai_proposer.NO_ROOM/
+    NO_SAVING/NO_MATCH, TRADED_HIM). A player whose deal isn't guaranteed
+    has no salary to dump: no offers, "guaranteed" False."""
     ctx = _Ctx(conn, league_id, gm, player_id)
+    if not _guaranteed(conn, ctx):
+        # Nothing to dump: sending him down or releasing him clears it free.
+        return {
+            "player": ctx.target.name,
+            "salary": ctx.target.salary,
+            "guaranteed": False,
+            "offers": [],
+            "why": {},
+        }
     ctx.seller_tradeable()
     offers, why = [], {}
     for t in ctx.ai_teams():
@@ -325,6 +337,7 @@ def dump(conn, league_id: str, gm: dict, player_id: str) -> dict:
                 "_cost": offer.cost,
             }
         )
+    _payroll_effects(conn, ctx, offers)
     offers.sort(key=lambda o: (bool(o["add"]), o["_cost"], -o["saved"]))
     for o in offers:
         del o["_cost"]
@@ -333,9 +346,46 @@ def dump(conn, league_id: str, gm: dict, player_id: str) -> dict:
     return {
         "player": ctx.target.name,
         "salary": ctx.target.salary,
+        "guaranteed": True,
         "offers": offers,
         "why": {k: sorted(v) for k, v in why.items()},
     }
+
+
+def _guaranteed(conn, ctx: _Ctx) -> bool:
+    """Whether the player's deal this season is guaranteed (he's played a
+    game on the 40-man under it). Only then is there salary to dump."""
+    year = trades._season_year(conn, ctx.season_id)
+    deal = ContractRepository(conn).active(ctx.player_id, year) if year else None
+    return bool(deal and deal["guaranteed"])
+
+
+def _payroll_effects(conn, ctx: _Ctx, offers: list[dict]) -> None:
+    """Set each dump offer's "saved": what it really does to the GM's
+    payroll this season: the guaranteed deals going out (the dumped player
+    and any sweetener; one not guaranteed comes off free anyway) less what
+    the throw-in adds to his team's now (a guaranteed deal or one on the
+    40-man). "unguaranteed": the deals of throw-ins not on a payroll now
+    (farm players), which count only once they're put on the 40-man."""
+    year = trades._season_year(conn, ctx.season_id)
+    ids = {ctx.player_id}
+    for o in offers:
+        ids.update(o["give"], o["add"])
+    deals = ContractRepository(conn).active_for(ids, year) if year else {}
+
+    def pay(pid, counts) -> int:
+        d = deals.get(pid)
+        return d["salary"] if d and d[counts] else 0
+
+    for o in offers:
+        out = sum(pay(pid, "guaranteed") for pid in [ctx.player_id] + o["add"])
+        held = sum(pay(pid, "on_payroll") for pid in o["give"])
+        o["saved"] = out - held
+        o["unguaranteed"] = sum(
+            deals[pid]["salary"]
+            for pid in o["give"]
+            if pid in deals and not deals[pid]["on_payroll"]
+        )
 
 
 def dump_take(conn, league_id: str, gm: dict, player_id: str, team_id: str) -> dict:
@@ -344,6 +394,10 @@ def dump_take(conn, league_id: str, gm: dict, player_id: str, team_id: str) -> d
     try:
         with league_lock(conn, league_id):
             ctx = _Ctx(conn, league_id, gm, player_id)
+            if not _guaranteed(conn, ctx):
+                raise trades.TradeError(
+                    "His deal isn't guaranteed: send him down or release him instead."
+                )
             ctx.seller_tradeable()
             if team_id not in {t["id"] for t in ctx.ai_teams()}:
                 raise trades.TradeError("That team isn't taking offers here.")

@@ -2,9 +2,11 @@
 """
 Waivers (free agency phase 2; Josh's decisions, 2026-11-05).
 
-- A player released off the 40-man goes on waivers for WAIVER_PERIODS sim
-  periods of game days. Minors players skip waivers: releasing them is free,
-  and they're free agents at once.
+- A player released off the 40-man, or with a guaranteed deal, goes on
+  waivers for WAIVER_PERIODS sim periods of game days
+  (free_agents.goes_on_waivers). Minors players on deals that were never
+  guaranteed skip waivers: releasing them is free, and they're free agents
+  at once.
 - Any other team can claim him while he's on waivers. When he clears, the
   claiming team with the worst record gets him (last season's record before
   any games this season), and takes over his whole deal, so his old team
@@ -22,9 +24,14 @@ limit (src/league/budget.py refusal), checked again when he clears.
 from __future__ import annotations
 
 import random
+from datetime import date, timedelta
 
+from src.api.services import front_office
+from src.api.services.news import moves as move_news
+from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.contract_repo import ContractRepository
+from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
@@ -187,12 +194,22 @@ def claim_order(conn, league_id: str, season_id: str, waiver: dict) -> list[str]
     return sorted(teams, key=lambda t: (records.get(t, 0.5), draw[t]))
 
 
-def clear(conn, league_id: str, season_id: str, year: int, waiver: dict) -> str | None:
+def clear(
+    conn,
+    league_id: str,
+    season_id: str,
+    year: int,
+    waiver: dict,
+    on: str | None = None,
+) -> str | None:
     """He clears waivers: the first claimer in order who can still fit him
-    gets him. Returns that team, or None (he's a free agent)."""
+    gets him. Returns that team, or None (he's a free agent). ``on``: the
+    day, for the news (the last day played when None)."""
     repo = WaiverRepository(conn)
     pid = waiver["player_id"]
-    for team_id in claim_order(conn, league_id, season_id, waiver):
+    order = claim_order(conn, league_id, season_id, waiver)
+    player = PlayerRepository(conn).look_up(pid)
+    for team_id in order:
         deal = ContractRepository(conn).released_deal(pid, waiver["from_team_id"])
         if _why_not(conn, league_id, team_id, deal, year):
             continue
@@ -200,9 +217,39 @@ def clear(conn, league_id: str, season_id: str, year: int, waiver: dict) -> str 
         TeamRepository(conn).add_player(team_id, pid)
         PlayerStatusRepository(conn).set_status(pid, "minors")
         repo.close(waiver["id"], team_id)
+        if player:
+            move_news.claimed(
+                conn,
+                league_id,
+                season_id,
+                player,
+                waiver["from_team_id"],
+                team_id,
+                deal,
+                len(order),
+                year,
+                on,
+            )
+        _ai_call_up(conn, league_id, season_id, team_id, on)
         return team_id
     repo.close(waiver["id"], None)
+    if player:
+        move_news.cleared(
+            conn, league_id, season_id, player, waiver["from_team_id"], on
+        )
     return None
+
+
+def _ai_call_up(conn, league_id: str, season_id: str, team_id: str, on) -> None:
+    """An AI team that claimed him mid-season re-picks its rosters, so the
+    hole he was claimed to fill gets him from the next game (as an AI
+    signing does) instead of leaving him in the minors. A person's team
+    moves him up by hand; off game days the offseason sets rosters."""
+    if not on or team_id in GMRepository(conn).get_human_team_ids(league_id):
+        return
+    outlook = front_office.outlooks(conn, league_id, season_id, on).get(team_id)
+    effective = (date.fromisoformat(on) + timedelta(days=1)).isoformat()
+    front_office.replan_roster(conn, league_id, season_id, team_id, outlook, effective)
 
 
 def _year(conn, league_id: str) -> int | None:
@@ -212,7 +259,7 @@ def _year(conn, league_id: str) -> int | None:
 def after_day(conn, league_id: str, game_date: str) -> int:
     """After a day's games: clear the waivers due. Returns how many."""
     due = WaiverRepository(conn).due(league_id, game_date)
-    return _clear_all(conn, league_id, due)
+    return _clear_all(conn, league_id, due, game_date)
 
 
 def clear_all(conn, league_id: str) -> int:
@@ -220,7 +267,7 @@ def clear_all(conn, league_id: str) -> int:
     return _clear_all(conn, league_id, WaiverRepository(conn).open_for(league_id))
 
 
-def _clear_all(conn, league_id: str, waivers: list[dict]) -> int:
+def _clear_all(conn, league_id: str, waivers: list[dict], on: str | None = None) -> int:
     if not waivers:
         return 0
     season_id = SeasonRepository(conn).get_current_id_for_league(league_id)
@@ -228,5 +275,5 @@ def _clear_all(conn, league_id: str, waivers: list[dict]) -> int:
     if not season_id or year is None:
         return 0
     for w in waivers:
-        clear(conn, league_id, season_id, year, w)
+        clear(conn, league_id, season_id, year, w, on)
     return len(waivers)

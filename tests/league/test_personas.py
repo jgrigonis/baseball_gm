@@ -118,6 +118,9 @@ def test_tactical_dials_move_the_settings():
     assert slug["baserunning"] == "very-conservative"
     assert slug["lineup_style"] == "power-first"
 
+    glove = personas.profile({"offense_defense": 10})
+    assert glove["lineup_style"] == "defensive"
+
     quick = personas.profile({"bullpen_hook": 90, "analytics": 70})
     assert quick["starter_usage"] == "quick-hook"
     assert quick["tired_starters"] == "protect"

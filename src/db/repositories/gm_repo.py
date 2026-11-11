@@ -312,6 +312,27 @@ class GMRepository:
             f"UPDATE gms SET {col} = %s WHERE id = %s", (season_id, gm_id)
         )
 
+    def mark_trade_roster_due(self, gm_id: str, season_id: str) -> None:
+        """A trade brought this GM players, who wait in the organization
+        until they're moved to the 40-man."""
+        self.conn.execute(
+            "UPDATE gms SET trade_roster_season_id = %s WHERE id = %s",
+            (season_id, gm_id),
+        )
+
+    def trade_roster_due(self, gm_id: str, season_id: str) -> bool:
+        row = self.conn.execute(
+            "SELECT trade_roster_season_id FROM gms WHERE id = %s", (gm_id,)
+        ).fetchone()
+        return bool(row) and row["trade_roster_season_id"] == season_id
+
+    def clear_trade_roster_due(self, gm_id: str) -> None:
+        self.conn.execute(
+            "UPDATE gms SET trade_roster_season_id = NULL"
+            " WHERE id = %s AND trade_roster_season_id IS NOT NULL",
+            (gm_id,),
+        )
+
     def needs_setup_bar(self, gm_id: str) -> bool:
         """True until the GM first saves their roster."""
         row = self.conn.execute(

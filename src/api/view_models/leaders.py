@@ -146,8 +146,16 @@ def team_leaders(
     for pane, label in cats:
         cat = by_label[pane].get(label)
         if cat and cat["rows"]:
-            out.append({"label": label, **cat["rows"][0]})
+            out.append(
+                {"label": label, **cat["rows"][0], "players": tied_top(cat["rows"])}
+            )
     return out
+
+
+def tied_top(rows: list[dict]) -> list[dict]:
+    """The rows tied for first on a leader card: every row showing the same
+    value as the top one, so two players at 45 HR both lead."""
+    return [r for r in rows if r["val"] == rows[0]["val"]] if rows else []
 
 
 def rookie_leaders(

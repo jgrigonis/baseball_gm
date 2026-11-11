@@ -491,6 +491,12 @@ def _shell_ctx(
         and ctx["season_id"]
     ):
         row = GameRepository(db).get_next_unplayed_date(ctx["season_id"])
+        deadline = (
+            deadline_date(db, ctx["season_id"]) if ctx.get("trades_enabled") else None
+        )
+        # Past deadline day no team can offer a trade, so the sim menu drops
+        # its trade boxes (Josh, 2026-11-10).
+        ctx["trades_closed"] = bool(deadline and row and row["game_date"] > deadline)
         stops = next_move.sim_stops(
             row["game_date"] if row else None,
             # The tab's phase is "none" in the preseason; the vote is ahead.
@@ -498,7 +504,8 @@ def _shell_ctx(
             if ctx["league_state"] == "season"
             else all_star.phase(db, ctx["season_id"]),
             all_star.window(db, ctx["season_id"]),
-            deadline_date(db, ctx["season_id"]) if ctx.get("trades_enabled") else None,
+            deadline,
+            GameRepository(db).last_scheduled_date(ctx["season_id"]),
         )
     # The preseason's last chance to set the front office and ticket prices
     # before they lock: until the GM opens the Budget tab, the next move
@@ -529,6 +536,20 @@ def _shell_ctx(
             seen.add(page)
         ctx["roster_due"] = "roster" not in seen
         ctx["lineup_due"] = "lineup" not in seen
+    # After a trade brings players in, the Roster tab, where they move up to
+    # the 40-man (Josh, 2026-11-11). Opening it clears that.
+    if (
+        ctx["league_state"] in ("preseason", "season")
+        and not ctx["is_viewer"]
+        and ctx["team_id"]
+        and gm.get("id")
+        and ctx["season_id"]
+    ):
+        gms = GMRepository(db)
+        if page == "roster":
+            gms.clear_trade_roster_due(gm["id"])
+        else:
+            ctx["trade_roster_due"] = gms.trade_roster_due(gm["id"], ctx["season_id"])
     ctx["next_move"] = next_move.pick(ctx, page, weekend_ready, stops)
     ctx["all_star_ids"] = (
         AllStarRepository(db).ids(ctx["season_id"]) if ctx["season_id"] else set()

@@ -158,6 +158,25 @@ def test_the_preview_matches_what_the_release_costs(lg):
     assert preview["total_text"]
 
 
+def test_a_free_release_refuses_once_the_deal_is_guaranteed(lg, client):
+    """Released with no confirm because it was free, but a sim day ran first
+    and he played: he stays, and the page asks after all."""
+    pid = _signed(lg, played=False, level=60)
+    url = f"/leagues/{lg.league.id}/players/{pid}/release?free=1"
+    lg.contracts.guarantee_teams([lg.mine.id])
+    r = client.post(url)
+    assert r.status_code == 409 and r.json()["now_guaranteed"]
+    assert lg.status.get_status(pid) != "free_agent"
+    assert lg.contracts.dead_money(lg.mine.id, 2026) == 0
+
+
+def test_a_free_release_goes_through_while_its_still_free(lg, client):
+    pid = _signed(lg, played=False, level=60)
+    r = client.post(f"/leagues/{lg.league.id}/players/{pid}/release?free=1")
+    assert r.status_code == 200
+    assert lg.status.get_status(pid) == "free_agent"
+
+
 def test_you_cant_release_someone_elses_player(lg):
     pid = lg.factory.rated_player(lg.theirs, lg.league).id
     with pytest.raises(FreeAgentError):
