@@ -713,6 +713,9 @@ window.trShop = function(pid) {
   pid = sel.value;
   if (!pid) return;
   window._shopPlayer = null;
+  // Setting sel.value from the player card's Shop him skips its onchange,
+  // so turn Dump salary on here too.
+  document.getElementById('tr-dump-btn').disabled = false;
   btn.disabled = true;
   btn.textContent = 'Asking around…';
   var el = document.getElementById('tr-shop-results');
