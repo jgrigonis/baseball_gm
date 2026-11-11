@@ -39,6 +39,11 @@ def test_no_until_injury_or_trade_stops_when_the_league_has_neither():
     assert _menu(move) == ["▶▶ Full Season"] and not move["trade_stops"]
 
 
+def test_no_trade_stops_once_the_deadline_is_behind():
+    # No team can offer a trade then, so there's nothing to stop for.
+    assert not pick(_ctx(trades_closed=True), "roster")["trade_stops"]
+
+
 def test_preseason_plays_opening_day():
     move = pick(_ctx(league_state="preseason"), "draft")
     assert move["label"] == "▶ Play Opening Day" and move["short"] == "▶ Play Day"

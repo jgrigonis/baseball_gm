@@ -271,8 +271,11 @@ def pick(
                 _play_menu(ctx, stops),
             )
         move["stop"] = True
-        # Leagues that trade: boxes for stopping at offers and the deadline.
-        move["trade_stops"] = bool(ctx.get("trades_enabled"))
+        # Leagues that trade: boxes for stopping at offers and the deadline,
+        # until deadline day is behind (no offers after it).
+        move["trade_stops"] = bool(
+            ctx.get("trades_enabled") and not ctx.get("trades_closed")
+        )
         # Multi-day sims can play straight through the All-Star break
         # (Stop for All-Star breaks unchecked).
         move["through_break"] = any(s["kind"] in ALL_STAR_STOPS for s in stops)

@@ -491,6 +491,12 @@ def _shell_ctx(
         and ctx["season_id"]
     ):
         row = GameRepository(db).get_next_unplayed_date(ctx["season_id"])
+        deadline = (
+            deadline_date(db, ctx["season_id"]) if ctx.get("trades_enabled") else None
+        )
+        # Past deadline day no team can offer a trade, so the sim menu drops
+        # its trade boxes (Josh, 2026-11-10).
+        ctx["trades_closed"] = bool(deadline and row and row["game_date"] > deadline)
         stops = next_move.sim_stops(
             row["game_date"] if row else None,
             # The tab's phase is "none" in the preseason; the vote is ahead.
@@ -498,7 +504,7 @@ def _shell_ctx(
             if ctx["league_state"] == "season"
             else all_star.phase(db, ctx["season_id"]),
             all_star.window(db, ctx["season_id"]),
-            deadline_date(db, ctx["season_id"]) if ctx.get("trades_enabled") else None,
+            deadline,
             GameRepository(db).last_scheduled_date(ctx["season_id"]),
         )
     # The preseason's last chance to set the front office and ticket prices
