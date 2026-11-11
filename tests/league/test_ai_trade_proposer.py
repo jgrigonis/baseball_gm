@@ -242,7 +242,11 @@ def test_no_close_package_when_everything_it_has_is_worth_more():
 
 
 # ── Dumping salary (dump_offer_or_why) ──────────────────────────────────────
-from src.league.trades.ai_proposer import DumpOffer, dump_offer_or_why  # noqa: E402
+from src.league.trades.ai_proposer import (  # noqa: E402
+    NO_SAVING,
+    DumpOffer,
+    dump_offer_or_why,
+)
 
 
 def test_a_team_takes_a_useful_player_alone_for_a_throw_in():
@@ -282,3 +286,13 @@ def test_no_dump_with_nothing_to_add():
     seller.tradeable = {scrub.id}
     buyer = _side("contending", [_priced(40, 0)])
     assert dump_offer_or_why(buyer, seller, scrub, 60) == NO_MATCH
+
+
+def test_no_dump_that_sends_back_as_much_salary():
+    cheap = _priced(64, 900_000, age=29)
+    seller = _side("rebuilding", [cheap], margin=0.0)
+    seller.tradeable = {cheap.id}
+    throw = _priced(40, 1_700_000)
+    buyer = _side("contending", [throw])
+    buyer.tradeable = {throw.id}
+    assert dump_offer_or_why(buyer, seller, cheap, 60) == NO_SAVING

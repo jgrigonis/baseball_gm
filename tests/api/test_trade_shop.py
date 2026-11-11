@@ -98,10 +98,12 @@ def test_other_people_hear_hes_on_the_block_once_a_day(lg):  # noqa: F811
 
 def test_dump_lists_who_would_take_him_and_the_trade_goes_through(lg):  # noqa: F811
     regular = lg.factory.rated_player(lg.mine, lg.league, 68)
+    _deal(lg, regular, lg.mine, 5_000_000, True)
     lg.factory.rated_player(lg.theirs, lg.league, 40, status="minors")
     result = trade_shop.dump(lg.db, lg.league.id, lg.gm, regular.id)
     (offer,) = result["offers"]
     assert offer["team_id"] == lg.theirs.id
+    assert offer["saved"] > 0
     assert len(offer["give"]) == 1
     assert all(_team_of_id(lg.db, pid) == lg.theirs.id for pid in offer["give"])
     taken = trade_shop.dump_take(lg.db, lg.league.id, lg.gm, regular.id, lg.theirs.id)
@@ -166,3 +168,11 @@ def test_dump_savings_are_net_of_the_throw_in_who_lands_in_the_minors(lg):  # no
     assert offers[1]["unguaranteed"] == 3_500_000
     assert offers[2]["saved"] == 780_000 - 2_000_000
     assert offers[2]["unguaranteed"] == 0
+
+
+def test_no_dump_offers_for_a_player_not_on_the_payroll(lg):  # noqa: F811
+    """No deal on the payroll: every throw-in would cost as much or more."""
+    farm = lg.factory.rated_player(lg.mine, lg.league, 68)
+    result = trade_shop.dump(lg.db, lg.league.id, lg.gm, farm.id)
+    assert result["salary"] == 0
+    assert result["offers"] == []
