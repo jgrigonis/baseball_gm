@@ -225,6 +225,59 @@ def _books_view(b: dict, names: dict | None = None) -> dict:
     }
 
 
+def _past_seasons(past: list[dict], books: list[dict]) -> list[dict]:
+    """The Past seasons table: each finished season's money in a row that
+    adds up. Revenue less payroll, plus or minus the luxury tax, less the
+    front office, minor leagues and the league's fixed costs (net of its
+    farm help) is the profit; the profit less ballpark payments is the
+    change in the owner's bank. Revenue opens its breakdown."""
+    closed = {b["year"]: b for b in books if not b["projected"]}
+    rows = []
+    for r in past:
+        b = closed.get(r["year"])
+        if r["profit"] is None or b is None:
+            continue
+        revenue = b["total_in"] - b["tax_share"] - b["farm_help"]
+        tax = b["tax_share"] - b["luxury_tax"]
+        fixed = b["costs"] - b["farm_help"]
+        park = r["bank_spent"] or 0
+        lines = [
+            ("Regular season tickets", b["revenue"] + b["tickets"]),
+            ("Playoff gate", b["playoff_gate"]),
+            ("Popularity", b["popularity"]),
+            ("Broadcast deal", b["broadcast"]),
+            ("Merchandise", b["merchandise"]),
+            ("Sponsors", b["sponsor"]),
+            ("Ballpark upgrades", b["ballpark"]),
+        ]
+        rows.append(
+            {
+                "year": r["year"],
+                "revenue": _money(revenue),
+                "revenue_lines": [
+                    {"label": label, "amount": _money(amount)}
+                    for label, amount in lines
+                    if amount
+                ],
+                "payroll": _money(b["payroll"]),
+                "tax": (f"+{_money(tax)}" if tax > 0 else _money(tax)) if tax else None,
+                "tax_paid": tax < 0,
+                "front_office": _money(b["front_office"]),
+                "minor_league": _money(b["minor_league"])
+                if b["minor_league"]
+                else None,
+                "fixed": _money(fixed),
+                "other": _money(b["other"]) if b["other"] else None,
+                "profit": _money(b["profit"]),
+                "loss": b["profit"] < 0,
+                "park": _money(park) if park else None,
+                "fans": r["fans_after"],
+                "bank": _money(r["bank_after"]),
+            }
+        )
+    return rows
+
+
 @router.get("/leagues/{league_id}/budget", response_class=HTMLResponse)
 def budget_tab(
     request: Request,
@@ -733,38 +786,12 @@ def _render(
         "margin_pct": round(bg.HARD_MARGIN * 100),
     }
     past = budgets.history(league_id, team_id) if standing else []
-    ctx["history"] = [
-        {
-            "year": r["year"],
-            "cap": _money(r["cap"]),
-            "budget": _money(r["budget"]),
-            "payroll": _money(r["payroll"]),
-            "revenue": _money(
-                None
-                if r["revenue"] is None or r["profit"] is None
-                else fn.ticket_revenue(r["revenue"], r["ticket_price"])
-                + (r["playoff_revenue"] or 0)
-                + (r["popularity_revenue"] or 0)
-                + (r["broadcast_revenue"] or 0)
-                + (r["merch_revenue"] or 0)
-                + (r["sponsor_revenue"] or 0)
-                + (r["ballpark_revenue"] or 0)
-            ),
-            "tax": _money(r["luxury_tax"]) if r["luxury_tax"] else None,
-            "front_office": _money(r["front_office"]),
-            "minor_league": _money(r["minor_league"]),
-            "share": _money(r["tax_share"]) if r["tax_share"] else None,
-            "profit": _money(r["profit"]),
-            "loss": r["profit"] is not None and r["profit"] < 0,
-            "fans": r["fans_after"],
-            "bank": _money(r["bank_after"]),
-        }
-        for r in past
-        if r["profit"] is not None
-    ]
     books = budgets.books(league_id, team_id, year) if standing else []
     names = _seller_names(db, books)
     ctx["books"] = [_books_view(b, names) for b in books]
+    ctx["history"] = _past_seasons(past, books)
+    ctx["history_other"] = any(r["other"] for r in ctx["history"])
+    ctx["history_park"] = any(r["park"] for r in ctx["history"])
     if bank and books and books[0]["projected"]:
         # This season's projected profit, and where it leaves the bank.
         profit = books[0]["profit"]
