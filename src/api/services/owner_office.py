@@ -183,8 +183,8 @@ def _set_mood(conn, league_id: str, team_id: str, season_id: str, mood: float, o
 
 def _payroll_budgets(conn, league_id: str, year: int) -> dict[str, int]:
     """Each owner's budget less what the team's front office and minor
-    leagues cost: the money they're giving the GM for payroll
-    (src/league/budget.py)."""
+    leagues cost: the money they're giving the GM for payroll, after the
+    luxury tax a payroll over the cap owes (src/league/budget.py)."""
     repo = BudgetRepository(conn)
     budgets = repo.for_league(league_id, year)
     if not budgets:
@@ -193,7 +193,9 @@ def _payroll_budgets(conn, league_id: str, year: int) -> dict[str, int]:
     levels = repo.league_levels(league_id, year)
     farms = repo.league_minor_leagues(league_id, year)
     return {
-        t: b - bg.front_office_cost(cap, levels.get(t, {})) - farms.get(t, 0)
+        t: bg.payroll_within(
+            b - bg.front_office_cost(cap, levels.get(t, {})) - farms.get(t, 0), cap
+        )
         for t, b in budgets.items()
     }
 

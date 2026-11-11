@@ -49,12 +49,14 @@ def test_a_miser_wants_payroll_under_the_cap_and_a_spender_allows_more():
 
 
 def test_a_warning_only_when_a_move_goes_over():
-    # Cap 160, owner allows 170.
-    assert bg.warning(150 * M, 160 * M, 170 * M, 5 * M) is None
-    assert bg.warning(150 * M, 160 * M, 170 * M, -5 * M) is None
-    msg = bg.warning(150 * M, 160 * M, 170 * M, 20 * M)
+    # Cap 160, owner allows 175: a $170M payroll plus its $5M tax.
+    assert bg.warning(150 * M, 160 * M, 175 * M, 5 * M) is None
+    assert bg.warning(150 * M, 160 * M, 175 * M, -5 * M) is None
+    msg = bg.warning(150 * M, 160 * M, 175 * M, 20 * M)
     assert "$10M over" in msg and "$5M in luxury tax" in msg
     assert "owner" not in msg
+    # The tax counts as spending: the same move past a $170M budget.
+    assert "$170M budget" in bg.warning(150 * M, 160 * M, 170 * M, 20 * M)
     msg = bg.warning(150 * M, 160 * M, 170 * M, 30 * M)
     assert "luxury tax" in msg and "$170M budget" in msg
     assert msg.endswith(
@@ -62,6 +64,23 @@ def test_a_warning_only_when_a_move_goes_over():
         "their $170M budget."
     )
     assert "already over" in bg.warning(165 * M, 160 * M, 170 * M, 2 * M)
+
+
+def test_spending_counts_the_luxury_tax():
+    # Cap 160: every payroll dollar over it costs a dollar and a half.
+    assert bg.payroll_cost(170 * M, 160 * M) == 175 * M
+    assert bg.payroll_within(175 * M, 160 * M) == 170 * M
+    assert bg.payroll_within(150 * M, 160 * M) == 150 * M
+    assert bg.added_cost(155 * M, 160 * M, 10 * M) == 12_500_000
+    s = bg.standing(170 * M, 160 * M, 185 * M, 200 * M, front_office=10 * M)
+    assert s["spend"] == 170 * M + 5 * M + 10 * M
+    assert s["payroll_budget"] == 170 * M  # 175 left pays 170 plus 5 tax
+    assert s["budget_payroll_room"] == 0
+    assert s["limit_payroll_room"] == 10 * M  # 190 pays 180 plus 10 tax
+    # An owner adds the tax their leash would owe to the budget.
+    fo = bg.standard_front_office(160 * M)
+    assert bg.tax_allowance(160 * M, 170 * M + fo) == 5 * M
+    assert bg.tax_allowance(160 * M, 150 * M + fo) == 0
 
 
 def test_a_misers_budget_warns_under_the_cap_without_tax():
@@ -111,9 +130,11 @@ def test_every_team_has_the_same_cap(lg):
     cap = bg.first_cap(pays)
     assert set(budgets) == {x.mine.id, x.theirs.id}
     assert x.budgets.cap(x.league.id, 2026) == cap
-    # No owners yet: a middle owner's leash.
+    # No owners yet: a middle owner's leash, and the tax a payroll there owes.
     fo = bg.standard_front_office(cap)
-    assert budgets[x.mine.id] == budgets[x.theirs.id] == bg.owner_budget(cap, 50) + fo
+    leash = bg.owner_budget(cap, 50)
+    want = leash + fo + bg.luxury_tax(leash, cap)
+    assert budgets[x.mine.id] == budgets[x.theirs.id] == want
     caps = x.db.execute(
         "SELECT DISTINCT cap FROM team_budgets WHERE league_id = %s", (x.league.id,)
     ).fetchall()
@@ -223,7 +244,8 @@ def test_the_roster_shows_payroll_against_cap_and_budget(lg, client_for):
     html = client.get(f"/leagues/{x.league.id}/roster").text
     assert f"Cap {bg.format_salary(cap)}" in html
     fo = bg.standard_front_office(cap)
-    assert f"Owner's number {bg.format_salary(budget - fo)}" in html
+    owner = bg.payroll_within(budget - fo, cap)
+    assert f"Owner's number {bg.format_salary(owner)}" in html
     x.db.execute("UPDATE team_budgets SET budget = 1000000, cap = 1000000")
     html = client.get(f"/leagues/{x.league.id}/roster").text
     assert " over cap</span>" in html and "over." in html
@@ -277,7 +299,9 @@ def test_a_spender_gets_more_than_a_miser(lg):
     pays = [x.contracts.payroll(t.id, 2026) for t in (x.mine, x.theirs)]
     cap = bg.first_cap(pays)
     fo = bg.standard_front_office(cap)
-    assert budgets[x.mine.id] - fo == bg.owner_budget(cap, 95) > cap
+    spender = bg.owner_budget(cap, 95)
+    assert budgets[x.mine.id] - fo == spender + bg.luxury_tax(spender, cap)
+    assert spender > cap
     assert budgets[x.theirs.id] - fo == bg.owner_budget(cap, 5) < cap
     row = x.db.execute(
         "SELECT revenue, fans_before FROM team_budgets WHERE team_id = %s",
@@ -465,7 +489,9 @@ def test_the_bank_carries_profit_into_next_seasons_budget(lg):
     assert x.budgets.banks(x.league.id)[x.mine.id]["change"] == profit
     nxt = x.budgets.for_league(x.league.id, 2027)[x.mine.id]
     cap2 = x.budgets.cap(x.league.id, 2027)
-    assert nxt == bg.owner_budget(cap2, 95, profit) + bg.standard_front_office(cap2)
+    leash = bg.owner_budget(cap2, 95, profit)
+    fo2 = bg.standard_front_office(cap2)
+    assert nxt == leash + fo2 + bg.luxury_tax(leash, cap2)
     history = x.budgets.history(x.league.id, x.mine.id)
     assert [r["year"] for r in history] == [2027, 2026]
     assert history[1]["bank_after"] == bank["start"] + profit
@@ -558,7 +584,9 @@ def test_the_budget_tab_keeps_cap_spending_and_bank_apart(lg, client_for):
     assert "Payroll and the league cap" in html
     assert "Spending and your owner" in html
     assert "Total spending" in html
-    assert f"{pay} payroll + {fo} front office" in html
+    tax = bg.luxury_tax(x.contracts.payroll(x.mine.id, 2026), cap)
+    taxed = f" + {bg.format_salary(tax)} luxury tax" if tax else ""
+    assert f"{pay} payroll{taxed} + {fo} front office" in html
     spend_at = html.index("Spending and your owner")
     assert html.index("League cap") < spend_at < html.index("Owner's ideal budget")
     if "Owner's bank" in html:
@@ -626,8 +654,9 @@ def test_the_front_office_counts_against_the_budget_not_the_cap(lg):
     cap = after["cap"]
     extra = bg.level_cost(cap, 4) - bg.level_cost(cap, bg.STANDARD)
     assert after["front_office"] == before["front_office"] + extra
-    assert after["spend"] == after["payroll"] + after["front_office"]
-    assert after["tax"] == before["tax"]  # tax is payroll only
+    # Spending counts the luxury tax; the tax is on payroll only.
+    assert after["spend"] == after["payroll"] + after["tax"] + after["front_office"]
+    assert after["tax"] == before["tax"]
     # It's in the season's profit.
     x.budgets.assess(x.league.id, 2026)
     money = x.budgets.finances(x.league.id, 2026)
@@ -840,9 +869,11 @@ def test_the_farm_counts_minor_league_pay_against_spending_not_the_cap(lg):
     vet_pay = x.contracts.active(vet.id, 2026)["salary"]
     assert after["payroll"] == before["payroll"] + vet_pay
     assert after["tax"] == bg.luxury_tax(after["payroll"], after["cap"])
-    assert after["spend"] == after["payroll"] + after["front_office"] + pay
-    assert after["payroll_budget"] == (
-        after["budget"] - after["front_office"] - after["minors"]
+    assert after["spend"] == (
+        after["payroll"] + after["tax"] + after["front_office"] + pay
+    )
+    assert after["payroll_budget"] == bg.payroll_within(
+        after["budget"] - after["front_office"] - after["minors"], after["cap"]
     )
     # Letting one go saves his minor league pay.
     one = pay // 10
@@ -902,10 +933,11 @@ def test_ai_budget_room_leaves_out_the_farm(lg):
 
     x = lg()
     x.budgets.for_league(x.league.id, 2026)
-    room = ai_free_agents._budget_room(x.db, x.league.id, x.theirs.id, 2026)
+    s = x.budgets.standing(x.league.id, x.theirs.id, 2026)
     _, pay = _farm(x, x.theirs, 10)
     allowance = bg.average_farm([pay, 0])
-    want = room - pay + allowance
+    money = s["budget"] - s["front_office"] - s["minors"] - pay + allowance
+    want = bg.payroll_within(money, s["cap"]) - s["payroll"]
     assert ai_free_agents._budget_room(x.db, x.league.id, x.theirs.id, 2026) == want
     rooms = owners.pay_rooms(x.db, x.league.id, x.season.id, [x.theirs.id])
     assert rooms[x.theirs.id] == want
@@ -1417,7 +1449,9 @@ def test_a_custom_team_gets_an_owner_rich_enough_for_its_payroll(lg):
     payroll = x.contracts.payroll(x.mine.id, 2026)
     assert budgets[x.mine.id] - x.budgets.farm_allowances(x.league.id, 2026)[
         x.mine.id
-    ] == max(bg.owner_budget(cap, 50) + fo, payroll + fo)
+    ] == max(bg.owner_budget(cap, 50) + fo, payroll + fo) + bg.luxury_tax(
+        max(bg.owner_budget(cap, 50), payroll), cap
+    )
     assert payroll > bg.owner_budget(cap, 50)  # the floor mattered
     banks = x.budgets.banks(x.league.id, 2026)
     assert banks[x.mine.id]["start"] == banks[x.theirs.id]["start"] + payroll

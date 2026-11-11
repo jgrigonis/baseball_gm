@@ -75,7 +75,7 @@
       </div>
     </div>
     <div class="bud-line">
-      Payroll only. The cap is the same for every team and each season it moves to last season's league average payroll plus 5% (it never drops). Payroll over it pays {{ rules.tax_pct }}% luxury tax when the season ends, split among the teams that stayed under (or every team, if nobody did).
+      Payroll only. The cap is the same for every team and each season it moves to the league's average payroll already committed for that season plus 5% (it never drops). Payroll over it pays {{ rules.tax_pct }}% luxury tax when the season ends, split among the teams that stayed under (or every team, if nobody did).
     </div>
 
     <div class="bud-head bud-section">Spending and your owner</div>
@@ -83,7 +83,7 @@
       <div class="bud-stat">
         <div class="bud-label">Total spending</div>
         <div class="bud-value {% if money.at_limit %}bud-bad{% endif %}">{{ money.spend_text }}</div>
-        <div class="bud-note">{{ money.payroll_text }} payroll + {{ money.front_office_text }} front office + {{ money.minors_text }} minor leagues</div>
+        <div class="bud-note">{{ money.payroll_text }} payroll + {% if money.tax %}{{ money.tax_text }} luxury tax + {% endif %}{{ money.front_office_text }} front office + {{ money.minors_text }} minor leagues</div>
       </div>
       <div class="bud-stat">
         <div class="bud-label">Owner's ideal budget</div>
@@ -97,7 +97,7 @@
       </div>
     </div>
     <div class="bud-line">
-      Payroll plus the front office and the minor leagues: minor leaguers who've never played a game on the 40-man are paid {{ farm_pay_text }} a season each, and that and the signing bonuses of the players you drafted this season count here, not against the cap. Your owner's budget includes {{ money.farm_allowance_text }} for the farm, based on what an average farm in the league costs and how freely they spend, so letting go of minor leaguers you don't need saves money. The budget is what your owner is happy to spend; going past it is allowed, but it risks their profit.
+      Payroll plus its luxury tax, the front office and the minor leagues. Your owner's budget holds the tax their payroll target would owe, so every payroll dollar over the cap costs {{ 100 + rules.tax_pct }} cents of spending. Minor leaguers who've never played a game on the 40-man are paid {{ farm_pay_text }} a season each, and that and the signing bonuses of the players you drafted this season count here, not against the cap. Your owner's budget includes {{ money.farm_allowance_text }} for the farm, based on what an average farm in the league costs and how freely they spend, so letting go of minor leaguers you don't need saves money. The budget is what your owner is happy to spend; going past it is allowed, but it risks their profit.
       Past their limit ({{ rules.margin_pct }}% of the cap above the budget) they won't sign off on any move that adds money{% if bank %}, and if their bank runs dry the limit drops to the budget{% endif %}.
     </div>
   </div>

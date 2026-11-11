@@ -181,7 +181,8 @@ def pay_rooms(
 ) -> dict[str, int]:
     """How much more payroll each team's owner will stand for this season,
     by team id: the budget the owner set from the league's cap (it already
-    holds their leash), minus payroll now. Can be negative. Empty without budgets. AI GMs keep to
+    holds their leash), less the front office, the farm and the luxury tax
+    a payroll over the cap owes, minus payroll now. Can be negative. Empty without budgets. AI GMs keep to
     it in trades (src/league/trades/ai_evaluator.py); people only get a
     warning."""
     row = conn.execute(
@@ -198,13 +199,13 @@ def pay_rooms(
     cap = repo.cap(league_id, year)
     levels = repo.league_levels(league_id, year)
     farms = repo.league_minor_leagues(league_id, year)
-    # The budget pays the front office and the minor leagues too
-    # (src/league/budget.py).
+    # The budget pays the front office, the minor leagues and the luxury
+    # tax too (src/league/budget.py).
     return {
-        t: b
+        t: bg.payroll_within(
+            b - bg.front_office_cost(cap, levels.get(t, {})) - farms.get(t, 0), cap
+        )
         - contracts.payroll(t, year)
-        - bg.front_office_cost(cap, levels.get(t, {}))
-        - farms.get(t, 0)
         for t, b in budgets.items()
         if team_ids is None or t in team_ids
     }

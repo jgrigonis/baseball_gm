@@ -323,7 +323,7 @@ def set_front_office(
             cap = budgets.cap(league_id, year)
             added = bg.level_cost(cap, level) - bg.level_cost(cap, levels[department])
             if bg.clean_level(level) > bg.STANDARD:
-                error = budgets.refusal(league_id, team_id, year, added)
+                error = budgets.refusal(league_id, team_id, year, added, payroll=False)
             if not error:
                 budgets.set_level(league_id, team_id, year, department, level)
         db.commit()
