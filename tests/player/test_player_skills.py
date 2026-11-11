@@ -725,3 +725,47 @@ class TestIntegration:
 #     skills = PlayerSkills.generate(rng, position="c", throws="left")
 
 #     assert skills["catching"] <= 20  # mean forced to 10
+
+
+def test_winter_swing_rates_by_age():
+    import random
+
+    from src.player.player_skills import winter_swing
+
+    rng = random.Random(3)
+    young = [winter_swing(22, rng) for _ in range(20000)]
+    old = [winter_swing(33, rng) for _ in range(20000)]
+    up_young = sum(s > 0 for s in young) / len(young)
+    down_young = sum(s < 0 for s in young) / len(young)
+    assert 0.03 < up_young < 0.05 and 0.03 < down_young < 0.05
+    # Past 30 a crashout is far likelier than a breakout.
+    assert sum(s < 0 for s in old) > 5 * sum(s > 0 for s in old)
+    assert all(s == 0 or 4 <= abs(s) <= 8 for s in young + old)
+    assert winter_swing(18, rng) == 0.0
+
+
+def test_age_to_swings_only_when_asked():
+    from src.player import player_skills as ps_mod
+
+    skills = PlayerSkills({k: 60 for k in SKILLS} | {"catching": 10}, age=24)
+    caps = {k: 75 for k in SKILLS}
+
+    # Without swings, ageing never calls winter_swing (generated players
+    # keep year one's spread, and their RNG streams don't change).
+    calls = []
+    orig = ps_mod.winter_swing
+    ps_mod.winter_swing = lambda age, rng: calls.append(age) or 6.0
+    try:
+        plain = skills.age_to(25, from_age=24, rng=random.Random(1), caps=dict(caps))
+        assert calls == []
+        moved_caps = dict(caps)
+        swung = skills.age_to(
+            25, from_age=24, rng=random.Random(1), caps=moved_caps, swings=True
+        )
+    finally:
+        ps_mod.winter_swing = orig
+    assert calls == [24]
+    assert swung["contact"] - plain["contact"] in (5, 6, 7)
+    # Non-skills don't swing; caps move with the skills.
+    assert swung["catching"] == plain["catching"]
+    assert moved_caps["contact"] == 81

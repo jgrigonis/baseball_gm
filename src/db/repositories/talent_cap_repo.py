@@ -50,6 +50,15 @@ class TalentCapRepository:
         )
         # self.conn.commit()
 
+    def update_talent_caps(self, player_id: str, caps: dict[str, int]) -> None:
+        """Overwrite a player's caps (a breakout or crashout winter moved
+        them; see PlayerSkills.age_to)."""
+        sets = ", ".join(f"{sk} = %s" for sk in _SKILLS)
+        self.conn.execute(
+            f"UPDATE player_talent_caps SET {sets} WHERE player_id = %s",
+            (*(caps.get(sk, 50) for sk in _SKILLS), player_id),
+        )
+
     # Only called in tests
     def insert_many_talent_caps(
         self, records: Sequence[tuple[str, dict[str, int]]]
