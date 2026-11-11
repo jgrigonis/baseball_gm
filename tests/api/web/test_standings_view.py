@@ -68,3 +68,15 @@ def test_each_league_remembers_its_own_view(setup):
     other = f"standings_view_{uuid.uuid4()}"
     assert client.cookies.get(f"standings_view_{setup.id}") == "overall"
     assert client.cookies.get(other) is None
+
+
+def test_extra_columns_start_hidden_behind_a_toggle(setup):
+    """Home, Away, L10, RS and RA render but stay hidden until the toggle
+    (kept in the browser) shows them, in both views."""
+    client = TestClient(app)
+    for view in ("divisions", "overall"):
+        html = client.get(f"/leagues/{setup.id}/standings?view={view}").text
+        assert 'id="standings-main" class="st-hide-extra"' in html
+        assert 'id="standings-extra-btn"' in html
+        for col in ("Home", "Away", "L10", "RS", "RA"):
+            assert f'st-extra" style="text-align:center;">{col}</th>' in html
