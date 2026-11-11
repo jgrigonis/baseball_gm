@@ -634,6 +634,7 @@ function restoreShop() {
 }
 var SHOP_WHY = [
   ['price', 'Like him, but have no one you\'d want'],
+  ['over', 'Like him, but everyone of theirs you\'d want is worth more to them'],
   ['fit', 'He wouldn\'t help them'],
   ['cost', 'His contract costs more than he\'s worth to them'],
   ['pay', 'No room in their budget for his salary'],
@@ -679,13 +680,13 @@ function renderShop() {
     if (close && i === SHOP.offers.length)
       html += '<div class="tr-shop-close-head"><strong>They\'d want more.</strong> ' +
               'These teams want him, but turn down every package of their players that you\'d want. ' +
-              'Here\'s the one each came closest to taking. <em>Close</em>: they\'d come out ahead, ' +
-              'just not by enough, so a small sweetener may do it. <em>Far</em>: it costs them more than he\'s worth to them. ' +
+              'Here\'s the one each came closest to taking: they\'d come out ahead, ' +
+              'just not by enough, so a small sweetener may do it. ' +
               'Tweak one to add to your side.</div>';
     html += '<div class="tr-offer tr-shop-offer' + (close ? ' tr-shop-short' : '') + '">' +
       '<div class="tr-offer-text">' +
         '<div>' + (i === 0 && !close ? '<span class="tr-tag">best for you</span>' : '') +
-          (close ? '<span class="tr-tag' + (o.near ? '' : ' tr-tag-far') + '">' + (o.near ? 'close' : 'far') + '</span>' : '') +
+          (close ? '<span class="tr-tag">close</span>' : '') +
           'The <strong>' + esc(o.team_name) + '</strong>' +
           roomText(o) + (close ? ' came closest with' : ' give') + '</div>' +
         o.players.map(shopRow).join('') +

@@ -189,10 +189,12 @@ def player_history(conn, league_id: str, player_id: str) -> list[dict]:
         ).fetchone()["ts"]
     first_year = None
     if opening is not None:
+        # The league's first real season: its made-up past seasons
+        # (backstory) came before anyone signed.
         row = conn.execute(
             """SELECT MIN(s.year) AS year FROM seasons s
                JOIN league_seasons ls ON ls.season_id = s.id
-               WHERE ls.league_id = %s""",
+               WHERE ls.league_id = %s AND NOT s.is_backstory""",
             (league_id,),
         ).fetchone()
         first_year = row["year"] if row else None

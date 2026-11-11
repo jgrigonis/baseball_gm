@@ -97,6 +97,7 @@ def test_it_skips_a_deal_it_was_told_to_avoid():
 # ── Shopping a player (shop_offer) ─────────────────────────────────────────
 
 from src.league.trades.ai_proposer import (  # noqa: E402
+    NO_EVEN,
     NO_HELP,
     NO_MATCH,
     NO_ROOM,
@@ -210,20 +211,34 @@ def test_a_player_whose_contract_costs_more_than_he_helps():
 
 def test_when_no_deal_works_the_closest_package_comes_back_short():
     """A team that wants him but turns down every package the seller would
-    want shows the one it came closest to taking, marked short."""
-    veteran = _p(64, age=31)
+    want, though it would come out a little ahead on one, shows the one it
+    came closest to taking, marked short."""
+    veteran = _p(66, age=30)
     seller = _side("rebuilding", [veteran], margin=0.0)
-    stars = [_p(75, age=24), _p(73, age=25)]
-    buyer = _side("contending", stars, margin=0.5)
-    buyer.tradeable = {a.id for a in stars}
+    prospect = _p(64, age=29)
+    buyer = _side("contending", [prospect], margin=0.9)
+    buyer.tradeable = {prospect.id}
     offer = shop_offer_or_why(buyer, seller, veteran, 60)
     assert isinstance(offer, ShopOffer) and offer.short
-    assert offer.give and all(a in stars for a in offer.give)
-    assert not evaluate(
+    assert offer.give == [prospect]
+    verdict = evaluate(
         buyer.roster, offer.give, [veteran], buyer.state, 60, buyer.margin
-    ).accept
+    )
+    assert not verdict.accept and verdict.score > 0
     # ...and it's no offer to take.
     assert shop_offer(buyer, seller, veteran, 60) is None
+
+
+def test_no_close_package_when_everything_it_has_is_worth_more():
+    """Josh, 2026-11-11: a team that wanted a D+ pitcher 'came closest' with
+    its 18-year-old B- prospect. When every package the seller would want
+    leaves the team worse off, it shows none: NO_EVEN."""
+    modest = _p(60, pitcher=True, age=21)
+    seller = _side("rebuilding", [modest], margin=0.0)
+    stars = [_p(75, age=24), _p(73, age=25)]
+    buyer = _side("contending", stars)
+    buyer.tradeable = {a.id for a in stars}
+    assert shop_offer_or_why(buyer, seller, modest, 60) == NO_EVEN
 
 
 # ── Dumping salary (dump_offer_or_why) ──────────────────────────────────────
