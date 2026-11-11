@@ -166,11 +166,11 @@
     {% for p in ballpark.rows %}
     {% if p.stadium and loop.previtem is defined and not loop.previtem.stadium %}
     <div class="bud-label" style="margin-top:14px;">A new stadium</div>
-    <div class="bud-note" style="margin-bottom:4px;">The big one: pick a price. Your owner pays for it a season at a time while it goes up, so half the price in the bank (over the reserve) is enough to start. It takes over from a renovation. One per team.</div>
+    <div class="bud-note" style="margin-bottom:4px;">The big one: pick a price. Your owner pays for it a season at a time while it goes up, so half the price in the bank (over the reserve) is enough to start. It takes over from a renovation. Once a stadium is {{ ballpark.life }} seasons old it can be replaced by one of the same tier or higher, at today's prices, earning about {{ ballpark.rebuild_pct }}% more than the one before.</div>
     {% endif %}
     <form class="bud-dept bud-park" data-quiet-swap hx-post="/leagues/{{ league_id }}/budget/ballpark"
           hx-target="#tab-content" hx-swap="innerHTML"
-          data-confirm="Build {{ p.name|lower }} for {{ p.cost_text }}?"
+          data-confirm="{{ 'Replace your stadium with' if p.rebuild else 'Build' }} {{ p.name|lower }} for {{ p.cost_text }}?"
           data-confirm-text="{% if p.build %}Your owner pays from their bank{% if p.build > 1 %} a season at a time while it's built{% endif %}, and it opens in {{ p.opens }}.{% else %}Your owner pays from their bank, and it opens on Opening Day.{% endif %}{% if p.earns_text %} It should earn about {{ p.earns_text }} a season.{% endif %}"
           data-confirm-ok="Build" data-confirm-tone="go">
       <input type="hidden" name="project" value="{{ p.key }}">
@@ -181,15 +181,16 @@
           {%- if p.earns_text %}About {{ p.earns_text }} a season for you{% if p.payback_text %} · {{ p.payback_text }}{% endif %}{% endif %}
           {%- if p.fans %}{% if p.earns_text %} · {% endif %}+{{ p.fans }} fan interest a season{% endif %}
         </div>
-        {% if p.build_text and p.built is none %}<div class="bud-note">{{ p.build_text }}</div>{% endif %}
+        {% if p.build_text and (p.built is none or p.can) %}<div class="bud-note">{{ p.build_text }}</div>{% endif %}
+        {% if p.built is not none and p.can %}<div class="bud-note bud-good">{{ p.status }}</div>{% endif %}
       </div>
-      {% if p.built is not none %}
+      {% if p.built is not none and not p.can %}
         <span class="bud-good" style="font-size:12px;white-space:nowrap;">{{ p.status }}</span>
       {% elif p.can %}
         <button type="submit" class="btn btn-primary" style="font-size:12px;padding:5px 14px;">Build</button>
       {% else %}
         <span class="admin-dim" style="font-size:12px;text-align:right;max-width:160px;">
-          {%- if p.blocked %}{{ 'Replaced by your new stadium' if p.key == 'renovation' else 'You have a new stadium' }}{% elif not ballpark.open %}Offseason only{% elif p.waiting %}Next offseason{% elif p.short_text %}Owner needs {{ p.short_text }} more{% endif -%}
+          {%- if p.blocked %}{{ p.blocked }}{% elif not ballpark.open %}Offseason only{% elif p.waiting %}Next offseason{% elif p.short_text %}Owner needs {{ p.short_text }} more{% endif -%}
         </span>
       {% endif %}
     </form>

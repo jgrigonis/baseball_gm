@@ -920,9 +920,11 @@ class BudgetRepository:
                 "year": r["year"],
                 "ordered": r["ordered"],
                 "cost": int(r["cost"]),
+                "generation": int(r["generation"]),
             }
             for r in self.conn.execute(
-                """SELECT project, year, COALESCE(ordered, year) AS ordered, cost
+                """SELECT project, year, COALESCE(ordered, year) AS ordered, cost,
+                          generation
                    FROM ballpark_projects
                    WHERE league_id = %s AND team_id = %s ORDER BY year, project""",
                 (league_id, team_id),
@@ -945,14 +947,24 @@ class BudgetRepository:
 
     def ballparks(self, league_id: str, year: int | None) -> dict[str, list[str]]:
         """Each team's ballpark projects open this season (with year None,
-        all of them), by team id."""
+        all of them), by team id. Only the newest open stadium counts: a
+        replacement does away with the old one, and its key carries which
+        stadium it is (finances.built_key)."""
         out: dict[str, list[str]] = {}
+        stadium: dict[str, tuple] = {}
         for r in self.conn.execute(
-            """SELECT team_id, project FROM ballpark_projects
-               WHERE league_id = %s AND (%s::INT IS NULL OR year <= %s::INT)""",
+            """SELECT team_id, project, year, generation FROM ballpark_projects
+               WHERE league_id = %s AND (%s::INT IS NULL OR year <= %s::INT)
+               ORDER BY year, generation""",
             (league_id, year, year),
         ).fetchall():
-            out.setdefault(r["team_id"], []).append(r["project"])
+            key = fn.built_key(r["project"], int(r["generation"]))
+            if r["project"] in fn.STADIUM_TIERS:
+                stadium[r["team_id"]] = key  # the newest wins
+                continue
+            out.setdefault(r["team_id"], []).append(key)
+        for t, key in stadium.items():
+            out.setdefault(t, []).append(key)
         return out
 
     def fans_now(self, league_id: str, team_id: str, year: int) -> int | None:
@@ -986,21 +998,57 @@ class BudgetRepository:
         fans = money.fans if row["fans_before"] is None else row["fans_before"]
         average = self._average_revenue(league_id, year)
         revenue = int(row["revenue"] or average)
-        built = {p["project"]: p for p in self.ballpark(league_id, team_id)}
-        this_season = sum(1 for p in built.values() if p["ordered"] == year)
+        rows = self.ballpark(league_id, team_id)
+        built = {p["project"]: p for p in rows}  # the newest of each
+        this_season = sum(1 for p in rows if p["ordered"] == year)
         bank = self.banks(league_id).get(team_id)
         balance = bank["balance"] - bank["owed"] if bank else None
+        stadiums = [p for p in rows if p["project"] in fn.STADIUM_TIERS]
+        current = stadiums[-1] if stadiums else None
+        # A stadium 25 seasons old can be replaced by one of its tier or
+        # higher; while one is going up, nothing else.
+        replace_from = current["year"] + fn.STADIUM_LIFE if current else None
+        can_replace = bool(current) and year >= replace_from
+        tier_now = fn.STADIUM_TIERS.index(current["project"]) if current else -1
         out = []
         for p in fn.BALLPARK:
+            is_stadium = p.key in fn.STADIUM_TIERS
+            mine = built.get(p.key)
+            if is_stadium and current and mine is not current:
+                mine = None  # an old stadium, replaced
+            rebuild = (
+                is_stadium and can_replace and fn.STADIUM_TIERS.index(p.key) >= tier_now
+            )
+            generation = len(stadiums) + 1 if is_stadium else 1
+            key = fn.built_key(p.key, generation)
             cost = (
-                int(built[p.key]["cost"])
-                if p.key in built
+                int(mine["cost"])
+                if mine and not rebuild
                 else fn.project_cost(p.key, cap)
             )
+            if mine and not rebuild:
+                key = fn.built_key(p.key, mine["generation"])
             earns = fn.project_money(
-                p.key, average, money.market, fans, revenue, row["ticket_price"]
+                key, average, money.market, fans, revenue, row["ticket_price"]
             )
-            blocker = None if p.key in built else fn.blocked_by(p.key, built)
+            blocked = None
+            if not mine or rebuild:
+                if is_stadium and current:
+                    if current["year"] > year:
+                        blocked = "Your new stadium is going up"
+                    elif fn.STADIUM_TIERS.index(p.key) < tier_now:
+                        blocked = "Below your stadium's tier"
+                    elif not can_replace:
+                        blocked = f"Can be replaced from {replace_from}"
+                elif not mine:
+                    blocker = fn.blocked_by(p.key, built)
+                    if blocker:
+                        blocked = (
+                            "Replaced by your new stadium"
+                            if blocker in fn.STADIUM_TIERS
+                            else f"Ruled out by your {fn.project(blocker).name.lower()}"
+                        )
+            orderable = (not mine or rebuild) and not blocked
             out.append(
                 {
                     "key": p.key,
@@ -1008,18 +1056,22 @@ class BudgetRepository:
                     "what": p.what,
                     "cost": cost,
                     "earns": earns,
-                    "fans": p.fans,
+                    "fans": round(p.fans * fn.rebuild_mult(key)),
+                    "value": fn.project_value(
+                        key, average, money.market, fans, revenue, row["ticket_price"]
+                    ),
                     "payback": fn.payback(cost, earns),
-                    "built": built[p.key]["year"] if p.key in built else None,
+                    "built": mine["year"] if mine else None,
                     "build": p.build,
-                    "stadium": p.group == "stadium",
+                    "stadium": is_stadium,
+                    "generation": generation if orderable else None,
+                    "rebuild": bool(rebuild and orderable),
                     "opens": year + p.build,
-                    "blocked": fn.project(blocker).name if blocker else None,
+                    "blocked": blocked,
                     "short": fn.can_build(balance, cost, cap, p.key)
-                    if p.key not in built
+                    if orderable
                     else 0,
-                    "waiting": p.key not in built
-                    and this_season >= fn.BALLPARK_PER_SEASON,
+                    "waiting": orderable and this_season >= fn.BALLPARK_PER_SEASON,
                 }
             )
         return out
@@ -1038,12 +1090,12 @@ class BudgetRepository:
         )
         if offer is None:
             return "That isn't a ballpark project."
-        if offer["built"] is not None:
+        if offer["blocked"]:
+            return f"{offer['blocked']}."
+        if offer["built"] is not None and not offer["rebuild"]:
             if offer["built"] > year:
                 return f"Your {offer['name'].lower()} opens in {offer['built']}."
             return f"Your {offer['name'].lower()} opened in {offer['built']}."
-        if offer["blocked"]:
-            return f"Your {offer['blocked'].lower()} rules this one out."
         if offer["waiting"]:
             return "One ballpark project a season: this one waits until next offseason."
         if offer["short"]:
@@ -1051,21 +1103,29 @@ class BudgetRepository:
                 "Your owner won't dip that far into savings: they need "
                 f"{format_salary(offer['short'])} more in the bank first."
             )
-        self._add_project(league_id, team_id, year, key, offer["cost"])
+        self._add_project(
+            league_id, team_id, year, key, offer["cost"], offer["generation"] or 1
+        )
         return None
 
     def _add_project(
-        self, league_id: str, team_id: str, year: int, key: str, cost: int
+        self,
+        league_id: str,
+        team_id: str,
+        year: int,
+        key: str,
+        cost: int,
+        generation: int = 1,
     ) -> None:
         """Order a project this season; it opens once it's built."""
         p = fn.project(key)
         opens = year + (p.build if p else 0)
         self.conn.execute(
             """INSERT INTO ballpark_projects
-                   (league_id, team_id, project, year, ordered, cost)
-               VALUES (%s, %s, %s, %s, %s, %s)
-               ON CONFLICT (league_id, team_id, project) DO NOTHING""",
-            (league_id, team_id, key, opens, year, cost),
+                   (league_id, team_id, project, year, ordered, cost, generation)
+               VALUES (%s, %s, %s, %s, %s, %s, %s)
+               ON CONFLICT (league_id, team_id, project, generation) DO NOTHING""",
+            (league_id, team_id, key, opens, year, cost, generation),
         )
 
     def _ai_ballparks(
@@ -1076,49 +1136,29 @@ class BudgetRepository:
         spend."""
         if not team_ids:
             return
-        rows = {
-            r["team_id"]: r
-            for r in self.conn.execute(
-                """SELECT team_id, revenue, fans_before, ticket_price FROM team_budgets
-                   WHERE league_id = %s AND year = %s""",
-                (league_id, year),
-            ).fetchall()
-        }
-        if not rows:
-            return
         banks = self.banks(league_id)
-        built = self.ballparks(league_id, None)
         spending = self._spending(league_id)
-        money = self._team_money(league_id, year, team_ids)
-        average = self._average_revenue(league_id, year)
         for t in team_ids:
-            r = rows.get(t)
-            bank = banks.get(t)
-            if r is None or bank is None:
+            if t not in banks:
                 continue
             chance = 0.25 + 0.5 * spending.get(t, 50) / 100
             if random.Random(f"park:{league_id}:{t}:{year}").random() > chance:
                 continue
-            fans = money[t].fans if r["fans_before"] is None else r["fans_before"]
-            revenue = int(r["revenue"] or average)
             best = None
-            have = built.get(t, ())
-            for p in fn.BALLPARK:
-                if p.key in have or fn.blocked_by(p.key, have):
+            for o in self.ballpark_offers(league_id, t, year):
+                if o["generation"] is None or o["short"] or o["waiting"]:
                     continue
-                cost = fn.project_cost(p.key, cap)
-                if fn.can_build(bank["balance"] - bank["owed"], cost, cap, p.key):
+                seasons = fn.payback(o["cost"], o["value"])
+                if seasons is None:
                     continue
-                value = fn.project_value(
-                    p.key, average, money[t].market, fans, revenue, r["ticket_price"]
-                )
-                seasons = fn.payback(cost, value)
-                if seasons is not None:
-                    seasons += p.build  # nothing comes in while it goes up
-                if seasons is not None and (best is None or seasons < best[0]):
-                    best = (seasons, p.key, cost)
+                seasons += o["build"]  # nothing comes in while it goes up
+                if best is None or seasons < best[0]:
+                    best = (seasons, o)
             if best:
-                self._add_project(league_id, t, year, best[1], best[2])
+                o = best[1]
+                self._add_project(
+                    league_id, t, year, o["key"], o["cost"], o["generation"]
+                )
 
     # ── Sponsors ─────────────────────────────────────────────────────────────
 

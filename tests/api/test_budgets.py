@@ -1625,7 +1625,7 @@ def test_a_rich_owner_builds_a_new_stadium_over_seasons(lg):
         o["key"]: o for o in x.budgets.ballpark_offers(x.league.id, x.mine.id, 2027)
     }
     assert offers["renovation"]["blocked"] and offers["stadium_modern"]["blocked"]
-    assert "rules this one out" in x.budgets.build(
+    assert "Replaced by your new stadium" in x.budgets.build(
         x.league.id, x.mine.id, 2027, "renovation"
     )
     assert x.budgets.ballparks(x.league.id, 2028) == {}
@@ -1696,3 +1696,75 @@ def test_ticket_prices_show_current_fan_interest(lg, client_for):
     card = html.split('id="tickets"')[1].split("</form>")[0]
     assert "63 <span" in card and "of 100" in card
     assert "-3 to where fans head each season" in card
+
+
+def _old_stadium(x, key="stadium_modern", opened=2001):
+    x.db.execute(
+        "UPDATE team_owners SET bank_start = 10000000000, bank_year = 2026"
+        " WHERE league_id = %s AND team_id = %s",
+        (x.league.id, x.mine.id),
+    )
+    x.db.execute(
+        """INSERT INTO ballpark_projects
+               (league_id, team_id, project, year, ordered, cost, generation)
+           VALUES (%s, %s, %s, %s, %s, %s, 1)""",
+        (x.league.id, x.mine.id, key, opened, opened - 4, 1_000_000_000),
+    )
+
+
+def test_a_stadium_25_seasons_old_can_be_replaced_at_its_tier_or_higher(lg):
+    """Josh, 2026-11-11: after 25 seasons a stadium can be replaced by one
+    of the same tier or higher, at today's prices, earning ~10% more."""
+    from src.league import finances as fn
+
+    x = lg()
+    _owned(x, spending=95)
+    _old_stadium(x, opened=2002)
+    x.budgets.for_league(x.league.id, 2026)
+    offers = {
+        o["key"]: o for o in x.budgets.ballpark_offers(x.league.id, x.mine.id, 2026)
+    }
+    assert offers["stadium_modern"]["built"] == 2002
+    assert offers["stadium_showpiece"]["blocked"] == "Can be replaced from 2027"
+    assert offers["stadium_basic"]["blocked"] == "Below your stadium's tier"
+    assert "Can be replaced from 2027" in x.budgets.build(
+        x.league.id, x.mine.id, 2026, "stadium_showpiece"
+    )
+
+    y = lg()
+    _owned(y, spending=95)
+    _old_stadium(y, opened=2001)
+    y.budgets.for_league(y.league.id, 2026)
+    offers = {
+        o["key"]: o for o in y.budgets.ballpark_offers(y.league.id, y.mine.id, 2026)
+    }
+    assert offers["stadium_basic"]["blocked"] == "Below your stadium's tier"
+    for k in ("stadium_modern", "stadium_showpiece"):
+        assert offers[k]["rebuild"] and offers[k]["generation"] == 2
+        assert not offers[k]["blocked"]
+    cap = y.budgets.cap(y.league.id, 2026)
+    assert offers["stadium_modern"]["cost"] == fn.project_cost("stadium_modern", cap)
+    assert fn.rebuild_mult("stadium_modern#2") == pytest.approx(1.10)
+    assert fn.project("stadium_modern#2") is fn.project("stadium_modern")
+    m = 1_000_000
+    first = fn.project_money("stadium_modern", 100 * m, 3, 60, 100 * m)
+    second = fn.project_money("stadium_modern#2", 100 * m, 3, 60, 100 * m)
+    assert second == pytest.approx(first * 1.10, rel=0.01)
+    assert fn.ballpark_fans(["stadium_modern#2"]) == round(
+        fn.project("stadium_modern").fans * 1.10
+    )
+
+    assert y.budgets.build(y.league.id, y.mine.id, 2026, "stadium_modern") is None
+    rows = y.budgets.ballpark(y.league.id, y.mine.id)
+    assert [(r["project"], r["generation"]) for r in rows] == [
+        ("stadium_modern", 1),
+        ("stadium_modern", 2),
+    ]
+    # The old park keeps earning until the new one opens, then it's gone.
+    assert y.budgets.ballparks(y.league.id, 2029) == {y.mine.id: ["stadium_modern"]}
+    assert y.budgets.ballparks(y.league.id, 2030) == {y.mine.id: ["stadium_modern#2"]}
+    y.budgets.for_league(y.league.id, 2027)
+    offers = {
+        o["key"]: o for o in y.budgets.ballpark_offers(y.league.id, y.mine.id, 2027)
+    }
+    assert offers["stadium_showpiece"]["blocked"] == "Your new stadium is going up"

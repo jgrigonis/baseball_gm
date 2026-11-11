@@ -511,6 +511,8 @@ def _ballpark_view(offers: list[dict], year: int, open_: bool) -> dict:
                 if o["built"] > year
                 else f"Opened {o['built']}"
             )
+            if o["rebuild"]:
+                status += ", old enough to replace"
         else:
             status = None
         rows.append(
@@ -521,7 +523,7 @@ def _ballpark_view(offers: list[dict], year: int, open_: bool) -> dict:
                 "payback_text": payback,
                 "short_text": _money(o["short"]) if o["short"] else None,
                 "can": open_
-                and o["built"] is None
+                and (o["built"] is None or o["rebuild"])
                 and not o["short"]
                 and not o["waiting"]
                 and not o["blocked"],
@@ -539,6 +541,8 @@ def _ballpark_view(offers: list[dict], year: int, open_: bool) -> dict:
         "open": open_,
         "built_count": sum(1 for o in offers if o["built"] is not None),
         "floor_caps": fn.BALLPARK_FLOOR,
+        "life": fn.STADIUM_LIFE,
+        "rebuild_pct": round((fn.STADIUM_REBUILD - 1) * 100),
     }
 
 
