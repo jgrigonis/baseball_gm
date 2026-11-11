@@ -713,6 +713,9 @@ window.trShop = function(pid) {
   pid = sel.value;
   if (!pid) return;
   window._shopPlayer = null;
+  // Setting sel.value from the player card's Shop him skips its onchange,
+  // so turn Dump salary on here too.
+  document.getElementById('tr-dump-btn').disabled = false;
   btn.disabled = true;
   btn.textContent = 'Asking around…';
   var el = document.getElementById('tr-shop-results');
@@ -803,6 +806,7 @@ function renderDump() {
         dumpSavedLine(o) +
       '</div>' +
       '<div class="tr-offer-btns">' +
+        '<button class="btn btn-secondary" title="Compare the players side by side" onclick="trDumpCompare(' + i + ')">Compare ↔</button>' +
         '<button class="btn btn-secondary" title="Open it in the builder to change it" onclick="trDumpTweak(' + i + ')">Tweak</button>' +
         '<button class="btn btn-primary" onclick="trDumpTake(' + i + ')">Make this trade</button>' +
       '</div>' +
@@ -875,6 +879,13 @@ window.trShopTweak = function(i) {
   render('mine');
   trLoadTeam(o.team_id, o.give);
   document.getElementById('tr-bar').scrollIntoView({behavior: 'smooth', block: 'center'});
+};
+
+// Compare a dump offer: their throw-in against your player and any sweetener.
+window.trDumpCompare = function(i) {
+  var o = DUMP && DUMP.offers[i];
+  if (!o) return;
+  compareTrade(o.players.map(function(p) { return p.player_id; }), [DUMP.pid].concat(o.add));
 };
 
 // Open a dump offer in the builder: your player and any sweetener, their throw-in.
