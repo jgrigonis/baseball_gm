@@ -114,12 +114,20 @@ window.releasePlayer = async function(pid, name) {
     cost = await r.json();
     if (!r.ok) throw new Error(cost.detail || 'Something went wrong.');
   } catch (e) { gmAlert(e.message); return; }
-  const owed = cost.total
-    ? `His deal is guaranteed: you'll still owe ` +
-      (cost.seasons > 1 ? `${cost.salary_text} a season through ${cost.through} (${cost.total_text} in all)`
-                        : `his ${cost.salary_text} for this season`) +
-      `, even after he's gone.`
-    : `His deal isn't guaranteed (he hasn't played a game on the 40-man), so it costs nothing.`;
+  // A deal that isn't guaranteed costs nothing to cut, so there's nothing
+  // to weigh: release him right away and just say so (Josh, 2026-11-11).
+  // Guaranteed deals still confirm first, since you keep paying him.
+  if (!cost.total) {
+    try { await postJson(base); } catch (e) { gmAlert(e.message); return; }
+    gmToast(cost.waivers ? `Released ${name}. He's on waivers.` : `Released ${name}`, 'ok');
+    closePlayerPanel();
+    reloadTab();
+    return;
+  }
+  const owed = `His deal is guaranteed: you'll still owe ` +
+    (cost.seasons > 1 ? `${cost.salary_text} a season through ${cost.through} (${cost.total_text} in all)`
+                      : `his ${cost.salary_text} for this season`) +
+    `, even after he's gone.`;
   const next = cost.waivers
     ? 'He goes on waivers for two sim periods. If another team claims him, they take over his deal and you owe nothing. If not, he becomes a free agent.'
     : 'He becomes a free agent any team can sign.';
