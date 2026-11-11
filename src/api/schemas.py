@@ -225,9 +225,10 @@ class LineupAutofillRequest(BaseModel):
     vs_hand: Literal["R", "L"] = "R"
     # A lineup style to build with instead of the Strategy tab's (the Rebuild
     # All menu); None uses the Strategy tab's.
-    style: Literal["traditional", "analytics", "speed-first", "power-first"] | None = (
-        None
-    )
+    style: (
+        Literal["traditional", "analytics", "speed-first", "power-first", "defensive"]
+        | None
+    ) = None
 
 
 class RotationSaveRequest(BaseModel):

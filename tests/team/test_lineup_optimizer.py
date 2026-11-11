@@ -137,6 +137,19 @@ def test_glove_matters_most_up_the_middle():
     assert by_position(lineup)["ss"] == "ss"
 
 
+def test_defensive_style_takes_the_glove_up_the_middle():
+    """A better bat with a weaker glove plays short in Analytics; Defensive
+    plays the glove man there and moves the bat."""
+    glove = hitter("glove", bat=30, glove={"ss": 80})
+    bat = hitter("bat", bat=65, glove={"ss": 66})
+    players = [glove, bat] + [hitter(f"h{i}", glove={"ss": 0}) for i in range(8)]
+
+    assert by_position(LineupOptimizer.fill([None] * 9, players))["ss"] == "bat"
+    lineup = LineupOptimizer.fill([None] * 9, players, style="defensive")
+    assert by_position(lineup)["ss"] == "glove"
+    assert "bat" in by_position(lineup).values()
+
+
 def test_big_bat_without_glove_still_plays():
     slugger = hitter("slugger", bat=90, glove={p: 10 for p in FIELD_POSITIONS})
 

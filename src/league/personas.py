@@ -314,6 +314,8 @@ def profile(dials: dict) -> dict:
 
     if d["offense_defense"] >= 80 and small < 30:
         style = "power-first"
+    elif d["offense_defense"] <= 20:
+        style = "defensive"
     elif small >= 80:
         style = "speed-first"
     elif modern < 34:

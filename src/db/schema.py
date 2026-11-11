@@ -940,7 +940,8 @@ CREATE TABLE IF NOT EXISTS gm_profiles (
 
     -- Batting tendencies
     lineup_style     TEXT NOT NULL DEFAULT 'traditional'
-                         CHECK (lineup_style     IN ('traditional', 'analytics', 'speed-first', 'power-first')),
+                         CHECK (lineup_style     IN ('traditional', 'analytics', 'speed-first', 'power-first',
+                                                'defensive')),
     -- Replaced by baserunning (migration 023); no longer read.
     steal_aggression TEXT NOT NULL DEFAULT 'standard'
                          CHECK (steal_aggression IN ('conservative', 'standard', 'aggressive')),

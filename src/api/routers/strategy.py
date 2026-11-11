@@ -37,13 +37,16 @@ SETTINGS: tuple[tuple[str, tuple[Setting, ...]], ...] = (
                 "lineup_style",
                 "Lineup Construction",
                 mp.LINEUP_STYLE,
-                ("Traditional", "Analytics", "Speed-first", "Power-first"),
-                ("Traditional", "Power-first"),
-                "How Auto-fill, Rebuild and the AI order your lineup. Every style "
+                ("Traditional", "Analytics", "Speed-first", "Power-first", "Defensive"),
+                ("Traditional", "Defensive"),
+                "How Auto-fill, Rebuild and the AI build your lineup. Every style "
                 "leads off with your best on-base hitter. Traditional bats the best "
                 "hitter 3rd; Analytics bats him 2nd; Speed-first puts speed 2nd "
-                "and 9th; Power-first stacks power 3rd through 5th. The Lineup tab's "
-                "Rebuild All menu (▾) rebuilds with any style so you can compare.",
+                "and 9th; Power-first stacks power 3rd through 5th. Defensive plays "
+                "the best gloves, above all at C, 2B, SS and CF, even when that "
+                "costs some bat, then bats them in the Traditional order. The "
+                "Lineup tab's Rebuild All menu (▾) rebuilds with any style so you "
+                "can compare.",
             ),
             Setting(
                 "baserunning",
