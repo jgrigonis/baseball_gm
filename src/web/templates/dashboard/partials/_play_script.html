@@ -8,10 +8,13 @@
 // Helpers that always look up fresh DOM refs
 function getBtn()  { return document.getElementById('sched-play-btn'); }
 function getStop() { return document.getElementById('sched-stop-btn'); }
-function setStatus(msg, color) {
+// oneLine: the running "Simming day N…" line stays on one line and is cut
+// short with "…" on a phone instead of wrapping; results can wrap.
+function setStatus(msg, color, oneLine) {
   var bar  = document.getElementById('sim-status');
   var text = document.getElementById('sim-status-text');
   if (!bar || !text) return;
+  text.classList.toggle('sim-status-one-line', !!oneLine);
   if (msg) {
     text.textContent = msg;
     bar.style.setProperty('display', 'flex', 'important');
@@ -186,16 +189,26 @@ async function schedSimRun(count) {
   var daysSimmed = 0;
   var run = newRunSummary();
 
+  // "Simming day 94… · 3-1 (42-31) · 1st in East by 2.5": the day being
+  // played, with the team's line through the last finished day (none yet
+  // on day 1). One line, so nothing flashes between two messages.
+  function simmingText() {
+    var record = runRecordText(run);
+    var msg = 'Simming day ' + (daysSimmed + 1) + '…';
+    if (record) return msg + ' · ' + record;
+    return msg + (totalGames ? '  (' + totalGames + ' league games played)' : '');
+  }
+
   while (!window._simStop) {
-    setStatus('Simming day ' + (daysSimmed + 1) + '…' + (totalGames ? '  (' + totalGames + ' league games played)' : ''));
+    setStatus(simmingText(), null, true);
 
     try {
-      var dayMsg = 'Simming day ' + (daysSimmed + 1) + '…';
+      var dayMsg = simmingText();
       var d = await runLeagueJob('/leagues/{{ league_id }}/sim', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({count: 1}),
-      }, function(job) { setStatus(leagueJobWaitingText(job) || dayMsg); });
+      }, function(job) { setStatus(leagueJobWaitingText(job) || dayMsg, null, true); });
       if (d.failed) { setStatus('✗ ' + (d.detail || 'Server error'), 'red'); break; }
       // The All-Star weekend was played instead of a day's games: off to
       // its results on the All-Star tab.
@@ -221,8 +234,9 @@ async function schedSimRun(count) {
       daysSimmed++;
       addToRun(run, d);
 
-      var record = runRecordText(run);
-      setStatus('▶ Day ' + daysSimmed + ' done' + (record ? ' · ' + record : ''));
+      // On to the next day's line while the tab refreshes; a single day
+      // keeps its line until the result.
+      if (multi) setStatus(simmingText(), null, true);
 
       var hasNews = showInjuryNews(d);
 
