@@ -2,9 +2,11 @@
 """
 Waivers (free agency phase 2; Josh's decisions, 2026-11-05).
 
-- A player released off the 40-man goes on waivers for WAIVER_PERIODS sim
-  periods of game days. Minors players skip waivers: releasing them is free,
-  and they're free agents at once.
+- A player released off the 40-man, or with a guaranteed deal, goes on
+  waivers for WAIVER_PERIODS sim periods of game days
+  (free_agents.goes_on_waivers). Minors players on deals that were never
+  guaranteed skip waivers: releasing them is free, and they're free agents
+  at once.
 - Any other team can claim him while he's on waivers. When he clears, the
   claiming team with the worst record gets him (last season's record before
   any games this season), and takes over his whole deal, so his old team
