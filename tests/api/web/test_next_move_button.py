@@ -7,9 +7,10 @@ from fastapi.testclient import TestClient
 from src.api.database import get_db
 from src.api.dependencies import get_current_gm, get_current_user, get_gm_or_viewer
 from src.api.main import app
+from src.db.repositories.gm_repo import GMRepository
 
 
-def _get(db_conn, factory, state, *paths, joined=False):
+def _get(db_conn, factory, state, *paths, joined=False, traded=False):
     league = factory.league(state=state, mode="blitz")
     season = factory.season(year=2025)
     factory.league_season(league, season)
@@ -29,6 +30,8 @@ def _get(db_conn, factory, state, *paths, joined=False):
             )
             db_conn.execute("UPDATE gms SET user_id = %s WHERE id = %s", (uid, g.id))
 
+    if traded:
+        GMRepository(db_conn).mark_trade_roster_due(gm.id, season.id)
     app.dependency_overrides[get_db] = lambda: db_conn
     app.dependency_overrides[get_current_user] = lambda: {"id": None}
     me = {"id": gm.id, "team_id": mine.id}
@@ -74,3 +77,18 @@ def test_the_button_says_when_a_gm_joined(db_conn, factory):
     (shared,) = _get(db_conn, factory, "season", url, joined=True)
     assert 'data-mp="0"' in solo and 'id="sched-play-btn"' in solo
     assert 'data-mp="1"' in shared and 'onclick="readyToggle()"' in shared
+
+
+def test_after_a_trade_the_roster_tab_turns_it_back_to_play_day(db_conn, factory):
+    before, there, after = _get(
+        db_conn,
+        factory,
+        "season",
+        "/leagues/{id}/next-move?page=trades",
+        "/leagues/{id}/next-move?page=roster",
+        "/leagues/{id}/next-move?page=trades",
+        traded=True,
+    )
+    assert "Go to Roster" in before and "Play Day" not in before
+    assert "▶ Play Day" in there
+    assert "▶ Play Day" in after and "Go to Roster" not in after
