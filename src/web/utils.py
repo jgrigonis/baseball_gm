@@ -496,9 +496,7 @@ def _shell_ctx(
         )
         # Past deadline day no team can offer a trade, so the sim menu drops
         # its trade boxes (Josh, 2026-11-10).
-        ctx["trades_closed"] = bool(
-            deadline and row and row["game_date"] > deadline
-        )
+        ctx["trades_closed"] = bool(deadline and row and row["game_date"] > deadline)
         stops = next_move.sim_stops(
             row["game_date"] if row else None,
             # The tab's phase is "none" in the preseason; the vote is ahead.
