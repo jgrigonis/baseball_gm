@@ -464,8 +464,8 @@
         <th class="num">Minors</th>
         <th class="num" title="Ballpark, travel and staff, the same for every team, less the league's help with an average farm">Fixed costs</th>
         {% if history_other %}<th class="num">Other</th>{% endif %}
-        <th class="num">Profit</th>
         {% if history_park %}<th class="num" title="Paid from the owner's bank for ballpark upgrades">Ballpark</th>{% endif %}
+        <th class="num">Profit</th>
         <th class="num">Bank after</th>
         <th class="num" title="Fan interest after the season, 0 to 100">Fans</th>
       </tr></thead>
@@ -481,8 +481,8 @@
           <td class="num">{{ r.minor_league or '—' }}</td>
           <td class="num">{{ r.fixed }}</td>
           {% if history_other %}<td class="num">{{ r.other or '—' }}</td>{% endif %}
-          <td class="num {% if r.loss %}bud-bad{% endif %}">{{ r.profit }}</td>
           {% if history_park %}<td class="num">{{ r.park or '—' }}</td>{% endif %}
+          <td class="num {% if r.loss %}bud-bad{% elif r.gain %}bud-good{% endif %}">{{ r.profit }}</td>
           <td class="num">{{ r.bank or '—' }}</td>
           <td class="num">{{ r.fans if r.fans is not none else '—' }}</td>
         </tr>

@@ -270,6 +270,7 @@ def _past_seasons(past: list[dict], books: list[dict]) -> list[dict]:
                 "other": _money(b["other"]) if b["other"] else None,
                 "profit": _money(b["profit"]),
                 "loss": b["profit"] < 0,
+                "gain": b["profit"] > 0,
                 "park": _money(park) if park else None,
                 "fans": r["fans_after"],
                 "bank": _money(r["bank_after"]),
