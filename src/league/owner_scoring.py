@@ -65,6 +65,11 @@ class TeamSeason:
     # (src/league/finances.py attendance_score); None for a season played
     # before crowds were counted, which reads fan interest instead.
     crowd_score: float | None = None
+    # What it was read from, per home game, for the admin's owner card:
+    # the average crowd, the crowd expected in the park, and the seats.
+    crowd_avg: int | None = None
+    crowd_expected: int | None = None
+    crowd_seats: int | None = None
     homegrown_share: float = 0.0
     # The count behind the share: players on the 40-man roster the team
     # drafted itself, and players on it, so the owner can name them.

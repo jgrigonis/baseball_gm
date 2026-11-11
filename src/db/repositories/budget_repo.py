@@ -1784,7 +1784,8 @@ class BudgetRepository:
         """Each team's revenue (with the playoff gate so far) and profit for
         the season, by team id, as the Budget tab projects them until the
         books close (books): today's payroll, tax and tax share for the
-        year. Empty without budgets."""
+        year. Also fan interest coming in (fans_before) and where the season
+        so far would leave it (fans_after). Empty without budgets."""
         rows = {
             r["team_id"]: r
             for r in self.conn.execute(
@@ -1851,7 +1852,24 @@ class BudgetRepository:
                 ),
                 luxury_tax=bg.luxury_tax(payrolls[t], cap),
             )
-            out[t] = {"revenue": revenue[t] + gate, "profit": b["profit"]}
+            res = results.get(t, {})
+            out[t] = {
+                "revenue": revenue[t] + gate,
+                "profit": b["profit"],
+                # Where fan interest is headed if the season ends like this
+                # (the books move it only when they close).
+                "fans_before": fans,
+                "fans_after": fn.fans_after(
+                    fans,
+                    res.get("win_pct", 0.5),
+                    res.get("playoffs", False),
+                    res.get("champion", False),
+                    res.get("all_stars", 0),
+                    r["ticket_price"],
+                    levels.get(t, {}).get("marketing"),
+                    fn.ballpark_fans(parks.get(t, ())),
+                ),
+            }
         return out
 
     def _results(self, league_id: str, season_id: str) -> dict[str, dict]:

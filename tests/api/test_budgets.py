@@ -1082,6 +1082,18 @@ def test_owners_judge_money_in_season_on_the_projected_books(lg):
     x.budgets.assess(x.league.id, 2026)
     (closed,) = x.budgets.books(x.league.id, x.mine.id, 2026)
     assert closed["profit"] == projected[x.mine.id]["profit"]
+    # Fan interest too (Josh, 2026-11-11: "Don't we have fan data? We're in
+    # late June already"): where it's headed matches where the books leave it.
+    row = x.db.execute(
+        """SELECT fans_before, fans_after FROM team_budgets
+           WHERE league_id = %s AND team_id = %s AND year = 2026""",
+        (x.league.id, x.mine.id),
+    ).fetchone()
+    mine = projected[x.mine.id]
+    assert (mine["fans_before"], mine["fans_after"]) == (
+        row["fans_before"],
+        row["fans_after"],
+    )
 
 
 # ── Ticket prices (Josh, 2026-11-07) ─────────────────────────────────────────
