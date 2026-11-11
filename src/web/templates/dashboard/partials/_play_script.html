@@ -82,20 +82,25 @@ window.schedSetThroughBreak = schedSetThroughBreak;
 // Full Season's note says where it will stop: the first of the season's
 // stops (next_move.sim_stops) that the boxes above don't skip.
 var ALL_STAR_STOPS = ['vote', 'stars', 'weekend'];
-function schedUpdateStops() {
+// The first stop a Full Season run will reach, or null.
+function schedNextStop() {
   var item = document.getElementById('sched-season-btn');
-  var note = item && item.querySelector('.nm-note');
-  if (!note || !item.dataset.stops) return;
+  if (!item || !item.dataset.stops) return null;
   var skipStars = !!document.getElementById('sched-stop-allstar-box') && schedThroughBreak();
   var skipDeadline = !!document.getElementById('sched-stop-deadline-box') && !schedStopDeadline();
   var stops = [];
-  try { stops = JSON.parse(item.dataset.stops); } catch (e) { return; }
-  var next = stops.find(function(s) {
+  try { stops = JSON.parse(item.dataset.stops); } catch (e) { return null; }
+  return stops.find(function(s) {
     if (skipStars && ALL_STAR_STOPS.indexOf(s.kind) >= 0) return false;
     if (skipDeadline && s.kind === 'deadline') return false;
     return true;
-  });
-  if (next) note.textContent = next.note;
+  }) || null;
+}
+function schedUpdateStops() {
+  var item = document.getElementById('sched-season-btn');
+  var note = item && item.querySelector('.nm-note');
+  var next = schedNextStop();
+  if (note && next) note.textContent = next.note;
 }
 // The boxes start as this browser left them (and again whenever the
 // next-move button reloads: refreshNextMove calls this).
@@ -162,6 +167,21 @@ async function schedSimRun(count) {
   // Multi-day runs can also play straight through the All-Star break.
   var throughBreak = count !== 1 && !!document.getElementById('sched-stop-allstar-box') && schedThroughBreak();
   var weekendPlayed = false;
+  // A Full Season run fills the sim card's bar by the calendar, from today
+  // to the stop it's headed for (next_move.sim_stops), when it won't stop
+  // for trade offers, which can't be known ahead (Josh, 2026-11-10). Other
+  // runs end when something happens, so they have no bar.
+  var barFrom = null, barTo = null;
+  var offersStop = !!document.getElementById('sched-stop-offers-box') && schedStopOffers();
+  if (count === 'season' && !offersStop) {
+    var stop = schedNextStop();
+    var today = document.querySelector('.topbar-date');
+    if (stop && stop.date && today) {
+      barFrom = Date.parse(today.textContent.trim());
+      barTo = Date.parse(stop.date);
+      if (!(barTo > barFrom)) barFrom = barTo = null;
+    }
+  }
 
   var totalGames = 0;
   var remaining  = null;
@@ -216,8 +236,8 @@ async function schedSimRun(count) {
       // On to the next day's line while the tab refreshes; a single day
       // keeps its line until the result.
       if (multi) setStatus(simmingText());
-      // A run of a set length (a week, say) fills the card's bar.
-      if (typeof count === 'number' && count > 1 && window.simCard) window.simCard.progress(daysSimmed, count);
+      if (barFrom !== null && d.current_date && window.simCard)
+        window.simCard.progress(Date.parse(d.current_date) - barFrom, barTo - barFrom);
 
       var hasNews = showInjuryNews(d);
 

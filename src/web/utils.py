@@ -499,6 +499,7 @@ def _shell_ctx(
             else all_star.phase(db, ctx["season_id"]),
             all_star.window(db, ctx["season_id"]),
             deadline_date(db, ctx["season_id"]) if ctx.get("trades_enabled") else None,
+            GameRepository(db).last_scheduled_date(ctx["season_id"]),
         )
     # The preseason's last chance to set the front office and ticket prices
     # before they lock: until the GM opens the Budget tab, the next move

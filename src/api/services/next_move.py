@@ -55,14 +55,16 @@ def sim_stops(
     as_phase: str,
     as_window=None,
     deadline: str | None = None,
+    season_end: str | None = None,
 ) -> list[dict]:
     """The regular season's scheduled stops still ahead, in order: the day
     the All-Star ballot opens, the break (the All-Stars are named), the
     weekend itself, the trade deadline, and the end of the season. today is
     the next day to play; as_window is all_star.Window (opens, closes,
     resumes); deadline is the trade deadline's date, None when the league
-    doesn't trade. A sim also stops for a new trade offer, which can't be
-    known ahead."""
+    doesn't trade; season_end is the regular season's last day. Each stop
+    carries its date, which fills the sim card's bar on a Full Season run.
+    A sim also stops for a new trade offer, which can't be known ahead."""
     stops = []
     if as_window and as_phase == "upcoming":
         stops.append(("vote", as_window.opens))
@@ -75,8 +77,10 @@ def sim_stops(
         # around it sort by date like everything else.
         stops.append(("deadline", deadline))
     stops.sort(key=lambda s: s[1])
-    out = [{"kind": k, "note": STOP_NOTES[k]} for k, _ in stops]
-    return out + [{"kind": "playoffs", "note": STOP_NOTES["playoffs"]}]
+    out = [{"kind": k, "note": STOP_NOTES[k], "date": d} for k, d in stops]
+    return out + [
+        {"kind": "playoffs", "note": STOP_NOTES["playoffs"], "date": season_end}
+    ]
 
 
 def _season_item(stops: list[dict]) -> dict:
