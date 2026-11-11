@@ -255,6 +255,17 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         return RedirectResponse("/")
     if isinstance(exc, PasswordChangeRequired) and _wants_page(request):
         return RedirectResponse("/auth/change-password", status_code=303)
+    if isinstance(exc, NotLeagueGM) and exc.fired and request.method == "GET":
+        # A GM page for someone their owner just fired, e.g. the page they
+        # were on reloading once the Finals end: the league's own landing
+        # page, as the viewer they now are, with the firing banner.
+        url = f"/leagues/{exc.league_id}/"
+        if request.headers.get("HX-Request") == "true":
+            return JSONResponse(
+                {"detail": exc.detail}, status_code=403, headers={"HX-Redirect": url}
+            )
+        if _wants_page(request):
+            return RedirectResponse(url, status_code=303)
     if (
         isinstance(exc, NotLeagueGM)
         and request.method == "GET"

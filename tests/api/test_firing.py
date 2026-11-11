@@ -6,8 +6,16 @@ through taking over another team (takeover.py)."""
 import uuid
 
 import pytest
+from fastapi.testclient import TestClient
 
-from src.api.dependencies import NotLeagueGM, get_current_gm, get_gm_or_viewer
+from src.api.database import get_db
+from src.api.dependencies import (
+    NotLeagueGM,
+    get_current_gm,
+    get_current_user,
+    get_gm_or_viewer,
+)
+from src.api.main import app
 from src.api.services import firing, owner_review, takeover
 from src.api.services import owners as owner_service
 from src.api.services.news.events import firings as firing_news
@@ -214,6 +222,37 @@ class TestAPerson:
         # her fired row.
         assert _league(lg.db, lg.league.id)["commissioner_gm_id"] == mine["id"]
         assert not firing.nobody_left(lg.db, lg.league.id)
+
+    def test_gm_page_sends_them_to_the_firing_banner(self, lg):
+        """The page they were on reloads once the Finals end: a GM page now,
+        which goes to the season summary with the banner, not the league
+        list."""
+        _fire(lg, lg.alice)
+        firing.carry_out(lg.db, lg.league.id, lg.season.id, 2026)
+        app.dependency_overrides[get_db] = lambda: lg.db
+        app.dependency_overrides[get_current_user] = lambda: {
+            **lg.user, "has_password": True, "is_admin": False,
+        }  # fmt: skip
+        try:
+            c = TestClient(app)
+            page = {"accept": "text/html"}
+            lid = lg.league.id
+            r = c.get(f"/leagues/{lid}/roster", headers=page, follow_redirects=False)
+            assert r.status_code == 303
+            assert r.headers["location"] == f"/leagues/{lid}/"
+            r = c.get(f"/leagues/{lid}/", headers=page, follow_redirects=False)
+            assert r.headers["location"] == f"/leagues/{lid}/season-summary"
+            r = c.get(f"/leagues/{lid}/season-summary", headers=page)
+            assert "fired-banner" in r.text and "You're fired." in r.text
+            # A tab swap is sent there too.
+            r = c.get(
+                f"/leagues/{lid}/roster",
+                headers={**page, "HX-Request": "true"},
+                follow_redirects=False,
+            )
+            assert r.headers["HX-Redirect"] == f"/leagues/{lid}/"
+        finally:
+            app.dependency_overrides.clear()
 
     def test_re_entry_takes_a_job_an_owner_offers(self, lg):
         _fire(lg, lg.alice)

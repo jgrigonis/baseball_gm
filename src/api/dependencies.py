@@ -62,8 +62,13 @@ class NotLeagueGM(HTTPException):
     Page loads are sent back to the league list (see main.py); API and fetch
     callers get the 403."""
 
-    def __init__(self):
+    def __init__(self, league_id: str | None = None, fired: bool = False):
         super().__init__(status_code=403, detail="Not a GM in this league")
+        # Their owner fired them (src/api/services/firing.py): a page load is
+        # sent to the league itself, where they watch and see the firing
+        # banner, not to the league list.
+        self.league_id = league_id
+        self.fired = fired
 
 
 def get_current_gm(league_id: str, db: DB, user: Any = Depends(get_current_user)):
@@ -74,8 +79,10 @@ def get_current_gm(league_id: str, db: DB, user: Any = Depends(get_current_user)
     ).fetchone()
     # A GM their owner fired (src/api/services/firing.py) has no team to act
     # for: they can only watch, or take a new job.
-    if not gm or gm["fired_at"]:
+    if not gm:
         raise NotLeagueGM()
+    if gm["fired_at"]:
+        raise NotLeagueGM(league_id, fired=True)
     return gm
 
 

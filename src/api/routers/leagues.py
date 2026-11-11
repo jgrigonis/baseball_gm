@@ -664,6 +664,10 @@ def dashboard(
     # Viewers of a public league land on its standings, or its history once
     # it's over. The pages built around a GM's own team aren't open to them.
     if gm.get("is_viewer"):
+        # Someone just fired lands on how the season ended, under the
+        # banner that says who let them go and why.
+        if gm.get("fired") and league["state"] == "offseason":
+            return RedirectResponse(f"/leagues/{league_id}/season-summary")
         if league["state"] == "complete":
             return RedirectResponse(f"/leagues/{league_id}/history")
         return RedirectResponse(f"/leagues/{league_id}/standings")
