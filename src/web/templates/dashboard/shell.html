@@ -344,6 +344,22 @@ function _reloadTab(url, quiet) {
   });
 }
 
+// Whether the open tab holds edits the sim's day-by-day reload would lose
+// (liveRefreshTab; a reload the GM asked for goes ahead). A tab says so by
+// giving one of its elements a simHold() (Roster's unsaved 40-man, a trade
+// half built in the builder). The Lineup and Strategy tabs keep their
+// unsaved edits across a reload themselves, so they don't need one.
+function _simHold() {
+  var els = document.querySelectorAll('#tab-content [id]');
+  for (var i = 0; i < els.length; i++) {
+    var fn = els[i].simHold;
+    if (typeof fn === 'function') {
+      try { if (fn()) return true; } catch (e) {}
+    }
+  }
+  return false;
+}
+
 // Reload the open tab after the league has moved on without this page, e.g.
 // a ready-check period or another GM's sim.
 window.refreshActiveTab = function() {
@@ -356,6 +372,9 @@ window.refreshActiveTab = function() {
 // page and the Stats table keep their scroll. The open view (Stats team,
 // season, category, sort) lives in the URL, so reload that URL.
 window.liveRefreshTab = function(url) {
+  // Unsaved edits wait: the tab catches up on the first day after they're
+  // saved or reverted.
+  if (_simHold()) return Promise.resolve();
   return _reloadTab(url || location.pathname + location.search, true);
 };
 

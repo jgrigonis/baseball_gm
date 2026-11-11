@@ -401,6 +401,10 @@
 <script>
 (function () {
 
+/* ── Unsaved edits hold the sim's daily reload (shell.html _simHold) ───────── */
+var rosterHead = document.getElementById('roster-header');
+if (rosterHead) rosterHead.simHold = function() { return hasUnsavedChanges(); };
+
 /* ── Hoist globals ──────────────────────────────────────────────────────────── */
 window.saveRoster    = saveRoster;
 window.pickTopForty  = pickTopForty;

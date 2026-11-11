@@ -239,6 +239,12 @@ var UNIT = {{ ('players or picks' if pick_trades else 'players') | tojson }};
 var BUDGET = {{ budget | tojson }};
 var OWNER_ICONS = {{ owner_icons | tojson }};
 var COUNTER = null;  // the offer to you this one counters
+// A deal half built: the sim's day-by-day reload leaves the tab alone
+// (shell.html _simHold) so the picks aren't lost.
+var page = document.getElementById('trades-page');
+if (page) page.simHold = function() {
+  return SIDES.mine.picked.size > 0 || SIDES.theirs.picked.size > 0;
+};
 
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
