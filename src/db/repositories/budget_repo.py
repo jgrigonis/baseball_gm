@@ -1202,6 +1202,17 @@ class BudgetRepository:
         ).fetchone()
         return row["id"] if row else None
 
+    def _all_stars(self, season_id: str | None) -> set[str]:
+        if not season_id:
+            return set()
+        return {
+            r["player_id"]
+            for r in self.conn.execute(
+                "SELECT player_id FROM all_stars WHERE season_id = %s",
+                (season_id,),
+            ).fetchall()
+        }
+
     def _games(self, season_id: str | None, team_ids=None) -> dict[tuple, int]:
         """{(player_id, team_id): regular season games} in a season."""
         if not season_id:
@@ -1225,20 +1236,26 @@ class BudgetRepository:
         """Who sells jerseys for each team this season (or just these
         teams), by team id: everyone who played for it, by the share of his
         games he played there, and anyone on its big league roster who
-        hasn't played anywhere yet."""
+        hasn't played anywhere yet. A team with no 26-man picked (in the
+        offseason, saving the Roster tab leaves everyone on the 40-man until
+        Opening Day) counts its 40-man instead, so the offseason estimate
+        isn't just its Hall of Famers."""
         from src.api.services.icons import _grades
 
         teams = self._team_ids(league_id)
         season_id = self._season_id(league_id, year)
         games = self._games(season_id, teams)
+        rows = self.conn.execute(
+            """SELECT tp.player_id, tp.team_id, ps.status FROM team_players tp
+               JOIN player_status ps ON ps.player_id = tp.player_id
+               WHERE tp.team_id = ANY(%s) AND ps.status IN ('26man', '40man')""",
+            (teams,),
+        ).fetchall()
+        picked = {r["team_id"] for r in rows if r["status"] == "26man"}
         roster = {
             r["player_id"]: r["team_id"]
-            for r in self.conn.execute(
-                """SELECT tp.player_id, tp.team_id FROM team_players tp
-                   JOIN player_status ps ON ps.player_id = tp.player_id
-                   WHERE tp.team_id = ANY(%s) AND ps.status = '26man'""",
-                (teams,),
-            ).fetchall()
+            for r in rows
+            if r["status"] == "26man" or r["team_id"] not in picked
         }
         played: dict[str, dict[str, int]] = {}
         for (p, t), n in games.items():
@@ -1252,16 +1269,14 @@ class BudgetRepository:
         for (p, t), _n in self._games(self._season_any(league_id, year - 1)).items():
             before.setdefault(p, set()).add(t)
         grades = _grades(self.conn, list(played)) if played else {}
-        stars: set[str] = set()
+        stars = self._all_stars(season_id)
+        if not stars:
+            # Until this season's All-Stars are picked, last season's are
+            # expected back, so the estimate isn't far under what the
+            # season ends up selling (Josh, 2026-11-11).
+            stars = self._all_stars(self._season_any(league_id, year - 1))
         winners: set[str] = set()
         if season_id:
-            stars = {
-                r["player_id"]
-                for r in self.conn.execute(
-                    "SELECT player_id FROM all_stars WHERE season_id = %s",
-                    (season_id,),
-                ).fetchall()
-            }
             winners = {
                 r["player_id"]
                 for r in self.conn.execute(
