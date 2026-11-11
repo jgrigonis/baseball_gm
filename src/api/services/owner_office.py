@@ -27,7 +27,7 @@ from dataclasses import replace
 from datetime import date
 
 from src.api.grade_curves import GRADES
-from src.api.services import icons, owner_review
+from src.api.services import icons, owner_review, sim_summary
 from src.api.services.news.moves import is_notable
 from src.api.services import owners as owner_service
 from src.db.repositories.budget_repo import BudgetRepository
@@ -218,14 +218,31 @@ def _fields(owner: dict, gm: dict, names: dict, budget: int | None) -> dict:
     }
 
 
-def _in_season(season, traits: dict, money: bool, state: str) -> dict:
+def _in_season(
+    season, traits: dict, money: bool, state: str, october: str | None = None
+) -> dict:
     """The owner's scores on the season so far. Until the playoffs start,
     nobody has made or missed them, so the postseason isn't judged yet
-    (score_dimensions would read every team as having missed)."""
+    (score_dimensions would read every team as having missed), unless the
+    standings have settled it (october, from _october): a team that's
+    clinched a spot is judged as in, one that's eliminated as out (Josh,
+    2026-11-11)."""
+    if state == "season" and october in ("division", "spot"):
+        season = replace(season, made_playoffs=True)
     scores = sc.score_dimensions(season, traits, money)
-    if state == "season":
+    if state == "season" and october not in ("division", "spot", "out"):
         scores["postseason"] = None
     return scores
+
+
+def _october(conn, league_id: str, season_id: str, facts: dict) -> dict[str, str]:
+    """Each team the standings have settled the playoffs for: "division" or
+    "spot" (clinched) or "out" (eliminated), from the season so far (facts:
+    owner_review.gather), as the standings' x / y / e tags read."""
+    records = [
+        {"team_id": t, "wins": s.wins, "losses": s.losses} for t, s in facts.items()
+    ]
+    return sim_summary.clinch_marks(conn, league_id, season_id, records)
 
 
 def weekly(conn, league_id: str, today: str) -> int:
@@ -272,6 +289,11 @@ def catch_up(conn, league_id: str, today: str | None = None) -> int:
         if in_season
         else {}
     )
+    october = (
+        _october(conn, league_id, season["id"], facts)
+        if league["state"] == "season"
+        else {}
+    )
     current = moods(conn, league_id, season["id"])
     # The first reading of a season starts from where last season left off.
     before = latest_moods(conn, league_id, year) if in_season else {}
@@ -316,7 +338,9 @@ def catch_up(conn, league_id: str, today: str | None = None) -> int:
             )
         said = om.facts(so_far.as_dict(), payroll, budgets.get(team_id))
         if today and (m is None or _days(m["as_of"], today) >= MOOD_DAYS):
-            scores = _in_season(so_far, owner["traits"], money, league["state"])
+            scores = _in_season(
+                so_far, owner["traits"], money, league["state"], october.get(team_id)
+            )
             reading = sc.season_score(scores, owner["weights"])
             reading *= min(1.0, games / MOOD_FULL_GAMES)
             start = m["mood"] if m else before.get(team_id, 0.0)
@@ -332,7 +356,13 @@ def catch_up(conn, league_id: str, today: str | None = None) -> int:
                 key = f"check:{sid}:{n}"
                 if _has(conn, league_id, team_id, key):
                     continue
-                scores = _in_season(so_far, owner["traits"], money, league["state"])
+                scores = _in_season(
+                    so_far,
+                    owner["traits"],
+                    money,
+                    league["state"],
+                    october.get(team_id),
+                )
                 mood = current.get(team_id, {}).get("mood", 0.0)
                 body = om.checkin(
                     scores, owner["weights"], fields, _rng(sid, team_id, n), money,
