@@ -133,6 +133,9 @@ def test_an_offer_to_you_shows_with_its_answers_and_a_badge(
     assert client.get(f"/leagues/{league.id}/trades/inbox").json() == {"count": 1}
     # Compare all: what you'd get, then what you'd give.
     assert f'compareTrade(["{other.id}"], ["{roster[0].id}"])' in html
+    # Both teams' payroll against the cap, now and after the trade.
+    assert 'class="tr-cap"' in html
+    assert html.count('class="tr-cap-team"') == 2
 
 
 def test_trades_with_gm_teams_are_offered(client_for, db_conn):

@@ -58,6 +58,23 @@
             The <strong>{{ o.from_name }}</strong>{{ ai_gm(o.from_team_id) }} give {{ plist(o.sent) }}</div>
           <div>You give {{ plist(o.received) }}</div>
           {% if o.expires_on %}<div class="tr-reason">Expires after the games on {{ o.expires_on }}</div>{% endif %}
+          {% if o.caps %}
+          {# Both teams' payroll against the cap, now and after the trade. #}
+          <table class="tr-cap">
+            <thead><tr><th>Cap {{ budget.cap_text }}</th><th>Now</th><th>After</th></tr></thead>
+            <tbody>
+              {% for c in o.caps %}
+              <tr>
+                <td class="tr-cap-team">{{ c.name }}</td>
+                {% for side in (c.now, c.after) %}
+                <td><span class="tr-cap-pay">{{ side.payroll_text }}</span>
+                  <span class="{{ 'tr-cap-over' if side.over else 'tr-cap-under' }}">{{ side.room_text }}</span>{% if side.tax_text %}<span class="tr-cap-tax">{{ side.tax_text }} tax</span>{% endif %}</td>
+                {% endfor %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% endif %}
           {% if o.budget_warning %}<div class="tr-reason tr-budget">{{ o.budget_warning }}</div>{% endif %}
         </div>
         <div class="tr-offer-btns">
@@ -919,6 +936,15 @@ if (done) { showResult(done.msg, done.kind, done.dest); window._tradeResult = nu
 #trades-page .tr-offer:last-child { border-bottom: none; }
 #trades-page .tr-offer-text { flex: 1; min-width: 0; line-height: 1.6; }
 #trades-page .tr-offer-text a { color: var(--sky); text-decoration: none; }
+#trades-page .tr-cap { border-collapse: collapse; margin: 6px 0 2px; font-size: 11px; line-height: 1.35; }
+#trades-page .tr-cap th { font-family: var(--font-mono); font-size: 10px; font-weight: normal; color: var(--text-dim);
+  text-transform: uppercase; text-align: left; padding: 0 14px 2px 0; white-space: nowrap; }
+#trades-page .tr-cap td { padding: 3px 14px 3px 0; vertical-align: top; border-top: 1px solid var(--border); }
+#trades-page .tr-cap-team { font-weight: 600; max-width: 180px; }
+#trades-page .tr-cap-pay { font-family: var(--font-mono); margin-right: 6px; }
+#trades-page .tr-cap-under { color: var(--green); white-space: nowrap; }
+#trades-page .tr-cap-over { color: var(--red); white-space: nowrap; }
+#trades-page .tr-cap-tax { display: block; color: var(--text-dim); white-space: nowrap; }
 #trades-page .tr-offer-btns { display: flex; flex-wrap: wrap; gap: 6px; flex: none; }
 #trades-page .tr-offer-btns .btn { font-size: 11px; padding: 4px 10px; }
 #trades-page .tr-tag { font-family: var(--font-mono); font-size: 10px; color: var(--amber); border: 1px solid var(--amber-dim);
@@ -945,5 +971,8 @@ if (done) { showResult(done.msg, done.kind, done.dest); window._tradeResult = nu
   #trades-page .trade-bar { flex-direction: column; align-items: stretch; }
   #trades-page .tr-offer { flex-direction: column; align-items: stretch; }
   #trades-page .tr-hint { margin-left: 0; }
+  #trades-page .tr-cap { width: 100%; }
+  #trades-page .tr-cap td { padding-right: 8px; }
+  #trades-page .tr-cap-pay { display: block; margin-right: 0; }
 }
 </style>
