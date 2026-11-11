@@ -283,6 +283,79 @@ def test_no_dump_that_sends_back_as_much_salary():
     assert dump_offer_or_why(buyer, seller, cheap, 60) == NO_SAVING
 
 
+# ── Absorbing salary (absorb_offer_or_why) ──────────────────────────────────
+from src.league.trades.ai_proposer import (  # noqa: E402
+    NO_BIG,
+    NO_LIMIT,
+    NO_USE,
+    AbsorbOffer,
+    absorb_offer_or_why,
+)
+
+
+def _owed(rating, salary, age=27):
+    from dataclasses import replace
+
+    return replace(
+        _p(rating, age=age), salary=salary, owed_now=salary, owed_later=salary
+    )
+
+
+def _tight(side):
+    from src.league.trades import ai_evaluator
+
+    side.pay_room = 0
+    side.money = ai_evaluator.money_rate(0, 150_000_000, 1.0, side.state)
+    return side
+
+
+def test_a_team_sends_a_big_contract_it_would_rather_be_rid_of():
+    scrub = _owed(45, 990_000)
+    seller = _side("contending", [scrub], margin=0.0)
+    overpaid = _owed(64, 22_000_000, age=32)
+    buyer = _tight(_side("rebuilding", [overpaid]))
+    offer = absorb_offer_or_why(buyer, seller, scrub, days_left=60)
+    assert isinstance(offer, AbsorbOffer)
+    assert overpaid in offer.give
+    assert offer.added >= 22_000_000 - 990_000
+    assert offer.score > 0
+
+
+def test_no_absorb_without_anyone_paid_more():
+    pricey = _owed(45, 30_000_000)
+    seller = _side("contending", [pricey], margin=0.0)
+    buyer = _tight(_side("rebuilding", [_owed(64, 22_000_000, age=32)]))
+    assert absorb_offer_or_why(buyer, seller, pricey, 60) == NO_BIG
+
+
+def test_no_absorb_when_money_doesnt_matter_to_them():
+    scrub = _owed(45, 990_000)
+    seller = _side("contending", [scrub], margin=0.0)
+    buyer = _side("rebuilding", [_owed(64, 22_000_000, age=32)])
+    assert absorb_offer_or_why(buyer, seller, scrub, 60) == NO_MATCH
+
+
+def test_no_absorb_of_contracts_that_wouldnt_help_you():
+    scrub = _owed(45, 990_000)
+    seller = _side("contending", [scrub], margin=0.0)
+    dead = _owed(40, 22_000_000, age=36)
+    buyer = _tight(_side("rebuilding", [dead]))
+    buyer.tradeable = {dead.id}
+    assert absorb_offer_or_why(buyer, seller, scrub, 60) == NO_USE
+
+
+def test_no_absorb_past_your_owners_limit():
+    scrub = _owed(45, 990_000)
+    seller = _side("contending", [scrub], margin=0.0)
+    buyer = _tight(_side("rebuilding", [_owed(64, 22_000_000, age=32)]))
+    offer = absorb_offer_or_why(buyer, seller, scrub, 60, fits=lambda added: False)
+    assert offer == NO_LIMIT
+    offer = absorb_offer_or_why(
+        buyer, seller, scrub, 60, fits=lambda added: added < 30_000_000
+    )
+    assert isinstance(offer, AbsorbOffer)
+
+
 def test_a_trade_request_doesnt_sink_a_depth_arm_nobody_would_miss():
     """A reliever who asked out, but wouldn't crack their staff, adds
     little to them, so the trade-request discount takes little off: a team
