@@ -154,10 +154,11 @@ class ShopOffer:
     give: list[Asset]  # from the AI team
     score: float  # how much it helps the shopping team, as it sees him
     # Not a deal it would take: the package it came closest to taking,
-    # when it has none it would, to show the shopping GM. Only one it would
-    # still come out ahead on, just not by its margin: one that leaves it
-    # worse off isn't close to anything (NO_EVEN).
+    # when it has none it would (NO_MATCH), to show the shopping GM.
     short: bool = False
+    # A short package it would still come out ahead on, just not by its
+    # margin (not one that leaves it worse off).
+    near: bool = False
 
 
 def shop_offer(
@@ -179,13 +180,8 @@ def shop_offer(
 # them, every deal it would take adds more salary than its owner allows, or
 # it wants him but nothing it would part with is worth enough to the seller.
 # Or he'd help on the field but his contract costs more than he's worth to
-# them (ai_evaluator.money_cost). Or it wants him, but every player of its
-# own the seller would want is worth more to it than he is: for a modest
-# player, its best young prospects. That package isn't close to a deal, and
-# shown as the one it "came closest with" it read as an absurd offer (Josh,
-# 2026-11-11: an 18-year-old B- prospect for a D+).
+# them (ai_evaluator.money_cost).
 NO_HELP, NO_ROOM, NO_MATCH, NO_VALUE = "fit", "pay", "price", "cost"
-NO_EVEN = "over"
 # A dump where every throw-in it would send back costs as much as he does.
 NO_SAVING = "more"
 
@@ -197,11 +193,12 @@ def shop_offer_or_why(
     days_left: int,
     blocked: set[str] = frozenset(),
 ) -> ShopOffer | str:
-    """shop_offer, or why there's none (NO_HELP, NO_VALUE, NO_ROOM,
-    NO_EVEN or NO_MATCH). When it wants him but no package passes its
-    margin, the package it came closest to taking among those it would
-    still come out ahead on, marked short and near; NO_EVEN when every
-    package leaves it worse off; NO_MATCH when there's no package at all."""
+    """shop_offer, or why there's none (NO_HELP, NO_VALUE, NO_ROOM or
+    NO_MATCH). When
+    it wants him but no package passes its margin, the package it came
+    closest to taking, marked short (and near when it would still come out
+    ahead on it, just not by its margin); NO_MATCH only when there's no
+    package at all."""
     ai_base = ai_evaluator.strengths(ai.see(ai.roster), days_left)
     seller_base = ai_evaluator.strengths(seller.see(seller.roster), days_left)
     # Whether he'd help at all, before pay: the salary it sends back in a
@@ -236,7 +233,7 @@ def shop_offer_or_why(
 
     best: ShopOffer | None = None
     over_budget = False
-    closest, closest_gap, worse_off = None, None, False
+    closest, closest_gap, near = None, None, False
     for give in packages:
         v = _verdict(ai, give, [target], days_left, ai.margin, ai_base)
         if not v.accept:
@@ -245,13 +242,11 @@ def shop_offer_or_why(
                     over_budget = _verdict(
                         free, give, [target], days_left, ai.margin, ai_base
                     ).accept
-            elif v.score > 0:
-                # Short of its margin.
-                gap = v.score - v.threshold
-                if closest_gap is None or gap > closest_gap:
-                    closest, closest_gap = give, gap
             else:
-                worse_off = True
+                # Short of its margin; worse still if it leaves it worse off.
+                gap = min(v.score, 0.0) + (v.score - v.threshold)
+                if closest_gap is None or gap > closest_gap:
+                    closest, closest_gap, near = give, gap, v.score > 0
             continue
         score = for_seller(give)
         if best is None or score > best.score:
@@ -261,9 +256,7 @@ def shop_offer_or_why(
     if over_budget:
         return NO_ROOM
     if closest is not None:
-        return ShopOffer(closest, for_seller(closest), short=True)
-    if worse_off:
-        return NO_EVEN
+        return ShopOffer(closest, for_seller(closest), short=True, near=near)
     return NO_MATCH
 
 
