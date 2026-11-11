@@ -349,3 +349,13 @@ def test_a_story_tags_each_team_once(lg, monkeypatch):
     )
     [story] = _stories(lg, "fa-sign-now:")
     assert story["team_ids"] == [lg.mine.id]
+
+
+def test_a_guaranteed_player_sent_down_still_goes_on_waivers(lg):
+    pid = lg.factory.rated_player(lg.mine, lg.league, level=65).id
+    lg.contracts.sign_unsigned(lg.league.id, 2026)
+    lg.contracts.guarantee_teams([lg.mine.id])
+    lg.status.set_status(pid, "minors")
+    assert free_agents.release_preview(lg.db, lg.league.id, lg.mine.id, pid)["waivers"]
+    free_agents.release(lg.db, lg.league.id, lg.mine.id, pid)
+    assert waivers.on_waivers(lg.db, pid)["from_team_id"] == lg.mine.id

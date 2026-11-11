@@ -5,8 +5,8 @@ Releasing players and signing free agents.
 - Release: a GM lets one of his players go. He becomes a free agent anyone
   can sign. A guaranteed deal (he's played a game on the 40-man under it) stays on the
   team's payroll as dead money for the seasons it had left; a minors player
-  who never made the 40-man costs nothing. Released off the 40-man, he goes
-  on waivers first (src/api/services/waivers.py). When he signs elsewhere,
+  who never made the 40-man costs nothing. Released off the 40-man or on a
+  guaranteed deal, he goes on waivers first (src/api/services/waivers.py). When he signs elsewhere,
   his new salary comes off what his old team owes (full offset, Josh
   2026-11-05).
 - Sign: a GM signs a free agent at his asking price, a standard deal priced
@@ -158,11 +158,22 @@ def release_preview(conn, league_id: str, team_id: str, player_id: str) -> dict:
     _, year = _context(conn, league_id)
     if not _on_team(conn, team_id, player_id):
         raise FreeAgentError("He isn't on your team.")
-    up = PlayerStatusRepository(conn).get_status(player_id) in FORTY_MAN_STATUSES
+    up = goes_on_waivers(conn, player_id, year)
     return {
         "waivers": up,
         **_owed_view(ContractRepository(conn).release_cost(player_id, year)),
     }
+
+
+def goes_on_waivers(conn, player_id: str, year: int) -> bool:
+    """Released, he goes on waivers when he's on the 40-man, or when his
+    deal is guaranteed (he played on the 40-man and was sent down since):
+    a claim is the only way another team takes that deal off his old
+    team's books (Josh, 2026-11-11). A minors deal that was never
+    guaranteed costs nothing to release, so he's a free agent at once."""
+    if PlayerStatusRepository(conn).get_status(player_id) in FORTY_MAN_STATUSES:
+        return True
+    return ContractRepository(conn).release_cost(player_id, year)["total"] > 0
 
 
 class NowGuaranteed(FreeAgentError):
@@ -188,7 +199,7 @@ def release(
             )
         player = PlayerRepository(conn).look_up(player_id)
         status_repo = PlayerStatusRepository(conn)
-        was_up = status_repo.get_status(player_id) in FORTY_MAN_STATUSES
+        was_up = goes_on_waivers(conn, player_id, year)
         owed = ContractRepository(conn).release(player_id, team_id, year)
 
         TeamRepository(conn).remove_player(team_id, player_id)
@@ -196,7 +207,8 @@ def release(
         # Out of the rotation, bullpen and saved lineup from the next game,
         # and out of any trade offer he was in.
         effective = trades._next_game_date(conn, season_id)
-        # Off the 40-man, he goes on waivers first (src/api/services/waivers.py).
+        # Off the 40-man or on a guaranteed deal, he goes on waivers first
+        # (src/api/services/waivers.py).
         waiver = None
         if was_up:
             league = dict(LeagueRepository(conn).get_by_id(league_id))
