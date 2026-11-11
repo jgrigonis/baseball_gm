@@ -386,6 +386,68 @@ AGAIN = {
     },
 }
 
+# Wins are judged against what the roster should do, so a winning team can
+# still let its owner down, and a losing one can please them. Josh,
+# 2026-11-11: at 46-37 a strong roster's owner said "I've seen enough losses
+# for one year." With a winning (or losing) record, these wordings take the
+# place of NOTES, AGAIN and ASIDES for wins, so the owner says the team
+# should be better, not that it's losing.
+WINS_BY_RECORD = {
+    "winning": {
+        "notes": {
+            "ok": (
+                "We're winning. With this roster, we should be winning more.",
+                "A winning record's nice. This team was built for better.",
+            ),
+            "bad": (
+                "We're over .500, but this roster should be running away with it.",
+                "A winning record isn't enough with the team we've got.",
+                "This roster should be winning a lot more than it is.",
+            ),
+        },
+        "again": {
+            "ok": ("Still winning. Still not as much as this roster should.",),
+            "bad": (
+                "Still not winning like this roster should.",
+                "This team should still be winning more.",
+            ),
+        },
+        "asides": {"bad": "But this roster should be winning more than it is."},
+    },
+    "losing": {
+        "notes": {
+            "good": (
+                "Nobody expected much from this roster, and we're holding our own.",
+                "We're doing more with this roster than anyone thought we would.",
+            ),
+        },
+        "again": {
+            "good": ("Still doing more with this roster than anyone expected.",),
+        },
+        "asides": {
+            "good": "At least we're doing more with this roster than anyone expected.",
+        },
+    },
+}
+
+
+def _record_side(f: dict) -> str | None:
+    """winning or losing, from the record facts() gives, or None (even, or
+    no record)."""
+    rec = (f or {}).get("record")
+    if not rec:
+        return None
+    w, l = (int(x) for x in rec.split("-"))
+    return "winning" if w > l else "losing" if w < l else None
+
+
+def _wins_lines(part: str, t: str, f: dict):
+    """The record-aware wins wording for part (notes, again or asides) and
+    tone, or None to use the usual one."""
+    side = _record_side(f)
+    return WINS_BY_RECORD.get(side, {}).get(part, {}).get(t) if side else None
+
+
 # Check-in openers, by the owner's mood word, so a check-in opens the way the
 # owner card says they feel. Only a few use the GM's name, and a check-in
 # never opens the way one of the owner's last few did (checkin's recent).
@@ -870,6 +932,11 @@ def _said_tone(key: str, body: str, fields: dict) -> str | None:
         aside = ASIDES[key].get(t)
         if aside:
             lines += (aside,)
+        if key == "wins":
+            for side in WINS_BY_RECORD.values():
+                lines += side["notes"].get(t, ()) + side["again"].get(t, ())
+                if side["asides"].get(t):
+                    lines += (side["asides"][t],)
         if any(_fill(line, fields) in body for line in lines):
             return t
     return None
@@ -1029,7 +1096,10 @@ def _notes(
         t = tone(scores[k])
         if i and t == against:
             if not asides:
-                aside = _fill(ASIDES[k][t], fields)
+                aside = _fill(
+                    (k == "wins" and _wins_lines("asides", t, f)) or ASIDES[k][t],
+                    fields,
+                )
                 # Homegrown talk is vague without the count, so the aside
                 # says it too (unless it said it already this season).
                 if k == "homegrown" and k not in stale:
@@ -1039,10 +1109,12 @@ def _notes(
                 tones.append(t)
             continue
         if k in stale:
-            lines.append(_pick(rng, AGAIN[k][t], fields, earlier))
+            again = (k == "wins" and _wins_lines("again", t, f)) or AGAIN[k][t]
+            lines.append(_pick(rng, again, fields, earlier))
             tones.insert(len(lines) - 1, t)
             continue
-        line = _pick(rng, NOTES[k][t], fields, earlier)
+        notes = (k == "wins" and _wins_lines("notes", t, f)) or NOTES[k][t]
+        line = _pick(rng, notes, fields, earlier)
         said = _context(k, t, f, fields, used)
         lines.append(f"{said} {line}" if said else line)
         tones.insert(len(lines) - 1, t)

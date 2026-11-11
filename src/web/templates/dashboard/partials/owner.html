@@ -35,7 +35,20 @@
   .ow-older[open] .ow-older-hide { display:inline; }
   .ow-guide { font-size:12px; line-height:1.8; color:var(--text-dim); }
   .ow-guide strong { color:var(--text); }
+  .ow-admin-tag { margin-left:8px; font-family:var(--font-mono); font-size:10px; color:var(--amber); letter-spacing:.06em; text-transform:uppercase; }
+  .ow-admin-sum { font-size:13px; line-height:1.7; margin-bottom:10px; }
+  .ow-k { font-family:var(--font-mono); font-size:11px; color:var(--muted); }
+  .ow-admin-table td.ow-why { font-size:12px; color:var(--text-dim); min-width:260px; }
+  .ow-admin-table tr.ow-off td { color:var(--muted); }
+  .ow-t-good { color:var(--green); }
+  .ow-t-bad { color:var(--red); }
+  .ow-admin-traits { margin-top:8px; line-height:1.7; }
+  .ow-why-sub { display:none; font-size:11px; color:var(--text-dim); line-height:1.5; margin-top:2px; }
+  .ow-admin-h { font-family:var(--font-mono); font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin:14px 0 6px; }
+  .ow-admin-ev { font-size:12px; line-height:1.6; padding:3px 0; }
   @media (max-width: 640px) {
+    .ow-admin-table .ow-why-col { display:none; }
+    .ow-why-sub { display:block; }
     .ow-card { gap:10px; }
     .ow-hat { font-size:26px; }
     .ow-arch { display:table; margin:6px 0 0; }
@@ -90,6 +103,76 @@
       <summary class="btn btn-secondary"><span class="ow-older-show">Older messages ({{ office.older | length }})</span><span class="ow-older-hide">Hide older messages</span></summary>
       {% for m in office.older %}{{ ow_msg(m) }}{% endfor %}
     </details>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% if owner_debug %}{% set d = owner_debug %}
+{# Admin only (routers/owners.py, services/owner_debug.py): the numbers
+   behind the owner's mood. GMs never see these. #}
+<div class="card ow-admin" style="margin-bottom:16px;">
+  <div class="card-header"><span class="card-title">Owner happiness</span><span class="ow-admin-tag">Admin only</span></div>
+  <div class="card-body">
+    <div class="ow-admin-sum">
+      <div><span class="ow-k">Mood</span> <strong class="ow-mood-{{ d.mood_word }}">{{ '%+.2f' | format(d.mood) }} {{ d.mood_word }}</strong>{% if d.mood_as_of %} <span class="ow-k">as of {{ d.mood_as_of }}</span>{% endif %}</div>
+      {% if d.reading is not none %}
+      <div><span class="ow-k">Reading</span> <strong>{{ '%+.2f' | format(d.reading) }}</strong>{% if d.discount < 1 %} × {{ '%.2f' | format(d.discount) }} ({{ d.games }} of 40 games) = <strong>{{ '%+.2f' | format(d.target) }}</strong>{% endif %}</div>
+      <div class="ow-k">Each week the mood moves {{ (d.step * 100) | round | int }}% of the way to the reading (temper). Releases and streaks nudge it right away.</div>
+      {% endif %}
+      <div class="ow-k">Mood words: {% for m in d.moods %}{{ m.word }} ≥ {{ '%+.2f' | format(m.floor) if not loop.last else 'below' }}{% if not loop.last %} · {% endif %}{% endfor %}</div>
+      {% if d.source %}<div class="ow-k">Scores from: {{ d.source }}</div>{% endif %}
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="data-table ow-admin-table">
+        <thead><tr><th>What</th><th class="num" title="Weight 0-100, and its share of the weights judged">Weight</th><th class="num" title="-1 badly missed, 0 met, +1 far beat it. Tone: good ≥ +.25, bad ≤ -.25">Score</th><th class="num" title="Score × share: what it adds to the reading">Adds</th><th class="ow-why-col">Read from</th></tr></thead>
+        <tbody>
+          {% for r in d.rows %}
+          <tr class="{% if not r.weight %}ow-off{% endif %}">
+            <td>{{ r.label }}{% if r.talks %} <span class="ow-k" title="Among the six things check-ins talk about">💬</span>{% endif %}<div class="ow-why-sub">{{ r.why }}</div></td>
+            <td class="num">{{ r.weight }}{% if r.share %} <span class="ow-k">{{ (r.share * 100) | round | int }}%</span>{% endif %}</td>
+            <td class="num ow-t-{{ r.tone or 'none' }}">{% if r.score is not none %}{{ '%+.2f' | format(r.score) }}{% else %}—{% endif %}</td>
+            <td class="num">{% if r.counts is not none %}{{ '%+.3f' | format(r.counts) }}{% else %}—{% endif %}</td>
+            <td class="ow-why ow-why-col">{{ r.why }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="ow-admin-traits ow-k">{% for t in d.traits %}<span title="{{ t.ends[0] }} (0) to {{ t.ends[1] }} (100)">{{ t.label }} {{ t.value }}</span>{% if not loop.last %} · {% endif %}{% endfor %}</div>
+
+    <div class="ow-admin-h">What moved the mood this season</div>
+    {% for e in d.events %}
+    <div class="ow-admin-ev"><span class="ow-k">{{ e.created_on[5:10] | replace('-', '/') if e.created_on else '' }} {{ e.kind }}</span> {{ e.body }}</div>
+    {% else %}
+    <div class="ow-k">No trades, releases, streaks or vetoes the owner reacted to yet.</div>
+    {% endfor %}
+    <div class="ow-k" style="margin-top:4px;">Nudges, times {{ '%.2f' | format(d.temper_factor) }} for temper: release {% for k, v in d.release_moods.items() %}{{ k }} {{ v }}{% if not loop.last %}, {% endif %}{% endfor %}; losing streak −0.05 per 4 games; winning streak +0.10. Trades and vetoes don't nudge; trades and releases count through Stability.</div>
+
+    <div class="ow-admin-h">Job security</div>
+    <div class="ow-k">Hot seat under {{ d.hot_seat }}, fired under {{ d.fire }}{% if not d.firing_on %} (owner firing is off in this league){% endif %}. {{ d.archetype or 'This owner' }}: honeymoon {{ d.rules.honeymoon }} season(s), {% if d.rules.warn_first %}warns first{% else %}no warning first{% endif %}, trend credit {{ (d.rules.trend_credit * 100) | round | int }}%.</div>
+    {% if d.history %}
+    <div style="overflow-x:auto;">
+      <table class="data-table ow-admin-table">
+        <thead><tr><th>Year</th><th>GM</th><th class="num">Record</th><th class="num" title="Win % the owner expected">Target</th><th class="num" title="Raw score before the league curve">Raw</th><th class="num" title="Score on the league's curve, what moves security">Curved</th><th class="num">Security</th><th>Verdict</th></tr></thead>
+        <tbody>
+          {% for h in d.history %}
+          <tr>
+            <td>{{ h.year }}</td>
+            <td>{{ h.display_name }}{% if h.is_ai %} <span class="ow-k">AI</span>{% endif %}</td>
+            <td class="num">{{ h.wins }}-{{ h.losses }}</td>
+            <td class="num">{{ h.win_target or '—' }}</td>
+            <td class="num">{% if h.raw_score %}{{ '%+.2f' | format(h.raw_score | float) }}{% else %}—{% endif %}</td>
+            <td class="num">{{ '%+.2f' | format(h.score) if h.score is not none else '—' }}</td>
+            <td class="num">{% if h.security_before %}{{ (h.security_before | float) | round | int }} → {% endif %}{{ h.job_security }}</td>
+            <td>{{ h.verdict }}{% if h.would_fire == 'true' and h.verdict != 'fired' %} <span class="ow-k">(would have fired)</span>{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="ow-k">No season reviews yet.</div>
     {% endif %}
   </div>
 </div>
