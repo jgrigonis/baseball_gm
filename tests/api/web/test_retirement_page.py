@@ -26,8 +26,51 @@ def _retire(db, league, season, player, team):
     db.execute(
         "INSERT INTO player_retirements (player_id, league_id, season_id, former_team_id)"
         " VALUES (%s, %s, %s, %s)",
-        (player.id, league.id, season.id, team.id),
+        (player.id, league.id, season.id, team.id if team else None),
     )
+
+
+def _played(db, season, player, team, games=1):
+    db.execute(
+        """INSERT INTO player_season_stats
+             (player_id, season_id, team_id, bat_games_played, bat_ab)
+           VALUES (%s, %s, %s, %s, %s)""",
+        (player.id, season.id, team.id, games, games),
+    )
+
+
+def test_free_agent_retiree_shows_last_team_played_for(db_conn, factory):
+    """A free agent has no team when he retires: show the last team he
+    played for, tagged FA, or 'Free agent' if he never played."""
+    db = db_conn
+    league = factory.league(state="offseason")
+    seasons = [factory.season(year=y) for y in (2025, 2026, 2027)]
+    for s in seasons:
+        factory.league_season(league, s)
+    old = factory.team(city="Old", mascot="Club")
+    last = factory.team(city="Cairo", mascot="Pharaohs")
+    released, never, signed = (factory.prospect(league.id) for _ in range(3))
+    _played(db, seasons[0], released, old, games=40)
+    _played(db, seasons[1], released, last)
+    _retire(db, league, seasons[1], released, None)
+    _retire(db, league, seasons[1], never, None)
+    _retire(db, league, seasons[1], signed, old)
+
+    ctx = retirement_context(db, league.id, None)
+
+    rows = {r["player_id"]: r for r in ctx["retired_players"]}
+    assert rows[released.id]["team_name"] == "Cairo Pharaohs"
+    assert rows[released.id]["was_free_agent"]
+    assert rows[never.id]["team_name"] is None
+    assert rows[signed.id]["team_name"] == "Old Club"
+    assert not rows[signed.id]["was_free_agent"]
+
+    html = templates.get_template("dashboard/partials/retirement.html").render(
+        league_id=league.id, is_viewer=False, **ctx
+    )
+    assert html.count('class="ret-fa-tag"') == 1
+    assert "Cairo Pharaohs <span" in html
+    assert ">Free agent</span>" in html
 
 
 def test_retirees_carry_their_all_star_years(db_conn, factory):

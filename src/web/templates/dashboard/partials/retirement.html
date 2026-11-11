@@ -72,8 +72,12 @@
         <td data-sort="{{ p.position|pos_label }}" style="text-align:center;padding:8px;color:var(--text-dim);">{{ p.position|pos_label or '—' }}</td>
 
         {# Team #}
-        <td data-sort="{{ p.team_name }}" style="padding:8px 10px;color:{% if p.is_mine %}var(--amber){% else %}var(--text-dim){% endif %};">
-          {{ p.team_name }}
+        {# A free agent shows the last team he played for, tagged FA #}
+        <td data-sort="{{ p.team_name or 'zz Free agent' }}" style="padding:8px 10px;color:{% if p.is_mine %}var(--amber){% else %}var(--text-dim){% endif %};">
+          {%- if p.was_free_agent %}
+            {%- if p.team_name %}{{ p.team_name }} <span class="ret-fa-tag" title="A free agent when he retired; last played for {{ p.team_name }}">FA</span>
+            {%- else %}<span title="A free agent who never played in the majors">Free agent</span>{% endif %}
+          {%- else %}{{ p.team_name }}{% endif %}
         </td>
 
         <td data-sort="{{ p.seasons_played or 0 }}" style="text-align:center;padding:8px;color:var(--text-dim);">{{ p.seasons_played or 0 }}</td>
@@ -127,6 +131,10 @@
   font-family:var(--font-mono);font-size:12px;color:var(--text-dim);text-decoration:none;
 }
 .history-back:hover { color:var(--amber); }
+.ret-fa-tag {
+  font-size:10px;letter-spacing:.04em;color:var(--text-dim);
+  border:1px solid var(--border);border-radius:3px;padding:0 3px;margin-left:2px;
+}
 /* Phones: the usual 16px gutter. */
 @media (max-width: 700px) {
   .ret-head { padding-left:16px !important;padding-right:16px !important; }
