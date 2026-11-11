@@ -21,6 +21,7 @@ from src.api.dependencies import (
     Commissioner,
     GMOrViewer,
     IsHTMX,
+    MemberGM,
     Unpaused,
     User,
 )
@@ -620,9 +621,10 @@ def _start_job(conn, league_id: str) -> str | None:
 def leave_league_router(
     league_id: str,
     db: DB,
-    gm: GM,
+    gm: MemberGM,
 ):
-    """Leave the league. Once it has started, AI takes over the GM's team."""
+    """Leave the league. Once it has started, AI takes over the GM's team. A
+    GM their owner fired just takes the league off their list."""
     leave_league(db, league_id, gm["id"])
     return JSONResponse({"left": True})
 
@@ -844,12 +846,20 @@ def league_page(
     ctx["league_teams"] = team_facts.league_teams(
         db, league_id, None if ctx["is_viewer"] else gm.get("team_id")
     )
+    # A GM their owner fired watches like a viewer, but can still leave.
+    ctx["fired_member"] = bool(gm.get("fired"))
     if not ctx["is_viewer"]:
         # The Leave League button warns the last person out that the league
         # goes with them.
         ctx["leaving_deletes_league"] = not GMRepository(db).has_people(
             league_id, besides_gm_id=gm["id"]
         )
+    elif ctx["fired_member"]:
+        ctx["leaving_deletes_league"] = not db.execute(
+            "SELECT 1 FROM gms WHERE league_id = %s AND user_id IS NOT NULL"
+            " AND user_id <> %s LIMIT 1",
+            (league_id, user["id"]),
+        ).fetchone()
     return tab_response(request, htmx, "dashboard/partials/league_info.html", ctx)
 
 

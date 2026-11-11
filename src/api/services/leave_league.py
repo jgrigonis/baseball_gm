@@ -7,6 +7,11 @@
 # ready-check and injury news stop counting it. Their open trade offers are
 # called off, and they drop out of the league's trade votes.
 #
+# A GM their owner fired (firing.py) has a row with no team, so there is
+# nothing for AI to take over: the row goes, with their job offers, and the
+# league drops off their list. That doesn't touch anything a sim reads, so it
+# doesn't wait on the league's lock unless it deletes the league.
+#
 # A leaving commissioner hands the role to the human GM who has been in the
 # league longest. When the last person leaves, the league is deleted with
 # everything it owns, since nobody could ever open it again.
@@ -21,13 +26,22 @@ from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.league_repo import LeagueRepository
 
 
+# How long leaving waits for a sim day (or playoff game) to finish.
+LEAVE_WAIT = 20
+
+
 def leave_league(conn, league_id: str, gm_id: str) -> None:
     league_repo = LeagueRepository(conn)
     gm_repo = GMRepository(conn)
 
+    gm = gm_repo.get_by_id(gm_id)
+    if gm and gm["fired_at"]:
+        _leave_fired(conn, league_id, gm)
+        return
+
     # Not in the middle of a sim: it has already decided whose team is human,
     # e.g. for the injury news it stores afterwards.
-    with league_lock(conn, league_id):
+    with league_lock(conn, league_id, wait=LEAVE_WAIT):
         league = league_repo.get_by_id(league_id)
         if not league:
             raise ValueError("League not found.")
@@ -56,3 +70,29 @@ def leave_league(conn, league_id: str, gm_id: str) -> None:
         elif league["state"] == "lobby":
             personas.fill_lobby(conn, league_id)  # an AI GM takes their place
         conn.commit()
+
+
+def _leave_fired(conn, league_id: str, gm: dict) -> None:
+    """A fired GM leaving: their teamless row goes, and the league with it if
+    nobody else is left."""
+    league_repo = LeagueRepository(conn)
+    gm_repo = GMRepository(conn)
+    league = league_repo.get_by_id(league_id)
+    if not league:
+        raise ValueError("League not found.")
+    if not gm_repo.has_people(league_id, besides_gm_id=gm["id"]):
+        # The last person out: the league goes, so wait out any sim first.
+        with league_lock(conn, league_id, wait=LEAVE_WAIT):
+            league_repo.delete(league_id)
+            conn.commit()
+        return
+    if league["commissioner_gm_id"] == gm["id"]:
+        gm_repo.set_commissioner(
+            gm_repo.next_commissioner(league_id, gm["id"]), league_id
+        )
+    conn.execute(
+        "DELETE FROM gm_job_offers WHERE league_id = %s AND user_id = %s",
+        (league_id, gm["user_id"]),
+    )
+    gm_repo.delete_gm(gm["id"])
+    conn.commit()

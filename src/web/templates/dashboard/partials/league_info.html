@@ -15,9 +15,15 @@
       {% endif %}
     </div>
   </div>
-  {% if not is_viewer %}
+  {% if not is_viewer or fired_member %}
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+  {% if fired_member and can_take_over %}
+  <a href="/leagues/{{ league_id }}/take-over" class="btn btn-primary" style="font-size:11px;padding:6px 12px;">Take over a team →</a>
+  {% endif %}
   {% if leaving_deletes_league %}
     {% set leave_note = "You're the last GM in it, so the league will be deleted for good." %}
+  {% elif fired_member %}
+    {% set leave_note = "You were fired here, so this just takes the league off your list." %}
   {% else %}
     {% if late_joins %}
       {% set leave_note = "An AI manager will take over your team. You could only come back by taking over an AI team between seasons." %}
@@ -30,6 +36,7 @@
           data-confirm="Leave {{ league_name }}?" data-confirm-note="{{ leave_note }}"
           {% if leaving_deletes_league %}data-confirm-last="yes"{% endif %}
           onclick="leaveThisLeague(this)">Leave League</button>
+  </div>
   {% elif can_take_over %}
   <a href="/leagues/{{ league_id }}/take-over" class="btn btn-primary" style="font-size:11px;padding:6px 12px;">Take over a team →</a>
   {% endif %}
@@ -241,7 +248,7 @@
   </div>
 </div>
 
-{% if not is_viewer %}
+{% if not is_viewer or fired_member %}
 <script>
 async function leaveThisLeague(btn) {
   const last = !!btn.dataset.confirmLast;
