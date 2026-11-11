@@ -111,17 +111,15 @@ function schedSyncBoxes() {
 window.schedSyncBoxes = schedSyncBoxes;
 schedSyncBoxes();
 
-// The GM's own team over a run, for the line under the sim buttons: the
-// run's record, the season record, the standing, the playoff race late on,
+// The GM's own team over a run, for the sim card's line: the season
+// record, the standing, the playoff race late on,
 // and the run's biggest story about the team (src/api/services/sim_summary.py).
 function newRunSummary() {
-  return {w: 0, l: 0, last: null, story: null, injury: null};
+  return {last: null, story: null, injury: null};
 }
 function addToRun(run, d) {
   var t = d.my_team;
   if (t && t.wins !== undefined) {
-    run.w += t.day_wins || 0;
-    run.l += t.day_losses || 0;
     run.last = t;
     // The biggest story wins; a later one wins a tie.
     if (t.story && (!run.story || t.story.weight >= run.story.weight)) run.story = t.story;
@@ -131,12 +129,12 @@ function addToRun(run, d) {
     if (i.days >= 10 && (!run.injury || i.days > run.injury.days)) run.injury = i;
   });
 }
-// "3-1 (42-31) · 1st in East by 2.5", plus the race and games left late on.
+// "42W-31L · 1st in East by 2.5": the season record (not the run's), plus
+// the race and games left late on.
 function runRecordText(run) {
   var t = run.last;
   if (!t) return '';
-  var span = run.w + run.l ? run.w + '-' + run.l : 'Off';
-  var parts = [span + ' (' + t.wins + '-' + t.losses + ')', t.standing];
+  var parts = [t.wins + 'W-' + t.losses + 'L', t.standing];
   if (t.race) parts.push(t.race);
   if (t.games_left > 0 && t.games_left <= 20) parts.push(t.games_left + (t.games_left === 1 ? ' game left' : ' games left'));
   return parts.join(' · ');
@@ -170,7 +168,7 @@ async function schedSimRun(count) {
   var daysSimmed = 0;
   var run = newRunSummary();
 
-  // "Simming day 94… · 3-1 (42-31) · 1st in East by 2.5": the day being
+  // "Simming day 94… · 42W-31L · 1st in East by 2.5": the day being
   // played, with the team's line through the last finished day (none yet
   // on day 1). One line, so nothing flashes between two messages.
   function simmingText() {
