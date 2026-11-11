@@ -529,6 +529,20 @@ def _shell_ctx(
             seen.add(page)
         ctx["roster_due"] = "roster" not in seen
         ctx["lineup_due"] = "lineup" not in seen
+    # After a trade brings players in, the Roster tab, where they move up to
+    # the 40-man (Josh, 2026-11-11). Opening it clears that.
+    if (
+        ctx["league_state"] in ("preseason", "season")
+        and not ctx["is_viewer"]
+        and ctx["team_id"]
+        and gm.get("id")
+        and ctx["season_id"]
+    ):
+        gms = GMRepository(db)
+        if page == "roster":
+            gms.clear_trade_roster_due(gm["id"])
+        else:
+            ctx["trade_roster_due"] = gms.trade_roster_due(gm["id"], ctx["season_id"])
     ctx["next_move"] = next_move.pick(ctx, page, weekend_ready, stops)
     ctx["all_star_ids"] = (
         AllStarRepository(db).ids(ctx["season_id"]) if ctx["season_id"] else set()

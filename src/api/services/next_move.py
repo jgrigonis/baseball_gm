@@ -135,6 +135,20 @@ def _budget_pill(ctx: dict, page: str) -> dict | None:
     }
 
 
+def _trade_pill(ctx: dict, page: str) -> dict | None:
+    """With several GMs the button is the ready toggle, so the after-trade
+    Roster reminder rides beside it instead."""
+    if not ctx.get("trade_roster_due") or page == "roster":
+        return None
+    return {
+        "label": "📋 Roster",
+        "short": "📋",
+        "href": f"/leagues/{ctx['league_id']}/roster",
+        "title": "Your trade's new players are in your organization. Move "
+        "them to your 40-man on the Roster tab to use them.",
+    }
+
+
 def pick(
     ctx: dict,
     page: str,
@@ -178,7 +192,9 @@ def pick(
             "id": "ready-btn",
             "menu": [_item("Mark me away", "readyToggleAway", btn_id="ready-away-btn")],
         }
-        move["pill"] = _pill(ctx, page) or _budget_pill(ctx, page)
+        move["pill"] = (
+            _pill(ctx, page) or _trade_pill(ctx, page) or _budget_pill(ctx, page)
+        )
         return move
 
     if state == "draft":
@@ -196,6 +212,15 @@ def pick(
             return _go("preview", "Season preview →", "Preview →", f"{base}/welcome")
         return _go("go-draft", "Go to the draft →", "Draft →", f"{base}/draft")
 
+    # A trade brought players in: they wait in the organization, so the
+    # Roster tab first, to move them to the 40-man; opening it clears this
+    # and the button goes back to Play Day (Josh, 2026-11-11).
+    if (
+        state in ("preseason", "season")
+        and ctx.get("trade_roster_due")
+        and page != "roster"
+    ):
+        return _go("trade-roster", "📋 Go to Roster →", "Roster →", f"{base}/roster")
     # The front office and ticket prices lock on Opening Day, so the GM
     # gets one look at the Budget tab first (Josh, 2026-11-09).
     if state == "preseason" and ctx.get("budget_due") and page != "budget":

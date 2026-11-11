@@ -225,3 +225,19 @@ def test_once_the_summary_is_seen_every_page_points_on_to_expiring_deals():
     # The pool is just a page on the way now: it points on to the deals.
     assert pick(ctx, "free-agents")["href"] == "/leagues/L1/expiring"
     assert pick(ctx, "expiring")["fn"] == "beginOffseason"
+
+
+def test_after_a_trade_the_roster_then_play_day():
+    # Josh, 2026-11-11: players traded for wait in the organization, so the
+    # button goes to the Roster tab; opening it clears the flag (web/utils).
+    move = pick(_ctx(trade_roster_due=True), "trades")
+    assert move["key"] == "trade-roster" and move["href"] == "/leagues/L1/roster"
+    assert pick(_ctx(trade_roster_due=True), "standings")["key"] == "trade-roster"
+    assert pick(_ctx(trade_roster_due=True), "roster")["label"] == "▶ Play Day"
+    assert pick(_ctx(), "trades")["label"] == "▶ Play Day"
+    move = pick(_ctx(league_state="preseason", trade_roster_due=True), "budget")
+    assert move["key"] == "trade-roster"
+    # Several GMs: the ready button stays, with a Roster pill beside it.
+    move = pick(_ctx(multiplayer=True, trade_roster_due=True), "trades")
+    assert move["key"] == "ready" and move["pill"]["href"] == "/leagues/L1/roster"
+    assert pick(_ctx(multiplayer=True, trade_roster_due=True), "roster")["pill"] is None

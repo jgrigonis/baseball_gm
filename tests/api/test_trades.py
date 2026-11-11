@@ -14,6 +14,7 @@ from src.api.services.injury_news import take_injury_news
 from src.api.services.trades import TradeError
 from src.api.services.news.names import plain
 from src.db.repositories.news_repo import NewsRepository
+from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.trade_repo import TradeRepository
 
@@ -692,3 +693,25 @@ def test_the_ai_turns_down_a_player_for_his_contract(lg):  # noqa: F811
     assert no.score < yes.score
     assert yes.accept and not no.accept
     assert "contract" in no.reason
+
+
+def _roster_due(lg, gm):
+    return GMRepository(lg.db).trade_roster_due(gm["id"], lg.season.id)
+
+
+def test_a_trade_sends_both_gms_to_the_roster(gms):
+    # The next-move button points them at the Roster tab (services/next_move).
+    lg = gms()
+    a, b = _two_players(lg)
+    assert not _roster_due(lg, lg.gm)
+    _answer(lg, _offer(lg, [a], [b])["offer_id"], "accept")
+    assert _roster_due(lg, lg.gm) and _roster_due(lg, lg.other)
+    GMRepository(lg.db).clear_trade_roster_due(lg.gm["id"])
+    assert not _roster_due(lg, lg.gm) and _roster_due(lg, lg.other)
+
+
+def test_an_ai_trade_sends_the_gm_to_the_roster(lg):
+    star = lg.factory.rated_player(lg.mine, lg.league, 72, name="Star")
+    spare = lg.factory.rated_player(lg.theirs, lg.league, 52, status="minors")
+    assert _offer(lg, [star], [spare])["accepted"]
+    assert _roster_due(lg, lg.gm)
