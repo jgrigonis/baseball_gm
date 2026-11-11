@@ -1743,7 +1743,8 @@ CREATE TABLE IF NOT EXISTS ballpark_projects (
     year      INTEGER NOT NULL,             -- the season it opens (paid for just before)
     ordered   INTEGER,                      -- the season it was ordered, NULL the same as year (migration 108); paid a season at a time from then
     cost      BIGINT NOT NULL,              -- what the owner paid from their bank
-    PRIMARY KEY (league_id, team_id, project)
+    generation SMALLINT NOT NULL DEFAULT 1, -- which of the team's stadiums (a replacement is 2, 3...; migration 115)
+    PRIMARY KEY (league_id, team_id, project, generation)
 );
 CREATE INDEX IF NOT EXISTS idx_ballpark_projects_team ON ballpark_projects(team_id);
 -- league_price_levels: each season's contract price level (migration 110,

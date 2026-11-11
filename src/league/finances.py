@@ -243,6 +243,14 @@ BALLPARK = (
     ),
 )  # fmt: skip
 BALLPARK_KEYS = tuple(p.key for p in BALLPARK)
+# New stadiums cheapest first; a replacement has to be this tier or higher.
+STADIUM_TIERS = tuple(p.key for p in BALLPARK if p.group == "stadium")
+# A stadium can be replaced once it's this many seasons old (Josh,
+# 2026-11-11), by one of the same tier or higher, priced at today's cap.
+# Each stadium after the first earns STADIUM_REBUILD times its tier's
+# money and fans for every one before it.
+STADIUM_LIFE = 25
+STADIUM_REBUILD = 1.10
 # The owner only builds with savings to spare: their bank has to hold at
 # least this many caps after paying.
 BALLPARK_FLOOR = 1.0
@@ -294,8 +302,25 @@ def ticket_revenue(revenue: int, level) -> int:
     return _round(revenue * ticket_mult(level))
 
 
+def split_key(key) -> tuple[str, int]:
+    """A built project's key and which of the team's stadiums it is: a
+    replacement stadium's key carries it ("stadium_basic#2")."""
+    base, _, gen = str(key).partition("#")
+    return base, int(gen) if gen.isdigit() else 1
+
+
+def built_key(key: str, generation: int = 1) -> str:
+    return key if generation <= 1 else f"{key}#{generation}"
+
+
+def rebuild_mult(key) -> float:
+    """How much more a replacement stadium earns than its tier's first."""
+    return STADIUM_REBUILD ** (split_key(key)[1] - 1)
+
+
 def project(key) -> Project | None:
-    return next((p for p in BALLPARK if p.key == key), None)
+    base = split_key(key)[0] if key is not None else key
+    return next((p for p in BALLPARK if p.key == base), None)
 
 
 def project_cost(key, cap: int) -> int:
@@ -320,7 +345,7 @@ def project_money(
     if p.by_fans:
         value *= fan_mult(fans)
     value += ticket_revenue(revenue, ticket_price) * p.revenue
-    return _round(value)
+    return _round(value * rebuild_mult(key))
 
 
 def open_projects(built) -> set[str]:
@@ -328,7 +353,7 @@ def open_projects(built) -> set[str]:
     away with a renovation."""
     built = set(built)
     gone = {r for k in built if (p := project(k)) for r in p.replaces}
-    return built - gone
+    return {k for k in built if split_key(k)[0] not in gone}
 
 
 def blocked_by(key, built) -> str | None:
@@ -337,7 +362,7 @@ def blocked_by(key, built) -> str | None:
     p = project(key)
     for k in built:
         q = project(k)
-        if q is None or k == key:
+        if q is None or q.key == key:
             continue
         if p and p.group and q.group == p.group:
             return k
@@ -373,8 +398,11 @@ def ballpark_money(
 
 def ballpark_fans(built) -> int:
     """Points the open ballpark projects add to the fans' target."""
-    keys = open_projects(built)
-    return sum(p.fans for p in BALLPARK if p.key in keys)
+    return sum(
+        round(p.fans * rebuild_mult(k))
+        for k in open_projects(built)
+        if (p := project(k))
+    )
 
 
 def project_value(
@@ -392,7 +420,9 @@ def project_value(
         return 0.0
     return project_money(
         key, average_revenue, market, fans, revenue, ticket_price
-    ) + p.fans * FAN_POINT_VALUE * ticket_revenue(revenue, ticket_price)
+    ) + p.fans * rebuild_mult(key) * FAN_POINT_VALUE * ticket_revenue(
+        revenue, ticket_price
+    )
 
 
 def payback(cost: int, per_season: float) -> float | None:
