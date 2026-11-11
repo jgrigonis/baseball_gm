@@ -48,6 +48,7 @@ from src.db.repositories.custom_team_repo import CustomTeamRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.season_repo import SeasonRepository
+from src.db.repositories.sim_job_repo import SimJobRepository
 from src.league import divisions, real_seasons
 from src.league.league_constants import (
     DEFAULT_BACKSTORY_YEARS,
@@ -596,12 +597,23 @@ def start_league_router(
     _unpaused: Unpaused,
 ):
     """Queue the league's start (teams, players, the draft) for the sim
-    worker. The lobby polls the job, then opens the league."""
-    job_id = sim_jobs.submit(db, league_id, "start")
+    worker. The lobby polls the job, then opens the league.
+
+    If the start is already under way (asked for from another tab, or before
+    the commissioner browsed away and back), answers with that job to poll
+    rather than turning the click away as a busy league."""
+    running = _start_job(db, league_id)
+    job_id = running or sim_jobs.submit(db, league_id, "start")
     return JSONResponse(
         {"job_id": job_id, "poll": f"/leagues/{league_id}/jobs/{job_id}"},
         status_code=202,
     )
+
+
+def _start_job(conn, league_id: str) -> str | None:
+    """The id of the league's start job while it's queued or running."""
+    job = SimJobRepository(conn).active(league_id)
+    return str(job["id"]) if job and job["kind"] == "start" else None
 
 
 @router.post("/leagues/{league_id}/leave")
@@ -716,6 +728,11 @@ def dashboard(
             "custom_error": custom_error,
         }
     )
+    # Back on the lobby while the start is still running: the page picks up
+    # that job's progress instead of offering Start League again.
+    start_job = _start_job(db, league_id)
+    if start_job:
+        context["start_poll"] = f"/leagues/{league_id}/jobs/{start_job}"
 
     return templates.TemplateResponse(
         request=request, name="dashboard/lobby.html", context=context

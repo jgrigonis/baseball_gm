@@ -361,6 +361,60 @@ def test_no_reroll_while_the_league_starts(client, db_conn, factory, lobby):
     assert personas.lobby_ai_gms(db_conn, league.id) == ai
 
 
+def _start_running(db_conn, league, gm):
+    """The commissioner's start, queued and picked up by the worker."""
+    from src.db.repositories.sim_job_repo import SimJobRepository
+
+    db_conn.execute(
+        "UPDATE leagues SET commissioner_gm_id = %s WHERE id = %s", (gm.id, league.id)
+    )
+    jobs = SimJobRepository(db_conn)
+    job_id = jobs.add(league.id, "start", {}, None)
+    jobs.mark_running(job_id)
+    return str(job_id)
+
+
+def test_lobby_follows_a_start_already_running(client, db_conn, lobby):
+    """Browsing away mid-start and back: the page picks up the running
+    start's progress rather than offering Start League again."""
+    league, gm = lobby
+    job_id = _start_running(db_conn, league, gm)
+    app.dependency_overrides[get_current_user] = lambda: {"id": None}
+
+    html = client.get(f"/leagues/{league.id}/").text
+
+    assert f'"/leagues/{league.id}/jobs/{job_id}"' in html
+    assert "onStartLeague(document.getElementById('start-form')," in html
+
+
+def test_lobby_offers_start_when_nothing_is_running(client, db_conn, lobby):
+    league, gm = lobby
+    db_conn.execute(
+        "UPDATE leagues SET commissioner_gm_id = %s WHERE id = %s", (gm.id, league.id)
+    )
+    app.dependency_overrides[get_current_user] = lambda: {"id": None}
+
+    html = client.get(f"/leagues/{league.id}/").text
+
+    assert "Start League" in html
+    assert "/jobs/" not in html
+
+
+def test_start_again_follows_the_running_start(client, db_conn, lobby):
+    """A second Start League click (another tab, or one opened before the
+    start) gets the running start to poll, not 'A sim is already running'."""
+    league, gm = lobby
+    job_id = _start_running(db_conn, league, gm)
+
+    r = client.post(f"/leagues/{league.id}/start")
+
+    assert r.status_code == 202
+    assert r.json() == {
+        "job_id": job_id,
+        "poll": f"/leagues/{league.id}/jobs/{job_id}",
+    }
+
+
 def _settings_page(client, league):
     app.dependency_overrides[get_current_user] = lambda: {"id": None}
     return client.get(f"/leagues/{league.id}/").text

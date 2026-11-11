@@ -100,7 +100,7 @@
 {% if coach %}{% include "dashboard/partials/_coach_panel.html" %}{% endif %}
 
 <script>
-function onStartLeague(form) {
+function onStartLeague(form, poll) {
   const btn = document.getElementById('start-btn');
   const spinner = document.getElementById('start-spinner');
   const label = spinner.lastChild;
@@ -109,9 +109,13 @@ function onStartLeague(form) {
   btn.textContent = 'Starting…';
   spinner.style.display = 'flex';
   // Starting runs on the server as a job; open the league once it's done.
-  runLeagueJob(form.action, {method: 'POST'}, job => {
+  // With poll, the start is already running (the page was opened partway
+  // through it), so follow that job instead of asking for another.
+  const onWaiting = job => {
     label.textContent = ' ' + (leagueJobWaitingText(job) || job.stage || generating.trim());
-  }).then(d => {
+  };
+  (poll ? pollLeagueJob(poll, onWaiting)
+        : runLeagueJob(form.action, {method: 'POST'}, onWaiting)).then(d => {
     if (d.failed) {
       btn.disabled = false;
       btn.textContent = 'Start League →';
@@ -122,6 +126,9 @@ function onStartLeague(form) {
   });
   return false;
 }
+{% if start_poll and is_commissioner %}
+onStartLeague(document.getElementById('start-form'), {{ start_poll | tojson }});
+{% endif %}
 
 // Pace and the timer windows only matter with two or more people (Trade vote
 // with three), so their values are greyed out until enough humans are in the
