@@ -159,16 +159,8 @@ def _age_distribution_positions(rng: random.Random, n: int) -> list[tuple[int, s
 
 
 class DraftGenerator:
-    founding = False  # see __init__
-
-    def __init__(
-        self, conn, rng: random.Random | None = None, *, founding: bool = False
-    ):
-        """founding: the class drafted as the league starts. It is part of
-        the league's founding talent, generated like the opening-day
-        rosters, not weakened like later classes (draft_class_skills)."""
+    def __init__(self, conn, rng: random.Random | None = None):
         self.conn = conn
-        self.founding = founding
         self.rng = rng or random.Random()
         self.player_repo = PlayerRepository(conn)
         self.status_repo = PlayerStatusRepository(conn)
@@ -233,16 +225,15 @@ class DraftGenerator:
         players = []
         for age, position in age_positions:
             player = self.factory.create(position=position)
-            if not self.founding:
-                player = dataclasses.replace(
-                    player,
-                    skills=PlayerSkills(
-                        draft_class_skills(
-                            player.skills.as_dict(), position in PITCHER_POSITIONS
-                        ),
-                        age=player.age,
+            player = dataclasses.replace(
+                player,
+                skills=PlayerSkills(
+                    draft_class_skills(
+                        player.skills.as_dict(), position in PITCHER_POSITIONS
                     ),
-                )
+                    age=player.age,
+                ),
+            )
             caps = generate_talent_caps(player.skills.as_dict(), rng=self.rng)
             if age > START_AGE:
                 aged_skills = player.skills.age_to(age, rng=self.rng, caps=caps)
