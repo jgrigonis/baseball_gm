@@ -39,8 +39,9 @@ from __future__ import annotations
 import random
 from datetime import date
 
-from src.api.grade_curves import GRADES, overall_to_grade
+from src.api.grade_curves import GRADES
 from src.api.services import ai_free_agents, free_agents, waivers
+from src.api.services.news.moves import shown_grade
 from src.api.services.news.names import Names
 from src.db.locks import league_lock
 from src.db.repositories.budget_repo import BudgetRepository
@@ -507,15 +508,6 @@ def _news_market(conn, league_id: str, year: int, gone: list[tuple[str, str]]):
 # A player who leaves his team at this grade or better gets his own story
 # (Josh, 2026-11-09); the rest from a person's team share one.
 DEPARTURE_STORY_GRADE = "B-"
-
-
-def shown_grade(player) -> str:
-    """The overall letter a GM sees for a signed player (as on the Roster
-    tab: best of SP/RP on the pitcher curve, overall on the hitter curve)."""
-    r = PlayerEvaluator.rate_player(player.skills, player.throws)
-    if player.is_pitcher():
-        return overall_to_grade(max(r["sp"], r["rp"]), "pitcher")
-    return overall_to_grade(r["overall_player"], "hitter")
 
 
 def _why_gone(r: dict, human: bool) -> str:
