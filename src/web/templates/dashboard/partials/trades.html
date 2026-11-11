@@ -759,8 +759,8 @@ var DUMP_WHY = [
   ['traded', 'Traded him away this season'],
 ];
 
-// What the trade does to your payroll this season (trade_shop._payroll_effects):
-// the throw-in lands in your minors, so his deal counts only if it's guaranteed.
+// What the trade does to your payroll this season (trade_shop._payroll_effects).
+// A farm throw-in's deal (not guaranteed) counts once he's on your 40-man.
 function dumpSavedLine(o) {
   var line, cls = 'tr-dump-saved';
   if (o.saved > 0) line = 'Saves you ' + esc(o.saved_text) + ' in payroll this season';
@@ -772,7 +772,7 @@ function dumpSavedLine(o) {
     var p = o.players[0];
     var who = o.players.length === 1 && p ? esc((p.first_name + ' ' + p.last_name).trim()) + '\'s' : 'Their';
     html += '<div class="tr-dump-note">' + who + ' ' + esc(o.unguaranteed_text) +
-      ' deal isn\'t guaranteed: he joins your minors, and it counts only once you put him on your 40-man.</div>';
+      ' deal isn\'t guaranteed yet: he\'s a farm player, so it counts only once you put him on your 40-man.</div>';
   }
   return html;
 }

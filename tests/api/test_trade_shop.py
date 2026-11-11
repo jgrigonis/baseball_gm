@@ -142,19 +142,27 @@ def _deal(lg, player, team, salary, guaranteed):  # noqa: F811
 
 def test_dump_savings_are_net_of_the_throw_in_who_lands_in_the_minors(lg):  # noqa: F811
     """A just-drafted rookie on the 40-man: on the payroll, not guaranteed.
-    A guaranteed throw-in's salary counts against the savings; one whose
-    deal isn't guaranteed doesn't (he joins the minors) but is shown."""
+    A throw-in on his team's payroll counts against the savings, even if
+    his deal isn't guaranteed yet; a farm throw-in's doesn't but is shown."""
     rookie = lg.factory.rated_player(lg.mine, lg.league, 50)
     _deal(lg, rookie, lg.mine, 780_000, False)
     owed = lg.factory.rated_player(lg.theirs, lg.league, 50)
     _deal(lg, owed, lg.theirs, 1_600_000, True)
+    fresh = lg.factory.rated_player(lg.theirs, lg.league, 50)
+    _deal(lg, fresh, lg.theirs, 2_000_000, False)
     farm = lg.factory.rated_player(lg.theirs, lg.league, 50, status="minors")
     _deal(lg, farm, lg.theirs, 3_500_000, False)
     ctx = SimpleNamespace(season_id=lg.season.id, player_id=rookie.id)
-    offers = [{"give": [owed.id], "add": []}, {"give": [farm.id], "add": []}]
+    offers = [
+        {"give": [owed.id], "add": []},
+        {"give": [farm.id], "add": []},
+        {"give": [fresh.id], "add": []},
+    ]
     deal = trade_shop._payroll_effects(lg.db, ctx, offers)
     assert not deal["guaranteed"]
     assert offers[0]["saved"] == 780_000 - 1_600_000
     assert offers[0]["unguaranteed"] == 0
     assert offers[1]["saved"] == 780_000
     assert offers[1]["unguaranteed"] == 3_500_000
+    assert offers[2]["saved"] == 780_000 - 2_000_000
+    assert offers[2]["unguaranteed"] == 0
