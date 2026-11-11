@@ -57,6 +57,10 @@ def test_a_warning_only_when_a_move_goes_over():
     assert "owner" not in msg
     msg = bg.warning(150 * M, 160 * M, 170 * M, 30 * M)
     assert "luxury tax" in msg and "$170M budget" in msg
+    assert msg.endswith(
+        "Your owner won't like it: this will drive total spending past "
+        "their $170M budget."
+    )
     assert "already over" in bg.warning(165 * M, 160 * M, 170 * M, 2 * M)
 
 

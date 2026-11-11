@@ -418,7 +418,7 @@ def warning(
             parts.append("You're already past what your owner will spend.")
         else:
             parts.append(
-                f"Your owner won't like it: that's past their "
-                f"{format_salary(budget)} budget."
+                f"Your owner won't like it: this will drive total "
+                f"spending past their {format_salary(budget)} budget."
             )
     return " ".join(parts) or None
