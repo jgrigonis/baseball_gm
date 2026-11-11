@@ -33,20 +33,9 @@ function setSimMode(simming) {
   if (stop) stop.textContent = '■ Stop';
   // A run that ignores trades is over: offers pop up again.
   if (!simming) window._simIgnoringTrades = false;
-
-  // Grey out tabs that don't update live during sim
-  var liveTabs = ['standings', 'schedule', 'leaders', 'headlines', 'stats', 'power', 'playoffs'];
-  document.querySelectorAll('.tab-link').forEach(function(link) {
-    var href = link.getAttribute('href') || '';
-    var isLive = liveTabs.some(function(t) { return href.indexOf('/' + t) !== -1; });
-    if (simming && !isLive) {
-      link.style.opacity = '0.35';
-      link.style.pointerEvents = 'none';
-    } else {
-      link.style.opacity = '';
-      link.style.pointerEvents = '';
-    }
-  });
+  // Every tab stays open during a sim: the server turns away moves that
+  // would race a day's games (league_lock), and the open tab reloads after
+  // each day unless it holds unsaved edits (shell.html _simHold).
 }
 
 // The playoffs' Sim Round and Full Playoffs (playoffs.html) use it too.
