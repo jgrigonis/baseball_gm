@@ -139,14 +139,27 @@ PITCH = {
 }
 DEFAULT_PITCH = ("We're looking for a new GM. Interested?",)
 
+# Openers, by how the owner sees the GM. Each offer on one screen gets its
+# own opener (and its own pitch line), so five owners don't all open the
+# same way (Josh 2026-11-11: "I've watched what you can do" five times).
 FIT = {
     "proven": (
         "Your record speaks for itself.",
         "I've watched what you can do.",
+        "Word gets around, and the word on you is good.",
+        "You know how to build a winner.",
+        "I've had my eye on you for a while.",
+        "Whatever happened over there, I know talent when I see it.",
+        "Their loss could be my gain.",
+        "I don't need to see a résumé. I've seen your teams.",
     ),
     "chance": (
         "You've had a rough patch, but I'm willing to take a chance.",
         "Everyone deserves a second shot.",
+        "Your last stop didn't go well. I'm not holding it against you.",
+        "I'm not scared off by one bad run.",
+        "Maybe a fresh start is what you need.",
+        "You've got something to prove, and I like that.",
     ),
     "only": (
         "Nobody else is calling, I know. I'm willing to give you a shot anyway.",
@@ -155,10 +168,25 @@ FIT = {
 }
 
 
+def _pick(options: tuple[str, ...], used: set[str], rng: random.Random) -> str:
+    """A line not used yet on this screen, if one is left."""
+    fresh = [o for o in options if o not in used] or list(options)
+    line = rng.choice(fresh)
+    used.add(line)
+    return line
+
+
 def message(
-    archetype: str, rep: int, job_appeal: int, only: bool, rng: random.Random
+    archetype: str,
+    rep: int,
+    job_appeal: int,
+    only: bool,
+    rng: random.Random,
+    used: set[str] | None = None,
 ) -> str:
-    """The owner's offer, in their voice."""
-    pitch = rng.choice(PITCH.get(archetype, DEFAULT_PITCH))
+    """The owner's offer, in their voice. Pass the same `used` set for every
+    offer on one screen so openers and pitches don't repeat."""
+    used = set() if used is None else used
+    pitch = _pick(PITCH.get(archetype, DEFAULT_PITCH), used, rng)
     fit = "only" if only else "proven" if rep >= job_appeal else "chance"
-    return f"{rng.choice(FIT[fit])} {pitch}"
+    return f"{_pick(FIT[fit], used, rng)} {pitch}"
