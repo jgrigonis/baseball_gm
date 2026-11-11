@@ -290,7 +290,8 @@ def test_other_people_hear_when_a_person_releases_a_good_player(lg, monkeypatch)
     _released(lg)
     [note] = take_injury_news(lg.db, other)["waivers"]
     assert "B+" in note["text"] and "on waivers until after the games" in note["text"]
-    assert not note["text"].startswith("The ") and "the The" not in note["text"]
+    assert note["text"].startswith("The My Team released ")
+    assert "their B+ " in note["text"]
     assert take_injury_news(lg.db, lg.gm.id)["waivers"] == []
 
 
@@ -309,3 +310,22 @@ def test_nobody_hears_about_a_fringe_release(lg, monkeypatch):
     ).fetchone()["id"]
     _released(lg)
     assert take_injury_news(lg.db, other)["waivers"] == []
+
+
+def test_move_stories_read_as_sentences(lg, monkeypatch):
+    from src.api.services.news import moves
+    from src.api.services.news.names import plain
+
+    monkeypatch.setattr(moves, "shown_grade", lambda p: "B")
+    pid = _released(lg)
+    waivers.claim(lg.db, lg.league.id, lg.good.id, pid, 2026)
+    waivers.after_day(lg.db, lg.league.id, GAME_DAYS[1])
+    [rel] = _stories(lg, "fa-release:")
+    [claim] = _stories(lg, "fa-claim:")
+    assert plain(rel["headline"]).startswith("Team release ")
+    assert plain(rel["body"]).startswith("The My Team let go of ")
+    assert "-year-old B first baseman making $" in plain(rel["body"])
+    assert plain(claim["headline"]).startswith("Club claim ")
+    assert "B first baseman the My Team released." in plain(claim["body"])
+    for s in (rel, claim):
+        assert "GM " not in plain(s["headline"] + s["body"])

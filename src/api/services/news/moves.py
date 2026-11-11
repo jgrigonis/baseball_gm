@@ -22,6 +22,7 @@ from datetime import date
 
 from src.api.grade_curves import GRADES, overall_to_grade
 from src.api.services.news.names import Names, plain
+from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.news_repo import NewsRepository
 from src.db.repositories.notification_repo import NotificationRepository
@@ -75,16 +76,55 @@ def _write(league_id: str, conn, what: str, fn) -> None:
         log.exception("League %s: couldn't write %s news", league_id, what)
 
 
-def _the(nm: Names, team_id: str, start: bool = False) -> str:
-    """ "Josh's Rain" for a team with a GM, else "the Rain" ("The Rain" to
-    start a sentence)."""
-    if nm.gm_of(team_id):
-        return nm.gm_team(team_id)
-    return f"{'The' if start else 'the'} {nm.team(team_id)}"
+# A player's position in a sentence: "a 28-year-old B right fielder".
+POSITION_WORDS = {
+    "p": "pitcher",
+    "sp": "starting pitcher",
+    "rp": "reliever",
+    "cp": "closer",
+    "c": "catcher",
+    "1b": "first baseman",
+    "2b": "second baseman",
+    "3b": "third baseman",
+    "ss": "shortstop",
+    "lf": "left fielder",
+    "cf": "center fielder",
+    "rf": "right fielder",
+    "of": "outfielder",
+    "if": "infielder",
+    "dh": "designated hitter",
+}
 
 
-def _describe(player, grade: str) -> str:
-    return f"{grade} {player.position}, age {player.age}"
+def _the_team(nm: Names, team_id: str, start: bool = False) -> str:
+    """ "the Seattle Rain", for a story's body."""
+    return f"{'The' if start else 'the'} {nm.full_team(team_id)}"
+
+
+def _who(player, grade: str) -> str:
+    """ "a 28-year-old B right fielder" ("an A- ..." when it reads that way)."""
+    pos = POSITION_WORDS.get((player.position or "").lower(), player.position or "")
+    age = f"{player.age}-year-old"
+    article = "an" if age[0] in "8" or age.startswith(("11", "18")) else "a"
+    return f"{article} {age} {grade} {pos}"
+
+
+def _deal_text(deal: dict | None, year: int) -> str:
+    """ " making $11.1M a season through 2028", or "" with no deal left."""
+    if not deal:
+        return ""
+    through = deal["start_year"] + deal["years"] - 1
+    if through < year:
+        return ""
+    return f" making {ct.format_salary(deal['salary'])} a season through {through}"
+
+
+def _waiver_text(clears_on: str | None) -> str:
+    return (
+        f"until after the games on {clears_on}"
+        if clears_on
+        else "until this phase ends"
+    )
 
 
 def released(
@@ -104,22 +144,29 @@ def released(
         if not is_notable(grade):
             return
         season_id = SeasonRepository(conn).get_current_id_for_league(league_id)
+        year = ContractRepository(conn).current_year(league_id)
+        deal = ContractRepository(conn).released_deal(player.id, team_id)
         nm = Names(conn, league_id)
         on = today(conn, season_id)
         human = nm.is_human(team_id)
-        where = (
-            "He goes on waivers; any team can claim him and take over his deal."
-            if waivers
-            else "He's a free agent; any team can sign him."
-        )
+        name = nm.player(player.id)
+        if waivers:
+            where = (
+                f"He's on waivers {_waiver_text(clears_on)}. Any team can put in "
+                "a claim, and the one with the worst record gets him and takes "
+                "over his deal."
+            )
+        else:
+            where = "He's a free agent, and any team can sign him."
         NewsRepository(conn).add(
             league_id,
             season_id,
             on,
             "free_agency",
             f"fa-release:{on}:{player.id}",
-            f"{_the(nm, team_id, True)} release {nm.player(player.id)}",
-            f"{_describe(player, grade)}. {where}",
+            f"{nm.team(team_id)} release {name}",
+            f"{_the_team(nm, team_id, True)} let go of {name}, "
+            f"{_who(player, grade)}{_deal_text(deal, year or 0)}. {where}",
             weight=_weight(grade, human),
             team_ids=[team_id],
             player_ids=[player.id],
@@ -135,14 +182,14 @@ def released(
 
 def _tell_people(conn, league_id, nm, team_id, player, grade, waivers, clears_on):
     """A notification for each other person running a team in the league."""
-    who = plain(_the(nm, team_id, True))
+    who = plain(_the_team(nm, team_id, True))
     name = plain(nm.player(player.id))
+    pos = _who(player, grade).split(" ", 2)[2]  # "B right fielder"
     if waivers:
-        until = f"after the games on {clears_on}" if clears_on else "this phase ends"
-        what = f"He's on waivers until {until}. Claim him on Free Agents."
+        what = f"He's on waivers {_waiver_text(clears_on)}. Claim him on Free Agents."
     else:
         what = "He's a free agent now. Sign him on Free Agents."
-    text = f"{who} released {name} ({grade} {player.position}). {what}"
+    text = f"{who} released {name}, their {pos}. {what}"
     notes = NotificationRepository(conn)
     for gm_id, team in GMRepository(conn).get_human_gm_teams(league_id).items():
         if team == team_id or not nm.is_human(team) or nm.gm_of(team)["id"] != gm_id:
@@ -171,18 +218,17 @@ def claimed(
         if not (is_notable(grade) or nm.is_human(from_team)):
             return
         when = on or today(conn, season_id)
-        left = deal and deal["start_year"] + deal["years"] - year
-        if deal and left and left > 0:
-            terms = (
-                f" They take over his deal: {ct.format_salary(deal['salary'])} a "
-                f"season through {deal['start_year'] + deal['years'] - 1}."
-            )
-        else:
-            terms = ""
+        name = nm.player(player.id)
+        terms = _deal_text(deal, year)
+        terms = (
+            f" They take over his deal,{terms.replace(' making', '', 1)}."
+            if terms
+            else ""
+        )
         others = claimants - 1
         rivals = (
-            f" {others} other team{'s' if others != 1 else ''} put in a claim; "
-            "the worst record goes first."
+            f" {others} other team{'s' if others != 1 else ''} put in a claim, "
+            "and the worst record goes first."
             if others > 0
             else ""
         )
@@ -192,8 +238,9 @@ def claimed(
             when,
             "free_agency",
             f"fa-claim:{when}:{player.id}",
-            f"{_the(nm, to_team, True)} claim {nm.player(player.id)} off waivers",
-            f"{_describe(player, grade)}, released by {_the(nm, from_team)}."
+            f"{nm.team(to_team)} claim {name} off waivers",
+            f"{_the_team(nm, to_team, True)} picked up {name}, "
+            f"{_who(player, grade)} {_the_team(nm, from_team)} released."
             f"{terms}{rivals}",
             weight=_weight(grade, human),
             team_ids=[to_team, from_team],
@@ -221,16 +268,24 @@ def cleared(
         if not (is_notable(grade) or human):
             return
         when = on or today(conn, season_id)
+        name = nm.player(player.id)
+        deal = ContractRepository(conn).released_deal(player.id, from_team)
+        owed = (
+            f" {_the_team(nm, from_team, True)} still pay him until he signs "
+            "somewhere else."
+            if deal and deal.get("guaranteed")
+            else ""
+        )
         NewsRepository(conn).add(
             league_id,
             season_id,
             when,
             "free_agency",
             f"fa-cleared:{when}:{player.id}",
-            f"{nm.player(player.id)} clears waivers",
-            f"{_describe(player, grade)}, released by {_the(nm, from_team)}. "
-            "Nobody claimed him, so he's a free agent any team can sign. "
-            f"The {nm.team(from_team)} keep paying what they owe him until he does.",
+            f"{name} clears waivers",
+            f"Nobody claimed {name}, {_who(player, grade)} "
+            f"{_the_team(nm, from_team)} released, so he's a free agent any "
+            f"team can sign.{owed}",
             weight=_weight(grade, human),
             team_ids=[from_team],
             player_ids=[player.id],
@@ -269,10 +324,11 @@ def signed(
         if not (is_notable(grade) or nm.is_human(released_by)):
             return
         on = today(conn, season_id)
+        name = nm.player(player.id)
         if released_by == team_id:
-            former = f" He's back with the {nm.team(team_id)}, who released him."
+            former = " He's back with the team that released him."
         elif released_by:
-            former = f" {_the(nm, released_by, True)} released him."
+            former = f" {_the_team(nm, released_by, True)} released him earlier."
         else:
             former = ""
         seasons = f"season{'s' if deal.years != 1 else ''}"
@@ -282,9 +338,10 @@ def signed(
             on,
             "free_agency",
             f"fa-sign-now:{on}:{player.id}",
-            f"{_the(nm, team_id, True)} sign free agent {nm.player(player.id)}",
-            f"{_describe(player, grade)}, for {ct.format_salary(deal.salary)} a "
-            f"season over {deal.years} {seasons}.{former}",
+            f"{nm.team(team_id)} sign free agent {name}",
+            f"{_the_team(nm, team_id, True)} signed {name}, {_who(player, grade)}, "
+            f"for {ct.format_salary(deal.salary)} a season over {deal.years} "
+            f"{seasons}.{former}",
             weight=_weight(grade, human),
             team_ids=[team_id] + ([released_by] if released_by else []),
             player_ids=[player.id],
