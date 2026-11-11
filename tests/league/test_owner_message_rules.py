@@ -171,6 +171,25 @@ def test_homegrown_talk_names_the_count_and_what_most_teams_have():
     )
 
 
+def test_homegrown_near_the_league_isnt_a_shortfall():
+    # 32 of 40 when most teams have 33: an ok line, not a complaint.
+    season = om.facts(
+        {"homegrown_players": 32, "roster_players": 40, "league_homegrown": 0.825}
+    )
+    assert om._homegrown(season, "ok") == (
+        "32 of our 40 players came through our own draft,"
+        " about what most teams have."
+    )
+    # Short of most teams but not by enough to be bad: no "Only".
+    short = om.facts(
+        {"homegrown_players": 29, "roster_players": 40, "league_homegrown": 0.825}
+    )
+    assert om._homegrown(short, "ok") == (
+        "29 of our 40 players came through our own draft. Most teams have about 33."
+    )
+    assert om._homegrown(short, "bad").startswith("Only 29 of our 40")
+
+
 def _three_checkins(scores, w, seasons, mood=0.3):
     earlier: list[str] = []
     for i, season in enumerate(seasons):

@@ -655,14 +655,21 @@ def _word(n: int) -> str:
     return _COUNTS[n].lower() if n < len(_COUNTS) else str(n)
 
 
-def _homegrown(f: dict) -> str:
+def _homegrown(f: dict, t: str = "bad") -> str:
     """How many of the 40-man roster the team drafted itself, against what
     most teams have: "Only two of our 39 players came through our own
-    draft. Most teams have about seven." """
+    draft. Most teams have about seven." t: the line's tone. "Only" is for
+    a real shortfall (a bad line); within a player or two of most teams it
+    says so instead of sounding short."""
     mine, n, avg = f["homegrown"], f["roster"], f.get("homegrown_avg")
     if not mine:
-        text = "Not one player on our 40-man roster came through our own draft."
-    elif avg is not None and mine < avg:
+        return "Not one player on our 40-man roster came through our own draft."
+    if avg is not None and abs(mine - avg) <= max(1, n // 20):
+        return (
+            f"{_word(mine).capitalize()} of our {n} players came through our own"
+            " draft, about what most teams have."
+        )
+    if avg is not None and mine < avg and t == "bad":
         text = f"Only {_word(mine)} of our {n} players came through our own draft."
     else:
         text = (
@@ -687,7 +694,7 @@ def _context(key: str, t: str, f: dict, fields: dict, used: set) -> str:
         return f"{_count(n, 'trade')} so far." if n else "No trades so far."
     if key == "homegrown" and f.get("roster") and "homegrown" not in used:
         used.add("homegrown")
-        return _homegrown(f)
+        return _homegrown(f, t)
     if key == "rivalry" and f.get("rival_record") and fields.get("rival"):
         verb = "went" if final else "are"
         return f"We {verb} {f['rival_record']} against the {fields['rival']}."
