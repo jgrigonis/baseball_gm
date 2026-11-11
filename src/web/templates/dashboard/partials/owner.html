@@ -27,6 +27,12 @@
   .ow-msg-body { font-size:13px; line-height:1.6; color:var(--text); }
   .ow-new .ow-msg-body { color:var(--text); font-weight:600; }
   .ow-new-tag { color:var(--amber); font-weight:700; font-size:12px; letter-spacing:.08em; margin-left:2px; }
+  .ow-older { padding-top:12px; }
+  .ow-older > summary { list-style:none; display:inline-block; font-size:12px; }
+  .ow-older > summary::-webkit-details-marker { display:none; }
+  .ow-older[open] > summary { margin-bottom:4px; }
+  .ow-older .ow-older-hide, .ow-older[open] .ow-older-show { display:none; }
+  .ow-older[open] .ow-older-hide { display:inline; }
   .ow-guide { font-size:12px; line-height:1.8; color:var(--text-dim); }
   .ow-guide strong { color:var(--text); }
   @media (max-width: 640px) {
@@ -70,14 +76,21 @@
 <div class="card" style="margin-bottom:16px;">
   <div class="card-header"><span class="card-title">From the owner's office</span></div>
   <div class="card-body">
-    {% for m in office.messages %}
+    {% macro ow_msg(m) %}
     <div class="ow-msg {% if not m.seen_at %}ow-new{% endif %}">
       <div class="ow-msg-head">{{ {'preseason':'Preseason memo','checkin':'Check-in','trade':'About that trade','budget':'Payroll','review':'Season review'}.get(m.kind, 'Note') }} · {{ m.year }}{% if m.created_on %} · {{ m.created_on[5:10] | replace('-', '/') }}{% endif %}{% if not m.seen_at %} <span class="ow-new-tag">new</span>{% endif %}</div>
       <div class="ow-msg-body">{{ m.body }}</div>
     </div>
-    {% else %}
+    {% endmacro %}
+    {% for m in office.messages %}{{ ow_msg(m) }}{% else %}
     <div class="admin-dim" style="font-size:12px;">Nothing yet. Your owner will write before Opening Day.</div>
     {% endfor %}
+    {% if office.older %}
+    <details class="ow-older">
+      <summary class="btn btn-secondary"><span class="ow-older-show">Older messages ({{ office.older | length }})</span><span class="ow-older-hide">Hide older messages</span></summary>
+      {% for m in office.older %}{{ ow_msg(m) }}{% endfor %}
+    </details>
+    {% endif %}
   </div>
 </div>
 {% endif %}
