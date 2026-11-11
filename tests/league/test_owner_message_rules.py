@@ -177,8 +177,7 @@ def test_homegrown_near_the_league_isnt_a_shortfall():
         {"homegrown_players": 32, "roster_players": 40, "league_homegrown": 0.825}
     )
     assert om._homegrown(season, "ok") == (
-        "32 of our 40 players came through our own draft,"
-        " about what most teams have."
+        "32 of our 40 players came through our own draft, about what most teams have."
     )
     # Short of most teams but not by enough to be bad: no "Only".
     short = om.facts(
