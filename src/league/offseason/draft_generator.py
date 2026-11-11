@@ -82,10 +82,10 @@ DRAFT_SKILL_OFFSETS: dict[str, dict[str, float]] = {
         "bunting": 1.5,
     },
     "pitcher": {
-        "accuracy": 13,
+        "accuracy": 9.5,
         "clutch": 14,
-        "strikes": 10.5,
-        "ground_balls": 10,
+        "strikes": 7,
+        "ground_balls": 6.5,
         "recovery": 7.5,
         "stamina": 10,
     },

@@ -200,9 +200,7 @@ def start_league(
     # ── 6. Generate prospect pool ─────────────────────────────────────────────
     # Only delete prospects that belong to THIS league — don't touch other leagues.
     dr = DraftRepository(conn)
-    prospect_count = draft_gen or DraftGenerator(conn, rng=rng, founding=True).run(
-        league_id=league_id
-    )
+    prospect_count = draft_gen or DraftGenerator(conn, rng=rng).run(league_id=league_id)
 
     # ── 7. Create draft ───────────────────────────────────────────────────────
     if is_blitz_style(league["mode"]):
