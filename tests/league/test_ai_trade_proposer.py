@@ -354,6 +354,8 @@ def test_no_absorb_past_your_owners_limit():
         buyer, seller, scrub, 60, fits=lambda added: added < 30_000_000
     )
     assert isinstance(offer, AbsorbOffer)
+
+
 def test_a_trade_request_doesnt_sink_a_depth_arm_nobody_would_miss():
     """A reliever who asked out, but wouldn't crack their staff, adds
     little to them, so the trade-request discount takes little off: a team
