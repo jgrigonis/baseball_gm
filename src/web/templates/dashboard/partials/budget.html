@@ -103,6 +103,34 @@
   </div>
 </div>
 
+{% if next_money %}
+<div class="card" style="margin-bottom:16px;" id="bud-next">
+  <div class="card-header"><span class="card-title">Next season so far</span></div>
+  <div class="card-body">
+    <div class="bud-grid">
+      <div class="bud-stat">
+        <div class="bud-label">Payroll</div>
+        <div class="bud-value">{{ next_money.payroll_text }}</div>
+        <div class="bud-note">Deals that carry over{% if next_money.resigned %} plus {{ next_money.resigned }} re-sign{{ 's' if next_money.resigned != 1 }}{% endif %}{% if next_money.let_go %}; {{ next_money.let_go }} let go{% endif %}</div>
+      </div>
+      <div class="bud-stat">
+        <div class="bud-label">{{ "Over the owner's limit" if next_money.over else "Room under the owner's limit" }}</div>
+        <div class="bud-value {% if next_money.over %}bud-bad{% endif %}">{{ next_money.left_text }}</div>
+        <div class="bud-note">{% if next_money.over %}Paid from their bank{% else %}For total spending, with the front office, minor leagues and any luxury tax{% endif %}</div>
+      </div>
+      <div class="bud-stat">
+        <div class="bud-label">Bank left for re-signs</div>
+        <div class="bud-value">{{ next_money.bank_left_text }}</div>
+        <div class="bud-note">Your owner goes past their limit only to keep your own players</div>
+      </div>
+    </div>
+    <div class="bud-line">
+      Updates as you Re-sign or Let go on <a href="/leagues/{{ league_id }}/expiring" style="color:var(--green);" onclick="if (window.goToTab) { event.preventDefault(); goToTab('expiring'); }">Expiring Deals</a>. Next season's cap and your owner's new budget are set when the offseason begins.
+    </div>
+  </div>
+</div>
+{% endif %}
+
 {% if bank %}
 <div class="card" style="margin-bottom:16px;">
   <div class="card-header"><span class="card-title">Owner's bank</span></div>
