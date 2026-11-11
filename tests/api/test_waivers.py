@@ -240,7 +240,7 @@ def test_a_claim_of_a_persons_released_player_makes_the_news(lg):
 
 
 def test_nobody_claiming_a_persons_player_makes_the_news(lg):
-    pid = _released(lg)
+    _released(lg)
     waivers.after_day(lg.db, lg.league.id, GAME_DAYS[1])
     [story] = _stories(lg, "fa-cleared:")
     assert "clears waivers" in story["headline"]
