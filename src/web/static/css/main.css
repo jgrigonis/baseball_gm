@@ -1370,6 +1370,7 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
   color: var(--text-dim); margin-top: 2px;
 }
 .pd-contract-rookie { color: var(--text); }
+.pd-contract-unguaranteed { color: var(--amber); }
 /* Player happiness: public type, mood word, what's on his mind */
 .pd-mood {
   font-family: var(--font-mono); font-size: 11px;
