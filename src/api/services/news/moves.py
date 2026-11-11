@@ -75,6 +75,14 @@ def _write(league_id: str, conn, what: str, fn) -> None:
         log.exception("League %s: couldn't write %s news", league_id, what)
 
 
+def _the(nm: Names, team_id: str, start: bool = False) -> str:
+    """ "Josh's Rain" for a team with a GM, else "the Rain" ("The Rain" to
+    start a sentence)."""
+    if nm.gm_of(team_id):
+        return nm.gm_team(team_id)
+    return f"{'The' if start else 'the'} {nm.team(team_id)}"
+
+
 def _describe(player, grade: str) -> str:
     return f"{grade} {player.position}, age {player.age}"
 
@@ -110,7 +118,7 @@ def released(
             on,
             "free_agency",
             f"fa-release:{on}:{player.id}",
-            f"The {nm.gm_team(team_id)} release {nm.player(player.id)}",
+            f"{_the(nm, team_id, True)} release {nm.player(player.id)}",
             f"{_describe(player, grade)}. {where}",
             weight=_weight(grade, human),
             team_ids=[team_id],
@@ -127,14 +135,14 @@ def released(
 
 def _tell_people(conn, league_id, nm, team_id, player, grade, waivers, clears_on):
     """A notification for each other person running a team in the league."""
-    who = plain(nm.gm_team(team_id))
+    who = plain(_the(nm, team_id, True))
     name = plain(nm.player(player.id))
     if waivers:
         until = f"after the games on {clears_on}" if clears_on else "this phase ends"
         what = f"He's on waivers until {until}. Claim him on Free Agents."
     else:
         what = "He's a free agent now. Sign him on Free Agents."
-    text = f"The {who} released {name} ({grade} {player.position}). {what}"
+    text = f"{who} released {name} ({grade} {player.position}). {what}"
     notes = NotificationRepository(conn)
     for gm_id, team in GMRepository(conn).get_human_gm_teams(league_id).items():
         if team == team_id or not nm.is_human(team) or nm.gm_of(team)["id"] != gm_id:
@@ -184,8 +192,8 @@ def claimed(
             when,
             "free_agency",
             f"fa-claim:{when}:{player.id}",
-            f"The {nm.gm_team(to_team)} claim {nm.player(player.id)} off waivers",
-            f"{_describe(player, grade)}, released by the {nm.gm_team(from_team)}."
+            f"{_the(nm, to_team, True)} claim {nm.player(player.id)} off waivers",
+            f"{_describe(player, grade)}, released by {_the(nm, from_team)}."
             f"{terms}{rivals}",
             weight=_weight(grade, human),
             team_ids=[to_team, from_team],
@@ -220,7 +228,7 @@ def cleared(
             "free_agency",
             f"fa-cleared:{when}:{player.id}",
             f"{nm.player(player.id)} clears waivers",
-            f"{_describe(player, grade)}, released by the {nm.gm_team(from_team)}. "
+            f"{_describe(player, grade)}, released by {_the(nm, from_team)}. "
             "Nobody claimed him, so he's a free agent any team can sign. "
             f"The {nm.team(from_team)} keep paying what they owe him until he does.",
             weight=_weight(grade, human),
@@ -264,7 +272,7 @@ def signed(
         if released_by == team_id:
             former = f" He's back with the {nm.team(team_id)}, who released him."
         elif released_by:
-            former = f" The {nm.gm_team(released_by)} released him."
+            former = f" {_the(nm, released_by, True)} released him."
         else:
             former = ""
         seasons = f"season{'s' if deal.years != 1 else ''}"
@@ -274,7 +282,7 @@ def signed(
             on,
             "free_agency",
             f"fa-sign-now:{on}:{player.id}",
-            f"The {nm.gm_team(team_id)} sign free agent {nm.player(player.id)}",
+            f"{_the(nm, team_id, True)} sign free agent {nm.player(player.id)}",
             f"{_describe(player, grade)}, for {ct.format_salary(deal.salary)} a "
             f"season over {deal.years} {seasons}.{former}",
             weight=_weight(grade, human),

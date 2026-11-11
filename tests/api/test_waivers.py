@@ -290,6 +290,7 @@ def test_other_people_hear_when_a_person_releases_a_good_player(lg, monkeypatch)
     _released(lg)
     [note] = take_injury_news(lg.db, other)["waivers"]
     assert "B+" in note["text"] and "on waivers until after the games" in note["text"]
+    assert not note["text"].startswith("The ") and "the The" not in note["text"]
     assert take_injury_news(lg.db, lg.gm.id)["waivers"] == []
 
 
