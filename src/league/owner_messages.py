@@ -256,6 +256,10 @@ NOTES = {
         "ok": (
             "Treat our veterans right.",
             "Look after the players who've been here the longest.",
+            "Our longtime guys mean a lot to this town. Don't forget that.",
+            "Respect the players who've worn this uniform for years.",
+            "The veterans built this club. Keep them in mind.",
+            "Some of these players have been here a long time. That counts for something.",
         ),
         "bad": (
             "You let one of our icons go. I won't forget that.",
@@ -362,6 +366,9 @@ AGAIN = {
         "ok": (
             "Keep treating the veterans right.",
             "Remember who built this club.",
+            "Still looking out for our longtime guys, I hope.",
+            "Don't forget the veterans.",
+            "Our old guard still matters to me.",
         ),
         "bad": (
             "I still haven't forgotten that icon you let go.",
