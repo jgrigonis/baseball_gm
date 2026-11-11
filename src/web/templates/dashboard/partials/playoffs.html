@@ -283,8 +283,8 @@ async function _simPlayoffsRun(mode) {
       if (startRound === null) startRound = d.played_round;
       champion = d.champion;
       // The owners judge the season once the Finals end, and may have let
-      // this GM go: the page they're on is a GM's, so load it again as the
-      // viewer they now are, with the finished bracket and the New job link.
+      // this GM go: send them to the league's landing page as the viewer they
+      // now are, the season summary under the banner saying who fired them.
       if (d.fired) { fired = true; break; }
 
       if (d.current_date) {
@@ -323,7 +323,7 @@ async function _simPlayoffsRun(mode) {
     if (fb) fb.textContent = '';
     gmToast('✗ Network error. Try again.', 'err');
   }
-  if (fired) { window.location.reload(); return; }
+  if (fired) { window.location.href = '/leagues/' + LEAGUE_ID + '/'; return; }
   if (multi && window.schedSetSimMode) window.schedSetSimMode(false);
   else window.nextMoveIdle('po-day-btn');
   window._simStop = false;
