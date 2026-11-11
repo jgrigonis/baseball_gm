@@ -281,3 +281,36 @@ def test_no_dump_that_sends_back_as_much_salary():
     buyer = _side("contending", [throw])
     buyer.tradeable = {throw.id}
     assert dump_offer_or_why(buyer, seller, cheap, 60) == NO_SAVING
+
+
+def test_a_trade_request_doesnt_sink_a_depth_arm_nobody_would_miss():
+    """A reliever who asked out, but wouldn't crack their staff, adds
+    little to them, so the trade-request discount takes little off: a team
+    with a spot for him takes him alone, no sweetener needed."""
+    from dataclasses import replace
+
+    arm = replace(_priced(57, 990_000, age=21), is_pitcher=True, wants_out=True)
+    prospect = _p(66, age=22)
+    seller = _side("retooling", [arm, prospect], margin=0.0)
+    seller.tradeable = {arm.id, prospect.id}
+    buyer = _side("contending", [_priced(40, 0)])
+    offer = dump_offer_or_why(buyer, seller, arm, days_left=60)
+    assert isinstance(offer, DumpOffer)
+    assert offer.add == []
+
+
+def test_sweeteners_are_players_the_team_would_want():
+    """Spare depth the seller wouldn't miss is no use to them either: the
+    sweetener it asks for is one it would want, even past the first few
+    cheapest."""
+    from src.league.trades import ai_proposer
+
+    scrub = _priced(50, 8_000_000)
+    spares = [_p(45, age=30) for _ in range(ai_proposer.MAX_SWEETENERS + 4)]
+    prospect = _p(66, age=22)
+    seller = _side("rebuilding", [scrub, prospect, *spares], margin=0.0)
+    seller.tradeable = {scrub.id, prospect.id} | {a.id for a in spares}
+    buyer = _side("contending", [_priced(40, 0)])
+    offer = dump_offer_or_why(buyer, seller, scrub, days_left=60)
+    assert isinstance(offer, DumpOffer)
+    assert offer.add == [prospect]
