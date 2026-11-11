@@ -33,6 +33,7 @@ from __future__ import annotations
 
 from src.api.services import owners, personas, team_states, trades
 from src.db.locks import LeagueBusy, league_lock
+from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
@@ -302,9 +303,9 @@ def take(conn, league_id: str, gm: dict, player_id: str, team_id: str) -> dict:
 
 def dump(conn, league_id: str, gm: dict, player_id: str) -> dict:
     """What every AI team would take the GM's player's salary for:
-    {"player", "salary", "offers": [{team_id, team_name, give: [ids],
-    add: [ids], saved}], those that take him alone first (most saved
-    first), then by how little the sweetener costs the GM, "why": {reason:
+    {"player", "salary", "guaranteed", "offers": [{team_id, team_name,
+    give: [ids], add: [ids], saved, unguaranteed}], those that take him
+    alone first (most saved first), then by how little the sweetener costs the GM, "why": {reason:
     [team names]}} (reasons: ai_proposer.NO_ROOM/NO_MATCH, TRADED_HIM)."""
     ctx = _Ctx(conn, league_id, gm, player_id)
     ctx.seller_tradeable()
@@ -325,6 +326,7 @@ def dump(conn, league_id: str, gm: dict, player_id: str) -> dict:
                 "_cost": offer.cost,
             }
         )
+    target_deal = _payroll_effects(conn, ctx, offers)
     offers.sort(key=lambda o: (bool(o["add"]), o["_cost"], -o["saved"]))
     for o in offers:
         del o["_cost"]
@@ -333,9 +335,41 @@ def dump(conn, league_id: str, gm: dict, player_id: str) -> dict:
     return {
         "player": ctx.target.name,
         "salary": ctx.target.salary,
+        # His deal isn't guaranteed yet (no game on the 40-man under it):
+        # sending him down or letting him go takes it off the payroll too.
+        "guaranteed": bool(target_deal and target_deal["guaranteed"]),
         "offers": offers,
         "why": {k: sorted(v) for k, v in why.items()},
     }
+
+
+def _payroll_effects(conn, ctx: _Ctx, offers: list[dict]) -> dict | None:
+    """Set each dump offer's "saved": what it really does to the GM's
+    payroll this season. Out go the player and any sweetener (what they add
+    to it now); in comes the throw-in, who lands in the minors
+    (trades.execute), so only a guaranteed deal of his counts.
+    "unguaranteed": what the throw-ins' deals would add once they're put
+    on the 40-man. Returns the dumped player's deal."""
+    year = trades._season_year(conn, ctx.season_id)
+    ids = {ctx.player_id}
+    for o in offers:
+        ids.update(o["give"], o["add"])
+    deals = ContractRepository(conn).active_for(ids, year) if year else {}
+
+    def pay(pid, counts) -> int:
+        d = deals.get(pid)
+        return d["salary"] if d and d[counts] else 0
+
+    for o in offers:
+        out = sum(pay(pid, "on_payroll") for pid in [ctx.player_id] + o["add"])
+        held = sum(pay(pid, "guaranteed") for pid in o["give"])
+        o["saved"] = out - held
+        o["unguaranteed"] = sum(
+            deals[pid]["salary"]
+            for pid in o["give"]
+            if pid in deals and not deals[pid]["guaranteed"]
+        )
+    return deals.get(ctx.player_id)
 
 
 def dump_take(conn, league_id: str, gm: dict, player_id: str, team_id: str) -> dict:

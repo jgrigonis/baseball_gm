@@ -123,3 +123,38 @@ def test_the_kept_shop_stamp_changes_when_a_roster_does(lg):  # noqa: F811
     assert trade_shop.stamp(lg.db, lg.league.id) == before
     trade_shop.take(lg.db, lg.league.id, lg.gm, star.id, lg.theirs.id)
     assert trade_shop.stamp(lg.db, lg.league.id) != before
+
+
+def _deal(lg, player, team, salary, guaranteed):  # noqa: F811
+    from src.db.repositories.contract_repo import ContractRepository
+    from src.player import contracts as ct
+
+    lg.db.execute("DELETE FROM player_contracts WHERE player_id = %s", (player.id,))
+    ContractRepository(lg.db).insert_deal(
+        player.id,
+        lg.league.id,
+        team.id,
+        ct.Deal(salary, 3, "rookie"),
+        2025,
+        guaranteed,
+    )
+
+
+def test_dump_savings_are_net_of_the_throw_in_who_lands_in_the_minors(lg):  # noqa: F811
+    """A just-drafted rookie on the 40-man: on the payroll, not guaranteed.
+    A guaranteed throw-in's salary counts against the savings; one whose
+    deal isn't guaranteed doesn't (he joins the minors) but is shown."""
+    rookie = lg.factory.rated_player(lg.mine, lg.league, 50)
+    _deal(lg, rookie, lg.mine, 780_000, False)
+    owed = lg.factory.rated_player(lg.theirs, lg.league, 50)
+    _deal(lg, owed, lg.theirs, 1_600_000, True)
+    farm = lg.factory.rated_player(lg.theirs, lg.league, 50, status="minors")
+    _deal(lg, farm, lg.theirs, 3_500_000, False)
+    ctx = SimpleNamespace(season_id=lg.season.id, player_id=rookie.id)
+    offers = [{"give": [owed.id], "add": []}, {"give": [farm.id], "add": []}]
+    deal = trade_shop._payroll_effects(lg.db, ctx, offers)
+    assert not deal["guaranteed"]
+    assert offers[0]["saved"] == 780_000 - 1_600_000
+    assert offers[0]["unguaranteed"] == 0
+    assert offers[1]["saved"] == 780_000
+    assert offers[1]["unguaranteed"] == 3_500_000

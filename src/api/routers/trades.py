@@ -421,7 +421,8 @@ def dump_player(
         }
         o["players"] = [cards[pid] for pid in o["give"] if pid in cards]
         o["adds"] = [mine[pid] for pid in o["add"] if pid in mine]
-        o["saved_text"] = format_salary(o["saved"])
+        o["saved_text"] = format_salary(abs(o["saved"]))
+        o["unguaranteed_text"] = format_salary(o["unguaranteed"])
         o["room_text"] = room_text(rooms.get(o["team_id"]))
         g = ai_gms.get(o["team_id"])
         o["gm_name"] = g["name"] if g else None
