@@ -2,7 +2,8 @@
 #
 # The Owner tab: the GM's owner (src/api/services/owners.py) and every
 # team's owner in the league. Only what GMs may see: names, bios,
-# archetypes and what each archetype wants, never a number.
+# archetypes and what each archetype wants, never a number. Admins also get
+# the numbers behind their owner's mood (owner_debug).
 
 from __future__ import annotations
 
@@ -10,7 +11,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
 from src.api.dependencies import DB, GMOrViewer, IsHTMX, User
-from src.api.services import owner_office, owners
+from src.api.services import owner_debug, owner_office, owners
 from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.contract_repo import ContractRepository
 from src.web.utils import _shell_ctx, tab_response
@@ -35,6 +36,8 @@ def owner_tab(
     if ctx["my_owner"]:
         ctx["office"] = owner_office.office(db, league_id, team_id, gm["id"])
         ctx["owner_unseen"] = 0  # just read
+        if ctx.get("is_admin"):
+            ctx["owner_debug"] = owner_debug.explain(db, league_id, team_id)
     year = ContractRepository(db).current_year(league_id)
     if ctx["my_owner"] and year is not None:
         standing = BudgetRepository(db).standing(league_id, team_id, year)

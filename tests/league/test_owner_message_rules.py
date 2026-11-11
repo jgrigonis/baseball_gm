@@ -245,3 +245,33 @@ def test_a_topic_whose_tone_turned_is_news():
         season=om.facts({"wins": 22, "losses": 16}), earlier=[first],
     )  # fmt: skip
     assert "We're 22-16." in second
+
+
+def test_a_winning_team_below_its_target_isnt_called_a_loser():
+    # Josh, 2026-11-11: at 46-37 a strong roster's owner said "I've seen
+    # enough losses for one year."
+    w = owners.clean_weights({"wins": 100, "icons": 60})
+    season = om.facts({"wins": 46, "losses": 37})
+    for seed in range(20):
+        body = om.checkin(
+            {"wins": -1.0, "icons": 0.1}, w, FIELDS, random.Random(seed),
+            mood=-0.2, season=season,
+        )  # fmt: skip
+        assert "We're 46-37." in body
+        assert not _lines_in(body, {"w": om.NOTES["wins"]["bad"]}), body
+        assert _lines_in(body, {"w": om.WINS_BY_RECORD["winning"]["notes"]["bad"]})
+    again = om.checkin(
+        {"wins": -1.0}, w, FIELDS, random.Random(1), mood=-0.2,
+        season=om.facts({"wins": 48, "losses": 38}), earlier=[body],
+    )  # fmt: skip
+    assert _lines_in(again, {"w": om.WINS_BY_RECORD["winning"]["again"]["bad"]})
+
+
+def test_a_losing_team_beating_its_target_isnt_called_a_winner():
+    w = owners.clean_weights({"wins": 100})
+    season = om.facts({"wins": 38, "losses": 45})
+    body = om.checkin(
+        {"wins": 0.8}, w, FIELDS, random.Random(2), mood=0.3, season=season
+    )
+    assert not _lines_in(body, {"w": om.NOTES["wins"]["good"]}), body
+    assert _lines_in(body, {"w": om.WINS_BY_RECORD["losing"]["notes"]["good"]})

@@ -130,6 +130,34 @@ def test_the_owner_tab(lg, client_for):
     assert "Patience" not in text and "Spending" not in text
 
 
+def test_admins_see_what_their_owner_thinks(lg, client_for, factory):
+    x = lg(n=2)
+    a, b = x.teams
+    service.ensure(x.db, x.league.id)
+    for i in range(3):
+        factory.game(
+            {"id": x.season.id}, {"id": a.id}, {"id": b.id}, f"2026-04-0{i + 1}"
+        )
+    for g in x.db.execute(
+        "SELECT id FROM games WHERE season_id = %s", (x.season.id,)
+    ).fetchall():
+        for team, win in ((a.id, 1), (b.id, 0)):
+            x.db.execute(
+                """INSERT INTO team_game_stats (game_id, team_id, win, loss, runs)
+                   VALUES (%s, %s, %s, %s, 5)""",
+                (g["id"], team, win, 1 - win),
+            )
+    client = client_for(x)
+    r = client.get(f"/leagues/{x.league.id}/owner")
+    assert "Owner happiness" not in r.text  # never for a GM
+    app.dependency_overrides[get_current_user] = lambda: {"id": None, "is_admin": True}
+    text = html.unescape(client.get(f"/leagues/{x.league.id}/owner").text)
+    assert "Owner happiness" in text and "Admin only" in text
+    assert "3-0 (1.000) vs target" in text  # what Winning was read from
+    assert "Job security" in text and "Hot seat under" in text
+    assert "This season so far" in text
+
+
 # ── The owner's season review (src/api/services/owner_review.py) ─────────────
 
 
