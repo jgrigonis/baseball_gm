@@ -237,11 +237,10 @@ def shop(conn, league_id: str, gm: dict, player_id: str) -> dict:
     """Every AI team's best offer for the GM's player:
     {"player", "offers": [{team_id, team_name, give: [ids], score}], best
     for the GM first, "close": the same for teams that want him but have no
-    deal they'd take (the package each came closest to taking, one it would
-    come out ahead on, just not by its margin; best for the GM first),
-    "no_interest": [team names], "why": {reason: [team names]}}
-    (reasons: ai_proposer.NO_HELP/NO_VALUE/NO_ROOM/NO_EVEN/NO_MATCH,
-    TRADED_HIM)."""
+    deal they'd take (the package each came closest to taking, best for the
+    GM first, the near ones (it would come out ahead, just not by its
+    margin) before the rest), "no_interest": [team names], "why": {reason: [team names]}}
+    (reasons: ai_proposer.NO_HELP/NO_VALUE/NO_ROOM/NO_MATCH, TRADED_HIM)."""
     ctx = _Ctx(conn, league_id, gm, player_id)
     offers, close, none, why = [], [], [], {}
     for t in ctx.ai_teams():
@@ -257,10 +256,11 @@ def shop(conn, league_id: str, gm: dict, player_id: str) -> dict:
                 "team_name": name,
                 "give": [a.id for a in offer.give],
                 "score": round(offer.score, 1),
+                **({"near": offer.near} if offer.short else {}),
             }
         )
     offers.sort(key=lambda o: o["score"], reverse=True)
-    close.sort(key=lambda o: o["score"], reverse=True)
+    close.sort(key=lambda o: (o["near"], o["score"]), reverse=True)
     _tell_other_gms(conn, ctx, gm)
     conn.commit()
     return {
