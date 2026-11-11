@@ -1249,6 +1249,28 @@ def test_merchandise_splits_by_games_and_bumps_new_arrivals(lg, monkeypatch):
     assert again > merch[x.mine.id]["total"]
 
 
+def test_offseason_merchandise_counts_the_40_man_until_a_26_man_is_picked(
+    lg, monkeypatch
+):
+    """Saving the Roster tab in the offseason leaves everyone on the 40-man
+    until Opening Day; the estimate still counts their jerseys (Josh,
+    2026-11-11: it showed only Hall of Famers)."""
+    from src.api.services import icons
+
+    x = lg()
+    star = x.factory.rated_player(x.mine, x.league, level=90, status="40man")
+    bench = x.factory.rated_player(x.theirs, x.league, level=90, status="40man")
+    starter = x.factory.rated_player(x.theirs, x.league, level=90, status="26man")
+    monkeypatch.setattr(icons, "_grades", lambda conn, ids: {p: "A" for p in ids})
+    x.budgets.for_league(x.league.id, 2026)
+    merch = x.budgets.merchandise(x.league.id, 2026)
+    mine = {s.player_id for s, _ in merch[x.mine.id]["sellers"]}
+    theirs = {s.player_id for s, _ in merch[x.theirs.id]["sellers"]}
+    assert star.id in mine and merch[x.mine.id]["total"] > 0
+    # A team with a 26-man picked counts just that.
+    assert starter.id in theirs and bench.id not in theirs
+
+
 def test_the_season_end_records_broadcast_and_merchandise(lg, monkeypatch):
     from src.api.services import icons
 
@@ -1263,7 +1285,9 @@ def test_the_season_end_records_broadcast_and_merchandise(lg, monkeypatch):
         (x.league.id, x.mine.id),
     ).fetchone()
     assert row["broadcast_revenue"] > 0
-    assert row["merch_revenue"] == 0  # 40-man only, nobody on the 26-man
+    # Nobody on the 26-man yet, so the 40-man sells, as the Budget tab
+    # projected it.
+    assert row["merch_revenue"] > 0
     assert row["profit"] == before
     books = x.budgets.books(x.league.id, x.mine.id, 2026)[0]
     assert books["broadcast"] == row["broadcast_revenue"]
