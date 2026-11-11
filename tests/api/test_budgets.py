@@ -1271,6 +1271,38 @@ def test_offseason_merchandise_counts_the_40_man_until_a_26_man_is_picked(
     assert starter.id in theirs and bench.id not in theirs
 
 
+def test_last_seasons_all_stars_count_until_this_seasons_are_picked(lg, monkeypatch):
+    from src.api.services import icons
+
+    x = lg()
+    star = x.factory.rated_player(x.mine, x.league, level=90, status="26man")
+    other = x.factory.rated_player(x.mine, x.league, level=90, status="26man")
+    monkeypatch.setattr(icons, "_grades", lambda conn, ids: {p: "A" for p in ids})
+    past = x.factory.season(year=2025)
+    x.factory.league_season(x.league, past)
+    x.db.execute(
+        """INSERT INTO all_stars (season_id, player_id, team_id, slot)
+           VALUES (%s, %s, %s, 'DH')""",
+        (past.id, star.id, x.mine.id),
+    )
+    x.budgets.for_league(x.league.id, 2026)
+
+    def sellers():
+        merch = x.budgets.merchandise(x.league.id, 2026)[x.mine.id]
+        return {s.player_id: s for s, _ in merch["sellers"]}
+
+    before = sellers()
+    assert before[star.id].all_star and not before[other.id].all_star
+    # Once this season's are picked, only they count.
+    x.db.execute(
+        """INSERT INTO all_stars (season_id, player_id, team_id, slot)
+           VALUES (%s, %s, %s, 'DH')""",
+        (x.season.id, other.id, x.mine.id),
+    )
+    after = sellers()
+    assert after[other.id].all_star and not after[star.id].all_star
+
+
 def test_the_season_end_records_broadcast_and_merchandise(lg, monkeypatch):
     from src.api.services import icons
 

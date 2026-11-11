@@ -1202,6 +1202,17 @@ class BudgetRepository:
         ).fetchone()
         return row["id"] if row else None
 
+    def _all_stars(self, season_id: str | None) -> set[str]:
+        if not season_id:
+            return set()
+        return {
+            r["player_id"]
+            for r in self.conn.execute(
+                "SELECT player_id FROM all_stars WHERE season_id = %s",
+                (season_id,),
+            ).fetchall()
+        }
+
     def _games(self, season_id: str | None, team_ids=None) -> dict[tuple, int]:
         """{(player_id, team_id): regular season games} in a season."""
         if not season_id:
@@ -1258,16 +1269,14 @@ class BudgetRepository:
         for (p, t), _n in self._games(self._season_any(league_id, year - 1)).items():
             before.setdefault(p, set()).add(t)
         grades = _grades(self.conn, list(played)) if played else {}
-        stars: set[str] = set()
+        stars = self._all_stars(season_id)
+        if not stars:
+            # Until this season's All-Stars are picked, last season's are
+            # expected back, so the estimate isn't far under what the
+            # season ends up selling (Josh, 2026-11-11).
+            stars = self._all_stars(self._season_any(league_id, year - 1))
         winners: set[str] = set()
         if season_id:
-            stars = {
-                r["player_id"]
-                for r in self.conn.execute(
-                    "SELECT player_id FROM all_stars WHERE season_id = %s",
-                    (season_id,),
-                ).fetchall()
-            }
             winners = {
                 r["player_id"]
                 for r in self.conn.execute(
