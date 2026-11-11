@@ -153,6 +153,18 @@ def test_stops_ahead_in_date_order():
     assert _kinds(sim_stops("2026-04-01", "none", None, None)) == ["playoffs"]
 
 
+def test_stops_carry_their_dates_for_the_sim_card_bar():
+    stops = sim_stops("2026-04-01", "upcoming", _Win(), "2026-07-31", "2026-09-27")
+    assert [s["date"] for s in stops] == [
+        "2026-06-20",
+        "2026-07-05",
+        "2026-07-31",
+        "2026-09-27",
+    ]
+    # Without the season's end, the playoffs stop has no date (and no bar).
+    assert sim_stops("2026-04-01", "none")[-1]["date"] is None
+
+
 def test_full_season_names_its_next_stop():
     stops = sim_stops("2026-04-01", "upcoming", _Win(), "2026-07-31")
     move = pick(_ctx(), "roster", stops=stops)

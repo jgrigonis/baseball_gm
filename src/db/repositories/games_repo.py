@@ -351,6 +351,16 @@ class GameRepository:
         ).fetchone()
         return dict(row) if row else None
 
+    def last_scheduled_date(self, season_id: str) -> str | None:
+        """The regular season's last scheduled day, played or not (playoff
+        series games aren't counted)."""
+        row = self.conn.execute(
+            """SELECT MAX(game_date) as d FROM games
+                WHERE season_id = %s AND series_id IS NULL""",
+            (season_id,),
+        ).fetchone()
+        return row["d"] if row and row.get("d") is not None else None
+
     def last_game_date(self, season_id: str) -> dict | None:
         last_game = self.conn.execute(
             """SELECT MAX(game_date) as d FROM games
