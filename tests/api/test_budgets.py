@@ -83,6 +83,18 @@ def test_spending_counts_the_luxury_tax():
     assert bg.tax_allowance(160 * M, 150 * M + fo) == 0
 
 
+def test_spending_past_the_limit_says_by_how_much():
+    # 200 payroll + 20 tax + 10 FO = 230 against a 211 limit.
+    s = bg.standing(200 * M, 160 * M, 197 * M, 211 * M, front_office=10 * M)
+    assert s["at_limit"] and s["over_limit"] == 19 * M
+    assert s["over_limit_text"] == bg.format_salary(19 * M)
+    # Right at it (or a hair past) still reads "at the limit".
+    s = bg.standing(160 * M, 160 * M, 165 * M, 170 * M, front_office=10 * M)
+    assert s["at_limit"] and s["over_limit_text"] is None
+    s = bg.standing(175 * M, 160 * M, 185 * M, 200 * M, front_office=10 * M)
+    assert not s["at_limit"] and s["over_limit_text"] is None
+
+
 def test_a_misers_budget_warns_under_the_cap_without_tax():
     msg = bg.warning(140 * M, 160 * M, 146 * M, 10 * M)
     assert "luxury tax" not in msg and "$146M budget" in msg
