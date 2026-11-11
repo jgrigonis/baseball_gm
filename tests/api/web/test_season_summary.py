@@ -149,8 +149,34 @@ def test_top_row_has_champion_and_best_record(db_conn, league):
     ctx = _summary(db_conn, league)
     assert ctx["champion"]["team_id"] == league["champ"].id
     best = ctx["best_record"]
-    assert best["team_id"] == league["best"].id
+    assert [t["team_id"] for t in best["teams"]] == [league["best"].id]
     assert (best["wins"], best["losses"]) == (3, 0)
+
+
+def test_best_record_lists_every_team_tied_for_it(db_conn, factory, league):
+    twin = factory.team(city="Denver", mascot="Twins")
+    factory.league_season_team(league["league"], league["past"], twin)
+    for _ in range(3):
+        _game(db_conn, league["past"], twin, league["mine"])
+    best = _summary(db_conn, league)["best_record"]
+    assert {t["team_id"] for t in best["teams"]} == {league["best"].id, twin.id}
+    assert (best["wins"], best["losses"]) == (3, 0)
+
+
+def test_league_leader_lists_every_player_tied_for_it(db_conn, league):
+    other = _player(db_conn, league["league"], "Tie", "Masters")
+    _stats(
+        db_conn, other, league["past"], league["mine"],
+        bat_ab=40, bat_hits=10, bat_home_runs=9,
+    )  # fmt: skip
+    ctx = _summary(db_conn, league)
+    hr = next(lead for lead in ctx["top_leaders"] if lead["label"] == "HR")
+    assert {p["player_id"] for p in hr["players"]} == {
+        league["players"]["hr"],
+        other,
+    }
+    mine_hr = next(lead for lead in ctx["my_leaders"] if lead["label"] == "HR")
+    assert [p["player_id"] for p in mine_hr["players"]] == [other]
 
 
 def test_leader_row_is_avg_hr_era_k(db_conn, league):

@@ -8,7 +8,7 @@ from __future__ import annotations
 from src.api.services import awards as awards_service
 from src.api.services import hall_of_fame
 from src.api.view_models.draft import draft_rounds
-from src.api.view_models.leaders import leaders_context, team_leaders
+from src.api.view_models.leaders import leaders_context, team_leaders, tied_top
 from src.api.view_models.playoffs import playoffs_context
 from src.api.view_models.standings import standings_rows
 from src.db.repositories.all_star_repo import AllStarRepository
@@ -134,17 +134,26 @@ def season_summary_context(
             "is_mine": champ["team_id"] == my_team_id,
         }
 
-    # Final standings; the first row is the best regular-season record
+    # Final standings; the first row is the best regular-season record, and
+    # every team that finished with that same record shares the card
     standings = standings_rows(db, league_id, season_id, my_team_id)
     if standings and standings[0]["wins"] + standings[0]["losses"]:
         ctx["standings"] = standings
         best = standings[0]
+        teams = [
+            {
+                "team_id": t["team_id"],
+                "name": f"{t['city']} {t['mascot']}",
+                "is_mine": t["is_mine"],
+            }
+            for t in standings
+            if (t["wins"], t["losses"]) == (best["wins"], best["losses"])
+        ]
         ctx["best_record"] = {
-            "team_id": best["team_id"],
-            "name": f"{best['city']} {best['mascot']}",
+            "teams": teams,
             "wins": best["wins"],
             "losses": best["losses"],
-            "is_mine": best["is_mine"],
+            "is_mine": any(t["is_mine"] for t in teams),
         }
 
     # Stat leaders, the same lists the Leaders tab shows for this season
@@ -156,7 +165,9 @@ def season_summary_context(
     for pane, label in TOP_LEADER_CATS:
         cat = cats[pane].get(label)
         if cat and cat["rows"]:
-            ctx["top_leaders"].append({"label": label, **cat["rows"][0]})
+            ctx["top_leaders"].append(
+                {"label": label, **cat["rows"][0], "players": tied_top(cat["rows"])}
+            )
     for pane, label in SUMMARY_LEADER_CATS:
         cat = cats[pane].get(label)
         if cat and cat["rows"]:

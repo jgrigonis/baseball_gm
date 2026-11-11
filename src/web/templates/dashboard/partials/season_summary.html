@@ -52,10 +52,12 @@
     {% if best_record %}
     <div class="ss-top-cell">
       <div style="font-size:32px;margin-bottom:8px;">📈</div>
-      <div class="ss-kicker" style="margin-bottom:4px;">Best Record</div>
-      <div class="ss-top-name" style="color:{% if best_record.is_mine %}var(--amber){% else %}var(--text){% endif %};">
-        {{ best_record.name }}{% if best_record.is_mine %}&nbsp;⭐{% endif %}
+      <div class="ss-kicker" style="margin-bottom:4px;">Best Record{% if best_record.teams|length > 1 %} · {{ best_record.teams|length }}-way tie{% endif %}</div>
+      {% for t in best_record.teams %}
+      <div class="ss-top-name" style="color:{% if t.is_mine %}var(--amber){% else %}var(--text){% endif %};">
+        {{ t.name }}{% if t.is_mine %}&nbsp;⭐{% endif %}
       </div>
+      {% endfor %}
       <div style="font-size:20px;margin-top:8px;">
         <span class="num-tile good">{{ best_record.wins }}</span><span class="num-tile bad">{{ best_record.losses }}</span>
       </div>
@@ -91,10 +93,10 @@
       <div class="ss-mine-leaders">
         {% for leader in my_leaders %}
         <div class="ss-mine-leader ss-clickable" onclick="openPlayerPanel('{{ leader.player_id }}')"
-             title="Team leader in {{ leader.label }}: {{ leader.name }}">
+             title="Team leader in {{ leader.label }}: {{ leader.players|map(attribute='name')|join(', ') }}">
           <span class="ss-mine-stat">{{ leader.label }}</span>
           <span class="ss-mine-val">{{ leader.val }}</span>
-          <span class="ss-mine-name ss-ellipsis">{{ leader.name }}</span>
+          <span class="ss-mine-name ss-ellipsis">{{ leader.name }}{% if leader.players|length > 1 %} <span class="ss-mine-tied">+{{ leader.players|length - 1 }}</span>{% endif %}</span>
         </div>
         {% endfor %}
       </div>
@@ -118,19 +120,28 @@
     <div class="ss-kicker" style="margin-bottom:12px;">League Leaders</div>
     <div class="ss-leader-row">
       {% for leader in top_leaders %}
-      <div class="ss-clickable" onclick="openPlayerPanel('{{ leader.player_id }}')"
-           title="View {{ leader.name }}">
+      <div>
         <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);
-                    margin-bottom:2px;">{{ leader.label }}</div>
+                    margin-bottom:2px;">{{ leader.label }}{% if leader.players|length > 1 %} · tied{% endif %}</div>
         <div style="font-size:22px;font-weight:700;font-family:var(--font-mono);
                     color:var(--amber);">{{ leader.val }}</div>
-        <div style="font-family:var(--font-sans);font-size:12px;font-weight:600;
-                    color:{% if leader.is_mine %}var(--green){% else %}var(--text){% endif %};">
-          {{ leader.name }}
+        {% for p in leader.players[:3] %}
+        <div class="ss-clickable ss-leader-who" onclick="openPlayerPanel('{{ p.player_id }}')"
+             title="View {{ p.name }}">
+          <div style="font-family:var(--font-sans);font-size:12px;font-weight:600;
+                      color:{% if p.is_mine %}var(--green){% else %}var(--text){% endif %};">
+            {{ p.name }}
+          </div>
+          <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">
+            {{ p.team }}
+          </div>
         </div>
-        <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">
-          {{ leader.team }}
+        {% endfor %}
+        {% if leader.players|length > 3 %}
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:2px;">
+          +{{ leader.players|length - 3 }} more tied
         </div>
+        {% endif %}
       </div>
       {% endfor %}
     </div>
@@ -505,6 +516,8 @@
 }
 .ss-leader-row { display:grid;grid-template-columns:repeat(4,1fr);gap:16px; }
 .ss-clickable { cursor:pointer;transition:background .08s; }
+.ss-leader-who + .ss-leader-who { margin-top:4px; }
+.ss-mine-tied { font-family:var(--font-mono);font-size:10px;font-weight:400;color:var(--muted); }
 .ss-awards { display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px 20px; }
 .ss-award-name { font-family:var(--font-mono);font-size:11px;color:var(--amber);margin-bottom:4px; }
 .ss-award-winner { padding:3px 4px;margin:0 -4px;border-radius:3px; }
