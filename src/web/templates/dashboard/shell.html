@@ -95,7 +95,11 @@ async function postJson(url, data) {
   const r = await fetch(url, data === undefined ? {method: 'POST'} : {
     method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)});
   const body = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(body.detail || 'Something went wrong.');
+  if (!r.ok) {
+    const err = new Error(body.detail || 'Something went wrong.');
+    err.nowGuaranteed = !!body.now_guaranteed;
+    throw err;
+  }
   return body;
 }
 // Shop a player: the Trades tab asks every AI team for its best offer.
@@ -117,8 +121,14 @@ window.releasePlayer = async function(pid, name) {
   // A deal that isn't guaranteed costs nothing to cut, so there's nothing
   // to weigh: release him right away and just say so (Josh, 2026-11-11).
   // Guaranteed deals still confirm first, since you keep paying him.
+  // He can play a game on the 40-man while the release waits out a sim day,
+  // which guarantees his deal; then the server refuses and we ask after all.
   if (!cost.total) {
-    try { await postJson(base); } catch (e) { gmAlert(e.message); return; }
+    try { await postJson(base + '?free=1'); }
+    catch (e) {
+      if (e.nowGuaranteed) return releasePlayer(pid, name);
+      gmAlert(e.message); return;
+    }
     gmToast(cost.waivers ? `Released ${name}. He's on waivers.` : `Released ${name}`, 'ok');
     closePlayerPanel();
     reloadTab();
