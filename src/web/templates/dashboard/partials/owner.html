@@ -78,7 +78,7 @@
   <div class="card-body">
     {% macro ow_msg(m) %}
     <div class="ow-msg {% if not m.seen_at %}ow-new{% endif %}">
-      <div class="ow-msg-head">{{ {'preseason':'Preseason memo','checkin':'Check-in','trade':'About that trade','budget':'Payroll','review':'Season review'}.get(m.kind, 'Note') }} · {{ m.year }}{% if m.created_on %} · {{ m.created_on[5:10] | replace('-', '/') }}{% endif %}{% if not m.seen_at %} <span class="ow-new-tag">new</span>{% endif %}</div>
+      <div class="ow-msg-head">{{ {'preseason':'Preseason memo','checkin':'Check-in','trade':'About that trade','budget':'Payroll','review':'Season review','release':'Releases','streak':'The streak','veto':'Release refused'}.get(m.kind, 'Note') }} · {{ m.year }}{% if m.created_on %} · {{ m.created_on[5:10] | replace('-', '/') }}{% endif %}{% if not m.seen_at %} <span class="ow-new-tag">new</span>{% endif %}</div>
       <div class="ow-msg-body">{{ m.body }}</div>
     </div>
     {% endmacro %}

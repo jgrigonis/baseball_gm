@@ -268,6 +268,8 @@ def release_preview(league_id: str, player_id: str, db: DB, gm: GM):
         cost = free_agents.release_preview(db, league_id, gm["team_id"], player_id)
     except free_agents.FreeAgentError as e:
         return JSONResponse({"detail": str(e)}, status_code=422)
+    if cost["vetoed"]:
+        db.commit()  # the owner's refusal, kept in their office
     return JSONResponse(cost)
 
 
@@ -284,6 +286,8 @@ def release_player(
         result = free_agents.release(db, league_id, gm["team_id"], player_id, free=free)
     except free_agents.NowGuaranteed as e:
         return JSONResponse({"detail": str(e), "now_guaranteed": True}, status_code=409)
+    except free_agents.OwnerVeto as e:
+        return JSONResponse({"detail": str(e), "vetoed": True}, status_code=409)
     except free_agents.FreeAgentError as e:
         return JSONResponse({"detail": str(e)}, status_code=422)
     return JSONResponse(result)

@@ -24,8 +24,10 @@ agents are later phases.
 
 from __future__ import annotations
 
+import logging
 import random
 from datetime import date
+
 from src.api.services import trades, waivers
 from src.api.services.news import moves as move_news
 from src.db.locks import league_lock
@@ -40,6 +42,8 @@ from src.league import budget as bg
 from src.league.offseason.roster_trimmer import MINORS_LIMIT
 from src.player import contracts as ct
 from src.player.player_value import role_rating
+
+log = logging.getLogger(__name__)
 
 # How long a release or signing waits for a sim day to finish (league_lock).
 MOVE_WAIT = 20
@@ -154,15 +158,28 @@ def _context(conn, league_id: str) -> tuple[str, int]:
 
 
 def release_preview(conn, league_id: str, team_id: str, player_id: str) -> dict:
-    """What releasing him would cost, for the confirm dialog."""
+    """What releasing him would cost, for the confirm dialog, and "vetoed":
+    the owner's refusal, if a meddling owner won't allow it (the GM asked,
+    so the refusal goes in the owner's office too)."""
     _, year = _context(conn, league_id)
     if not _on_team(conn, team_id, player_id):
         raise FreeAgentError("He isn't on your team.")
     up = goes_on_waivers(conn, player_id, year)
     return {
         "waivers": up,
+        "vetoed": _veto(conn, league_id, team_id, player_id, announce=True),
         **_owed_view(ContractRepository(conn).release_cost(player_id, year)),
     }
+
+
+class OwnerVeto(FreeAgentError):
+    """The team's owner won't allow the release (owner_office.release_veto)."""
+
+
+def _veto(conn, league_id, team_id, player_id, announce=False) -> str | None:
+    from src.api.services import owner_office
+
+    return owner_office.release_veto(conn, league_id, team_id, player_id, announce)
 
 
 def goes_on_waivers(conn, player_id: str, year: int) -> bool:
@@ -193,6 +210,9 @@ def release(
         season_id, year = _context(conn, league_id)
         if not _on_team(conn, team_id, player_id):
             raise FreeAgentError("He isn't on your team.")
+        vetoed = _veto(conn, league_id, team_id, player_id)
+        if vetoed:
+            raise OwnerVeto(vetoed)
         if free and ContractRepository(conn).release_cost(player_id, year)["total"]:
             raise NowGuaranteed(
                 "He just played a game on the 40-man, so his deal is guaranteed now."
@@ -233,6 +253,7 @@ def release(
                 was_up,
                 waiver["clears_on"] if waiver else None,
             )
+        _owner_reacts(conn, league_id, team_id, season_id)
         conn.commit()
     return {
         "name": player.name if player else "",
@@ -240,6 +261,20 @@ def release(
         "clears_on": waiver["clears_on"] if waiver else None,
         **_owed_view(owed),
     }
+
+
+def _owner_reacts(conn, league_id: str, team_id: str, season_id: str) -> None:
+    """The owner's word on the release, right away (owner_office.reactions).
+    In a savepoint, so a problem there never undoes the release."""
+    from src.api.services import owner_office
+
+    try:
+        with conn.transaction():
+            owner_office.reactions(
+                conn, league_id, move_news.today(conn, season_id), [team_id]
+            )
+    except Exception:
+        log.exception("League %s: owner reaction to a release failed", league_id)
 
 
 def sign_preview(conn, league_id: str, team_id: str, player_id: str) -> dict:

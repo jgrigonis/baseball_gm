@@ -73,6 +73,8 @@ class TeamSeason:
     league_star_points: float | None = None
     icons_lost: int = 0
     trades: int = 0
+    # Players B- or better the team released: turnover too, at half a trade.
+    releases: int = 0
     rival_wins: int = 0
     rival_losses: int = 0
 
@@ -167,7 +169,7 @@ def score_dimensions(
     star_mark = 1.5 if s.league_star_points is None else s.league_star_points
     out["stars"] = _clamp((s.star_points - star_mark) / 2.5)
     out["icons"] = _clamp(0.1 - 0.6 * s.icons_lost)
-    out["stability"] = _clamp(0.25 - 0.2 * s.trades)
+    out["stability"] = _clamp(0.25 - 0.2 * s.trades - 0.1 * s.releases)
     games = s.rival_wins + s.rival_losses
     out["rivalry"] = _clamp((s.rival_wins / games - 0.5) / 0.2) if games else 0.0
     return out
