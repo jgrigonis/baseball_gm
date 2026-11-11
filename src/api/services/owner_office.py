@@ -464,7 +464,28 @@ def office(conn, league_id: str, team_id: str, gm_id: str) -> dict:
            WHERE league_id = %s AND team_id = %s AND gm_id = %s AND seen_at IS NULL""",
         (league_id, team_id, gm_id),
     )
-    return {"mood": mood, "messages": [dict(r) for r in rows]}
+    messages, older = _split_recent([dict(r) for r in rows])
+    return {"mood": mood, "messages": messages, "older": older}
+
+
+def _split_recent(rows: list[dict]) -> tuple[list[dict], list[dict]]:
+    """Recent messages up front, the rest behind an "Older messages" button:
+    everything from the newest season, plus last season's review until this
+    season has its own. Unread messages always stay up front. Newest first."""
+    if not rows:
+        return [], []
+    year = rows[0]["year"]
+    has_review = any(r["year"] == year and r["kind"] == "review" for r in rows)
+    last_review = None
+    if not has_review:
+        last_review = next(
+            (r["id"] for r in rows if r["kind"] == "review" and r["year"] < year), None
+        )
+    recent, older = [], []
+    for r in rows:
+        keep = r["year"] == year or r["id"] == last_review or not r["seen_at"]
+        (recent if keep else older).append(r)
+    return recent, older
 
 
 def preseason_memo(conn, league_id: str, team_id: str, gm_id: str, season_id: str):

@@ -270,3 +270,33 @@ def test_an_owner_with_no_mood_yet_is_content(lg):
     service.ensure(x.db, x.league.id)
     office = owner_office.office(x.db, x.league.id, x.teams[0].id, x.gm.id)
     assert office["mood"] == "content"
+
+
+def test_older_owner_messages_go_behind_the_button():
+    """Josh: the owner's office list grew every season. Up front: this
+    season's messages and last season's review (until this season has one),
+    plus anything unread. The rest go under "Older messages"."""
+    from src.api.services.owner_office import _split_recent
+
+    def m(i, year, kind, seen=True):
+        return {"id": i, "year": year, "kind": kind, "seen_at": "x" if seen else None}
+
+    rows = [
+        m(9, 2042, "preseason", seen=False),
+        m(8, 2041, "review"),
+        m(7, 2041, "checkin"),
+        m(6, 2041, "preseason"),
+        m(5, 2040, "review"),
+        m(4, 2040, "checkin", seen=False),
+    ]
+    recent, older = _split_recent(rows)
+    assert [r["id"] for r in recent] == [9, 8, 4]
+    assert [r["id"] for r in older] == [7, 6, 5]
+
+    # Once this season's review is in, last season's goes behind the button.
+    recent, older = _split_recent(
+        [m(10, 2041, "review"), m(9, 2041, "checkin"), m(8, 2040, "review")]
+    )
+    assert [r["id"] for r in recent] == [10, 9]
+    assert [r["id"] for r in older] == [8]
+    assert _split_recent([]) == ([], [])
