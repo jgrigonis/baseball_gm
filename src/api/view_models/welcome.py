@@ -124,6 +124,17 @@ RETURN_TAGLINES = {
 }
 
 
+# Weak spots spell positions out; archetype chips (Speed, Ace SP) keep
+# their own labels.
+CHIP_NAMES = {
+    "c": "Catcher (C)",
+    "if": "Infield (IF)",
+    "of": "Outfield (OF)",
+    "sp": "Starting Pitcher (SP)",
+    "rp": "Relief Pitcher (RP)",
+}
+
+
 def ordinal(n: int) -> str:
     if 10 <= n % 100 <= 20:
         return f"{n}th"
@@ -610,7 +621,7 @@ def welcome(db, league: dict, gm: dict) -> dict | None:
     needs = needs_for_draft(db, draft["id"]).get(team_id)
     weak = [
         {
-            "label": CHIPS[chip].label,
+            "label": CHIP_NAMES.get(chip, CHIPS[chip].label),
             "level": LEVELS.get(level, ""),
             "reason": needs.reasons.get(chip, ""),
         }
