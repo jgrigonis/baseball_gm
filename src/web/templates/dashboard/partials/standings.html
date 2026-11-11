@@ -22,11 +22,11 @@
         <th style="text-align:center;">L</th>
         <th style="text-align:center;">PCT</th>
         <th style="text-align:center;">GB</th>
-        <th class="phone-hide" style="text-align:center;">Home</th>
-        <th class="phone-hide" style="text-align:center;">Away</th>
-        <th class="phone-hide" style="text-align:center;">L10</th>
-        <th class="phone-hide" style="text-align:center;">RS</th>
-        <th class="phone-hide" style="text-align:center;">RA</th>
+        <th class="phone-hide st-extra" style="text-align:center;">Home</th>
+        <th class="phone-hide st-extra" style="text-align:center;">Away</th>
+        <th class="phone-hide st-extra" style="text-align:center;">L10</th>
+        <th class="phone-hide st-extra" style="text-align:center;">RS</th>
+        <th class="phone-hide st-extra" style="text-align:center;">RA</th>
         <th style="text-align:center;"><span class="phone-hide">Streak</span><span class="phone-only">Strk</span></th>
         <th class="phone-hide" title="Where each front office sees its team">Direction</th>
       </tr>
@@ -57,16 +57,16 @@
             <td class="tc mono">{{ team.losses }}</td>
             <td class="tc mono">{{ team.pct }}</td>
             <td class="tc mono dim">{{ team.gb }}</td>
-            <td class="tc mono dim phone-hide">{{ team.home }}</td>
-            <td class="tc mono dim phone-hide">{{ team.away }}</td>
-            <td class="tc mono phone-hide">
+            <td class="tc mono dim phone-hide st-extra">{{ team.home }}</td>
+            <td class="tc mono dim phone-hide st-extra">{{ team.away }}</td>
+            <td class="tc mono phone-hide st-extra">
               {% set l10parts = team.l10.split('-') %}
               <span style="color:{% if l10parts[0]|int > l10parts[1]|int %}var(--green){% elif l10parts[0]|int < l10parts[1]|int %}var(--red){% else %}var(--text-dim){% endif %};">
                 {{ team.l10 }}
               </span>
             </td>
-            <td class="tc mono phone-hide">{{ team.rs }}</td>
-            <td class="tc mono dim phone-hide">{{ team.ra }}</td>
+            <td class="tc mono phone-hide st-extra">{{ team.rs }}</td>
+            <td class="tc mono dim phone-hide st-extra">{{ team.ra }}</td>
             <td class="tc">
               {% if team.streak and team.streak != '—' %}
               <span style="font-family:var(--font-mono);font-size:12px;
@@ -122,18 +122,42 @@
   <div class="standings-grid">
 
     {# ── Standings: by division, or one table of every team ──────────── #}
-    <div style="display:flex;flex-direction:column;gap:16px;min-width:0;">
-      {% if groups %}
-      {% set base = "/leagues/" ~ league_id ~ "/standings" %}
-      {% set q = ("season_id=" ~ past_season.id) if past_season else "" %}
+    <div id="standings-main" class="st-hide-extra" style="display:flex;flex-direction:column;gap:16px;min-width:0;">
       <div class="standings-views">
+        {% if groups %}
+        {% set base = "/leagues/" ~ league_id ~ "/standings" %}
+        {% set q = ("season_id=" ~ past_season.id) if past_season else "" %}
         {% for key, label in [("divisions", "Divisions"), ("overall", "Overall")] %}
         {% set href = base ~ "?" ~ q ~ ("&" if q else "") ~ "view=" ~ key %}
         <a href="{{ href }}" hx-get="{{ href }}" hx-target="#tab-content" hx-swap="innerHTML" hx-push-url="true"
            class="standings-view{% if standings_view == key %} on{% endif %}">{{ label }}</a>
         {% endfor %}
+        {% endif %}
+        {# Home, Away, L10, RS and RA stay hidden until asked for (phones never
+           show them). The choice is kept in this browser. #}
+        <button type="button" id="standings-extra-btn" class="standings-view standings-extra-btn phone-hide"
+                aria-pressed="false" onclick="toggleStandingsExtra()"
+                title="Show home and away records, last 10, runs scored and runs allowed">Home/Away · L10 · Runs</button>
       </div>
-      {% endif %}
+      <script>
+      (function () {
+        var KEY = 'standingsExtraCols';
+        function apply(on) {
+          var main = document.getElementById('standings-main');
+          if (main) main.classList.toggle('st-hide-extra', !on);
+          var btn = document.getElementById('standings-extra-btn');
+          if (btn) { btn.classList.toggle('on', on); btn.setAttribute('aria-pressed', on ? 'true' : 'false'); }
+        }
+        window.toggleStandingsExtra = function () {
+          var on = !document.getElementById('standings-extra-btn').classList.contains('on');
+          try { localStorage.setItem(KEY, on ? '1' : '0'); } catch (e) {}
+          apply(on);
+        };
+        var on = false;
+        try { on = localStorage.getItem(KEY) === '1'; } catch (e) {}
+        apply(on);
+      })();
+      </script>
 
       {% if standings_view == "divisions" %}
         {% for conf in groups %}
@@ -272,6 +296,9 @@ tr.row-out td { opacity: .6; }
 .standings-view { font-family: var(--font-mono); font-size: 11px; padding: 4px 10px; border: 1px solid var(--border);
   border-radius: 4px; color: var(--text-dim); text-decoration: none; }
 .standings-view.on { color: var(--text); border-color: var(--amber); }
+.standings-extra-btn { margin-left: auto; background: none; cursor: pointer; }
+.standings-extra-btn.on { border-color: var(--border); background: var(--bg-3); }
+.st-hide-extra .st-extra { display: none; }
 .standings-conf { display: flex; flex-direction: column; gap: 10px; }
 .standings-conf-name { font-family: var(--font-sans); font-size: 14px; font-weight: 600; letter-spacing: .06em;
   text-transform: uppercase; color: var(--amber); margin: 4px 0 0; }
