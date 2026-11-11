@@ -940,6 +940,20 @@ class BudgetRepository:
             out.setdefault(r["team_id"], []).append(r["project"])
         return out
 
+    def fans_now(self, league_id: str, team_id: str, year: int) -> int | None:
+        """The team's fan interest coming into this season (0 to 100), for
+        the Budget tab's Ticket prices card. None without budgets."""
+        row = self.conn.execute(
+            """SELECT fans_before FROM team_budgets
+               WHERE league_id = %s AND team_id = %s AND year = %s""",
+            (league_id, team_id, year),
+        ).fetchone()
+        if row is None:
+            return None
+        if row["fans_before"] is not None:
+            return int(row["fans_before"])
+        return int(round(self._team_money(league_id, year, [team_id])[team_id].fans))
+
     def ballpark_offers(self, league_id: str, team_id: str, year: int) -> list[dict]:
         """Every ballpark project for the team this season, for the Budget
         tab: what it costs, what it would earn a season, its payback, and

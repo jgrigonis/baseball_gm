@@ -599,6 +599,11 @@ def _ticket_options() -> list[dict]:
                 "name": fn.ticket_name(level),
                 "revenue": "no change" if not pct else f"{pct:+g}%",
                 "fans": "no change" if not fans else f"{fans:+d}",
+                "fans_note": (
+                    "no pull on where fans head each season"
+                    if not fans
+                    else f"{fans:+d} to where fans head each season"
+                ),
             }
         )
     return out
@@ -770,7 +775,11 @@ def _render(
         ]
         ctx["fo_open"] = ctx.get("league_state") in FRONT_OFFICE_STATES
         level = budgets.ticket_price(league_id, team_id, year)
-        ctx["tickets"] = {"level": level, "options": _ticket_options()}
+        ctx["tickets"] = {
+            "level": level,
+            "options": _ticket_options(),
+            "fans_now": budgets.fans_now(league_id, team_id, year),
+        }
         deal = budgets.broadcast_deal(league_id, team_id, year)
         ctx["broadcast"] = _broadcast_view(deal, year, ctx["fo_open"]) if deal else None
         sponsor = budgets.sponsors(league_id, year, [team_id]).get(team_id)

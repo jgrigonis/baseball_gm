@@ -7,6 +7,7 @@
   .bud-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px; }
   .bud-stat { border:1px solid var(--border); border-radius:8px; padding:10px 12px; }
   .bud-label { font-family:var(--font-mono); font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+  .bud-tix-of { font-size:12px; font-weight:400; color:var(--text-dim); }
   .bud-value { font-size:20px; font-weight:700; color:var(--text); margin-top:4px; font-family:var(--font-mono); }
   .bud-note { font-size:11px; color:var(--text-dim); margin-top:4px; line-height:1.4; }
   .bud-bad { color:var(--red); }
@@ -244,8 +245,14 @@
         </div>
         <div class="bud-stat">
           <div class="bud-label">Fan interest</div>
-          <div class="bud-value" id="bud-tix-fans">{{ tickets.options[tickets.level - 1].fans }}</div>
+          {% set tix = tickets.options[tickets.level - 1] %}
+          {% if tickets.fans_now is not none %}
+          <div class="bud-value">{{ tickets.fans_now }} <span class="bud-tix-of">of 100</span></div>
+          <div class="bud-note">Now, coming into the season. <span id="bud-tix-fans-name">{{ tix.name }}</span> prices: <strong id="bud-tix-fans">{{ tix.fans_note }}</strong></div>
+          {% else %}
+          <div class="bud-value" id="bud-tix-fans-val">{{ tix.fans }}</div>
           <div class="bud-note">To where fans head each season</div>
+          {% endif %}
         </div>
       </div>
     </form>
@@ -262,7 +269,12 @@
     document.getElementById('bud-tix-name').textContent = o.name;
     document.getElementById('bud-tix-level').textContent = o.level + ' of 10';
     document.getElementById('bud-tix-rev').textContent = o.revenue;
-    document.getElementById('bud-tix-fans').textContent = o.fans;
+    var f = document.getElementById('bud-tix-fans');
+    if (f) f.textContent = o.fans_note;
+    var fn = document.getElementById('bud-tix-fans-name');
+    if (fn) fn.textContent = o.name;
+    var fv = document.getElementById('bud-tix-fans-val');
+    if (fv) fv.textContent = o.fans;
   };
 </script>
 {% if ticket_saved %}<script>if (window.gmToast) gmToast('Ticket prices saved');</script>{% endif %}
