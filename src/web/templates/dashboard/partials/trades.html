@@ -759,6 +759,24 @@ var DUMP_WHY = [
   ['traded', 'Traded him away this season'],
 ];
 
+// What the trade does to your payroll this season (trade_shop._payroll_effects):
+// the throw-in lands in your minors, so his deal counts only if it's guaranteed.
+function dumpSavedLine(o) {
+  var line, cls = 'tr-dump-saved';
+  if (o.saved > 0) line = 'Saves you ' + esc(o.saved_text) + ' in payroll this season';
+  else if (o.saved < 0) { line = 'Adds ' + esc(o.saved_text) + ' to your payroll this season'; cls += ' tr-dump-adds'; }
+  else if (!DUMP.salary && !o.add.length) line = 'Doesn\'t lower your payroll: he isn\'t on it';
+  else line = 'Doesn\'t change your payroll this season';
+  var html = '<div class="' + cls + '">' + line + '</div>';
+  if (o.unguaranteed > 0) {
+    var p = o.players[0];
+    var who = o.players.length === 1 && p ? esc((p.first_name + ' ' + p.last_name).trim()) + '\'s' : 'Their';
+    html += '<div class="tr-dump-note">' + who + ' ' + esc(o.unguaranteed_text) +
+      ' deal isn\'t guaranteed: he joins your minors, and it counts only once you put him on your 40-man.</div>';
+  }
+  return html;
+}
+
 function renderDump() {
   var el = document.getElementById('tr-shop-results');
   if (!DUMP) { el.innerHTML = ''; return; }
@@ -766,6 +784,9 @@ function renderDump() {
     (DUMP.salary ? ' (' + esc(DUMP.salary_text) + ' this season)' : '') +
     ' off your hands. Each sends back one cheap player, since every trade needs someone going each way. ' +
     'Teams that take him alone come first, then those that want a sweetener, the cheapest one for you first.</div>';
+  if (DUMP.salary && DUMP.guaranteed === false)
+    html += '<div class="tr-dump-note">' + esc(DUMP.player) + '\'s deal isn\'t guaranteed yet: he hasn\'t played a game on your 40-man. ' +
+      'Sending him to the minors or releasing him also takes it off your payroll, without a trade.</div>';
   if (!DUMP.offers.length)
     html += '<div class="tr-empty">No AI team would take ' + esc(DUMP.player) + ' today.</div>';
   DUMP.offers.forEach(function(o, i) {
@@ -776,7 +797,7 @@ function renderDump() {
           roomText(o) + '</div>' +
         (o.adds.length ? '<div class="tr-dump-label">If you add</div>' + o.adds.map(shopRow).join('') : '') +
         '<div class="tr-dump-label">They send back</div>' + o.players.map(shopRow).join('') +
-        '<div class="tr-dump-saved">' + (o.saved > 0 ? 'Saves you ' + esc(o.saved_text) + ' in payroll this season' : 'Doesn\'t lower your payroll: he isn\'t on it') + '</div>' +
+        dumpSavedLine(o) +
       '</div>' +
       '<div class="tr-offer-btns">' +
         '<button class="btn btn-secondary" title="Open it in the builder to change it" onclick="trDumpTweak(' + i + ')">Tweak</button>' +
@@ -806,7 +827,7 @@ window.trDump = function() {
     var ok = res[0], d = res[1];
     btn.disabled = false; btn.textContent = 'Dump salary';
     if (!ok) { DUMP = null; saveShop(); el.innerHTML = '<div class="tr-empty">✗ ' + esc(d.detail || 'Something went wrong.') + '</div>'; return; }
-    DUMP = {pid: pid, player: d.player, salary: d.salary, salary_text: d.salary_text, offers: d.offers, why: d.why || {}};
+    DUMP = {pid: pid, player: d.player, salary: d.salary, salary_text: d.salary_text, guaranteed: d.guaranteed, offers: d.offers, why: d.why || {}};
     saveShop(d.stamp);
     renderDump();
   }).catch(function() {
@@ -964,6 +985,8 @@ if (done) { showResult(done.msg, done.kind, done.dest); window._tradeResult = nu
 #trades-page .tr-room { color: var(--text-dim); font-size: 11px; }
 #trades-page .tr-dump-label { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
 #trades-page .tr-dump-saved { font-size: 12px; color: var(--green, var(--text)); margin-top: 4px; }
+#trades-page .tr-dump-saved.tr-dump-adds { color: var(--red); }
+#trades-page .tr-dump-note { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
 #trades-page .tr-link { background: none; border: none; padding: 0; color: var(--sky); cursor: pointer;
   font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; }
 @media (max-width: 760px) {
