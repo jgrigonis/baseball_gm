@@ -329,3 +329,23 @@ def test_move_stories_read_as_sentences(lg, monkeypatch):
     assert "B first baseman the My Team released." in plain(claim["body"])
     for s in (rel, claim):
         assert "GM " not in plain(s["headline"] + s["body"])
+
+
+def test_a_story_tags_each_team_once(lg, monkeypatch):
+    from src.api.services.news import moves
+    from src.player import contracts as ct
+
+    monkeypatch.setattr(moves, "shown_grade", lambda p: "B")
+    p = PlayerRepository(lg.db).look_up(_released(lg))
+    season_id = lg.season.id
+    moves.signed(
+        lg.db,
+        lg.league.id,
+        season_id,
+        p,
+        lg.mine.id,
+        ct.Deal(1, 1, "standard"),
+        lg.mine.id,
+    )
+    [story] = _stories(lg, "fa-sign-now:")
+    assert story["team_ids"] == [lg.mine.id]

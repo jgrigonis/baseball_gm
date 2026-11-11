@@ -343,9 +343,10 @@ def signed(
             f"for {ct.format_salary(deal.salary)} a season over {deal.years} "
             f"{seasons}.{former}",
             weight=_weight(grade, human),
-            team_ids=[team_id] + ([released_by] if released_by else []),
+            team_ids=[team_id]
+            + ([released_by] if released_by and released_by != team_id else []),
             player_ids=[player.id],
-            gm_ids=nm.gm_ids(team_id, released_by),
+            gm_ids=nm.gm_ids(team_id, released_by if released_by != team_id else None),
         )
 
     _write(league_id, conn, "signing", write)
