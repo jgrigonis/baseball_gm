@@ -450,6 +450,63 @@ def take_dump_offer(
     return JSONResponse(result)
 
 
+@router.post("/leagues/{league_id}/trades/shop/{player_id}/absorb")
+def absorb_for_player(
+    league_id: str,
+    player_id: str,
+    db: DB,
+    gm: GM,
+    _active: ActiveLeague,
+    _unpaused: Unpaused,
+):
+    """Which AI teams would send big contracts they'd rather be rid of for
+    one of your players, as roster cards with when each deal runs out."""
+    try:
+        result = trade_shop.absorb(db, league_id, gm, player_id)
+    except trades.TradeError as e:
+        return JSONResponse({"detail": str(e)}, status_code=422)
+    season_id = SeasonRepository(db).get_current_id_for_league(league_id)
+    ai_gms = PersonaRepository(db).by_team(league_id)
+    rooms = cap_rooms(db, league_id)
+    for o in result["offers"]:
+        cards = {
+            c["player_id"]: c
+            for c in team_cards(db, league_id, season_id, o["team_id"])
+        }
+        o["players"] = [
+            {**cards[pid], "through": o["through"].get(pid)}
+            for pid in o["give"]
+            if pid in cards
+        ]
+        o["saved_text"] = format_salary(abs(o["saved"]))
+        o["unguaranteed_text"] = format_salary(o["unguaranteed"])
+        o["room_text"] = room_text(rooms.get(o["team_id"]))
+        g = ai_gms.get(o["team_id"])
+        o["gm_name"] = g["name"] if g else None
+    result["salary_text"] = format_salary(result["salary"])
+    result["stamp"] = trade_shop.stamp(db, league_id)
+    return JSONResponse(result)
+
+
+@router.post("/leagues/{league_id}/trades/shop/{player_id}/absorb/take")
+def take_absorb_offer(
+    league_id: str,
+    player_id: str,
+    body: TradeShopTakeRequest,
+    db: DB,
+    gm: GM,
+    _active: ActiveLeague,
+    _unpaused: Unpaused,
+):
+    """Trade your player for an AI team's big contracts, worked out again
+    now. Answers like an offer to an AI team."""
+    try:
+        result = trade_shop.absorb_take(db, league_id, gm, player_id, body.team_id)
+    except trades.TradeError as e:
+        return JSONResponse({"detail": str(e)}, status_code=422)
+    return JSONResponse(result)
+
+
 @router.post("/leagues/{league_id}/trades/{offer_id}/vote")
 def vote_on_trade(
     league_id: str,

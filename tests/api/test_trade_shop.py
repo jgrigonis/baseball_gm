@@ -179,3 +179,59 @@ def test_no_dump_for_a_deal_that_isnt_guaranteed(lg):  # noqa: F811
     assert result["offers"] == []
     with pytest.raises(TradeError, match="isn't guaranteed"):
         trade_shop.dump_take(lg.db, lg.league.id, lg.gm, rookie.id, lg.theirs.id)
+
+
+# ── Absorbing salary ───────────────────────────────────────────────────────
+
+
+def test_absorb_lists_big_contracts_for_him_and_the_trade_goes_through(lg):  # noqa: F811
+    """They send a big contract they'd do better without (a blitz league has
+    no budgets, so here it's one worth less to them than he is) and the
+    trade goes through; the payroll line counts the deal coming your way."""
+    from unittest.mock import patch
+
+    from src.league.trades.ai_proposer import AbsorbOffer
+
+    kid = lg.factory.rated_player(lg.mine, lg.league, 60)
+    _deal(lg, kid, lg.mine, 780_000, True)
+    vet = lg.factory.rated_player(lg.theirs, lg.league, 62)
+    _deal(lg, vet, lg.theirs, 2_000_000, True)
+
+    def fake(ai, seller, target, days_left, blocked, fits):
+        big = next(a for a in ai.roster if a.id == vet.id)
+        return AbsorbOffer([big], big.salary - target.salary, 3.0)
+
+    with patch.object(trade_shop, "absorb_offer_or_why", fake):
+        result = trade_shop.absorb(lg.db, lg.league.id, lg.gm, kid.id)
+        (offer,) = result["offers"]
+        assert offer["give"] == [vet.id]
+        assert offer["saved"] == 780_000 - 2_000_000
+        assert offer["through"] == {vet.id: 2027}
+        with patch.object(
+            trades, "ai_answer", lambda *a: SimpleNamespace(accept=True, reason="Deal.")
+        ):
+            taken = trade_shop.absorb_take(
+                lg.db, lg.league.id, lg.gm, kid.id, lg.theirs.id
+            )
+    assert taken["accepted"]
+    assert _team_of(lg.db, kid) == lg.theirs.id
+    assert _team_of_id(lg.db, vet.id) == lg.mine.id
+
+
+def test_absorb_says_why_a_team_has_nothing(lg):  # noqa: F811
+    kid = lg.factory.rated_player(lg.mine, lg.league, 60)
+    _deal(lg, kid, lg.mine, 30_000_000, True)
+    result = trade_shop.absorb(lg.db, lg.league.id, lg.gm, kid.id)
+    assert result["offers"] == []
+    assert result["why"] == {"big": ["AI Club"]}
+
+
+def test_absorb_stays_inside_your_owners_limit(lg):  # noqa: F811
+    """A package past your owner's hard limit isn't offered: they'd refuse it."""
+    kid = lg.factory.rated_player(lg.mine, lg.league, 60)
+    _deal(lg, kid, lg.mine, 780_000, True)
+    ctx = trade_shop._Ctx(lg.db, lg.league.id, lg.gm, kid.id)
+    fits = ctx.owner_fits()
+    assert fits is not None
+    assert fits(500_000)
+    assert not fits(50_000_000)

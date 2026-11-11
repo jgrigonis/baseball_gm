@@ -24,6 +24,11 @@
 # throw-in, with a sweetener from the GM when he alone isn't worth it to
 # them (ai_proposer.dump_offer_or_why). Cheapest for the GM first.
 #
+# Absorbing salary (absorb, absorb_take) is a dump the other way round: the
+# GM sends the player and takes on one or two of an AI team's big contracts
+# it would rather be rid of (ai_proposer.absorb_offer_or_why). The AI saves
+# money, the GM gets players. Most help to the GM first.
+#
 # The Trades tab keeps the last shop or dump in the browser, so leaving the
 # tab and coming back shows it again. It's kept with stamp(): once the day,
 # the league's state, any roster or any contract changes, the stamp does too
@@ -33,6 +38,7 @@ from __future__ import annotations
 
 from src.api.services import owners, personas, team_states, trades
 from src.db.locks import LeagueBusy, league_lock
+from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.injury_repo import InjuryRepository
@@ -43,13 +49,16 @@ from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.trade_repo import TradeRepository
+from src.league import budget as bg
 from src.league import trade_deadline
 from src.league.personas import Leanings
 from src.league.trades import ai_evaluator
 from src.league.trades.ai_proposer import (
+    AbsorbOffer,
     DumpOffer,
     ShopOffer,
     Side,
+    absorb_offer_or_why,
     dump_offer_or_why,
     shop_offer_or_why,
 )
@@ -94,6 +103,7 @@ class _Ctx:
         )
         self._rooms = None
         self._terms = None
+        self._fits = None
 
     def seller_tradeable(self) -> None:
         """Let the GM's other players be offered as sweeteners (a dump)."""
@@ -156,6 +166,41 @@ class _Ctx:
                 stats_weight=self.seller.stats_weight,
             )
         return dump_offer_or_why(ai, seller, self.target, self.days_left, blocked)
+
+    def absorb_or_why(self, team_id: str) -> AbsorbOffer | str:
+        """The big contracts this AI team would send for the player, or why
+        not (TRADED_HIM, or ai_proposer.absorb_offer_or_why)."""
+        side = self._ai_side(team_id)
+        if isinstance(side, str):
+            return side
+        ai, blocked = side
+        return absorb_offer_or_why(
+            ai, self.seller, self.target, self.days_left, blocked, self.owner_fits()
+        )
+
+    def owner_fits(self):
+        """fits(added) for the GM's owner's hard limit (trades.owner_refusal,
+        worked out once), or None without budgets."""
+        if self._fits is None:
+            budgets = BudgetRepository(self.conn)
+            year = trades._season_year(self.conn, self.season_id)
+            standing = (
+                budgets.standing(self.league_id, self.team_id, year)
+                if year and budgets.enabled(self.league_id)
+                else None
+            )
+            if standing is None:
+                self._fits = False
+            else:
+
+                def fits(added: int) -> bool:
+                    cost = bg.added_cost(standing["payroll"], standing["cap"], added)
+                    return (
+                        bg.refusal(standing["spend"], standing["limit"], cost) is None
+                    )
+
+                self._fits = fits
+        return self._fits or None
 
     def _ai_side(self, team_id: str) -> tuple[Side, set[str]] | str:
         """The AI team as the search sees it, and its players who can't go
@@ -360,13 +405,17 @@ def _guaranteed(conn, ctx: _Ctx) -> bool:
     return bool(deal and deal["guaranteed"])
 
 
-def _payroll_effects(conn, ctx: _Ctx, offers: list[dict]) -> None:
+def _payroll_effects(
+    conn, ctx: _Ctx, offers: list[dict], out_counts: str = "guaranteed"
+) -> None:
     """Set each dump offer's "saved": what it really does to the GM's
     payroll this season: the guaranteed deals going out (the dumped player
     and any sweetener; one not guaranteed comes off free anyway) less what
     the throw-in adds to his team's now (a guaranteed deal or one on the
     40-man). "unguaranteed": the deals of throw-ins not on a payroll now
-    (farm players), which count only once they're put on the 40-man."""
+    (farm players), which count only once they're put on the 40-man.
+    out_counts "on_payroll": count the GM's player as he's on the payroll
+    now (an absorb, where he goes either way)."""
     year = trades._season_year(conn, ctx.season_id)
     ids = {ctx.player_id}
     for o in offers:
@@ -378,7 +427,7 @@ def _payroll_effects(conn, ctx: _Ctx, offers: list[dict]) -> None:
         return d["salary"] if d and d[counts] else 0
 
     for o in offers:
-        out = sum(pay(pid, "guaranteed") for pid in [ctx.player_id] + o["add"])
+        out = sum(pay(pid, out_counts) for pid in [ctx.player_id] + o["add"])
         held = sum(pay(pid, "on_payroll") for pid in o["give"])
         o["saved"] = out - held
         o["unguaranteed"] = sum(
@@ -386,6 +435,11 @@ def _payroll_effects(conn, ctx: _Ctx, offers: list[dict]) -> None:
             for pid in o["give"]
             if pid in deals and not deals[pid]["on_payroll"]
         )
+        o["through"] = {
+            pid: deals[pid]["start_year"] + deals[pid]["years"] - 1
+            for pid in o["give"]
+            if pid in deals
+        }
 
 
 def dump_take(conn, league_id: str, gm: dict, player_id: str, team_id: str) -> dict:
@@ -413,6 +467,70 @@ def dump_take(conn, league_id: str, gm: dict, player_id: str, team_id: str) -> d
                 gm,
                 team_id,
                 [player_id] + [a.id for a in offer.add],
+                [a.id for a in offer.give],
+                None,
+                call_limit=False,
+            )
+    except LeagueBusy:
+        raise trades.TradeError("Games are being played. Try again in a moment.")
+
+
+def absorb(conn, league_id: str, gm: dict, player_id: str) -> dict:
+    """Which AI teams would send big contracts they'd rather be rid of for
+    the GM's player: {"player", "salary", "offers": [{team_id, team_name,
+    give: [ids], saved (negative: what it adds to the GM's payroll this
+    season), unguaranteed, score}], most help to the GM first, "why":
+    {reason: [team names]}} (reasons: ai_proposer.NO_BIG/NO_MATCH/NO_USE/
+    NO_LIMIT, TRADED_HIM)."""
+    ctx = _Ctx(conn, league_id, gm, player_id)
+    offers, why = [], {}
+    for t in ctx.ai_teams():
+        name = f"{t['city']} {t['mascot']}"
+        offer = ctx.absorb_or_why(t["id"])
+        if not isinstance(offer, AbsorbOffer):
+            why.setdefault(offer, []).append(name)
+            continue
+        offers.append(
+            {
+                "team_id": t["id"],
+                "team_name": name,
+                "give": [a.id for a in offer.give],
+                "add": [],
+                "score": round(offer.score, 1),
+            }
+        )
+    _payroll_effects(conn, ctx, offers, out_counts="on_payroll")
+    offers.sort(key=lambda o: o["score"], reverse=True)
+    _tell_other_gms(conn, ctx, gm)
+    conn.commit()
+    return {
+        "player": ctx.target.name,
+        "salary": ctx.target.salary,
+        "offers": offers,
+        "why": {k: sorted(v) for k, v in why.items()},
+    }
+
+
+def absorb_take(conn, league_id: str, gm: dict, player_id: str, team_id: str) -> dict:
+    """Make the AI team's absorb offer as a trade, worked out again now.
+    Answers like trades.propose for an AI team."""
+    try:
+        with league_lock(conn, league_id):
+            ctx = _Ctx(conn, league_id, gm, player_id)
+            if team_id not in {t["id"] for t in ctx.ai_teams()}:
+                raise trades.TradeError("That team isn't taking offers here.")
+            offer = ctx.absorb_or_why(team_id)
+            if not isinstance(offer, AbsorbOffer):
+                raise trades.TradeError(
+                    f"The {TeamRepository(conn).get_name(team_id)} won't make "
+                    "that deal any more."
+                )
+            return trades._propose(
+                conn,
+                league_id,
+                gm,
+                team_id,
+                [player_id],
                 [a.id for a in offer.give],
                 None,
                 call_limit=False,

@@ -339,3 +339,84 @@ def dump_offer_or_why(
     if over_budget:
         return NO_ROOM
     return NO_SAVING if costs_more else NO_MATCH
+
+
+# Absorbing salary: the other way round from a dump. The shopping GM sends
+# a player (one nobody wants, say) and takes on contracts an AI team would
+# rather be rid of: players paid more than he is, that cost it more than
+# they're worth to it, or near enough. The AI saves money, the GM gets
+# players, and the trade has someone going each way.
+MAX_ABSORB = 6
+# Every big contract it would send is no use to the GM.
+NO_USE = "use"
+# It has nobody paid more than him it would part with.
+NO_BIG = "big"
+# Every one that would help is more salary than the seller's owner allows.
+NO_LIMIT = "limit"
+
+
+@dataclass
+class AbsorbOffer:
+    give: list[Asset]  # the contracts the AI team sends
+    added: int  # what they add to the seller's payroll this season, net of him
+    score: float  # how much they help the seller's team
+
+
+def absorb_offer_or_why(
+    ai: Side,
+    seller: Side,
+    target: Asset,
+    days_left: int,
+    blocked: set[str] = frozenset(),
+    fits=None,
+) -> AbsorbOffer | str:
+    """The best package of one or two of the AI team's guaranteed
+    contracts, each paid more than `target`, that it would send for him
+    (judged as it judges any offer, its owner's money included) and that
+    helps the seller most. Or why not: NO_BIG when it has nobody paid more
+    than him to send, NO_MATCH when it wouldn't send any for him, NO_USE
+    when none it would send would help the seller, NO_LIMIT when every one
+    that would is past the seller's owner's limit. fits(added): whether the
+    seller's owner allows adding that much payroll (None: always)."""
+    ai_base = ai_evaluator.strengths(ai.see(ai.roster), days_left)
+    seller_base = ai_evaluator.strengths(seller.see(seller.roster), days_left)
+
+    def keep_worth(a):
+        # What he's worth to it, net of what he's owed: low first.
+        return -_verdict(ai, [a], [], days_left, 0.0, ai_base).score
+
+    big = [
+        a
+        for a in ai.roster
+        if a.id in ai.tradeable
+        and not a.injured_days
+        and a.id not in blocked
+        and a.salary > target.salary
+    ]
+    if not big:
+        return NO_BIG
+    big = sorted(big, key=keep_worth)[:MAX_ABSORB]
+    packages = [[a] for a in big]
+    if MAX_GIVE >= 2:
+        packages += [list(p) for p in combinations(big, 2)]
+
+    best: AbsorbOffer | None = None
+    took = over_limit = False
+    for give in packages:
+        v = _verdict(ai, give, [target], days_left, ai.margin, ai_base)
+        if not v.accept:
+            continue
+        took = True
+        score = _verdict(seller, [target], give, days_left, 0.0, seller_base).score
+        if score <= 0 or (best is not None and score <= best.score):
+            continue
+        added = sum(a.salary for a in give) - target.salary
+        if fits is not None and not fits(added):
+            over_limit = True
+            continue
+        best = AbsorbOffer(give, added, score)
+    if best is not None:
+        return best
+    if over_limit:
+        return NO_LIMIT
+    return NO_USE if took else NO_MATCH

@@ -125,10 +125,10 @@
      (src/api/services/trade_shop.py). #}
   <div class="card tr-shop" id="tr-shop">
     <div class="card-header"><span class="card-title">🛒 Shop a player</span>
-      <span class="tr-hint">Every AI team's best offer for him, or who'd take his salary off your hands</span></div>
+      <span class="tr-hint">Every AI team's best offer for him, who'd take his salary off your hands, or whose big contracts you could take on for him</span></div>
     <div class="card-body">
       <div class="tr-shop-pick">
-        <select id="tr-shop-player" class="tr-team" onchange="document.getElementById('tr-shop-btn').disabled = document.getElementById('tr-dump-btn').disabled = !this.value">
+        <select id="tr-shop-player" class="tr-team" onchange="trShopButtons(!!this.value)">
           <option value="">Pick one of your players…</option>
           {% for p in shop_players %}
           <option value="{{ p.player_id }}">{{ p.name }} ({{ p.position|pos_label }}{% if p.overall %}, {{ p.overall }}{% endif %}){% if p.wants_trade %} · wants a trade{% endif %}{% if not p.forty %} · org{% endif %}</option>
@@ -136,6 +136,7 @@
         </select>
         <button class="btn btn-primary" id="tr-shop-btn" onclick="trShop()" disabled>Shop him</button>
         <button class="btn btn-secondary" id="tr-dump-btn" onclick="trDump()" disabled title="Ask every AI team what it would take to absorb his salary">Dump salary</button>
+        {% if budget %}<button class="btn btn-secondary" id="tr-absorb-btn" onclick="trAbsorb()" disabled title="Send him for big contracts AI teams would rather be rid of">Absorb salary</button>{% endif %}
       </div>
       <div id="tr-shop-results"></div>
     </div>
@@ -592,13 +593,14 @@ window.trSend = function() {
 };
 
 // ── Shop a player ──────────────────────────────────────────────────────
-function shopRow(p) {
+function shopRow(p, extra) {
   return '<div class="tr-shop-player">' +
     '<span class="' + gradeClass(p.overall) + ' tr-grade">' + esc(p.overall) + '</span>' +
     '<span class="tr-name"><a href="#" onclick="openPlayerPanel(\'' + p.player_id + '\');return false;">' +
       esc(p.first_name + ' ' + p.last_name) + '</a>' + rookieTag(p.player_id) +
       '<span class="tr-meta">' + esc(posLabel(p.position)) + ' · ' + p.age +
-        (p.salary_text ? ' · ' + esc(p.salary_text) : '') + (statLine(p) ? ' · ' + esc(statLine(p)) : '') +
+        (p.salary_text ? ' · ' + esc(p.salary_text) : '') + (typeof extra === 'string' && extra ? ' · ' + esc(extra) : '') +
+        (statLine(p) ? ' · ' + esc(statLine(p)) : '') +
       '</span></span>' +
   '</div>';
 }
@@ -612,25 +614,32 @@ var SHOP_STAMP = {{ shop_stamp | tojson }};
 function saveShop(stamp) {
   try {
     if (stamp) SHOP_STAMP = stamp;
-    if (SHOP || DUMP) sessionStorage.setItem(SHOP_KEY, JSON.stringify({stamp: SHOP_STAMP, shop: SHOP, dump: DUMP}));
+    if (SHOP || DUMP || ABSORB) sessionStorage.setItem(SHOP_KEY, JSON.stringify({stamp: SHOP_STAMP, shop: SHOP, dump: DUMP, absorb: ABSORB}));
     else sessionStorage.removeItem(SHOP_KEY);
   } catch (e) {}
 }
+// Shop him, Dump salary and Absorb salary work once a player is picked.
+window.trShopButtons = function(on) {
+  ['tr-shop-btn', 'tr-dump-btn', 'tr-absorb-btn'].forEach(function(id) {
+    var b = document.getElementById(id);
+    if (b) b.disabled = !on;
+  });
+};
 function restoreShop() {
   var kept = null;
   try { kept = JSON.parse(sessionStorage.getItem(SHOP_KEY)); } catch (e) {}
   if (!kept) return;
   var sel = document.getElementById('tr-shop-player');
-  var pid = (kept.shop || kept.dump || {}).pid;
+  var pid = (kept.shop || kept.dump || kept.absorb || {}).pid;
   var still = pid && Array.prototype.some.call(sel.options, function(o) { return o.value === pid; });
   if (kept.stamp !== SHOP_STAMP || !still) {
     try { sessionStorage.removeItem(SHOP_KEY); } catch (e) {}
     return;
   }
   sel.value = pid;
-  document.getElementById('tr-shop-btn').disabled = document.getElementById('tr-dump-btn').disabled = false;
-  SHOP = kept.shop; DUMP = kept.dump;
-  if (SHOP) renderShop(); else renderDump();
+  trShopButtons(true);
+  SHOP = kept.shop; DUMP = kept.dump; ABSORB = kept.absorb || null;
+  if (SHOP) renderShop(); else if (DUMP) renderDump(); else renderAbsorb();
 }
 var SHOP_WHY = [
   ['price', 'Like him, but have no one you\'d want'],
@@ -714,8 +723,8 @@ window.trShop = function(pid) {
   if (!pid) return;
   window._shopPlayer = null;
   // Setting sel.value from the player card's Shop him skips its onchange,
-  // so turn Dump salary on here too.
-  document.getElementById('tr-dump-btn').disabled = false;
+  // so turn Dump and Absorb salary on here too.
+  trShopButtons(true);
   btn.disabled = true;
   btn.textContent = 'Asking around…';
   var el = document.getElementById('tr-shop-results');
@@ -726,7 +735,7 @@ window.trShop = function(pid) {
     btn.disabled = false; btn.textContent = 'Shop him';
     if (!ok) { SHOP = null; saveShop(); el.innerHTML = '<div class="tr-empty">✗ ' + esc(d.detail || 'Something went wrong.') + '</div>'; return; }
     SHOP = {pid: pid, player: d.player, offers: d.offers, close: d.close || [], no_interest: d.no_interest, why: d.why || {}, offseason: d.offseason};
-    DUMP = null;
+    DUMP = null; ABSORB = null;
     saveShop(d.stamp);
     renderShop();
   }).catch(function() {
@@ -825,7 +834,7 @@ window.trDump = function() {
   var btn = document.getElementById('tr-dump-btn');
   var pid = sel.value;
   if (!pid) return;
-  SHOP = null;
+  SHOP = null; ABSORB = null;
   btn.disabled = true;
   btn.textContent = 'Asking around…';
   var el = document.getElementById('tr-shop-results');
@@ -895,6 +904,125 @@ window.trDumpTweak = function(i) {
   COUNTER = null;
   document.getElementById('tr-team').value = o.team_id;
   SIDES.mine.picked = new Set([DUMP.pid].concat(o.add));
+  render('mine');
+  trLoadTeam(o.team_id, o.give);
+  document.getElementById('tr-bar').scrollIntoView({behavior: 'smooth', block: 'center'});
+};
+
+// ── Absorb salary (trade_shop.absorb) ─────────────────────────────────
+var ABSORB = null;  // the last absorb: {pid, player, salary_text, offers, why}
+var ABSORB_WHY = [
+  ['use', 'Would only send contracts that wouldn\'t help you'],
+  ['limit', 'Would send more salary than your owner allows'],
+  ['price', 'Wouldn\'t move a big contract for him'],
+  ['big', 'Nobody paid more than him they could send'],
+  ['traded', 'Traded him away this season'],
+];
+
+// "through 2028" on each contract coming your way (shopRow's extra; map's index isn't a string).
+function absorbRow(p) {
+  return shopRow(p, p.through ? 'through ' + p.through : '');
+}
+
+// What the trade adds to your payroll, and to the luxury tax or past your
+// owner's budget (BUDGET, like the builder's budgetNote).
+function absorbPayLine(o) {
+  var html = dumpSavedLine(o);
+  if (!BUDGET || o.saved >= 0) return html;
+  var after = BUDGET.payroll - o.saved;
+  var tax = function(p) { return Math.max(0, p - BUDGET.cap) * BUDGET.tax_rate; };
+  var extra = tax(after) - tax(BUDGET.payroll);
+  var bits = [];
+  if (extra > 0) bits.push(money(extra) + ' more luxury tax');
+  if (after > BUDGET.budget) bits.push('past your owner\'s ' + money(BUDGET.budget));
+  if (bits.length)
+    html += '<div class="tr-reason tr-budget">Payroll after: ' + money(after) + ' (cap ' + money(BUDGET.cap) + '), ' + bits.join(', ') + '.</div>';
+  return html;
+}
+
+function renderAbsorb() {
+  var el = document.getElementById('tr-shop-results');
+  if (!ABSORB) { el.innerHTML = ''; return; }
+  var html = '<div class="tr-shop-close-head">Big contracts AI teams would hand you for ' + esc(ABSORB.player) +
+    ' (' + esc(ABSORB.salary_text) + ' this season). They\'d rather save the money; you get the players and the bill. ' +
+    'The ones that help you most come first.</div>';
+  if (!ABSORB.offers.length)
+    html += '<div class="tr-empty">No AI team has a big contract it would send for ' + esc(ABSORB.player) + ' today.</div>';
+  ABSORB.offers.forEach(function(o, i) {
+    html += '<div class="tr-offer tr-shop-offer">' +
+      '<div class="tr-offer-text">' +
+        '<div>' + (i === 0 ? '<span class="tr-tag">best for you</span>' : '') +
+          'The <strong>' + esc(o.team_name) + '</strong>' + roomText(o) + ' send</div>' +
+        o.players.map(absorbRow).join('') +
+        absorbPayLine(o) +
+      '</div>' +
+      '<div class="tr-offer-btns">' +
+        '<button class="btn btn-secondary" title="Compare the players side by side" onclick="trAbsorbCompare(' + i + ')">Compare ↔</button>' +
+        '<button class="btn btn-secondary" title="Open it in the builder to change it" onclick="trAbsorbTweak(' + i + ')">Tweak</button>' +
+        '<button class="btn btn-primary" onclick="trAbsorbTake(' + i + ')">Make this trade</button>' +
+      '</div>' +
+    '</div>';
+  });
+  ABSORB_WHY.forEach(function(w) {
+    var teams = ABSORB.why[w[0]];
+    if (teams && teams.length)
+      html += '<div class="tr-reason tr-shop-none"><strong>' + w[1] + ':</strong> ' + esc(teams.join(', ')) + '</div>';
+  });
+  el.innerHTML = html;
+}
+
+window.trAbsorb = function() {
+  var sel = document.getElementById('tr-shop-player');
+  var btn = document.getElementById('tr-absorb-btn');
+  var pid = sel.value;
+  if (!pid || !btn) return;
+  SHOP = null; DUMP = null;
+  btn.disabled = true;
+  btn.textContent = 'Asking around…';
+  var el = document.getElementById('tr-shop-results');
+  el.innerHTML = '<div class="tr-empty">Calling every AI team…</div>';
+  post('/shop/' + encodeURIComponent(pid) + '/absorb').then(function(res) {
+    var ok = res[0], d = res[1];
+    btn.disabled = false; btn.textContent = 'Absorb salary';
+    if (!ok) { ABSORB = null; saveShop(); el.innerHTML = '<div class="tr-empty">✗ ' + esc(d.detail || 'Something went wrong.') + '</div>'; return; }
+    ABSORB = {pid: pid, player: d.player, salary_text: d.salary_text, offers: d.offers, why: d.why || {}};
+    saveShop(d.stamp);
+    renderAbsorb();
+  }).catch(function() {
+    btn.disabled = false; btn.textContent = 'Absorb salary';
+    el.innerHTML = '<div class="tr-empty">✗ Couldn\'t reach the server.</div>';
+  });
+};
+
+window.trAbsorbTake = function(i) {
+  var o = ABSORB && ABSORB.offers[i];
+  if (!o) return;
+  var nm = function(p) { return (p.first_name + ' ' + p.last_name).trim(); };
+  var lines = ['The ' + o.team_name + ' send ' + o.players.map(nm).join(' and ') + '.'];
+  if (o.saved < 0) lines.push('It adds ' + o.saved_text + ' to your payroll this season.');
+  window.gmConfirm({title: 'Trade ' + ABSORB.player + '?', lines: lines, ok: 'Make this trade'}).then(function(yes) {
+    if (!yes) return;
+    post('/shop/' + encodeURIComponent(ABSORB.pid) + '/absorb/take', {team_id: o.team_id}).then(function(res) {
+      var ok = res[0], d = res[1];
+      if (!ok) { showResult('✗ ' + esc(d.detail || 'Something went wrong.'), 'bad'); return trAbsorb(); }
+      if (!d.accepted) { showResult('✗ The ' + esc(o.team_name) + ' said no: “' + esc(d.reason) + '”', 'warn'); return trAbsorb(); }
+      reloadWith(arrivedMsg(d.arrived, d.playing_count), 'good', 'roster');
+    }).catch(function() { showResult('✗ Couldn\'t reach the server.', 'bad'); });
+  });
+};
+
+window.trAbsorbCompare = function(i) {
+  var o = ABSORB && ABSORB.offers[i];
+  if (!o) return;
+  compareTrade(o.players.map(function(p) { return p.player_id; }), [ABSORB.pid]);
+};
+
+window.trAbsorbTweak = function(i) {
+  var o = ABSORB && ABSORB.offers[i];
+  if (!o) return;
+  COUNTER = null;
+  document.getElementById('tr-team').value = o.team_id;
+  SIDES.mine.picked = new Set([ABSORB.pid]);
   render('mine');
   trLoadTeam(o.team_id, o.give);
   document.getElementById('tr-bar').scrollIntoView({behavior: 'smooth', block: 'center'});
