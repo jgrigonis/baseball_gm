@@ -27,6 +27,7 @@ from __future__ import annotations
 import random
 from datetime import date
 from src.api.services import trades, waivers
+from src.api.services.news import moves as move_news
 from src.db.locks import league_lock
 from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.contract_repo import FORTY_MAN_STATUSES, ContractRepository
@@ -211,6 +212,8 @@ def release(
                 trade_repo.get(offer_id),
                 "a player in it was released.",
             )
+        if player:
+            move_news.released(conn, league_id, team_id, player, was_up)
         conn.commit()
     return {
         "name": player.name if player else "",
@@ -269,7 +272,7 @@ def budget_warning(
 def sign(conn, league_id: str, team_id: str, player_id: str) -> dict:
     """Sign a free agent at his asking price."""
     with league_lock(conn, league_id, wait=MOVE_WAIT):
-        _, year = _context(conn, league_id)
+        season_id, year = _context(conn, league_id)
         if LeagueRepository(conn).get_by_id(league_id)["state"] == "draft":
             # Offseason free agency (src/api/services/offseason_fa.py).
             raise FreeAgentError(
@@ -299,6 +302,7 @@ def sign(conn, league_id: str, team_id: str, player_id: str) -> dict:
         refusal = BudgetRepository(conn).refusal(league_id, team_id, year, deal.salary)
         if refusal:
             raise FreeAgentError(refusal)
+        released_by = move_news.last_released_by(conn, league_id, player_id)
         team_repo = TeamRepository(conn)
         team_repo.add_player(team_id, player_id)
         status_repo.set_status(player_id, "minors")
@@ -306,6 +310,7 @@ def sign(conn, league_id: str, team_id: str, player_id: str) -> dict:
         contracts.sign_free_agent(player_id, league_id, team_id, deal, year)
         # Full offset: his new salary comes off what old teams still owe.
         contracts.apply_offset(player_id, year, deal.salary, year + deal.years - 1)
+        move_news.signed(conn, league_id, season_id, player, team_id, deal, released_by)
         conn.commit()
     return {
         "name": player.name,
