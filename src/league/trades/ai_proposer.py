@@ -182,6 +182,8 @@ def shop_offer(
 # Or he'd help on the field but his contract costs more than he's worth to
 # them (ai_evaluator.money_cost).
 NO_HELP, NO_ROOM, NO_MATCH, NO_VALUE = "fit", "pay", "price", "cost"
+# A dump where every throw-in it would send back costs as much as he does.
+NO_SAVING = "more"
 
 
 def shop_offer_or_why(
@@ -284,9 +286,11 @@ def dump_offer_or_why(
 ) -> DumpOffer | str:
     """The cheapest way this AI team would take `target`'s salary: him
     alone for a throw-in if it can, otherwise with the least costly
-    sweetener of the seller's that does it. Or why not: NO_ROOM when every
-    deal it would take adds more salary than its owner allows, NO_MATCH
-    when nothing the seller adds is enough."""
+    sweetener of the seller's that does it, and only if it lowers the
+    seller's payroll. Or why not: NO_ROOM when every deal it would take
+    adds more salary than its owner allows, NO_SAVING when every one it
+    would take sends back as much salary as goes out, NO_MATCH when
+    nothing the seller adds is enough."""
     ai_base = ai_evaluator.strengths(ai.see(ai.roster), days_left)
     seller_base = ai_evaluator.strengths(seller.see(seller.roster), days_left)
     free = replace(ai, pay_room=None, _seen=ai._seen)
@@ -317,16 +321,21 @@ def dump_offer_or_why(
         :MAX_SWEETENERS
     ]
 
-    over_budget = False
+    over_budget = costs_more = False
     for cost, sweet in [(0.0, None)] + sweeteners:
         getting = [target] + ([sweet] if sweet else [])
         for throw in throw_ins:
+            saved = sum(a.salary for a in getting) - throw.salary
             v = _verdict(ai, [throw], getting, days_left, ai.margin, ai_base)
-            if v.accept:
-                saved = sum(a.salary for a in getting) - throw.salary
+            if v.accept and saved <= 0:
+                # Not a dump: the GM's payroll wouldn't go down.
+                costs_more = True
+            elif v.accept:
                 return DumpOffer(
                     [throw], [sweet] if sweet else [], saved, max(cost, 0.0)
                 )
             if v.reason == ai_evaluator.OVER_BUDGET_REASON:
                 over_budget = True
-    return NO_ROOM if over_budget else NO_MATCH
+    if over_budget:
+        return NO_ROOM
+    return NO_SAVING if costs_more else NO_MATCH

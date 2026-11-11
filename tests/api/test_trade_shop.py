@@ -98,10 +98,12 @@ def test_other_people_hear_hes_on_the_block_once_a_day(lg):  # noqa: F811
 
 def test_dump_lists_who_would_take_him_and_the_trade_goes_through(lg):  # noqa: F811
     regular = lg.factory.rated_player(lg.mine, lg.league, 68)
+    _deal(lg, regular, lg.mine, 1_000_000, True)
     lg.factory.rated_player(lg.theirs, lg.league, 40, status="minors")
     result = trade_shop.dump(lg.db, lg.league.id, lg.gm, regular.id)
     (offer,) = result["offers"]
     assert offer["team_id"] == lg.theirs.id
+    assert offer["saved"] > 0
     assert len(offer["give"]) == 1
     assert all(_team_of_id(lg.db, pid) == lg.theirs.id for pid in offer["give"])
     taken = trade_shop.dump_take(lg.db, lg.league.id, lg.gm, regular.id, lg.theirs.id)
@@ -141,11 +143,10 @@ def _deal(lg, player, team, salary, guaranteed):  # noqa: F811
 
 
 def test_dump_savings_are_net_of_the_throw_in_who_lands_in_the_minors(lg):  # noqa: F811
-    """A just-drafted rookie on the 40-man: on the payroll, not guaranteed.
-    A throw-in on his team's payroll counts against the savings, even if
+    """A throw-in on his team's payroll counts against the savings, even if
     his deal isn't guaranteed yet; a farm throw-in's doesn't but is shown."""
     rookie = lg.factory.rated_player(lg.mine, lg.league, 50)
-    _deal(lg, rookie, lg.mine, 780_000, False)
+    _deal(lg, rookie, lg.mine, 780_000, True)
     owed = lg.factory.rated_player(lg.theirs, lg.league, 50)
     _deal(lg, owed, lg.theirs, 1_600_000, True)
     fresh = lg.factory.rated_player(lg.theirs, lg.league, 50)
@@ -158,11 +159,23 @@ def test_dump_savings_are_net_of_the_throw_in_who_lands_in_the_minors(lg):  # no
         {"give": [farm.id], "add": []},
         {"give": [fresh.id], "add": []},
     ]
-    deal = trade_shop._payroll_effects(lg.db, ctx, offers)
-    assert not deal["guaranteed"]
+    trade_shop._payroll_effects(lg.db, ctx, offers)
     assert offers[0]["saved"] == 780_000 - 1_600_000
     assert offers[0]["unguaranteed"] == 0
     assert offers[1]["saved"] == 780_000
     assert offers[1]["unguaranteed"] == 3_500_000
     assert offers[2]["saved"] == 780_000 - 2_000_000
     assert offers[2]["unguaranteed"] == 0
+
+
+def test_no_dump_for_a_deal_that_isnt_guaranteed(lg):  # noqa: F811
+    """A just-drafted rookie on the 40-man: sending him down or releasing
+    him clears his salary for free, so there's nothing to dump."""
+    rookie = lg.factory.rated_player(lg.mine, lg.league, 68)
+    _deal(lg, rookie, lg.mine, 780_000, False)
+    lg.factory.rated_player(lg.theirs, lg.league, 40, status="minors")
+    result = trade_shop.dump(lg.db, lg.league.id, lg.gm, rookie.id)
+    assert result["guaranteed"] is False
+    assert result["offers"] == []
+    with pytest.raises(TradeError, match="isn't guaranteed"):
+        trade_shop.dump_take(lg.db, lg.league.id, lg.gm, rookie.id, lg.theirs.id)

@@ -756,6 +756,7 @@ var DUMP = null;  // the last dump: {pid, player, salary_text, offers, why}
 var DUMP_WHY = [
   ['pay', 'No room in their budget for his salary'],
   ['price', 'Wouldn\'t take him for anything you could add'],
+  ['more', 'Would only send back someone paid as much or more'],
   ['traded', 'Traded him away this season'],
 ];
 
@@ -765,7 +766,6 @@ function dumpSavedLine(o) {
   var line, cls = 'tr-dump-saved';
   if (o.saved > 0) line = 'Saves you ' + esc(o.saved_text) + ' in payroll this season';
   else if (o.saved < 0) { line = 'Adds ' + esc(o.saved_text) + ' to your payroll this season'; cls += ' tr-dump-adds'; }
-  else if (!DUMP.salary && !o.add.length) line = 'Doesn\'t lower your payroll: he isn\'t on it';
   else line = 'Doesn\'t change your payroll this season';
   var html = '<div class="' + cls + '">' + line + '</div>';
   if (o.unguaranteed > 0) {
@@ -780,15 +780,18 @@ function dumpSavedLine(o) {
 function renderDump() {
   var el = document.getElementById('tr-shop-results');
   if (!DUMP) { el.innerHTML = ''; return; }
+  if (DUMP.guaranteed === false) {
+    // Not guaranteed: no salary to dump (trade_shop.dump).
+    el.innerHTML = '<div class="tr-empty">' + esc(DUMP.player) + '\'s deal isn\'t guaranteed yet: he hasn\'t played a game on your 40-man. ' +
+      'Send him to the minors or release him and it costs you nothing, no trade needed.</div>';
+    return;
+  }
   var html = '<div class="tr-shop-close-head">Who would take ' + esc(DUMP.player) +
-    (DUMP.salary ? ' (' + esc(DUMP.salary_text) + ' this season)' : '') +
+    ' (' + esc(DUMP.salary_text) + ' this season)' +
     ' off your hands. Each sends back one cheap player, since every trade needs someone going each way. ' +
     'Teams that take him alone come first, then those that want a sweetener, the cheapest one for you first.</div>';
-  if (DUMP.salary && DUMP.guaranteed === false)
-    html += '<div class="tr-dump-note">' + esc(DUMP.player) + '\'s deal isn\'t guaranteed yet: he hasn\'t played a game on your 40-man. ' +
-      'Sending him to the minors or releasing him also takes it off your payroll, without a trade.</div>';
   if (!DUMP.offers.length)
-    html += '<div class="tr-empty">No AI team would take ' + esc(DUMP.player) + ' today.</div>';
+    html += '<div class="tr-empty">No AI team would take ' + esc(DUMP.player) + '\'s salary off your books today.</div>';
   DUMP.offers.forEach(function(o, i) {
     html += '<div class="tr-offer tr-shop-offer">' +
       '<div class="tr-offer-text">' +
