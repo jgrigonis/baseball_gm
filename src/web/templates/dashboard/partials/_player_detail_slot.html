@@ -31,6 +31,7 @@
      {% if c.farm %}{{ c.farm_pay_text }}/yr in the minors · {{ c.salary_text }} deal ·{% else %}{{ c.salary_text }}/yr ·{% endif %}
      {% if c.years_left == 1 %}final year{% else %}year {{ c.year_of }} of {{ c.years }}{% endif %}
      · thru {{ c.through }}{% if c.kind == 'rookie' %} · <span class="pd-contract-rookie">rookie deal</span>{% elif c.kind == 'arbitration' %} · <span class="pd-contract-rookie">arbitration</span>{% endif %}
+     · {% if c.guaranteed %}<span class="pd-contract-rookie" title="Guaranteed: he's played a game on the 40-man under this deal, so releasing him still costs what's left on it">guaranteed</span>{% else %}<span class="pd-contract-unguaranteed" title="Not guaranteed until he plays a game on the 40-man under this deal: releasing him before then costs nothing">not guaranteed</span>{% endif %}
    </div>
    {% endif %}
    {% if player.happiness %}{% set h = player.happiness %}

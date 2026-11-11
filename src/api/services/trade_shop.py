@@ -345,11 +345,12 @@ def dump(conn, league_id: str, gm: dict, player_id: str) -> dict:
 
 def _payroll_effects(conn, ctx: _Ctx, offers: list[dict]) -> dict | None:
     """Set each dump offer's "saved": what it really does to the GM's
-    payroll this season. Out go the player and any sweetener (what they add
-    to it now); in comes the throw-in, who lands in the minors
-    (trades.execute), so only a guaranteed deal of his counts.
-    "unguaranteed": what the throw-ins' deals would add once they're put
-    on the 40-man. Returns the dumped player's deal."""
+    payroll this season: what the players going out add to it now (the
+    dumped player and any sweetener) less what the throw-in adds to his
+    team's now (a guaranteed deal or one on the 40-man).
+    "unguaranteed": the deals of throw-ins not on a payroll now (farm
+    players, never guaranteed), which count only once they're put on the
+    40-man. Returns the dumped player's deal."""
     year = trades._season_year(conn, ctx.season_id)
     ids = {ctx.player_id}
     for o in offers:
@@ -362,12 +363,12 @@ def _payroll_effects(conn, ctx: _Ctx, offers: list[dict]) -> dict | None:
 
     for o in offers:
         out = sum(pay(pid, "on_payroll") for pid in [ctx.player_id] + o["add"])
-        held = sum(pay(pid, "guaranteed") for pid in o["give"])
+        held = sum(pay(pid, "on_payroll") for pid in o["give"])
         o["saved"] = out - held
         o["unguaranteed"] = sum(
             deals[pid]["salary"]
             for pid in o["give"]
-            if pid in deals and not deals[pid]["guaranteed"]
+            if pid in deals and not deals[pid]["on_payroll"]
         )
     return deals.get(ctx.player_id)
 
