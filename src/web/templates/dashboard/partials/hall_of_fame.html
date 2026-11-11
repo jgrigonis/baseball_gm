@@ -96,7 +96,7 @@
             <div>{{ r.line }}</div>
             {% if r.honors %}<div class="hof-who-team">{{ r.honors }}</div>{% endif %}
             {% if r.summary.backstory_seasons %}<div class="hof-who-team hof-counted"
-              title="Seasons from before the league started count nine tenths with the writers">Writers count {{ '%.1f'|format(r.summary.weighted_war) }} WAR · {{ r.summary.backstory_seasons }} of {{ r.summary.seasons }} seasons before the league</div>{% endif %}
+              title="Seasons from before the league started count nine tenths with the writers">Ballot WAR {{ '%.1f'|format(r.summary.weighted_war) }} · {{ r.summary.backstory_seasons }} of {{ r.summary.seasons }} seasons were pre-league, counted at 90%</div>{% endif %}
           </td>
         </tr>
         {% endfor %}
