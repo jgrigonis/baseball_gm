@@ -651,7 +651,11 @@ class PlayerRepository:
                 p.last_name,
                 p.position,
                 ps.age,
-                COALESCE(t.city || ' ' || t.mascot, '—') AS team_name,
+                -- A free agent at retirement has no team; name the last
+                -- one he played for, or none if he never reached the majors.
+                COALESCE(t.city || ' ' || t.mascot,
+                         lt.city || ' ' || lt.mascot)     AS team_name,
+                (pr.former_team_id IS NULL)               AS was_free_agent,
                 (pr.former_team_id = %s)                  AS is_mine,
                 cs.seasons_played,
                 -- batting
@@ -682,6 +686,16 @@ class PlayerRepository:
             JOIN players           p   ON p.id  = pr.player_id
             JOIN player_skills     ps  ON ps.player_id = pr.player_id
             LEFT JOIN teams        t   ON t.id  = pr.former_team_id
+            LEFT JOIN LATERAL (
+                SELECT lt.city, lt.mascot
+                FROM player_season_stats lss
+                JOIN seasons ls ON ls.id = lss.season_id
+                JOIN teams   lt ON lt.id = lss.team_id
+                WHERE lss.player_id = pr.player_id
+                  AND pr.former_team_id IS NULL
+                ORDER BY ls.year DESC, lss.is_postseason ASC
+                LIMIT 1
+            ) lt ON TRUE
             LEFT JOIN (
                 SELECT
                     player_id,
