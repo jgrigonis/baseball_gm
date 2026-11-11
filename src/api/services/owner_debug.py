@@ -41,7 +41,9 @@ def _money(n) -> str:
     return ("-" if n < 0 else "") + format_salary(abs(int(n)))
 
 
-def _why(key: str, s: sc.TeamSeason, traits: dict, state: str) -> str:
+def _why(
+    key: str, s: sc.TeamSeason, traits: dict, state: str, october: str | None = None
+) -> str:
     """What the dimension's score was read from, in short."""
     ambition = traits["ambition"]
     if key == "wins":
@@ -60,8 +62,12 @@ def _why(key: str, s: sc.TeamSeason, traits: dict, state: str) -> str:
     if key == "postseason":
         expected = sc.expects_playoffs(s.rank_before, ambition)
         exp = "expects playoffs" if expected else "doesn't expect playoffs"
+        if state == "season" and october in ("division", "spot"):
+            return f"Clinched a playoff spot; {exp}"
+        if state == "season" and october == "out":
+            return f"Eliminated; {exp}"
         if state == "season":
-            return f"Not judged until the playoffs ({exp})"
+            return f"Not judged until clinched or eliminated ({exp})"
         if s.champion:
             return "Won it all"
         if s.made_playoffs:
@@ -156,6 +162,7 @@ def explain(conn, league_id: str, team_id: str) -> dict | None:
     # The season as the owner reads it today (as owner_office.catch_up does).
     s = None
     scores: dict = {}
+    october = None  # clinched or eliminated (owner_office._october)
     if in_season:
         facts = owner_review.gather(conn, league_id, sid, year, by_team)
         s = facts.get(team_id)
@@ -171,7 +178,12 @@ def explain(conn, league_id: str, team_id: str) -> dict | None:
             # Fan interest moves when the books close; until then, owners
             # read where the season so far is taking it.
             s = replace(s, fans_before=p["fans_before"], fans_after=p["fans_after"])
-        scores = oo._in_season(s, owner["traits"], money, state)
+        october = (
+            oo._october(conn, league_id, sid, facts).get(team_id)
+            if state == "season"
+            else None
+        )
+        scores = oo._in_season(s, owner["traits"], money, state, october)
         source = "This season so far"
     else:
         # Between seasons: last season's review, as it was stored.
@@ -203,7 +215,7 @@ def explain(conn, league_id: str, team_id: str) -> dict | None:
                 "tone": om.tone(v) if v is not None else None,
                 "counts": share * v if key in judged else None,
                 "talks": key in talks,
-                "why": _why(key, s, traits, state) if s is not None else how,
+                "why": _why(key, s, traits, state, october) if s is not None else how,
             }
         )
     rows.sort(key=lambda r: -(r["weight"]))

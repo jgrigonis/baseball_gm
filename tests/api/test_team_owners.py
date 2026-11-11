@@ -618,3 +618,21 @@ def test_the_admin_card_says_what_attendance_was_read_from():
     why = owner_debug._why("attendance", s, owners.clean_traits({}), "season")
     assert "Avg crowd 34,000 vs 39,000 expected (-13%" in why
     assert "park 81% full of 42,000" in why
+
+
+def test_october_is_judged_once_the_standings_settle_it():
+    # Josh, 2026-11-11: "This could be judged once you are eliminated."
+    from src.api.services import owner_office
+    from src.league import owner_scoring as sc
+
+    s = sc.TeamSeason(wins=50, losses=90, rank_before=0.1)
+    traits = owners.clean_traits({})
+
+    def october(mark):
+        return owner_office._in_season(s, traits, True, "season", mark)["postseason"]
+
+    assert october(None) is None  # still to be decided
+    assert october("out") == -0.6  # expected to make it, and won't
+    assert october("spot") == october("division") > 0
+    # Once the playoffs start, the bracket decides, as before.
+    assert owner_office._in_season(s, traits, True, "playoffs")["postseason"] == -0.6
