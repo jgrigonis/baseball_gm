@@ -35,6 +35,14 @@
   </div>
   {% endif %}
 </div>
+{% if expiring %}
+{# Pinned under the header, so the room changes in view as players are
+   re-signed or let go (Josh, 2026-11-11). Its own strip, not inside
+   .tab-head, because phones don't pin the header: there it pins alone. #}
+<div class="ex-room-bar" id="ex-room-bar" style="display:none;">
+  <div class="fa-room" id="fa-room"></div>
+</div>
+{% endif %}
 
 <div class="tab-body">
   {% if expiring %}
@@ -48,7 +56,6 @@
     Players you re-sign yourself can go past the limit, paid from your owner's bank,
     but the losses will cost you with your owner.
   </div>
-  <div class="fa-note fa-room" id="fa-room" style="display:none;"></div>
   <div class="fa-all" id="fa-resign-all-wrap" style="display:none;">
     <button type="button" class="btn btn-secondary as-btn-sm" id="fa-resign-all"
             title="Re-sign every expiring deal at the prices shown">Re-sign all my expiring deals</button>
@@ -148,17 +155,27 @@ function expiringRow(p) {
   return el;
 }
 const exBox = document.getElementById('fa-expiring');
+const roomBar = document.getElementById('ex-room-bar');
+// Pin the room strip just under the sticky header (its height changes as
+// the filter bar wraps); on phones the header scrolls away and it pins at 0.
+const head = roomBar && roomBar.previousElementSibling;
+if (head && window.ResizeObserver) {
+  new ResizeObserver(() => {
+    const pinned = getComputedStyle(head).position === 'sticky';
+    roomBar.style.top = pinned ? `${head.offsetHeight}px` : '0px';
+  }).observe(head);
+}
 function roomLine(m) {
   const el = document.getElementById('fa-room');
   if (!el) return;
-  if (!m) { el.style.display = 'none'; return; }
+  if (!m) { roomBar.style.display = 'none'; return; }
   el.classList.toggle('over', m.over);
   el.innerHTML = m.over
     ? `Over your owner's limit next season: <b>${m.left_text}</b>. They'll pay that from their bank, ` +
       `and can spend up to ${m.bank_left_text} more from it to keep your own players.`
     : `Room left next season: <b>${m.left_text}</b>. ` +
       `Your owner will also spend up to ${m.bank_left_text} from their bank to keep your own players.`;
-  el.style.display = '';
+  roomBar.style.display = '';
 }
 // The bar's filters and sorts (Josh, 2026-11-10: they used to sit on the
 // Free Agents tab and leave this list alone).
