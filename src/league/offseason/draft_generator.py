@@ -23,7 +23,7 @@ from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.talent_cap_repo import TalentCapRepository
 from src.player.player_factory import PlayerFactory
 from src.player.player_record import PlayerRecord
-from src.player.player_skills import START_AGE
+from src.player.player_skills import START_AGE, PlayerSkills
 from src.player.talent_caps import generate_talent_caps
 
 log = logging.getLogger(__name__)
@@ -46,6 +46,67 @@ PITCHER_SHARE = 0.39  # This is a percentage of 1.0
 POSITION_PLAYER_SHARE = 0.61  # Unused
 
 PITCHER_POSITIONS = ["sp", "rp"]
+
+# -----------------------------------------------------------------------
+# Draft class talent
+# -----------------------------------------------------------------------
+# A league opens with 26 random players per team, but once the farms fill
+# up (about year 7) every team fields the best 26 of a 160-player org, drawn
+# from hundreds of prospects a year. Generated like opening-day players,
+# draft classes pushed the 26-man average up about 11 points in ten years
+# (hitters 58 -> 69, pitchers 60 -> 71), past what the game engine, grade
+# curves and salaries were tuned on. So prospects are generated weaker, by
+# how much teams select for each skill (power most, catching and infield
+# not at all), and more spread out, so mature leagues keep year one's level
+# and its spread between teams, with more stars and more busts per class.
+# Retune with scripts/talent_drift_sim.py.
+
+# Each skill's distance from 50 is stretched by this much...
+DRAFT_SPREAD = 1.5
+# ...then this comes off every skill...
+DRAFT_OFFSET = 3.0
+# ...and this off each skill, for position players and for pitchers.
+DRAFT_SKILL_OFFSETS: dict[str, dict[str, float]] = {
+    "hitter": {
+        "power": 17,
+        "speed": 15.5,
+        "contact": 13,
+        "base_running": 10,
+        "outfield": 10,
+        "eye": 9,
+        "arm": 7,
+        "clutch": 6,
+        "catching": 4,
+        "infield": 4,
+        "durability": 3,
+        "bunting": 1.5,
+    },
+    "pitcher": {
+        "accuracy": 15.5,
+        "clutch": 14,
+        "strikes": 13,
+        "ground_balls": 12,
+        "recovery": 7.5,
+        "stamina": 6,
+    },
+}
+# Skills below this are a player's non-skills (a pitcher's catching, a
+# hitter's stamina) and are left alone.
+DRAFT_FLOOR_SKILL = 25
+
+
+def draft_class_skills(skills: dict[str, int], is_pitcher: bool) -> dict[str, int]:
+    """A newly generated prospect's skills, weakened and spread for the draft."""
+    offsets = DRAFT_SKILL_OFFSETS["pitcher" if is_pitcher else "hitter"]
+    out = {}
+    for name, value in skills.items():
+        if value < DRAFT_FLOOR_SKILL:
+            out[name] = value
+            continue
+        new = 50 + (value - 50) * DRAFT_SPREAD - DRAFT_OFFSET - offsets.get(name, 0)
+        out[name] = int(round(max(1, min(100, new))))
+    return out
+
 
 POSITION_PLAYER_POSITIONS = [
     "c",
@@ -164,6 +225,15 @@ class DraftGenerator:
         players = []
         for age, position in age_positions:
             player = self.factory.create(position=position)
+            player = dataclasses.replace(
+                player,
+                skills=PlayerSkills(
+                    draft_class_skills(
+                        player.skills.as_dict(), position in PITCHER_POSITIONS
+                    ),
+                    age=player.age,
+                ),
+            )
             caps = generate_talent_caps(player.skills.as_dict(), rng=self.rng)
             if age > START_AGE:
                 aged_skills = player.skills.age_to(age, rng=self.rng, caps=caps)

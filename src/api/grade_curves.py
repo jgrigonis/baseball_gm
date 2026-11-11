@@ -35,7 +35,7 @@ OverallKind = Literal[
 # is an F. Regenerate with scripts/calibrate_overall_grades.py.
 OVERALL_CUTOFFS: dict[str, list[float]] = {
     # Draft classes. A+ is about 1 in 1,000, so roughly one every other class.
-    "prospect": [75, 70, 66, 63, 60, 57, 54, 52, 49, 47, 44, 42],
+    "prospect": [71, 63, 58, 53, 49, 45, 41, 38, 35, 33, 30, 28],
     # Position players on opening-day 26-man rosters: a typical big leaguer is
     # a C+ or C, like the 50 on a 20-80 scouting scale.
     "hitter": [74, 71, 68, 66, 63, 61, 58, 56, 53, 51, 49, 46],
