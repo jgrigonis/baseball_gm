@@ -93,7 +93,7 @@
       <div class="bud-stat">
         <div class="bud-label">Owner's limit</div>
         <div class="bud-value {% if money.at_limit %}bud-bad{% endif %}">{{ money.limit_text }}</div>
-        <div class="bud-note">{% if money.at_limit %}<span class="bud-bad">At the limit: no moves that add money</span>{% else %}{{ money.limit_room_text }} of room{% endif %}</div>
+        <div class="bud-note">{% if money.over_limit_text %}<span class="bud-bad">Spending is {{ money.over_limit_text }} over: no moves that add money</span>{% elif money.at_limit %}<span class="bud-bad">At the limit: no moves that add money</span>{% else %}{{ money.limit_room_text }} of room{% endif %}</div>
       </div>
     </div>
     <div class="bud-line">
