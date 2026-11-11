@@ -266,7 +266,7 @@ def shop_offer_or_why(
 # players (a trade needs a player or pick each way), and if he alone isn't
 # worth it to them, the GM adds a sweetener of their own.
 MAX_THROW_INS = 4
-MAX_SWEETENERS = 8
+MAX_SWEETENERS = 16
 
 
 @dataclass
@@ -317,9 +317,17 @@ def dump_offer_or_why(
         for a in seller.roster
         if a.id in seller.tradeable and a.id != target.id and not a.injured_days
     ]
-    sweeteners = sorted(((cost_to_seller(a), a) for a in mine), key=lambda x: x[0])[
-        :MAX_SWEETENERS
-    ]
+    # Sweeteners it would want: only players worth something to it (a deep
+    # farm's spare arms add nothing, so offering them can't change its
+    # mind), the cheapest for the seller first, and of those the most
+    # useful to it.
+    sweeteners = []
+    for a in mine:
+        worth = _verdict(free, [], [a], days_left, 0.0, ai_base).score
+        if worth > 0:
+            sweeteners.append((round(cost_to_seller(a), 1), -worth, a))
+    sweeteners.sort(key=lambda x: x[:2])
+    sweeteners = [(cost, a) for cost, _, a in sweeteners[:MAX_SWEETENERS]]
 
     over_budget = costs_more = False
     for cost, sweet in [(0.0, None)] + sweeteners:

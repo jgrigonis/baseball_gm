@@ -665,6 +665,22 @@ window.trShopMore = function() {
   renderShop();
 };
 
+// "He wouldn't help them: A, B, C and 26 more": a few teams, the rest
+// behind a link that opens them in place.
+var WHY_SHOWN = 3;
+function whyLine(label, teams) {
+  var html = '<div class="tr-reason tr-shop-none"><strong>' + label + ':</strong> ';
+  if (teams.length <= WHY_SHOWN + 1) return html + esc(teams.join(', ')) + '</div>';
+  return html + esc(teams.slice(0, WHY_SHOWN).join(', ')) +
+    '<span class="tr-why-rest" hidden>, ' + esc(teams.slice(WHY_SHOWN).join(', ')) + '</span> ' +
+    '<button class="tr-link tr-why-more" onclick="trWhyMore(this)">and ' +
+    (teams.length - WHY_SHOWN) + ' more</button></div>';
+}
+window.trWhyMore = function(btn) {
+  btn.previousElementSibling.hidden = false;
+  btn.remove();
+};
+
 function shopAll() { return SHOP ? SHOP.offers.concat(SHOP.close) : []; }
 
 function renderShop() {
@@ -710,7 +726,7 @@ function renderShop() {
   SHOP_WHY.forEach(function(w) {
     var teams = SHOP.why[w[0]];
     if (teams && teams.length)
-      html += '<div class="tr-reason tr-shop-none"><strong>' + w[1] + ':</strong> ' + esc(teams.join(', ')) + '</div>';
+      html += whyLine(w[1], teams);
   });
   el.innerHTML = html;
 }
@@ -824,7 +840,7 @@ function renderDump() {
   DUMP_WHY.forEach(function(w) {
     var teams = DUMP.why[w[0]];
     if (teams && teams.length)
-      html += '<div class="tr-reason tr-shop-none"><strong>' + w[1] + ':</strong> ' + esc(teams.join(', ')) + '</div>';
+      html += whyLine(w[1], teams);
   });
   el.innerHTML = html;
 }
@@ -1116,6 +1132,7 @@ if (done) { showResult(done.msg, done.kind, done.dest); window._tradeResult = nu
 #trades-page .tr-shop-close-head { margin: 12px 0 6px; font-size: 13px; color: var(--text-dim); }
 #trades-page .tr-shop-short { opacity: 0.85; }
 #trades-page .tr-shop-more { margin: 4px 0 8px; }
+#trades-page .tr-link.tr-why-more { font: inherit; text-transform: none; }
 #trades-page .tr-tag.tr-tag-far { color: var(--text-dim); border-color: var(--muted); }
 #trades-page .tr-shop-pick { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
 #trades-page .tr-shop-pick .tr-team { flex: 1; min-width: 0; max-width: 420px; padding: 5px 6px; }

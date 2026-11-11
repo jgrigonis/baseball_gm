@@ -288,3 +288,16 @@ def test_tight_owners_care_more_about_money():
     loose = ai_evaluator.money_rate(80_000_000, 200_000_000, 1.0, "retooling")
     assert _priced(roster, [roster[0]], getting, money=loose).accept
     assert not _priced(roster, [roster[0]], getting, money=tight).accept
+
+
+def test_a_player_who_wants_out_but_wouldnt_play_costs_nothing_extra():
+    """The trade-request discount is a share of what he'd add to the team,
+    so a spare arm who wouldn't crack the staff isn't counted against."""
+    from dataclasses import replace
+
+    # A full staff of 62s: 5 starters and 11 relievers.
+    roster = _roster(62) + [_p(62, pitcher=True) for _ in range(3)]
+    spare = _p(55, pitcher=True)
+    a = _judge(roster, [], [spare])
+    b = _judge(roster, [], [replace(spare, wants_out=True)])
+    assert b.score == a.score

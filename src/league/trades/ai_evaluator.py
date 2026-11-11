@@ -348,8 +348,19 @@ def evaluate(
         ) + w_future * team_strength([a], future=True)
 
     # A player who asked out of his team is worth less to whoever takes him:
-    # everyone knows his team wants to move him.
-    score -= WANTS_OUT_DISCOUNT * sum(alone(a) for a in getting if a.wants_out)
+    # everyone knows his team wants to move him. The discount is a share of
+    # what he'd add to this team, not of his worth on his own: a depth arm
+    # who wouldn't crack its staff adds nothing, so nothing comes off.
+    unhappy = {a.id for a in getting if a.wants_out}
+    if unhappy:
+        without = [a for a in after if a.id not in unhappy]
+        adds = w_now * (
+            team_strength(after, days_left=days_left)
+            - team_strength(without, days_left=days_left)
+        ) + w_future * (
+            team_strength(after, future=True) - team_strength(without, future=True)
+        )
+        score -= WANTS_OUT_DISCOUNT * max(0.0, adds)
 
     # The money: what it takes on costs it, what it sends away saves it.
     def cost(a: Asset) -> float:
