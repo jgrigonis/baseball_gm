@@ -223,6 +223,10 @@ def explain(conn, league_id: str, team_id: str) -> dict | None:
 
     games = (s.wins + s.losses) if s is not None and in_season else 0
     discount = min(1.0, games / oo.MOOD_FULL_GAMES) if in_season else 1.0
+    # How the owner felt coming into the season: early readings lean on it.
+    carried = oo.latest_moods(conn, league_id, year).get(team_id, 0.0)
+    if not in_season:
+        games = oo.MOOD_FULL_GAMES
     m = oo.moods(conn, league_id, sid).get(team_id)
     mood = m["mood"] if m else oo.latest_moods(conn, league_id).get(team_id, 0.0)
     step = 0.25 + 0.55 * traits["temper"] / 100
@@ -268,7 +272,10 @@ def explain(conn, league_id: str, team_id: str) -> dict | None:
         "reading": reading,
         "games": games,
         "discount": discount,
-        "target": reading * discount if reading is not None else None,
+        "carried": carried,
+        "target": (
+            oo.early_reading(reading, games, carried) if reading is not None else None
+        ),
         "mood": mood,
         "mood_word": om.mood_word(mood),
         "mood_as_of": m["as_of"] if m else None,

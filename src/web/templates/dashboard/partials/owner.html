@@ -117,7 +117,7 @@
     <div class="ow-admin-sum">
       <div><span class="ow-k">Mood</span> <strong class="ow-mood-{{ d.mood_word }}">{{ '%+.2f' | format(d.mood) }} {{ d.mood_word }}</strong>{% if d.mood_as_of %} <span class="ow-k">as of {{ d.mood_as_of }}</span>{% endif %}</div>
       {% if d.reading is not none %}
-      <div><span class="ow-k">Reading</span> <strong>{{ '%+.2f' | format(d.reading) }}</strong>{% if d.discount < 1 %} × {{ '%.2f' | format(d.discount) }} ({{ d.games }} of 40 games) = <strong>{{ '%+.2f' | format(d.target) }}</strong>{% endif %}</div>
+      <div><span class="ow-k">Reading</span> <strong>{{ '%+.2f' | format(d.reading) }}</strong>{% if d.discount < 1 %}, {{ d.games }} of 40 games in: {{ (d.discount * 100) | round | int }}% of it and {{ ((1 - d.discount) * 100) | round | int }}% of last season's mood ({{ '%+.2f' | format(d.carried) }}) = <strong>{{ '%+.2f' | format(d.target) }}</strong>{% endif %}</div>
       <div class="ow-k">Each week the mood moves {{ (d.step * 100) | round | int }}% of the way to the reading (temper). Releases and streaks nudge it right away.</div>
       {% endif %}
       <div class="ow-k">Mood words: {% for m in d.moods %}{{ m.word }} ≥ {{ '%+.2f' | format(m.floor) if not loop.last else 'below' }}{% if not loop.last %} · {% endif %}{% endfor %}</div>

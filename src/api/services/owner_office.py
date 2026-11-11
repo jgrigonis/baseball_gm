@@ -218,6 +218,17 @@ def _fields(owner: dict, gm: dict, names: dict, budget: int | None) -> dict:
     }
 
 
+def early_reading(reading: float, games: int, carried: float) -> float:
+    """The season's reading as the owner takes it after this many games.
+    Early on the record says little, so the owner still mostly feels the way
+    last season left them (carried: their mood coming in), moving to the
+    season's own reading by MOOD_FULL_GAMES. Josh, 2026-11-11: a furious
+    owner turned merely uneasy after a 2-2 start, because the discount used
+    to pull toward neutral instead."""
+    share = min(1.0, max(0, games) / MOOD_FULL_GAMES)
+    return carried + share * (reading - carried)
+
+
 def _in_season(
     season, traits: dict, money: bool, state: str, october: str | None = None
 ) -> dict:
@@ -341,8 +352,11 @@ def catch_up(conn, league_id: str, today: str | None = None) -> int:
             scores = _in_season(
                 so_far, owner["traits"], money, league["state"], october.get(team_id)
             )
-            reading = sc.season_score(scores, owner["weights"])
-            reading *= min(1.0, games / MOOD_FULL_GAMES)
+            reading = early_reading(
+                sc.season_score(scores, owner["weights"]),
+                games,
+                before.get(team_id, 0.0),
+            )
             start = m["mood"] if m else before.get(team_id, 0.0)
             mood = om.next_mood(start, reading, traits["temper"])
             _set_mood(conn, league_id, team_id, sid, mood, today)
