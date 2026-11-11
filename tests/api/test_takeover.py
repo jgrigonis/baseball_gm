@@ -12,6 +12,8 @@ from src.api.database import get_db
 from src.api.dependencies import get_current_user
 from src.api.main import app
 from src.api.services import career, owner_office, takeover
+from src.league import budget as bg
+from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.career_repo import CareerRepository
 from src.db.repositories.gm_repo import GMRepository
 
@@ -169,6 +171,22 @@ class TestTakeOver:
             db_conn, setup["league"].id, setup["theirs"].id, gm_id
         )
         assert office["messages"] == []
+
+    def test_front_office_starts_at_standard(self, db_conn, factory, setup):
+        # The AI set up 2026 already (draft); the new GM's levels reset.
+        new = factory.season(year=2026)
+        factory.league_season(setup["league"], new)
+        _set(db_conn, setup["league"], state="draft", mode="blitz")
+        budgets = BudgetRepository(db_conn)
+        budgets.for_league(setup["league"].id, 2026)
+        for k in bg.DEPARTMENT_KEYS:
+            budgets.set_level(setup["league"].id, setup["theirs"].id, 2026, k, 4)
+        takeover.take_over(
+            db_conn, setup["league"].id, _user(db_conn, "Bob"), setup["theirs"].id
+        )
+        assert budgets.levels(
+            setup["league"].id, setup["theirs"].id, 2026
+        ) == dict.fromkeys(bg.DEPARTMENT_KEYS, bg.STANDARD)
 
     def test_draft_state_starts_with_the_new_season(self, db_conn, factory, setup):
         new = factory.season(year=2026)

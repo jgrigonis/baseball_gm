@@ -20,7 +20,9 @@ from src.api.services import firing, owner_review, takeover
 from src.api.services import owners as owner_service
 from src.api.services.news.events import firings as firing_news
 from src.api.services.news.names import Names, plain
+from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.owner_repo import OwnerRepository
+from src.league import budget as bg
 from src.league import owner_scoring as sc
 from src.league import owners
 
@@ -290,6 +292,34 @@ class TestAPerson:
         assert _league(lg.db, lg.league.id)["commissioner_gm_id"] == gm_id
         f = firing.latest(lg.db, lg.league.id, uid)
         assert f["rehired_team_id"] == team_id
+
+    @pytest.mark.parametrize("made_early", [False, True])
+    def test_front_office_picks_stay_behind(self, lg, made_early):
+        """Alice's Elite front office doesn't follow her to the new job, and
+        the team that fired her goes back to its owner's usual levels."""
+        budgets = BudgetRepository(lg.db)
+        mine = lg.teams[0].id
+        budgets.for_league(lg.league.id, 2026)
+        for k in bg.DEPARTMENT_KEYS:
+            budgets.set_level(lg.league.id, mine, 2026, k, 4)
+        if made_early:  # next season's rows already exist
+            budgets.for_league(lg.league.id, 2027)
+            assert budgets.levels(lg.league.id, mine, 2027)["coaching"] == 4
+        _fire(lg, lg.alice)
+        firing.carry_out(lg.db, lg.league.id, lg.season.id, 2026)
+        team_id = sorted(
+            t["team_id"]
+            for t in takeover.open_teams(lg.db, lg.league.id, lg.user["id"])
+        )[0]
+        takeover.take_over(lg.db, lg.league.id, lg.user, team_id)
+        budgets.for_league(lg.league.id, 2027)
+        assert budgets.levels(lg.league.id, team_id, 2027) == dict.fromkeys(
+            bg.DEPARTMENT_KEYS, bg.STANDARD
+        )
+        spending = budgets._spending(lg.league.id).get(mine, 50)
+        assert budgets.levels(lg.league.id, mine, 2027) == bg.ai_levels(
+            spending, f"fo:{mine}:2027"
+        )
 
     def test_a_good_record_draws_more_offers(self, lg):
         from src.api.services import job_offers
