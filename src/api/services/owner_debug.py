@@ -45,9 +45,15 @@ def _why(key: str, s: sc.TeamSeason, traits: dict, state: str) -> str:
     ambition = traits["ambition"]
     if key == "wins":
         target = sc.win_target(s.rank_before, ambition)
+        parts = []
+        if s.rank_start is not None:
+            parts.append(f"{s.rank_start:.2f} at the start")
+        if s.rank_last_season is not None:
+            parts.append(f"{s.rank_last_season:.2f} at the end of last season")
+        src = f", the better of {' and '.join(parts)}" if len(parts) > 1 else ""
         return (
             f"{s.wins}-{s.losses} ({_pct(s.win_pct)}) vs target {_pct(target)}"
-            f" from roster rank {s.rank_before:.2f} (0 best) and ambition"
+            f" from roster rank {s.rank_before:.2f} (0 best{src}) and ambition"
             f" {ambition}; {_pct(sc.WIN_SCALE)} off = ±1"
         )
     if key == "postseason":

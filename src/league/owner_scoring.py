@@ -36,8 +36,13 @@ from src.league import owners
 class TeamSeason:
     wins: int
     losses: int
-    # 0 best to 1 worst, by roster strength before the season (team state).
+    # 0 best to 1 worst, by roster strength before the season (team state):
+    # the stronger of this season's start and last season's end, so tearing
+    # the roster down doesn't lower what the owner expects.
     rank_before: float = 0.5
+    # The two it was taken from, for the admin's owner card (None: unknown).
+    rank_start: float | None = None
+    rank_last_season: float | None = None
     # The same in a couple of years, at the season's end.
     rank_future: float = 0.5
     # Young players not on the big-league roster, by future value.
