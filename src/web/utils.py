@@ -553,6 +553,24 @@ def _shell_ctx(
             seen.add(page)
         ctx["roster_due"] = "roster" not in seen
         ctx["lineup_due"] = "lineup" not in seen
+    # A multiplayer draft: the Draft tab, then the Free Agents tab (bids),
+    # each once (Josh, 2026-11-12). The button is the ready toggle there, so
+    # these ride beside it as pills; opening a tab marks it.
+    if (
+        ctx["league_state"] == "draft"
+        and ctx.get("multiplayer")
+        and not ctx["is_viewer"]
+        and ctx["team_id"]
+        and gm.get("id")
+        and ctx["season_id"]
+    ):
+        gms = GMRepository(db)
+        seen = gms.draft_seen(gm["id"], ctx["season_id"])
+        if page in gms.DRAFT_TABS and page not in seen:
+            gms.mark_draft_seen(gm["id"], ctx["season_id"], page)
+            seen.add(page)
+        ctx["draft_tab_due"] = "draft" not in seen
+        ctx["fa_tab_due"] = "free-agents" not in seen
     # After a trade brings players in, the Roster tab, where they move up to
     # the 40-man (Josh, 2026-11-11). Opening it clears that.
     if (

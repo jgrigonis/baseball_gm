@@ -313,6 +313,31 @@ class GMRepository:
             f"UPDATE gms SET {col} = %s WHERE id = %s", (season_id, gm_id)
         )
 
+    # The draft's tabs (a multiplayer draft's pills, web/utils.py): the
+    # column holding the season whose draft the GM opened each in.
+    DRAFT_TABS = {
+        "draft": "draft_tab_seen_season_id",
+        "free-agents": "fa_tab_seen_season_id",
+    }
+
+    def draft_seen(self, gm_id: str, season_id: str) -> set[str]:
+        """The draft tabs (draft, free-agents) the GM has opened during this
+        draft. season_id is the league shell's season while drafting."""
+        row = self.conn.execute(
+            "SELECT draft_tab_seen_season_id, fa_tab_seen_season_id FROM gms"
+            " WHERE id = %s",
+            (gm_id,),
+        ).fetchone()
+        if not row:
+            return set()
+        return {tab for tab, col in self.DRAFT_TABS.items() if row[col] == season_id}
+
+    def mark_draft_seen(self, gm_id: str, season_id: str, tab: str) -> None:
+        col = self.DRAFT_TABS[tab]
+        self.conn.execute(
+            f"UPDATE gms SET {col} = %s WHERE id = %s", (season_id, gm_id)
+        )
+
     def mark_trade_roster_due(self, gm_id: str, season_id: str) -> None:
         """A trade brought this GM players, who wait in the organization
         until they're moved to the 40-man."""

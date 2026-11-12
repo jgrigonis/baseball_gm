@@ -153,6 +153,47 @@ def _trade_pill(ctx: dict, page: str) -> dict | None:
     }
 
 
+def _draft_pill(ctx: dict, page: str) -> dict | None:
+    """A multiplayer draft's to-dos beside the ready toggle (Josh,
+    2026-11-12): the Draft tab, then the Free Agents tab, each until the GM
+    opens it."""
+    if ctx.get("league_state") != "draft":
+        return None
+    base = f"/leagues/{ctx['league_id']}"
+    if ctx.get("draft_tab_due") and page != "draft":
+        return {
+            "label": "📋 Draft",
+            "short": "📋",
+            "href": f"{base}/draft",
+            "title": "Set your draft board before everyone's ready and the draft runs.",
+        }
+    if ctx.get("fa_tab_due") and page != "free-agents":
+        return {
+            "label": "✍️ Free Agents",
+            "short": "✍️",
+            "href": f"{base}/free-agents",
+            "title": "Free agents take bids during the draft. They pick a "
+            "team as the preseason starts.",
+        }
+    return None
+
+
+def _roster_pill(ctx: dict, page: str) -> dict | None:
+    """After the draft, a look at the roster the draft and free agency left
+    (Josh, 2026-11-12), once each preseason until the Roster tab is opened."""
+    if ctx.get("league_state") != "preseason" or not ctx.get("roster_due"):
+        return None
+    if page == "roster":
+        return None
+    return {
+        "label": "👥 Roster",
+        "short": "👥",
+        "href": f"/leagues/{ctx['league_id']}/roster",
+        "title": "See who the draft and free agency brought you, and set "
+        "your 40-man and 26-man.",
+    }
+
+
 def pick(
     ctx: dict,
     page: str,
@@ -197,7 +238,11 @@ def pick(
             "menu": [_item("Mark me away", "readyToggleAway", btn_id="ready-away-btn")],
         }
         move["pill"] = (
-            _pill(ctx, page) or _trade_pill(ctx, page) or _budget_pill(ctx, page)
+            _pill(ctx, page)
+            or _draft_pill(ctx, page)
+            or _trade_pill(ctx, page)
+            or _budget_pill(ctx, page)
+            or _roster_pill(ctx, page)
         )
         return move
 

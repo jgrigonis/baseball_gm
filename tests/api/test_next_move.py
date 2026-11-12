@@ -258,3 +258,43 @@ def test_after_a_trade_the_roster_then_play_day():
     move = pick(_ctx(multiplayer=True, trade_roster_due=True), "trades")
     assert move["key"] == "ready" and move["pill"]["href"] == "/leagues/L1/roster"
     assert pick(_ctx(multiplayer=True, trade_roster_due=True), "roster")["pill"] is None
+
+
+def test_multiplayer_draft_pills_draft_then_free_agents():
+    # Josh, 2026-11-12: with several GMs the draft period's to-dos ride
+    # beside the ready button, the Draft tab, then the Free Agents tab, each
+    # until it's opened (web/utils marks them).
+    mp = dict(multiplayer=True, league_state="draft", draft_complete=False)
+    move = pick(_ctx(draft_tab_due=True, fa_tab_due=True, **mp), "standings")
+    assert move["key"] == "ready" and move["pill"]["href"] == "/leagues/L1/draft"
+    # On the Draft tab (marked seen there), the Free Agents tab is next.
+    move = pick(_ctx(fa_tab_due=True, **mp), "draft")
+    assert move["pill"]["href"] == "/leagues/L1/free-agents"
+    # The pool first: the Draft tab is still to see.
+    move = pick(_ctx(draft_tab_due=True, **mp), "free-agents")
+    assert move["pill"]["href"] == "/leagues/L1/draft"
+    assert pick(_ctx(**mp), "standings")["pill"] is None
+    # A solo draft keeps its own button and no pill.
+    move = pick(
+        _ctx(league_state="draft", draft_complete=False, draft_tab_due=True),
+        "standings",
+    )
+    assert move["key"] == "go-draft" and "pill" not in move
+
+
+def test_multiplayer_preseason_roster_pill_after_the_budget():
+    # After the draft (and free agents settling), the Roster tab, once the
+    # budget pill is done.
+    pre = dict(multiplayer=True, league_state="preseason", roster_due=True)
+    move = pick(_ctx(budget_due=True, **pre), "standings")
+    assert move["pill"]["href"] == "/leagues/L1/budget"
+    move = pick(_ctx(budget_due=True, **pre), "budget")
+    assert move["pill"]["href"] == "/leagues/L1/roster"
+    move = pick(_ctx(**pre), "standings")
+    assert move["key"] == "ready" and move["pill"]["href"] == "/leagues/L1/roster"
+    assert pick(_ctx(**pre), "roster")["pill"] is None
+    # The season ignores the preseason flag.
+    move = pick(
+        _ctx(multiplayer=True, league_state="season", roster_due=True), "standings"
+    )
+    assert move["pill"] is None
