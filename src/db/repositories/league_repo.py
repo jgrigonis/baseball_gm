@@ -417,13 +417,19 @@ class LeagueRepository:
         )
 
     def set_state(self, league_id: str, state: str) -> None:
-        """Set the league to state: state. Moving on counts as playing."""
+        """Set the league to state: state. Moving on counts as playing.
+        The draft opens free agent bidding; it stays open into the preseason
+        until the bids settle (offseason_fa.close_bidding), and never past
+        Opening Day."""
         self.conn.execute(
-            "UPDATE leagues SET state = %s, last_played_at = NOW() WHERE id = %s",
-            (
-                state,
-                league_id,
-            ),
+            """UPDATE leagues SET state = %s, last_played_at = NOW(),
+                   fa_bidding = CASE
+                       WHEN %s = 'draft' THEN TRUE
+                       WHEN %s = 'preseason' THEN fa_bidding
+                       ELSE FALSE
+                   END
+               WHERE id = %s""",
+            (state, state, state, league_id),
         )
 
     def mark_coach_step(self, league_id: str, step: str) -> None:

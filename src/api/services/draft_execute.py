@@ -13,7 +13,7 @@ import logging
 import random
 from datetime import datetime, UTC
 
-from src.api.services import front_office, offseason_fa, trades, waivers
+from src.api.services import front_office, trades, waivers
 from src.api.services.draft_needs import draft_strategies
 from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.draft_repo import DraftRepository
@@ -259,8 +259,9 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
 
     # Players released during the draft clear waivers as it ends.
     waivers.clear_all(conn, league_id)
-    # Free agents pick among the bids made during the draft.
-    offseason_fa.settle(conn, league_id)
+    # Free agent bids stay open into the preseason, so GMs can bid knowing
+    # who they drafted (Josh, 2026-11-12); offseason_fa.close_bidding
+    # settles them.
     lr = LeagueRepository(conn)
     lr.set_state(league_id, "preseason")
 

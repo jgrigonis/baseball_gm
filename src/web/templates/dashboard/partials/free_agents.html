@@ -42,7 +42,8 @@
   {% if bidding %}
   <div class="fa-note fa-open">
     Free agency is open. Bid a salary and a number of seasons; each player picks one bid
-    when the preseason starts, weighing the money and how well the team suits him.
+    when bidding closes in the preseason{% if multiplayer %} (the first time everyone's ready){% else %} (Close Bidding, up top){% endif %},
+    weighing the money and how well the team suits him.
   </div>
   {% endif %}
   {% if not players %}
@@ -54,7 +55,7 @@
   {% else %}
   <div class="fa-note">
     C- and worse ask the minimum for one season. Anyone still unsigned after the
-    offseason's bidding asks {{ market_step_pct }}% less when the preseason starts and
+    offseason's bidding asks {{ market_step_pct }}% less once bidding closes and
     another {{ market_step_pct }}% each week of the season, down to {{ market_floor_pct }}% of his price.
   </div>
   <div class="fa-list card" id="fa-list"></div>

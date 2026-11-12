@@ -1,6 +1,6 @@
 # tests/api/test_offseason_fa.py
-"""Offseason free agency: the re-sign window, bids during the draft, and
-players picking a bid (src/api/services/offseason_fa.py)."""
+"""Offseason free agency: the re-sign window, bids from the draft into the
+preseason, and players picking a bid (src/api/services/offseason_fa.py)."""
 
 from types import SimpleNamespace
 
@@ -70,7 +70,10 @@ def _on(lg, team):
 
 
 def _set_state(lg, state):
-    lg.db.execute("UPDATE leagues SET state = %s WHERE id = %s", (state, lg.league.id))
+    lg.db.execute(
+        "UPDATE leagues SET state = %s, fa_bidding = (%s = 'draft') WHERE id = %s",
+        (state, state, lg.league.id),
+    )
 
 
 # ── The re-sign window ────────────────────────────────────────────────────────
@@ -357,7 +360,7 @@ def test_free_agents_take_bids_during_the_draft(lg):
 
 def test_bids_need_the_draft_and_sane_terms(lg):
     pid = _free_agent(lg)
-    with pytest.raises(OffseasonFAError, match="draft"):
+    with pytest.raises(OffseasonFAError, match="closed"):
         offseason_fa.place_bid(lg.db, lg.league.id, lg.mine.id, pid, 3_000_000, 2)
     _set_state(lg, "draft")
     with pytest.raises(OffseasonFAError, match="seasons"):
@@ -472,3 +475,91 @@ def test_an_unhappy_arbitration_player_cant_walk(lg, monkeypatch):
     assert view[arb]["arb_share"] == 55
     assert view[arb]["fate"] == "auto"
     assert view[vet_unhappy]["arb_season"] is None
+
+
+# ── Bids through the preseason (Josh, 2026-11-12) ─────────────────────────────
+
+
+def _league_row(lg):
+    return lg.db.execute(
+        "SELECT state, fa_bidding FROM leagues WHERE id = %s", (lg.league.id,)
+    ).fetchone()
+
+
+def test_the_draft_opens_bidding_and_it_lasts_into_the_preseason(lg):
+    from src.db.repositories.league_repo import LeagueRepository
+
+    lr = LeagueRepository(lg.db)
+    lr.set_state(lg.league.id, "draft")
+    assert _league_row(lg)["fa_bidding"] is True
+    lr.set_state(lg.league.id, "preseason")
+    assert _league_row(lg)["fa_bidding"] is True
+    pid = _free_agent(lg)
+    offseason_fa.place_bid(lg.db, lg.league.id, lg.mine.id, pid, 3_000_000, 2)
+    with pytest.raises(FreeAgentError, match="bids"):
+        free_agents.sign(lg.db, lg.league.id, lg.mine.id, pid)
+    # Full price while the bids are open, the preseason step off after.
+    assert free_agents.market_discount(lg.db, lg.league.id) == 1.0
+    lr.set_state(lg.league.id, "season")
+    assert _league_row(lg)["fa_bidding"] is False
+
+
+def test_close_bidding_settles_once_and_closes(lg, monkeypatch):
+    monkeypatch.setattr(offseason_fa, "_ai_bids", lambda *a: 0)
+    from src.db.repositories.league_repo import LeagueRepository
+
+    LeagueRepository(lg.db).set_state(lg.league.id, "draft")
+    LeagueRepository(lg.db).set_state(lg.league.id, "preseason")
+    pid = _free_agent(lg, level=70)
+    ask = _ask(lg, pid).salary
+    offseason_fa.place_bid(lg.db, lg.league.id, lg.mine.id, pid, ask, 2)
+    lg.db.execute(
+        "UPDATE gms SET roster_seen_season_id = 'x' WHERE team_id = %s", (lg.mine.id,)
+    )
+    signed = offseason_fa.close_bidding(lg.db, lg.league.id)
+    assert [s["player_id"] for s in signed] == [pid]
+    assert lg.contracts.active(pid, 2026)["team_id"] == lg.mine.id
+    assert _league_row(lg)["fa_bidding"] is False
+    assert not offseason_fa.bidding_open(lg.db, lg.league.id)
+    assert free_agents.market_discount(lg.db, lg.league.id) == pytest.approx(0.9)
+    # The GM who signed him gets the Roster step again.
+    seen = lg.db.execute(
+        "SELECT roster_seen_season_id FROM gms WHERE team_id = %s", (lg.mine.id,)
+    ).fetchone()
+    assert seen["roster_seen_season_id"] is None
+    # A second close does nothing.
+    assert offseason_fa.close_bidding(lg.db, lg.league.id) == []
+    with pytest.raises(OffseasonFAError, match="closed"):
+        offseason_fa.place_bid(
+            lg.db, lg.league.id, lg.mine.id, _free_agent(lg), 3_000_000, 2
+        )
+
+
+def test_ai_teams_that_sign_rebuild_their_rosters(lg, monkeypatch):
+    from src.api.services import front_office
+    from src.db.repositories.league_repo import LeagueRepository
+
+    monkeypatch.setattr(offseason_fa, "_ai_bids", lambda *a: 0)
+    replanned = []
+    monkeypatch.setattr(
+        front_office,
+        "replan_roster",
+        lambda conn, lid, sid, tid, o, d: replanned.append(tid),
+    )
+    LeagueRepository(lg.db).set_state(lg.league.id, "draft")
+    pid = _free_agent(lg, level=70)
+    ask = _ask(lg, pid).salary
+    offseason_fa.place_bid(lg.db, lg.league.id, lg.ai.id, pid, ask, 2)
+    offseason_fa.close_bidding(lg.db, lg.league.id)
+    assert replanned == [lg.ai.id]
+
+
+def test_a_full_minors_skips_the_bid(lg, monkeypatch):
+    monkeypatch.setattr(offseason_fa, "_ai_bids", lambda *a: 0)
+    monkeypatch.setattr(offseason_fa, "MINORS_LIMIT", 0)
+    _set_state(lg, "draft")
+    pid = _free_agent(lg, level=70)
+    offseason_fa.place_bid(
+        lg.db, lg.league.id, lg.mine.id, pid, _ask(lg, pid).salary, 2
+    )
+    assert offseason_fa.settle(lg.db, lg.league.id) == []

@@ -195,7 +195,7 @@ window.signFreeAgent = async function(pid, name, salary, years) {
     ask = await r.json();
     if (!r.ok) throw new Error(ask.detail || 'Something went wrong.');
   } catch (e) { gmAlert(e.message); return; }
-  // During the draft free agents take bids instead (offseason_fa.py).
+  // From the draft until bids settle, free agents take bids (offseason_fa.py).
   if (ask.bidding) { bidFreeAgent(pid, name, ask); return; }
   // Past the owner's hard limit: they won't allow it (src/league/budget.py).
   if (ask.blocked) { gmAlert(ask.blocked); return; }
@@ -213,8 +213,8 @@ window.signFreeAgent = async function(pid, name, salary, years) {
   closePlayerPanel();
   reloadTab();
 };
-// Offseason free agency (src/api/services/offseason_fa.py): a bid during
-// the draft, and re-signing or letting go of expiring players.
+// Offseason free agency (src/api/services/offseason_fa.py): a bid from the
+// draft into the preseason, and re-signing or letting go of expiring players.
 window.bidFreeAgent = async function(pid, name, ask) {
   const url = `/leagues/{{ league_id }}/free-agents/${pid}`;
   if (!ask) {
@@ -230,7 +230,7 @@ window.bidFreeAgent = async function(pid, name, ask) {
     title: mine ? `Change your bid for ${name}?` : `Bid for ${name}?`,
     lines: [
       `He asks ${ask.ask_text} a season for ${ask.ask_years} season${ask.ask_years === 1 ? '' : 's'}.`,
-      `He picks one bid when the preseason starts: the money, and how well the team suits him (winning, home, market, coaching). ${others > 0 ? `${others} other team${others === 1 ? ' has' : 's have'} bid.` : 'No other bids yet.'}`,
+      `He picks one bid when bidding closes, before Opening Day: the money, and how well the team suits him (winning, home, market, coaching). ${others > 0 ? `${others} other team${others === 1 ? ' has' : 's have'} bid.` : 'No other bids yet.'}`,
     ],
     fields: [
       {name: 'salary', label: 'Salary a season ($M)', value: ((mine ? mine.salary : ask.ask_salary) / 1e6).toFixed(2),
@@ -248,6 +248,33 @@ window.bidFreeAgent = async function(pid, name, ask) {
   gmToast(`Bid in for ${name}`, 'ok');
   closePlayerPanel();
   reloadTab();
+};
+// A solo preseason's Close Bidding step (the next move on the Free Agents
+// tab): the free agents pick their teams, then the Roster and Lineup.
+window.closeBidding = async function() {
+  const ok = await gmConfirm({
+    title: 'Close free agent bidding?',
+    lines: [
+      "Every free agent with bids picks his team now, and your bids can't change after this.",
+      'Anyone left unsigned can still be signed at his asking price, a bit cheaper from here on.',
+    ],
+    ok: 'Close bidding', tone: 'go',
+  });
+  if (!ok) return;
+  window.nextMoveBusy && window.nextMoveBusy('close-bidding-btn', 'Settling…');
+  let d;
+  try { d = await postJson(`/leagues/{{ league_id }}/free-agents/close-bidding`); }
+  catch (e) {
+    window.nextMoveIdle && window.nextMoveIdle('close-bidding-btn');
+    gmAlert(e.message);
+    return;
+  }
+  const lines = d.mine.length
+    ? d.mine.map(s => `${s.name}: ${s.salary_text} a season for ${s.years} season${s.years === 1 ? '' : 's'}. He's in your organization (minors).`)
+    : ['None of the free agents you bid for picked you.'];
+  lines.push(`${d.signed} free agent${d.signed === 1 ? '' : 's'} signed around the league.`);
+  await gmConfirm({title: d.mine.length ? 'You signed' : 'Bidding closed', lines, ok: 'OK', cancel: null});
+  window.location.reload();
 };
 window.withdrawBid = async function(pid, name) {
   const ok = await gmConfirm({title: `Take back your bid for ${name}?`, ok: 'Take it back', tone: 'danger'});

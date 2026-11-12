@@ -321,6 +321,10 @@ def _shell_ctx(
                     "is_commissioner": gm.get("id") is not None
                     and league["commissioner_gm_id"] == gm["id"],
                     "draft_complete": draft_complete,
+                    # Free agent bids open, from the draft into the
+                    # preseason (src/api/services/offseason_fa.py).
+                    "fa_bidding": bool(league.get("fa_bidding"))
+                    and league["state"] in ("draft", "preseason"),
                     # Several human GMs: the league advances by ready-check,
                     # so the Sim buttons give way to the ready bar.
                     "multiplayer": is_multiplayer(db, league_id),
@@ -548,7 +552,13 @@ def _shell_ctx(
     ):
         gms = GMRepository(db)
         seen = gms.preseason_seen(gm["id"], ctx["season_id"])
-        if page in gms.PRESEASON_TABS and page not in seen:
+        # While free agent bids are open the signings are still to come, so
+        # a look at the Roster or Lineup doesn't count yet.
+        if (
+            page in gms.PRESEASON_TABS
+            and page not in seen
+            and not ctx.get("fa_bidding")
+        ):
             gms.mark_preseason_seen(gm["id"], ctx["season_id"], page)
             seen.add(page)
         ctx["roster_due"] = "roster" not in seen

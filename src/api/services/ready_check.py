@@ -43,7 +43,14 @@ from __future__ import annotations
 
 import logging
 
-from src.api.services import all_star, owner_office, sim_jobs, trades, turn_alerts
+from src.api.services import (
+    all_star,
+    offseason_fa,
+    owner_office,
+    sim_jobs,
+    trades,
+    turn_alerts,
+)
 from src.api.services.draft_execute import execute_blitz_draft
 from src.api.services.offseason_service import run_offseason
 from src.api.services.sim_next import sim_days
@@ -110,6 +117,12 @@ def _due(period: dict, gms: list[dict]) -> bool:
 def _run_period(conn, league_id: str, state: str, days: int) -> bool:
     """Run one period. Returns True if the sim stopped at the trade deadline,
     so the next period gets the longer deadline window."""
+    if state == "preseason" and offseason_fa.bidding_open(conn, league_id):
+        # The first preseason period settles the free agent bids, with no
+        # games, so everyone sets their roster and lineup around their
+        # signings before Opening Day's period (Josh, 2026-11-12).
+        offseason_fa.close_bidding(conn, league_id)
+        return False
     if state in ("preseason", "season"):
         return sim_days(league_id, conn, days).get("trade_deadline", False)
     elif state == "playoffs":
