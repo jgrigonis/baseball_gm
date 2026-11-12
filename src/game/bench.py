@@ -11,8 +11,8 @@ needs.
 
 A pinch hitter stays in the game: he takes over the replaced hitter's batting
 slot and his position in the field, so a weak glove counts against him
-(DEFENSE_COST_SHARE of what the position's glove is worth, since only a few
-innings are left). The man he replaced is out of the game for good.
+(a share of what the position's glove is worth that shrinks as the innings
+run out). The man he replaced is out of the game for good.
 
 Who's on the bench (TeamInGame.bench_players): hitters on today's roster who
 aren't in the lineup, aren't hurt and haven't been taken out. A bench hitter
@@ -42,13 +42,15 @@ MAX_DEFICIT = 4
 # Rating points of offense a pinch hitter must add in an ordinary late spot
 # (the 7th, nobody in scoring position). PLATOON_PENALTY (7) is the same-side
 # edge, so a platoon swap needs a bench bat close to the regular's.
-MIN_GAIN = 7.5
+MIN_GAIN = 6.0
 # How much bigger a spot is, which shrinks the edge needed.
 INNING_LEVERAGE = {7: 1.0, 8: 1.2}
 LATE_LEVERAGE = 1.45  # 9th and extra innings
 RISP_LEVERAGE = 1.25  # a runner on second or third
-# Share of a position's glove value a pinch hitter's weaker glove costs.
-DEFENSE_COST_SHARE = 0.35
+# Share of a position's glove value a pinch hitter's weaker glove costs, by
+# inning: the fewer innings left to play in the field, the less it matters.
+DEFENSE_COST_SHARE = {7: 0.35, 8: 0.25}
+LATE_DEFENSE_COST_SHARE = 0.15  # 9th and extra innings
 # A bench hitter this tired doesn't bat.
 MIN_ENERGY = TIRED_THRESHOLD
 
@@ -83,7 +85,11 @@ def bat_value(team: TeamInGame, player: PlayerInGame, vs_hand: str | None) -> fl
 
 
 def defense_cost(
-    team: TeamInGame, batter: PlayerInGame, sub: PlayerInGame, position: str | None
+    team: TeamInGame,
+    batter: PlayerInGame,
+    sub: PlayerInGame,
+    position: str | None,
+    inning: int = 7,
 ) -> float | None:
     """What the pinch hitter's glove gives up at the batter's position for
     the rest of the game; None if he can't play there."""
@@ -95,7 +101,8 @@ def defense_cost(
     weight = DEFENSE_IMPORTANCE.get(position, 0.5) * getattr(
         team, "defense_weight", 1.0
     )
-    return max(0.0, drop) * weight * DEFENSE_COST_SHARE
+    share = DEFENSE_COST_SHARE.get(inning, LATE_DEFENSE_COST_SHARE)
+    return max(0.0, drop) * weight * share
 
 
 def _rested_enough(game: Game, player: PlayerInGame) -> bool:
@@ -131,7 +138,7 @@ def pinch_hitter(game: Game) -> PlayerInGame | None:
     position = batter.current_position or slot.position
     best, best_edge = None, need
     for p in sorted(bench, key=lambda p: p.id):
-        cost = defense_cost(team, batter, p, position)
+        cost = defense_cost(team, batter, p, position, game.inning.number)
         if cost is None:
             continue
         edge = bat_value(team, p, hand) - base - cost
