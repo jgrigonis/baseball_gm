@@ -217,6 +217,9 @@ class _Ctx:
         if self._rooms is None:
             self._rooms = owners.pay_rooms(self.conn, self.league_id, self.season_id)
             self._terms = owners.money_terms(self.conn, self.league_id, self.season_id)
+            self._money = owners.season_money_states(
+                self.conn, self.league_id, self.season_id
+            )
         lean = self.leanings.get(team_id, Leanings())
         state = self._state(team_id)
         ai = Side(
@@ -232,7 +235,7 @@ class _Ctx:
             stats_weight=lean.stats_weight,
             horizon=lean.horizon,
             pay_room=self._rooms.get(team_id),
-            money=owners.money_rate(self._terms, self._rooms.get(team_id), state),
+            money=owners.money_rate(self._terms, self._money.get(team_id), state),
         )
         return ai, blocked
 

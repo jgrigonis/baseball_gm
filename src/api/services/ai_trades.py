@@ -45,7 +45,7 @@ from src.db.repositories.ready_check_repo import ReadyCheckRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.trade_repo import TradeRepository
-from src.league import trade_deadline
+from src.league import money_state, trade_deadline
 from src.league.personas import Leanings
 from src.league.team_state import BUYERS, SELLERS
 from src.league.trades import ai_evaluator
@@ -113,7 +113,8 @@ def run(conn, league: dict, season_id: str, game_date: str, deadline) -> dict:
     ai_teams = [t for t in teams if t not in humans]
     rows = team_states.current(conn, league_id, season_id, game_date)
     states = {t: rows[t]["state"] for t in teams}
-    roles = {t: _role(rows[t]) for t in teams}
+    money = owners.season_money_states(conn, league_id, season_id)
+    roles = {t: _role(rows[t], money.get(t)) for t in teams}
     days_left = trades._days_left(conn, season_id, game_date)
     trade_repo = TradeRepository(conn)
     ai_made = trade_repo.ai_trades_this_season(season_id)
@@ -162,7 +163,9 @@ def run(conn, league: dict, season_id: str, game_date: str, deadline) -> dict:
                 if partner in humans
                 else set()
             )
-            deal = find_deal(me, them, days_left, avoid)
+            deal = find_deal(
+                me, them, days_left, avoid, shed=money_state.sheds(money.get(team_id))
+            )
             if deal and (best is None or deal.score > best[1].score):
                 best = (partner, deal)
         if not best:
@@ -212,9 +215,13 @@ def league_ai_trades(team_count: int, rush: bool) -> int:
     return max(1, round(cap * SHARE_OF_AI_TRADES_BEFORE_RUSH))
 
 
-def _role(row: dict) -> str:
+def _role(row: dict, money: str | None = None) -> str:
     """buyer, seller or other: what a team's state means for how keen it is
-    to deal. Everyone's other until the standings have had their say."""
+    to deal. Everyone's other until the standings have had their say, except
+    a team cutting costs (src/league/money_state.py), which sells from the
+    start: it's looking to shed salary."""
+    if money_state.sheds(money):
+        return "seller"
     if not team_states.in_race(row):
         return "other"
     if row["state"] in BUYERS:
@@ -232,6 +239,7 @@ def _sides(
     humans = set(GMRepository(conn).get_human_team_ids(league_id))
     rooms = owners.pay_rooms(conn, league_id, season_id)
     terms = owners.money_terms(conn, league_id, season_id)
+    money = owners.season_money_states(conn, league_id, season_id)
     out = {}
     for t in team_ids:
         hurt = injuries.get_team_injuries(t, game_date)
@@ -249,7 +257,7 @@ def _sides(
             pay_room=None if t in humans else rooms.get(t),
             money=0.0
             if t in humans
-            else owners.money_rate(terms, rooms.get(t), states[t]),
+            else owners.money_rate(terms, money.get(t), states[t]),
         )
     return out
 

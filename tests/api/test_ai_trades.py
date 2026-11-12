@@ -234,3 +234,12 @@ def test_an_ai_team_doesnt_make_the_same_offer_twice(ai):
         frozenset(p["player_id"] for p in o["sent"] + o["received"]) for o in made
     ]
     assert len(set(players)) == len(players)
+
+
+def test_a_team_cutting_costs_sells_from_the_start():
+    """Before the standings have their say everyone's "other", except a team
+    cutting costs (src/league/money_state.py): it's looking to shed salary."""
+    early = {"state": "contending", "inputs": {"games_back": 0, "played": 3}}
+    assert ai_trades._role(early) == "other"
+    assert ai_trades._role(early, "flush") == "other"
+    assert ai_trades._role(early, "cutting-costs") == "seller"

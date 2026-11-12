@@ -165,7 +165,7 @@
           <option value="">Pick a team…</option>
           {% for t in trade_teams %}
           <option value="{{ t.id }}" data-human="{{ 1 if t.human else 0 }}">
-            {{ t.name }}{% if t.human %} (GM){% elif ai_gms.get(t.id) %} ({{ ai_gms[t.id].name }}){% endif %}{% if t.room_text %} · {{ t.room_text }}{% endif %}
+            {{ t.name }}{% if t.human %} (GM){% elif ai_gms.get(t.id) %} ({{ ai_gms[t.id].name }}){% endif %}{% if t.room_text %} · {{ t.room_text }}{% endif %}{% if not t.human and t.money_label %} · {{ t.money_label }}{% endif %}
           </option>
           {% endfor %}
         </select>
@@ -702,9 +702,13 @@ var SHOP_WHY = [
 // How many of the close packages show before "Show more".
 var SHOP_CLOSE_SHOWN = 5;
 
-// "The Moscow Cossacks ($5.2M over the cap) give": cap room right after the name.
+// "The Moscow Cossacks ($5.2M over the cap, cutting costs) give": cap room
+// and money state (src/league/money_state.py) right after the name.
 function roomText(o) {
-  return o.room_text ? ' <span class="tr-room">(' + esc(o.room_text) + ')</span>' : '';
+  var parts = [];
+  if (o.room_text) parts.push(esc(o.room_text));
+  if (o.money_label) parts.push(esc(o.money_label.toLowerCase()));
+  return parts.length ? ' <span class="tr-room">(' + parts.join(', ') + ')</span>' : '';
 }
 
 // The page script is wrapped in a function, so inline onclicks need a window name.

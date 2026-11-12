@@ -37,7 +37,7 @@ from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.trade_repo import TradeRepository
 from src.league import budget as bg
-from src.league import owners, trade_deadline
+from src.league import money_state, owners, trade_deadline
 from src.league.trades import draft_picks
 from src.team.roster_limits import (
     MAX_PLAYING_ROSTER,
@@ -190,6 +190,9 @@ def trades_tab(
 
     human_teams = GMRepository(db).get_human_team_ids(league_id)
     rooms = cap_rooms(db, league_id)
+    money = (
+        owner_service.season_money_states(db, league_id, season_id) if season_id else {}
+    )
     teams = (
         [
             {
@@ -197,6 +200,7 @@ def trades_tab(
                 "name": f"{t['city']} {t['mascot']}",
                 "human": t["id"] in human_teams,
                 "room_text": room_text(rooms.get(t["id"])),
+                "money_label": money_state.label(money.get(t["id"])),
             }
             for t in TeamRepository(db).get_teams_in_league_season(league_id, season_id)
             if t["id"] != team_id
@@ -374,6 +378,9 @@ def shop_player(
     season_id = SeasonRepository(db).get_current_id_for_league(league_id)
     ai_gms = PersonaRepository(db).by_team(league_id)
     rooms = cap_rooms(db, league_id)
+    money = (
+        owner_service.season_money_states(db, league_id, season_id) if season_id else {}
+    )
     for o in result["offers"] + result["close"]:
         cards = {
             c["player_id"]: c
@@ -381,6 +388,7 @@ def shop_player(
         }
         o["players"] = [cards[pid] for pid in o["give"] if pid in cards]
         o["room_text"] = room_text(rooms.get(o["team_id"]))
+        o["money_label"] = money_state.label(money.get(o["team_id"]))
         g = ai_gms.get(o["team_id"])
         o["gm_name"] = g["name"] if g else None
     result["stamp"] = trade_shop.stamp(db, league_id)
@@ -427,6 +435,9 @@ def dump_player(
         c["player_id"]: c for c in team_cards(db, league_id, season_id, gm["team_id"])
     }
     rooms = cap_rooms(db, league_id)
+    money = (
+        owner_service.season_money_states(db, league_id, season_id) if season_id else {}
+    )
     for o in result["offers"]:
         cards = {
             c["player_id"]: c
@@ -437,6 +448,7 @@ def dump_player(
         o["saved_text"] = format_salary(abs(o["saved"]))
         o["unguaranteed_text"] = format_salary(o["unguaranteed"])
         o["room_text"] = room_text(rooms.get(o["team_id"]))
+        o["money_label"] = money_state.label(money.get(o["team_id"]))
         g = ai_gms.get(o["team_id"])
         o["gm_name"] = g["name"] if g else None
     result["salary_text"] = format_salary(result["salary"])
@@ -481,6 +493,9 @@ def absorb_for_player(
     season_id = SeasonRepository(db).get_current_id_for_league(league_id)
     ai_gms = PersonaRepository(db).by_team(league_id)
     rooms = cap_rooms(db, league_id)
+    money = (
+        owner_service.season_money_states(db, league_id, season_id) if season_id else {}
+    )
     for o in result["offers"]:
         cards = {
             c["player_id"]: c
@@ -494,6 +509,7 @@ def absorb_for_player(
         o["saved_text"] = format_salary(abs(o["saved"]))
         o["unguaranteed_text"] = format_salary(o["unguaranteed"])
         o["room_text"] = room_text(rooms.get(o["team_id"]))
+        o["money_label"] = money_state.label(money.get(o["team_id"]))
         g = ai_gms.get(o["team_id"])
         o["gm_name"] = g["name"] if g else None
     result["salary_text"] = format_salary(result["salary"])

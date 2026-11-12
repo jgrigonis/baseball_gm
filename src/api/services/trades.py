@@ -993,8 +993,11 @@ class _AiJudge:
         self.room = owners.pay_rooms(conn, league_id, season_id, [ai_team_id]).get(
             ai_team_id
         )
+        self.money_state = owners.season_money_states(
+            conn, league_id, season_id, [ai_team_id]
+        ).get(ai_team_id)
         self.money = owners.money_rate(
-            owners.money_terms(conn, league_id, season_id), self.room, self.state
+            owners.money_terms(conn, league_id, season_id), self.money_state, self.state
         )
         self.days_left = _season_days_left(conn, league_id, season_id, today)
         self.margin = ai_evaluator.margin(

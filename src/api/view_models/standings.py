@@ -5,13 +5,14 @@
 
 from __future__ import annotations
 
-from src.api.services import sim_summary
+from src.api.services import owners, sim_summary
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.injury_repo import InjuryRepository
+from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.standings_repo import StandingsRepository
 from src.db.repositories.team_state_repo import TeamStateRepository
-from src.league import divisions, team_state
+from src.league import divisions, money_state, team_state
 
 
 def calc_streak(results: list) -> str:
@@ -40,6 +41,13 @@ def standings_rows(
     recent_rows = st_repo.get_recent_results(season_id)
     # Each front office's latest read on its team (src/league/team_state.py).
     states = TeamStateRepository(db).latest(league_id, season_id)
+    # And where it stands with its owner's money (src/league/money_state.py),
+    # this season only: the books are now, not then.
+    money = (
+        owners.season_money_states(db, league_id, season_id)
+        if season_id == SeasonRepository(db).get_current_id_for_league(league_id)
+        else {}
+    )
     gms = team_gms(db, league_id)
 
     # Build per-team recent results
@@ -109,6 +117,9 @@ def standings_rows(
                 "state_label": team_state.LABELS.get(
                     states.get(r["team_id"], {}).get("state"), ""
                 ),
+                "money": money.get(r["team_id"]),
+                "money_label": money_state.label(money.get(r["team_id"])),
+                "money_tip": money_state.TIPS.get(money.get(r["team_id"]) or "", ""),
                 "is_mine": r["team_id"] == my_team_id,
                 "gm": gms.get(r["team_id"]),
             }

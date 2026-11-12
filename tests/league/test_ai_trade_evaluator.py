@@ -223,7 +223,7 @@ def test_an_ai_team_wont_take_on_more_salary_than_its_owner_allows():
 
 
 # Pricing contracts: what a player is owed counts against him.
-RATE = ai_evaluator.money_rate(10_000_000, 200_000_000, 1.0, "retooling")
+RATE = ai_evaluator.money_rate("capped-out", 1.0, "retooling")
 
 
 def _paid(rating, now, later, **kw):
@@ -236,17 +236,17 @@ def _priced(roster, giving, getting, state="retooling", money=RATE, days_left=60
     return evaluate(roster, giving, getting, state, days_left, 0.08, money=money)
 
 
-def test_money_rate_by_owner_room_and_state():
-    cap = 200_000_000
-    tight = ai_evaluator.money_rate(-5_000_000, cap, 1.0, "retooling")
-    loose = ai_evaluator.money_rate(80_000_000, cap, 1.0, "retooling")
-    assert tight > RATE > loose > 0
-    assert ai_evaluator.money_rate(None, cap, 1.0, "retooling") == 0.0
-    assert ai_evaluator.money_rate(
-        10_000_000, cap, 1.0, "all-in"
-    ) < ai_evaluator.money_rate(10_000_000, cap, 1.0, "rebuilding")
+def test_money_rate_by_money_state_and_team_state():
+    tight = ai_evaluator.money_rate("cutting-costs", 1.0, "retooling")
+    balanced = ai_evaluator.money_rate("balanced", 1.0, "retooling")
+    loose = ai_evaluator.money_rate("flush", 1.0, "retooling")
+    assert tight > RATE > balanced > loose > 0
+    assert ai_evaluator.money_rate(None, 1.0, "retooling") == 0.0
+    assert ai_evaluator.money_rate("balanced", 1.0, "all-in") < ai_evaluator.money_rate(
+        "balanced", 1.0, "rebuilding"
+    )
     # Salaries grown with the cap cost the same in value.
-    assert ai_evaluator.money_rate(10_000_000, cap, 2.0, "retooling") == RATE / 2
+    assert ai_evaluator.money_rate("capped-out", 2.0, "retooling") == RATE / 2
 
 
 def test_without_a_money_rate_contracts_dont_count():
@@ -284,8 +284,8 @@ def test_a_cheap_star_is_worth_more_than_a_fairly_paid_one():
 def test_tight_owners_care_more_about_money():
     roster = _roster()
     getting = [_paid(64, 18_000_000, 18_000_000)]
-    tight = ai_evaluator.money_rate(-5_000_000, 200_000_000, 1.0, "retooling")
-    loose = ai_evaluator.money_rate(80_000_000, 200_000_000, 1.0, "retooling")
+    tight = ai_evaluator.money_rate("cutting-costs", 1.0, "retooling")
+    loose = ai_evaluator.money_rate("flush", 1.0, "retooling")
     assert _priced(roster, [roster[0]], getting, money=loose).accept
     assert not _priced(roster, [roster[0]], getting, money=tight).accept
 

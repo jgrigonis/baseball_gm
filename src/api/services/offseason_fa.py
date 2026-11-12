@@ -40,7 +40,7 @@ import random
 from datetime import date
 
 from src.api.grade_curves import GRADES
-from src.api.services import ai_free_agents, free_agents, waivers
+from src.api.services import ai_free_agents, free_agents, owners, waivers
 from src.api.services.news.moves import shown_grade
 from src.api.services.news.names import Names
 from src.db.locks import league_lock
@@ -59,6 +59,7 @@ from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_state_repo import TeamStateRepository
+from src.league import money_state
 from src.player import contracts as ct
 from src.player import happiness as hp
 from src.player.player_evaluator import PlayerEvaluator
@@ -774,20 +775,28 @@ def _ai_bids(conn, league_id: str, season_id: str, year: int, rng) -> int:
         return 0
     asks = {}
     made = 0
+    money = owners.money_states(conn, league_id, year)
+    scale = free_agents.price_scale(conn, league_id, year)
+    minimum = ct.round_salary(ct.MIN_SALARY * scale, scale)
     for team_id in teams:
         team = ai_free_agents.role_values(
             ai_free_agents._rated_team(conn, league_id, team_id)
         )
         room = ai_free_agents._budget_room(conn, league_id, team_id, year)
+        mstate = money.get(team_id)
+        margin = money_state.hole_margin(mstate, ai_free_agents.HOLE_MARGIN)
+        # A capped-out team makes one bid; one cutting costs only bids the
+        # minimum (src/league/money_state.py).
+        bids = 1 if mstate == "capped-out" else AI_BIDS
         picks = []
         for rec, r in pool:
-            role, gain = ai_free_agents.best_fit(team, r)
+            role, gain = ai_free_agents.best_fit(team, r, margin)
             if role:
                 picks.append((gain, rec, role))
         picks.sort(key=lambda x: -x[0])
         roles_taken = set()
         for gain, rec, role in picks:
-            if len(roles_taken) >= AI_BIDS:
+            if len(roles_taken) >= bids:
                 break
             if role in roles_taken:
                 continue
@@ -797,6 +806,9 @@ def _ai_bids(conn, league_id: str, season_id: str, year: int, rng) -> int:
             salary = ct.round_salary(ask.salary * rng.uniform(0.92, 1.12))
             if salary > room:
                 continue
+            if mstate == "cutting-costs" and ask.salary > minimum:
+                continue
+            salary = min(salary, minimum) if mstate == "cutting-costs" else salary
             conn.execute(
                 """INSERT INTO fa_bids (league_id, player_id, team_id, year, salary, years)
                    VALUES (%s, %s, %s, %s, %s, %s)

@@ -13,6 +13,9 @@ lineup position, by HOLE_MARGIN rating points or more. Then:
 - Free agents: every SIGN_EVERY_DAYS game days, an AI team signs the free
   agent who fills its biggest hole at his asking price, if it fits the
   budget. One signing a team per look.
+- Money: its money state (src/league/money_state.py) has a say too. A
+  flush team signs a smaller upgrade; a capped-out one only bargains; one
+  cutting costs only players at the minimum.
 - Room: with the minors full, it releases its weakest minors player who
   never made the 40-man (free to release) to make room.
 
@@ -25,7 +28,7 @@ from __future__ import annotations
 import random
 from datetime import date, timedelta
 
-from src.api.services import free_agents, front_office, waivers
+from src.api.services import free_agents, front_office, owners, waivers
 from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.gm_repo import GMRepository
@@ -35,6 +38,7 @@ from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.waiver_repo import WaiverRepository
+from src.league import money_state
 from src.league.offseason.roster_trimmer import MINORS_LIMIT
 from src.player import contracts as ct
 from src.player.player_evaluator import PlayerEvaluator
@@ -159,11 +163,14 @@ def _make_room(conn, league_id: str, team_id: str) -> bool:
 
 
 def claim_waivers(conn, league_id: str, ai_teams: list[str], year: int) -> int:
-    """AI teams claim players on waivers who fill a hole and fit the budget.
-    Returns how many claims they made."""
+    """AI teams claim players on waivers who fill a hole and fit the budget
+    and their money state. Returns how many claims they made."""
     open_ = WaiverRepository(conn).open_for(league_id)
     if not open_ or not ai_teams:
         return 0
+    money = owners.money_states(conn, league_id, year)
+    scale = free_agents.price_scale(conn, league_id, year)
+    minimum = ct.round_salary(ct.MIN_SALARY * scale, scale)
     players = {
         p.id: p
         for p in (PlayerRepository(conn).look_up(w["player_id"]) for w in open_)
@@ -181,12 +188,18 @@ def claim_waivers(conn, league_id: str, ai_teams: list[str], year: int) -> int:
             if team is None:
                 team = role_values(_rated_team(conn, league_id, team_id))
             p = players[pid]
-            role, _ = best_fit(team, PlayerEvaluator.rate_player(p.skills, p.throws))
+            role, _ = best_fit(
+                team,
+                PlayerEvaluator.rate_player(p.skills, p.throws),
+                money_state.hole_margin(money.get(team_id), HOLE_MARGIN),
+            )
             if not role:
                 continue
             deal = ContractRepository(conn).released_deal(pid, w["from_team_id"])
             salary = waivers.deal_view(deal, year).get("salary") or 0
             if salary > _budget_room(conn, league_id, team_id, year):
+                continue
+            if not money_state.may_sign(money.get(team_id), salary, minimum, False):
                 continue
             try:
                 waivers.claim(conn, league_id, team_id, pid, year)
@@ -224,9 +237,11 @@ def sign_free_agents(
     outlooks = front_office.outlooks(conn, league_id, season_id, today)
     effective = (date.fromisoformat(today) + timedelta(days=1)).isoformat()
     taken: set[str] = set()
+    money = owners.money_states(conn, league_id, year)
     for team_id in ai_teams:
         team = role_values(_rated_team(conn, league_id, team_id))
         room = _budget_room(conn, league_id, team_id, year)
+        mstate = money.get(team_id)
         best = None
         for rec, r in pool:
             if rec.id in taken:
@@ -238,11 +253,19 @@ def sign_free_agents(
                 bargain[rec.id] = (
                     ask.salary <= minimum or ask.salary <= BARGAIN_SHARE * full.salary
                 )
-            margin = BARGAIN_MARGIN if bargain[rec.id] else HOLE_MARGIN
+            margin = (
+                BARGAIN_MARGIN
+                if bargain[rec.id]
+                else money_state.hole_margin(mstate, HOLE_MARGIN)
+            )
             role, gain = best_fit(team, r, margin)
             if not role or (best and gain <= best[1]):
                 continue
             if asks[rec.id].salary > room:
+                continue
+            if not money_state.may_sign(
+                mstate, asks[rec.id].salary, minimum, bargain[rec.id]
+            ):
                 continue
             best = (rec, gain)
         if not best:
