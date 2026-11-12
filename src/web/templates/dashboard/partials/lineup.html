@@ -219,9 +219,6 @@
     <div class="lu-col" data-pcol="rot">
       <div class="lu-col-hdr">
         <span class="lu-col-label">Starting Rotation</span>
-        <span id="rot-count"
-              style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);
-                     margin-left:8px;"></span>
         <div class="spacer"></div>
         <div class="lu-hdr-actions">
         <button class="btn btn-secondary" onclick="autoFillRotation()"
@@ -1530,7 +1527,6 @@ function renderRotation() {
     renderRotation();
   };
 
-  document.getElementById('rot-count').textContent = `${compact.length} pitchers`;
   updatePitchSeg();
 }
 
