@@ -8,13 +8,16 @@ from src.game.events.error import (
     OutfielderThrowingErrorEvent,
 )
 from src.game.events.out import (
+    AirDoublePlayEvent,
     PutOutEvent,
     OutRecordedEvent,
     FlyOutEvent,
     GroundOutEvent,
+    LineOutEvent,
+    fielders_on,
 )
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
-from src.game.events.runners import RunnerAdvancedEvent
+from src.game.events.runners import RunnerAdvancedEvent, RunnerRemovedEvent
 from src.game.resolvers.base_running import advance_all_runners, advance_batter_to_base
 from src.game.resolvers.fielder_selector import FielderSelector
 from src.game.probabilities import (
@@ -22,6 +25,15 @@ from src.game.probabilities import (
     PROB_TAGUP_FROM_FIRST_FLYOUT,
     FLY_DROP_FACTOR,
     FLY_DROP_BATTER_TO_SECOND_PROB,
+    LINE_DRIVE_SHARE,
+    LINE_DRIVE_INFIELD_SHARE,
+    DOUBLED_OFF_RUNNING_PROB,
+    DOUBLED_OFF_LEANING_PROB,
+    DOUBLED_OFF_OF_RUNNING_PROB,
+    TAGUP_OUT_AT_HOME_PROB,
+    TAGUP_OUT_AT_THIRD_PROB,
+    TAGUP_OUT_AT_SECOND_PROB,
+    SS_OVER_2B_PROB,
 )
 from src.game.resolvers.errors import (
     fielding_error_prob,
@@ -32,7 +44,17 @@ from src.game.resolvers.errors import (
 
 
 def resolve_fly_out(resolver, intent, game) -> list[GameEvent]:
-    """Resolve a fly out"""
+    """Resolve a fly out. Some are line drives (LINE_DRIVE_SHARE), and some
+    of those are caught by an infielder; a runner off with the pitch can be
+    doubled off, and a runner tagging up can be thrown out."""
+    if resolver.rng.random() < LINE_DRIVE_SHARE:
+        if resolver.rng.random() < LINE_DRIVE_INFIELD_SHARE:
+            return _infield_line_out(resolver, intent, game)
+        return _outfield_fly(resolver, intent, game, liner=True)
+    return _outfield_fly(resolver, intent, game, liner=False)
+
+
+def _outfield_fly(resolver, intent, game, liner: bool) -> list[GameEvent]:
     fs = FielderSelector(game.rng)
     events: list[GameEvent] = []
     outfielder = fs.select_outfielder(game)
@@ -43,23 +65,30 @@ def resolve_fly_out(resolver, intent, game) -> list[GameEvent]:
     if resolver.rng.random() < fielding_error_chance(outfielder, FLY_DROP_FACTOR):
         return _dropped_fly_ball(resolver, intent, game, outfielder)
 
+    # A liner to the outfield with a runner going: he can't get back.
+    if liner and game.inning.outs < 2:
+        for base in (THIRD, SECOND, FIRST):
+            if (
+                runner_going(game, base)
+                and resolver.rng.random() < DOUBLED_OFF_OF_RUNNING_PROB
+            ):
+                return _doubled_off(resolver, intent, game, outfielder, base)
+
     tag_from_second, tag_from_first = adjust_tagup_probs(
         resolver, game.inning.outs, game.bases, arm
     )
     runner_on_first = game.bases.runner_on(FIRST)
     runner_on_second = game.bases.runner_on(SECOND)
     runner_on_third = game.bases.runner_on(THIRD)
-    if runner_on_second is None:
-        second_open = True
-    else:
-        second_open = False
-    if runner_on_third is None:
-        third_open = True
-    else:
-        third_open = False
+    second_open = runner_on_second is None
+    third_open = runner_on_third is None
     if third_open and runner_on_second:
         r = resolver.rng.random()
         if r < tag_from_second:
+            if _thrown_out_tagging(resolver, outfielder, runner_on_second, THIRD):
+                return events + _tag_up_double_play(
+                    resolver, intent, game, outfielder, runner_on_second, SECOND
+                )
             second_open = True
             runner_on_third = runner_on_second
             throwing_error_prob = _calculate_throwing_error_probability(
@@ -97,6 +126,12 @@ def resolve_fly_out(resolver, intent, game) -> list[GameEvent]:
     if second_open and runner_on_first:
         r = resolver.rng.random()
         if r < tag_from_first:
+            if not runner_on_third and _thrown_out_tagging(
+                resolver, outfielder, runner_on_first, SECOND
+            ):
+                return events + _tag_up_double_play(
+                    resolver, intent, game, outfielder, runner_on_first, FIRST
+                )
             if runner_on_third:
                 events.append(
                     RunnerAdvancedEvent(
@@ -141,12 +176,154 @@ def resolve_fly_out(resolver, intent, game) -> list[GameEvent]:
                         )
                     )
 
-    events.append(FlyOutEvent(batter=intent.batter))
+    reason = "line_out" if liner else "fly_out"
+    events.append(
+        LineOutEvent(batter=intent.batter)
+        if liner
+        else FlyOutEvent(batter=intent.batter)
+    )
     events.append(PutOutEvent(outfielder))
-    events.append(OutRecordedEvent(reason="fly_out", pitcher=intent.pitcher))
-    events.append(PlateAppearanceEndEvent(reason="fly_out", batter=intent.batter))
+    events.append(OutRecordedEvent(reason=reason, pitcher=intent.pitcher))
+    events.append(PlateAppearanceEndEvent(reason=reason, batter=intent.batter))
 
     return events
+
+
+def runner_going(game, base: int) -> bool:
+    """Was the runner on this base off with the pitch (a steal or a hit and
+    run)?"""
+    if game.bases.runner_on(base) is None:
+        return False
+    sit = getattr(game, "situation", None)
+    if sit is None:
+        return False
+    if sit.hit_and_run:
+        return True
+    if sit.steal_attempt == base:
+        return True
+    return base in (sit.double_steal_attempt or ())
+
+
+def _skill(player, name: str) -> float:
+    skills = getattr(player, "skills", None)
+    try:
+        return skills[name]
+    except KeyError, TypeError:
+        return 50
+
+
+def _careless(runner) -> float:
+    return 50 / max(30, _skill(runner, "base_running"))
+
+
+def _infield_line_out(resolver, intent, game) -> list[GameEvent]:
+    """A liner snared by an infielder (or the pitcher). Runners off with
+    the pitch are usually doubled off; one caught leaning sometimes is."""
+    fielder = FielderSelector(game.rng).select_infielder(game)
+    if game.inning.outs < 2:
+        for base in (THIRD, SECOND, FIRST):
+            runner = game.bases.runner_on(base)
+            if runner is None:
+                continue
+            if runner_going(game, base):
+                p = DOUBLED_OFF_RUNNING_PROB
+            else:
+                p = DOUBLED_OFF_LEANING_PROB * _careless(runner)
+            if resolver.rng.random() < p:
+                return _doubled_off(resolver, intent, game, fielder, base)
+    return [
+        LineOutEvent(batter=intent.batter),
+        PutOutEvent(fielder),
+        OutRecordedEvent(reason="line_out", pitcher=intent.pitcher),
+        PlateAppearanceEndEvent(reason="line_out", batter=intent.batter),
+    ]
+
+
+def _bag_man(resolver, game, base: int, fielder):
+    """Who takes the throw to double a runner off this base. The fielder
+    who caught it steps on the bag himself when it's his."""
+    own = {FIRST: ("1b",), SECOND: ("2b", "ss"), THIRD: ("3b",)}[base]
+    if fielder.current_position in own:
+        return fielder
+    if base == SECOND:
+        return (
+            game.pos("ss")
+            if resolver.rng.random() < SS_OVER_2B_PROB
+            else game.pos("2b")
+        )
+    return game.pos(own[0])
+
+
+def _doubled_off(resolver, intent, game, fielder, base) -> list[GameEvent]:
+    """The catch, then the throw back to the runner's base before he can
+    get back: a line drive double play."""
+    runner = game.bases.runner_on(base)
+    cover = _bag_man(resolver, game, base, fielder)
+    second_out = (
+        PutOutEvent(fielder) if cover is fielder else PutOutEvent(cover, fielder)
+    )
+    return [
+        AirDoublePlayEvent(
+            batter=intent.batter,
+            runner=runner,
+            base=base,
+            fielders=fielders_on([PutOutEvent(fielder), second_out]),
+            kind="line",
+        ),
+        PutOutEvent(fielder),
+        OutRecordedEvent(reason="double_play", pitcher=intent.pitcher),
+        second_out,
+        OutRecordedEvent(reason="double_play", pitcher=intent.pitcher),
+        RunnerRemovedEvent(runner=runner, from_base=base, reason="doubled_off"),
+        PlateAppearanceEndEvent(reason="line_drive_double_play", batter=intent.batter),
+    ]
+
+
+def _thrown_out_tagging(resolver, outfielder, runner, to_base) -> bool:
+    """A runner tagging up on a fly ball beaten by the throw: more often
+    against a strong arm, less often for a fast, smart runner."""
+    base_prob = {
+        SECOND: TAGUP_OUT_AT_SECOND_PROB,
+        THIRD: TAGUP_OUT_AT_THIRD_PROB,
+        HOME: TAGUP_OUT_AT_HOME_PROB,
+    }[to_base]
+    arm = max(30, _skill(outfielder, "arm"))
+    legs = max(30, (_skill(runner, "speed") + _skill(runner, "base_running")) / 2)
+    return resolver.rng.random() < base_prob * (arm / 55) * (55 / legs)
+
+
+def _tag_up_double_play(
+    resolver, intent, game, outfielder, runner, from_base
+) -> list[GameEvent]:
+    """The fly ball is caught and the tagging runner is thrown out at the
+    next base. Nobody else moves."""
+    to_base = from_base + 1
+    if to_base == HOME:
+        cover = game.pos("c")
+    elif to_base == THIRD:
+        cover = game.pos("3b")
+    else:
+        cover = (
+            game.pos("ss")
+            if resolver.rng.random() < SS_OVER_2B_PROB
+            else game.pos("2b")
+        )
+    throw = PutOutEvent(cover, outfielder)
+    return [
+        AirDoublePlayEvent(
+            batter=intent.batter,
+            runner=runner,
+            base=to_base,
+            fielders=fielders_on([PutOutEvent(outfielder), throw]),
+            kind="fly",
+        ),
+        PutOutEvent(outfielder),
+        OutRecordedEvent(reason="double_play", pitcher=intent.pitcher),
+        throw,
+        OutRecordedEvent(reason="double_play", pitcher=intent.pitcher),
+        RunnerRemovedEvent(runner=runner, from_base=from_base, reason="tag_up_out"),
+        PlateAppearanceEndEvent(reason="fly_double_play", batter=intent.batter),
+    ]
 
 
 def _dropped_fly_ball(resolver, intent, game, outfielder) -> list[GameEvent]:

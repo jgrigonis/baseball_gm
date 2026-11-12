@@ -93,6 +93,12 @@ def attach_values(bat: list, pit: list, values: dict[str, dict]) -> None:
         r["_war"] = sv.pit_war(values, r["player_id"])
 
 
+def _cs_pct(r) -> float:
+    """A catcher's caught-stealing rate, in percent (0 with no tries)."""
+    sb, cs = r.get("sb") or 0, r.get("cs") or 0
+    return round(100 * cs / (sb + cs), 1) if sb + cs else 0.0
+
+
 def defense_runs_card(bat_rows: list, my_team_id: str | None) -> dict | None:
     """The top ten in defensive runs, any position."""
     pool = [r for r in bat_rows if r.get("_def") is not None]
@@ -378,6 +384,7 @@ def _pitchers(
                 "HLD": r.get("pitch_holds") or 0,
                 "CG": r.get("pitch_complete_games") or 0,
                 "SHO": r.get("pitch_shutouts") or 0,
+                "PK": r.get("pitch_pickoffs") or 0,
                 "IP": formulas.innings(outs),
                 "BB/9": formulas.per_nine(pbb, outs),
                 "HR/9": formulas.per_nine(hr, outs),
@@ -479,6 +486,7 @@ def pitching_leaders(
             card("SV", "SV"),
             card("CG", "CG", pool=[p for p in pitchers if p["CG"]]),
             card("SHO", "SHO", pool=[p for p in pitchers if p["SHO"]]),
+            card("PK", "PK", pool=[p for p in pitchers if p["PK"]]),
             card("IP", "IP", pool=q_pit),
             card("BB/9", "BB/9", pool=q_pit, asc=True, fmt=_f2),
             card("HR/9", "HR/9", pool=q_pit, asc=True, fmt=_f2),
@@ -560,6 +568,10 @@ def defense_leaders(
                 "DP": r["dp"] or 0,
                 "PB": pb,
                 "PB/G": round(pb / g, 2) if g else 0.0,
+                "SB": r.get("sb") or 0,
+                "CS": r.get("cs") or 0,
+                "CS%": _cs_pct(r),
+                "PK": r.get("cpk") or 0,
                 "FPCT": fpct,
                 "TC": denom,
             }
@@ -616,6 +628,16 @@ def defense_leaders(
             def_cats.append(
                 def_card("C PB/G", "PB/G", q_pool, asc=True, fmt=lambda v: f"{v:.2f}")
             )
+            # Rate needs some tries against him: one a ten team games.
+            tried = [r for r in q_pool if r["SB"] + r["CS"] >= max(1, team_games // 10)]
+            if tried:
+                def_cats.append(
+                    def_card("C CS%", "CS%", tried, fmt=lambda v: f"{v:.1f}%")
+                )
+            def_cats.append(def_card("C CS", "CS", pool))
+            pickers = [r for r in pool if r["PK"]]
+            if pickers:
+                def_cats.append(def_card("C PK", "PK", pickers))
 
     pitchers = [r for r in def_data if r["pos"] == "P"]
     if pitchers:

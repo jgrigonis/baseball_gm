@@ -82,6 +82,29 @@ def _result(play: dict) -> str:
         return r + "s"
     if r == "strikeout":
         return "strikes out"
+    if r == "strikeout_dropped":
+        if f[1]:
+            return "strikes out; strike three gets away, catcher to first"
+        return "strikes out; strike three gets away and the catcher tags him"
+    if r == "strikeout_wild_pitch":
+        return "strikes out but reaches first on a wild pitch"
+    if r == "strikeout_passed_ball":
+        return "strikes out but reaches first on a passed ball"
+    if r == "strikeout_error":
+        return "strikes out but reaches first on the catcher's throwing error"
+    if r == "line_out":
+        return f"lines out to {_to(f[0])}" if f[0] else "lines out"
+    if r in ("line_drive_double_play", "fly_double_play"):
+        d = play.get("d") or [None, None]
+        line = "lines" if r == "line_drive_double_play" else "flies"
+        head = f"{line} into a double play"
+        if f[0]:
+            head += f" to {_to(f[0])}"
+        if not d[0]:
+            return head
+        if r == "line_drive_double_play":
+            return f"{head}; {d[0]} is doubled off {_BASE.get(d[1], '')}"
+        return f"{head}; {d[0]} is thrown out at {_BASE.get(d[1], '')} tagging up"
     if r == "walk":
         return "walks"
     if r == "intentional_walk":
@@ -127,7 +150,15 @@ def _note(kind: str, name: str | None, where) -> str:
     if kind == "po":
         return f"{name} is picked off {_BASE.get(where, '')}."
     if kind == "poe":
+        if where and where.lower() != "p":
+            return f"The {_who(where)} drops the pickoff throw."
         return "The pickoff throw gets away."
+    if kind == "cpo":
+        return f"{name} is picked off {_BASE.get(where, '')} by the catcher."
+    if kind == "cpoe":
+        if where and where.lower() != "c":
+            return f"The {_who(where)} drops the catcher's pickoff throw."
+        return "The catcher's pickoff throw gets away."
     if kind == "wp":
         return "Wild pitch."
     if kind == "pb":

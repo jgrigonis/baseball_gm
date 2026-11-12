@@ -59,6 +59,53 @@ class FlyOutEvent(GameEvent):
 
 
 @dataclass(frozen=True)
+class LineOutEvent(GameEvent):
+    """
+    A line drive caught on the fly: an at bat for the batter.
+    """
+
+    batter: PlayerInGame
+
+    def apply(self, game):
+        self.batter.game_stats.batting.at_bat()
+
+    def describe(self, game) -> str:
+        return f"{self.batter.name} lined out."
+
+
+@dataclass(frozen=True)
+class AirDoublePlayEvent(GameEvent):
+    """
+    A ball caught in the air and a runner doubled off (a line drive) or
+    thrown out tagging up (a fly ball). An at bat for the batter and a
+    double play for every fielder on it, but not a GIDP: it wasn't a
+    ground ball. The outs and the runner's removal are their own events.
+    """
+
+    batter: PlayerInGame
+    runner: PlayerInGame
+    base: int  # where the runner was put out
+    fielders: tuple[PlayerInGame, ...] = ()
+    kind: str = "line"  # "line": doubled off; "fly": thrown out tagging
+
+    def apply(self, game):
+        self.batter.game_stats.batting.at_bat()
+        for fielder in self.fielders:
+            fielder.game_stats.fielding.double_play()
+
+    def describe(self, game) -> str:
+        if self.kind == "line":
+            return (
+                f"{self.batter.name} lined into a double play, "
+                f"{self.runner.name} doubled off."
+            )
+        return (
+            f"{self.batter.name} flied into a double play, "
+            f"{self.runner.name} thrown out tagging up."
+        )
+
+
+@dataclass(frozen=True)
 class FoulFlyOutEvent(GameEvent):
     """
     Simply adds an at bat to the batter

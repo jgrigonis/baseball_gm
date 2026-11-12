@@ -24,19 +24,25 @@ from src.game.events.strike import (
     FoulStrikeEvent,
     FouledOffThirdStrikeEvent,
     FoulTipCaughtThirdStrikeEvent,
+    DroppedThirdStrikeEvent,
+    StrikeEvent,
 )
+from src.game.events.ball import BallEvent
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
 from src.game.events.out import (
     OutRecordedEvent,
     GroundOutEvent,
     FlyOutEvent,
     FoulFlyOutEvent,
+    LineOutEvent,
+    AirDoublePlayEvent,
 )
 from src.game.events.double_play import DoublePlayEvent
 from src.game.events.triple_play import TriplePlayEvent
 from src.game.intent import GameIntent
 from src.game.intents.pitch import PitchIntent
 from src.game.intents.pick_off import PickOffIntent
+from src.game.resolvers.catcher_pickoff import resolve_catcher_pickoff
 from src.game.resolvers.concurrent_events import resolve_concurrent_events
 from src.game.modifiers.pitch_modifiers import PitchModifiers
 from src.game.modifiers.in_play_modifiers import InPlayModifiers
@@ -189,6 +195,9 @@ class Resolver:
                 and not self._is_balk(pitch_events)
                 and not self._is_foul(pitch_events)
                 and not self._is_error(pitch_events)
+                and not any(
+                    isinstance(e, DroppedThirdStrikeEvent) for e in pitch_events
+                )
             ):
                 # Steals can happen on balls, strikes,
                 # but not balks, walks, errors, wild pitches, passed balls, fouls or ball_in_play
@@ -208,6 +217,10 @@ class Resolver:
                     # No PA end yet (pitch didn't end PA)
                     events.extend(pitch_events)
                     events.extend(concurrent_events)
+                    # A take or a swing and miss with nobody running: the
+                    # catcher may throw behind a runner.
+                    if not concurrent_events and self._ball_or_strike(pitch_events):
+                        events.extend(resolve_catcher_pickoff(self, intent, game))
             else:
                 # Ball in play - no concurrent steal events
                 events.extend(pitch_events)
@@ -316,6 +329,8 @@ class Resolver:
             # Outs
             GroundOutEvent,
             FlyOutEvent,
+            LineOutEvent,
+            AirDoublePlayEvent,
             # Special plays
             FieldersChoiceEvent,
             SacBuntEvent,
@@ -325,6 +340,10 @@ class Resolver:
         )
 
         return any(isinstance(event, in_play_event_types) for event in events)
+
+    def _ball_or_strike(self, events: list[GameEvent]) -> bool:
+        """The pitch was just a ball or a strike (taken or missed)."""
+        return any(isinstance(e, (BallEvent, StrikeEvent)) for e in events)
 
     def _is_error(self, events: list[GameEvent]) -> bool:
         """Check if an error occurred."""

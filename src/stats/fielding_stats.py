@@ -19,6 +19,7 @@ class FieldingStats:
     catcher_interferences: int = 0
     catcher_cs: int = 0  # Caught stealing
     catcher_sb: int = 0  # Stolen bases allowed
+    catcher_pickoffs: int = 0  # Runners the catcher threw out on a back pick
 
     def __str__(self):
         """Return the string representation of the fielding statistics."""
@@ -85,6 +86,10 @@ class FieldingStats:
     def catcher_caught_stealing(self):
         """Add a catcher caught stealing."""
         self.catcher_cs += 1
+
+    def catcher_pickoff(self):
+        """Add a runner the catcher picked off."""
+        self.catcher_pickoffs += 1
 
     def catcher_stolen_base(self):
         """Add a catcher stolen base."""

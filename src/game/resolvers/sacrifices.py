@@ -16,6 +16,7 @@ from src.game.resolvers.errors import (
     throwing_error_chance,
 )
 from src.game.resolvers.fielder_selector import FielderSelector
+from src.game.resolvers.outs import _thrown_out_tagging, _tag_up_double_play
 from src.game.events.error import OutfielderThrowingErrorEvent
 from src.game.probabilities import (
     BUNT_FIELD_FACTOR,
@@ -92,11 +93,14 @@ def resolve_sac_fly(resolver, intent, game) -> list[GameEvent]:
     events: list[GameEvent] = []
 
     outfielder = fs.select_outfielder(game)
+    runner = game.bases.runner_on(THIRD)
+    # A strong throw can beat him home: no run, a fly ball double play.
+    if _thrown_out_tagging(resolver, outfielder, runner, HOME):
+        return _tag_up_double_play(resolver, intent, game, outfielder, runner, THIRD)
     events.append(SacFlyEvent(batter=intent.batter))
     events.append(PutOutEvent(outfielder))
     events.append(OutRecordedEvent(reason="sac_fly", pitcher=intent.pitcher))
 
-    runner = game.bases.runner_on(THIRD)
     events.append(
         RunnerAdvancedEvent(
             runner=runner,

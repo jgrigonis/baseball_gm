@@ -72,12 +72,12 @@ class PlayerGameRepository:
                 pitch_balks, pitch_wild_pitches, pitch_count,
 
                 field_putouts, field_assists, field_errors, passed_balls, 
-                catcher_interferences, catcher_cs, catcher_sb,
+                catcher_interferences, catcher_cs, catcher_sb, catcher_pickoffs,
                 field_double_plays, field_triple_plays,
                 bat_wpa, bat_re24, pitch_wpa, pitch_re24
             )
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                    %s, %s, %s, %s)
+                    %s, %s, %s, %s, %s)
             ON CONFLICT (game_id, player_id) DO UPDATE SET
                 team_id = EXCLUDED.team_id, opponent_team_id = EXCLUDED.opponent_team_id,
                 bat_game_played = EXCLUDED.bat_game_played, bat_game_started = EXCLUDED.bat_game_started,
@@ -108,6 +108,7 @@ class PlayerGameRepository:
                 field_errors = EXCLUDED.field_errors, passed_balls = EXCLUDED.passed_balls,
                 catcher_interferences = EXCLUDED.catcher_interferences,
                 catcher_cs = EXCLUDED.catcher_cs, catcher_sb = EXCLUDED.catcher_sb,
+                catcher_pickoffs = EXCLUDED.catcher_pickoffs,
                 field_double_plays = EXCLUDED.field_double_plays,
                 field_triple_plays = EXCLUDED.field_triple_plays,
                 bat_wpa = EXCLUDED.bat_wpa, bat_re24 = EXCLUDED.bat_re24,
@@ -168,6 +169,7 @@ class PlayerGameRepository:
                 f.catcher_interferences,
                 f.catcher_cs,
                 f.catcher_sb,
+                f.catcher_pickoffs,
                 f.double_plays,
                 f.triple_plays,
                 b.wpa,
@@ -186,14 +188,15 @@ class PlayerGameRepository:
                         game_id, player_id, position,
                         putouts, assists, errors, passed_balls,
                         catcher_interferences, catcher_cs, catcher_sb,
-                        double_plays, triple_plays
+                        catcher_pickoffs, double_plays, triple_plays
                     )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (game_id, player_id, position) DO UPDATE SET
                         putouts = EXCLUDED.putouts, assists = EXCLUDED.assists,
                         errors = EXCLUDED.errors, passed_balls = EXCLUDED.passed_balls,
                         catcher_interferences = EXCLUDED.catcher_interferences,
                         catcher_cs = EXCLUDED.catcher_cs, catcher_sb = EXCLUDED.catcher_sb,
+                        catcher_pickoffs = EXCLUDED.catcher_pickoffs,
                         double_plays = EXCLUDED.double_plays,
                         triple_plays = EXCLUDED.triple_plays
                     """,
@@ -208,6 +211,7 @@ class PlayerGameRepository:
                         fs.catcher_interferences,
                         fs.catcher_cs,
                         fs.catcher_sb,
+                        fs.catcher_pickoffs,
                         fs.double_plays,
                         fs.triple_plays,
                     ),
@@ -550,7 +554,10 @@ class PlayerGameRepository:
                       SUM(pgf.errors)                    AS e,
                       SUM(COALESCE(pgf.passed_balls, 0)) AS pb,
                       SUM(COALESCE(pgf.double_plays, 0)) AS dp,
-                      SUM(COALESCE(pgf.triple_plays, 0)) AS tp
+                      SUM(COALESCE(pgf.triple_plays, 0)) AS tp,
+                      SUM(COALESCE(pgf.catcher_sb, 0)) AS sb,
+                      SUM(COALESCE(pgf.catcher_cs, 0)) AS cs,
+                      SUM(COALESCE(pgf.catcher_pickoffs, 0)) AS cpk
                FROM player_game_fielding pgf
                JOIN games gm  ON gm.id  = pgf.game_id
                JOIN players p ON p.id   = pgf.player_id
@@ -574,7 +581,10 @@ class PlayerGameRepository:
                       SUM(pgf.errors)   AS e,
                       SUM(COALESCE(pgf.passed_balls, 0)) AS pb,
                       SUM(COALESCE(pgf.double_plays, 0)) AS dp,
-                      SUM(COALESCE(pgf.triple_plays, 0)) AS tp
+                      SUM(COALESCE(pgf.triple_plays, 0)) AS tp,
+                      SUM(COALESCE(pgf.catcher_sb, 0)) AS sb,
+                      SUM(COALESCE(pgf.catcher_cs, 0)) AS cs,
+                      SUM(COALESCE(pgf.catcher_pickoffs, 0)) AS cpk
                FROM player_game_fielding pgf
                JOIN games gm ON gm.id = pgf.game_id
                JOIN player_game_stats pgs
@@ -597,7 +607,10 @@ class PlayerGameRepository:
                       SUM(pgf.errors)               AS e,
                       SUM(pgf.passed_balls)         AS pb,
                       SUM(COALESCE(pgf.double_plays, 0)) AS dp,
-                      SUM(COALESCE(pgf.triple_plays, 0)) AS tp
+                      SUM(COALESCE(pgf.triple_plays, 0)) AS tp,
+                      SUM(COALESCE(pgf.catcher_sb, 0)) AS sb,
+                      SUM(COALESCE(pgf.catcher_cs, 0)) AS cs,
+                      SUM(COALESCE(pgf.catcher_pickoffs, 0)) AS cpk
                FROM player_game_fielding pgf
                JOIN games g    ON g.id = pgf.game_id
                JOIN players p  ON p.id = pgf.player_id

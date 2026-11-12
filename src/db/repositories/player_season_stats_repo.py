@@ -300,6 +300,7 @@ class PlayerSeasonStatsRepository:
                 "pitch_complete_games",
                 "pitch_shutouts",
                 "pitch_hit_batters",
+                "pitch_pickoffs",
                 "pitch_wpa",
                 "pitch_re24",
             ],

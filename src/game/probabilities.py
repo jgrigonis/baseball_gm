@@ -63,6 +63,43 @@ FIRST_TO_HOME_ON_SINGLE = 0.03  # 3% chance runner scores from 1st on single
 PICKOFF_SUCCESS_PROB = 0.09  # 9% successful
 PICKOFF_ERROR_PROB = 0.02  # 2% throwing error
 STEAL_ON_PICKOFF_MODIFIER = 1.5
+# A pickoff throw that goes wrong: the pitcher's bad throw or the man at
+# the bag dropping it. PICKOFF_ERROR_PROB is split by who was to blame.
+PICKOFF_DROP_SHARE = 0.35  # of a typical pickoff error, the bag man's drop
+
+# Catcher pickoffs ("back picks"): after a pitch the batter doesn't put in
+# play, with no steal on, the catcher throws behind a runner. Scaled by the
+# catcher's arm and the runner's base running, 50 / max(30, skill), like
+# the pitcher's. MLB sees a few dozen successful ones a season.
+CATCHER_PICKOFF_ATTEMPT_PROB = 0.003  # per eligible pitch with men on
+CATCHER_PICKOFF_SUCCESS_PROB = 0.09
+CATCHER_PICKOFF_THROW_FACTOR = 0.8  # catcher's throw sails, runners move up
+CATCHER_PICKOFF_DROP_FACTOR = 0.15  # the man at the bag drops it
+
+# Dropped third strikes: with first base open or two outs, the catcher
+# doesn't hold strike three cleanly. Usually he tags the batter or throws
+# him out at first; sometimes the ball gets away and he reaches (still a
+# strikeout, scored a wild pitch or passed ball).
+DROPPED_THIRD_STRIKE_PROB = 0.03  # a typical catcher on a swinging strike three
+DROPPED_THIRD_STRIKE_LOOKING_MOD = 0.3  # called strikes are rarely in the dirt
+DROPPED_THIRD_STRIKE_REACH_PROB = 0.2  # the ball gets away, batter safe at first
+DROPPED_THIRD_STRIKE_WP_SHARE = 0.7  # of those, a wild pitch (else passed ball)
+DROPPED_THIRD_STRIKE_TAG_PROB = 0.5  # else catcher throws to first
+DROPPED_THIRD_STRIKE_THROW_FACTOR = 0.3
+
+# Line drives: a share of "fly outs" are liners, some caught by infielders.
+# A runner who was off with the pitch (steal, hit and run) or caught leaning
+# can be doubled off; tagging runners can be thrown out by a good arm.
+LINE_DRIVE_SHARE = 0.3  # of fly outs
+LINE_DRIVE_INFIELD_SHARE = 0.45  # of line outs, caught by an infielder
+DOUBLED_OFF_RUNNING_PROB = 0.55  # infield liner, runner going on the pitch
+DOUBLED_OFF_LEANING_PROB = 0.05  # infield liner, runner not going (typical BR)
+DOUBLED_OFF_OF_RUNNING_PROB = 0.25  # outfield liner, runner going
+# Tagging up on a fly ball: a typical runner vs. a typical outfield arm,
+# scaled by arm / runner (speed + base_running) / 2.
+TAGUP_OUT_AT_HOME_PROB = 0.03
+TAGUP_OUT_AT_THIRD_PROB = 0.04
+TAGUP_OUT_AT_SECOND_PROB = 0.02
 
 # Steal success rates
 # Scaled by runner (2 * speed + base_running) / 150 over catcher
