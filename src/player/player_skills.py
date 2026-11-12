@@ -70,6 +70,37 @@ def _round_half_up(value: float) -> int:
     return math.floor(value + 0.5)
 
 
+# Breakout and crashout winters: (first age, last age, breakout chance,
+# crashout chance), by the age a player is going into the winter. Young
+# players break out or crash out about equally; past 30 a sudden collapse
+# is far likelier than a late surge.
+WINTER_SWINGS = [
+    (20, 26, 0.04, 0.04),
+    (27, 30, 0.015, 0.025),
+    (31, 99, 0.005, 0.05),
+]
+# How far a swing moves each of the player's real skills, so his overall
+# moves about as much.
+SWING_SIZE = (4.0, 8.0)
+# Skills below this are a player's non-skills (a pitcher's catching) and
+# don't swing.
+SWING_FLOOR_SKILL = 25
+
+
+def winter_swing(age: int, rng: random.Random) -> float:
+    """Points every real skill moves this winter: positive for a breakout,
+    negative for a crashout, usually 0."""
+    for first, last, up, down in WINTER_SWINGS:
+        if first <= age <= last:
+            roll = rng.random()
+            if roll < up:
+                return rng.uniform(*SWING_SIZE)
+            if roll < up + down:
+                return -rng.uniform(*SWING_SIZE)
+            return 0.0
+    return 0.0
+
+
 class PlayerSkills:
     """
     Immutable value object representing a player's intrinsic skills.
@@ -474,6 +505,7 @@ class PlayerSkills:
         coaching: float = 1.0,
         rng: random.Random | None = None,
         caps: dict[str, int] | None = None,
+        swings: bool = False,
     ) -> PlayerSkills:
         """
         Simulate skill progression from START_AGE to the given age.
@@ -486,6 +518,11 @@ class PlayerSkills:
             caps:     Per-player talent caps from player_talent_caps table.
                       If None, no cap dampening is applied (legacy behaviour).
                       Keys are full skill names e.g. "contact", "stamina".
+                      A breakout or crashout winter (winter_swing) moves
+                      the caps in place, so save them if they changed.
+            swings:   Roll for breakout and crashout winters. Only real
+                      offseasons do; generated players (opening rosters,
+                      draft classes, backstory) keep year one's spread.
         """
         if age <= from_age:
             return self
@@ -539,6 +576,18 @@ class PlayerSkills:
             s["durability"] += SA.delta_DU(
                 current_age, s["durability"], rng, coaching, cap("durability")
             )
+
+            # A rare breakout or crashout winter moves every real skill
+            # together, so the player's overall jumps, not just one skill.
+            swing = winter_swing(current_age, rng) if swings else 0.0
+            if swing:
+                for k in s:
+                    if s[k] >= SWING_FLOOR_SKILL:
+                        s[k] += swing
+                        # The ceiling moves too, so the jump lasts instead
+                        # of eating into the growth he had left.
+                        if caps and k in caps:
+                            caps[k] = int(clamp(round(caps[k] + swing), 1, 100))
 
             for k in s:
                 s[k] = float(clamp(s[k], 1, 100))

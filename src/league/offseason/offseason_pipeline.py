@@ -195,6 +195,7 @@ class OffseasonPipeline:
 
         for player in players:
             caps = all_caps.get(player.id)
+            caps_before = dict(caps) if caps else None
             skills = player.skills.with_fractions(all_fractions.get(player.id))
             energy_state = energy_repo.get(player.id)
             coaching = 1.0
@@ -228,8 +229,11 @@ class OffseasonPipeline:
                 rng=rng,
                 caps=caps,
                 coaching=coaching,
+                swings=True,
             )
             self.player_repo.update_skills(player.id, new_skills)
+            if caps and caps != caps_before:
+                cap_repo.update_talent_caps(player.id, caps)
         self.conn.commit()
 
         log.info("Aged %s players", len(players))

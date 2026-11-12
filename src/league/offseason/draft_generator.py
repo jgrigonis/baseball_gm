@@ -64,7 +64,7 @@ PITCHER_POSITIONS = ["sp", "rp"]
 # Each skill's distance from 50 is stretched by this much...
 DRAFT_SPREAD = 1.5
 # ...then this comes off every skill...
-DRAFT_OFFSET = 3.0
+DRAFT_OFFSET = 4.7
 # ...and this off each skill, for position players and for pitchers.
 DRAFT_SKILL_OFFSETS: dict[str, dict[str, float]] = {
     "hitter": {
