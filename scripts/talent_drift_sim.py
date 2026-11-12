@@ -101,9 +101,7 @@ def skill_means(rosters: list) -> dict[str, dict[str, float]]:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--teams", type=int, default=30)
-    ap.add_argument(
-        "--swings", action="store_true", help="breakout/crashout winters"
-    )
+    ap.add_argument("--swings", action="store_true", help="breakout/crashout winters")
     ap.add_argument("--years", type=int, default=20)
     ap.add_argument("--seed", type=int, default=11)
     ap.add_argument(
