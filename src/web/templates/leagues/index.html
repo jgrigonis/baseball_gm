@@ -49,6 +49,9 @@
   </div>
   {% endif %}
 
+  {# The Join and Watch lists refresh themselves every so often (see the
+     poll at the bottom), so a new public league shows up without a reload. #}
+  <div id="leagues-list">
   {% if leagues %}
   {% set mine = active_tab in ('tutorial', 'running', 'completed') %}
   <div class="card leagues-table-card">
@@ -103,6 +106,7 @@
   {% else %}
   <div style="{{ empty_style }}">None of your leagues have finished yet.</div>
   {% endif %}
+  </div>
 
   {% if discord_url %}
   <p class="discord-note">Questions, bugs or ideas? <a href="{{ discord_url }}" target="_blank" rel="noopener">Join us on Discord ↗</a></p>
@@ -147,11 +151,53 @@
 {% block scripts %}
 <script>
 // Show last-played times in the viewer's own time zone.
-document.querySelectorAll('time.local-time').forEach(t => {
-  const d = new Date(t.dateTime);
-  if (isNaN(d)) return;
-  t.textContent = d.toLocaleDateString(undefined, {month: 'short', day: 'numeric', year: 'numeric'});
-  t.title = d.toLocaleString();
+function localTimes(root) {
+  root.querySelectorAll('time.local-time').forEach(t => {
+    const d = new Date(t.dateTime);
+    if (isNaN(d)) return;
+    t.textContent = d.toLocaleDateString(undefined, {month: 'short', day: 'numeric', year: 'numeric'});
+    t.title = d.toLocaleString();
+  });
+}
+// Light polling: every 30 seconds, while the page is in view, fetch the page
+// again and update the tab counts. On Join and Watch the list itself is
+// swapped too, so a new public league appears (and a filled one goes) without
+// a reload. Your own lists stay put: they only change when you act on them.
+const LEAGUES_TAB = {{ active_tab | tojson }};
+const LIST_LIVE = LEAGUES_TAB === 'join' || LEAGUES_TAB === 'watch';
+const POLL_MS = 30000;
+const listEl = document.getElementById('leagues-list');
+let lastList = listEl.innerHTML;  // as the server sent it, before local times
+async function pollLeagues() {
+  if (document.hidden || _pendingLeaves) return;
+  // Don't redraw under someone renaming a league or pressing a button.
+  if (document.activeElement?.closest('#leagues-list [contenteditable], #leagues-list form')) return;
+  let html;
+  try {
+    const r = await fetch('/leagues/?tab=' + encodeURIComponent(LEAGUES_TAB), {credentials: 'same-origin'});
+    if (!r.ok || r.redirected) return;
+    html = await r.text();
+  } catch (e) { return; }
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const tabs = doc.getElementById('leagues-tabs');
+  const curTabs = document.getElementById('leagues-tabs');
+  if (tabs && curTabs && tabs.innerHTML !== curTabs.innerHTML) curTabs.innerHTML = tabs.innerHTML;
+  const list = doc.getElementById('leagues-list');
+  if (!LIST_LIVE || !list || list.innerHTML === lastList) return;
+  lastList = list.innerHTML;
+  listEl.innerHTML = list.innerHTML;
+  localTimes(listEl);
+  // Sort the new rows the way the URL says (table_sort.js sets up swapped tables).
+  listEl.dispatchEvent(new CustomEvent('htmx:afterSettle', {bubbles: true}));
+}
+localTimes(document);
+let pollTimer = setInterval(pollLeagues, POLL_MS);
+// Coming back to the tab checks right away, then keeps the usual pace.
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) return;
+  clearInterval(pollTimer);
+  pollLeagues();
+  pollTimer = setInterval(pollLeagues, POLL_MS);
 });
 async function leaveLeague(btn) {
   const id = btn.dataset.leagueId, name = btn.dataset.leagueName;
