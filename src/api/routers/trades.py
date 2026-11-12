@@ -265,6 +265,10 @@ def trades_tab(
             {
                 "player_id": p["player_id"],
                 "name": f"{p['first_name']} {p['last_name']}".strip(),
+                "sort_name": (
+                    (p["last_name"] or "").lower(),
+                    (p["first_name"] or "").lower(),
+                ),
                 "position": p.get("position") or "",
                 "overall": p.get("overall") or "",
                 "wants_trade": p["player_id"] in asks,
@@ -273,7 +277,7 @@ def trades_tab(
             for p in my_players
             if p.get("roster_status") != "pick"
         ),
-        key=lambda p: (not p["wants_trade"], not p["forty"], p["name"]),
+        key=lambda p: (not p["wants_trade"], not p["forty"], p["sort_name"]),
     )
     ctx.update(
         {

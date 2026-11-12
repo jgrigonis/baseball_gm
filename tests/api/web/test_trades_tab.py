@@ -318,3 +318,55 @@ def test_split_owner():
         "",
         "Your owner won't like it: x.",
     )
+
+
+def test_an_expired_offer_has_retry_and_full_names(client_for, db_conn, factory):
+    from src.db.repositories.trade_repo import TradeRepository
+
+    client, league, theirs, roster = client_for("blitz", players=1)
+    other = factory.rated_player(theirs, league, 60)
+    mine = db_conn.execute(
+        "SELECT team_id FROM team_players WHERE player_id = %s", (roster[0].id,)
+    ).fetchone()["team_id"]
+    season_id = db_conn.execute(
+        "SELECT season_id FROM games WHERE home_team_id = %s LIMIT 1", (mine,)
+    ).fetchone()["season_id"]
+    repo = TradeRepository(db_conn)
+    offer_id = repo.create_offer(
+        league.id,
+        season_id,
+        theirs.id,
+        mine,
+        None,
+        "2025-04-01",
+        [(other.id, theirs.id), (roster[0].id, mine)],
+    )
+    repo.decide(offer_id, "expired", None)
+    html = client.get(f"/leagues/{league.id}/trades").text
+    # Back into the builder as your offer to them: your player for theirs.
+    retry = (
+        f'trRetry({{"mine": ["{roster[0].id}"], "team": "{theirs.id}", '
+        f'"theirs": ["{other.id}"]}})'
+    )
+    assert retry in html
+    # The offer line names players in full, linked to their cards.
+    p = db_conn.execute(
+        "SELECT first_name, last_name FROM players WHERE id = %s", (other.id,)
+    ).fetchone()
+    assert f"{p['first_name']} {p['last_name']}</a>" in html
+
+
+def test_shop_a_player_lists_by_last_name(client_for, db_conn):
+    client, league, _, roster = client_for("blitz", players=3)
+    for p, (first, last) in zip(
+        roster, (("Aaron", "Zeller"), ("Zack", "Adams"), ("Mike", "Mills"))
+    ):
+        db_conn.execute(
+            "UPDATE players SET first_name = %s, last_name = %s WHERE id = %s",
+            (first, last, p.id),
+        )
+    html = client.get(f"/leagues/{league.id}/trades").text
+    shop = html[html.index('id="tr-shop-player"') :]
+    assert (
+        shop.index("Zack Adams") < shop.index("Mike Mills") < shop.index("Aaron Zeller")
+    )
