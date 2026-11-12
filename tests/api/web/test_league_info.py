@@ -178,3 +178,46 @@ def test_league_page_lists_every_teams_market_and_climate(client, league):
     assert "Big" in card and "Mid-size" in card
     assert 'class="climate-chip climate-cold">Cold<' in card
     assert "Teams (2)" in html
+
+
+def test_league_page_heading_is_the_league_name(client, db_conn, league):
+    lg, _ = league
+    db_conn.execute("UPDATE leagues SET name = 'Summer Blitz' WHERE id = %s", (lg.id,))
+
+    html = client.get(f"/leagues/{lg.id}/league").text
+
+    head = html.split('class="tab-head"')[1].split("</h1>")[0]
+    assert "Summer Blitz" in head
+    # Not the commissioner: the name is just a heading.
+    assert "contenteditable" not in head
+
+
+def test_commissioner_renames_from_the_league_page_heading(client, db_conn, league):
+    lg, gm = league
+    db_conn.execute(
+        "UPDATE leagues SET name = 'Summer Blitz', commissioner_gm_id = %s WHERE id = %s",
+        (gm.id, lg.id),
+    )
+
+    html = client.get(f"/leagues/{lg.id}/league").text
+
+    head = html.split('class="tab-head"')[1].split("</h1>")[0]
+    assert 'contenteditable="true"' in head
+    assert 'data-original="Summer Blitz"' in head
+    assert f"/leagues/{lg.id}/rename" in html
+
+
+def test_top_bar_league_name_opens_the_league_page(client, db_conn, league):
+    lg, gm = league
+    db_conn.execute(
+        "UPDATE leagues SET name = 'Summer Blitz', commissioner_gm_id = %s WHERE id = %s",
+        (gm.id, lg.id),
+    )
+
+    html = client.get(f"/leagues/{lg.id}/standings").text
+
+    name = html.split('class="topbar-league-name"')[0].rsplit("<a ", 1)[1]
+    assert f'href="/leagues/{lg.id}/league"' in name
+    # No rename prompt in the top bar any more.
+    assert "rename-modal" not in html
+    assert "openRenameModal" not in html
