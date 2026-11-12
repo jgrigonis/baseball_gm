@@ -82,7 +82,11 @@ def records_page(
     ?team= narrows it to one club."""
     ctx = _shell_ctx(request, db, gm, league_id, user=user)
     my_team_id = gm["team_id"] if gm else None
-    ctx.update(records.book(db, league_id, view, team or None, my_team_id))
+    ctx.update(
+        records.book(
+            db, league_id, view, team or None, my_team_id, (user or {}).get("id")
+        )
+    )
     return tab_response(request, htmx, "dashboard/partials/records.html", ctx)
 
 

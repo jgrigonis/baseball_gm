@@ -17,6 +17,7 @@ from src.db.repositories.player_energy import PlayerEnergyRepository
 from src.api.services import league_custom_teams
 from src.league import divisions, real_seasons
 from src.league.backstory.service import create_backstory
+from src.api.services.records import play as records_play
 from src.league.bootstrap import LeagueBootstrapper
 from src.league.league_constants import (
     ALL_STAR_BREAK_AFTER_GAMES,
@@ -223,6 +224,9 @@ def start_league(
 
     # ── 8. Advance league state → draft ──────────────────────────────────────
     lr.set_state(league_id, "draft")
+
+    # ── 9. Record book: the backstory's best games and streaks ───────────────
+    records_play.update_league(conn, league_id)
 
     return {
         "league_id": league_id,

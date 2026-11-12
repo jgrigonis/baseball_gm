@@ -437,6 +437,9 @@ def reactions(conn, league_id: str, today: str | None = None, team_ids=None) -> 
         written += _streak_reactions(
             conn, league_id, season["id"], team_id, gm, owner, fields, today
         )
+        written += _record_reactions(
+            conn, league_id, season["id"], team_id, gm, owner, fields, today
+        )
     return written
 
 
@@ -712,6 +715,38 @@ def _streak_reactions(
             written += 1
             delta = 0.1 if won else -0.05 * n / 4
             _nudge_mood(conn, league_id, team_id, season_id, owner, delta)
+    return written
+
+
+# A league record set by one of the club's own: a small lift to the mood.
+RECORD_MOOD = 0.05
+
+
+def _record_reactions(
+    conn, league_id, season_id, team_id, gm, owner, fields, today
+) -> int:
+    """A word (and a small lift) for each league record this season set by
+    the club's players or the club itself (services/records/news.py)."""
+    rows = conn.execute(
+        """SELECT key FROM league_news
+           WHERE league_id = %s AND season_id = %s AND kind = 'record'
+             AND %s = ANY(team_ids)
+             AND headline NOT LIKE '%%losses%%'
+           ORDER BY id""",
+        (league_id, season_id, team_id),
+    ).fetchall()
+    written = 0
+    for r in rows:
+        key = f"record:{r['key']}"
+        if _has(conn, league_id, team_id, key):
+            continue
+        body = om.record_set(fields, _rng(season_id, team_id, key))
+        if _write(
+            conn, league_id, team_id, gm["id"], season_id, key, "record", body,
+            today, None,
+        ):  # fmt: skip
+            written += 1
+            _nudge_mood(conn, league_id, team_id, season_id, owner, RECORD_MOOD)
     return written
 
 

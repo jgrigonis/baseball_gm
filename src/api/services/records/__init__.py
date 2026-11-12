@@ -2,23 +2,34 @@
 """
 The league record book (the Records tab, below Hall of Fame).
 
-  season    most (or best) in a season, batting and pitching    seasons.py
-  career    most in a career                                    seasons.py
-  team      a club's season and its single games                teams.py
+  season      most (or best) in a season, plus record watch    seasons.py, watch.py
+  game        most in one game                                 stored.py
+  streaks     players' and clubs' streaks                      stored.py
+  career      most in a career                                 seasons.py
+  postseason  playoff games, series, careers and titles        postseason.py
+  team        a club's season and its single games             teams.py
+  gms         the people who ran clubs here                    gms.py
 
-Every view can be narrowed to one club (franchise records). Records are
-worked out from the season lines and games on each visit; backstory seasons
-count like played ones, so a new league's book starts full.
+Every view can be narrowed to one club (franchise records). Season, career,
+team and postseason records are worked out from the season lines and games
+on each visit; single games and streaks are kept as games are played
+(play.py), with the backstory replayed into games to start them
+(replay.py). Backstory seasons count like played ones, so a new league's
+book starts full.
 """
 
 from __future__ import annotations
 
-from src.api.services.records import seasons, teams
+from src.api.services.records import gms, postseason, seasons, stored, teams, watch
 
 VIEWS = [
     ("season", "Season"),
+    ("game", "Single game"),
+    ("streaks", "Streaks"),
     ("career", "Career"),
+    ("postseason", "Postseason"),
     ("team", "Team"),
+    ("gms", "GMs"),
 ]
 VIEW_KEYS = {k for k, _ in VIEWS}
 
@@ -50,7 +61,12 @@ def clubs(conn, league_id: str) -> list[dict]:
 
 
 def book(
-    conn, league_id: str, view: str, team_id: str | None, my_team_id: str | None
+    conn,
+    league_id: str,
+    view: str,
+    team_id: str | None,
+    my_team_id: str | None,
+    my_user_id: str | None = None,
 ) -> dict:
     """The page's context: ``sections`` is a list of (title, [Card])."""
     if view not in VIEW_KEYS:
@@ -59,6 +75,11 @@ def book(
     if team_id and not any(c["id"] == team_id for c in club_list):
         team_id = None
     sections: list[tuple[str, list]] = []
+    watching: list[dict] = []
+    if view == "season" and not team_id:
+        watching = watch.watch(
+            conn, league_id, current_season(conn, league_id), my_team_id
+        )
     if view in ("season", "career"):
         rows = seasons.load(conn, league_id, team_id)
         if view == "season":
@@ -81,6 +102,29 @@ def book(
             ),
             ("Single game", teams.game_cards(conn, league_id, my_team_id, team_id)),
         ]
+    elif view == "game":
+        cards = stored.game_cards(conn, league_id, my_team_id, team_id)
+        sections = [("Batting", cards["batting"]), ("Pitching", cards["pitching"])]
+    elif view == "streaks":
+        cards = stored.streak_cards(conn, league_id, my_team_id, team_id)
+        sections = [("Players", cards["players"]), ("Clubs", cards["teams"])]
+    elif view == "postseason":
+        series = postseason.series_cards(conn, league_id, my_team_id, team_id)
+        sections = [
+            (
+                "Titles",
+                postseason.team_title_cards(conn, league_id, my_team_id, team_id),
+            ),
+            (
+                "Single game",
+                postseason.game_cards(conn, league_id, my_team_id, team_id),
+            ),
+            ("Series", series["counts"]),
+            ("Series rates: top ten", series["rates"]),
+            ("Career", postseason.career_cards(conn, league_id, my_team_id, team_id)),
+        ]
+    elif view == "gms":
+        sections = [("People", gms.cards(conn, league_id, my_user_id, team_id))]
     return {
         "rec_view": view,
         "rec_views": VIEWS,
@@ -90,5 +134,6 @@ def book(
         ),
         "rec_clubs": club_list,
         "rec_sections": sections,
+        "rec_watch": watching,
         "rec_empty": all(c.empty for _, cs in sections for c in cs),
     }

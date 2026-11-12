@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 
 LIST_SIZE = 5
 HOLDERS_SHOWN = 3
+MORE_SHOWN = 30  # names behind "+N more tied"
 
 
 @dataclass
@@ -32,14 +33,28 @@ class Card:
     mark: dict | None = None  # an unbeaten league mark (a floor), no holder
     times: int = 0  # how often the record value was reached (single games)
     note: str = ""  # the qualifier, under the title
+    listing: bool = False  # a top ten with no headline record
 
     @property
     def more_holders(self) -> int:
-        return max(0, len(self.holders) - HOLDERS_SHOWN)
+        return max(0, len(self.holders) - len(self.shown_holders))
+
+    @property
+    def crowded(self) -> bool:
+        """Tied so often it's shown as the first, the latest and a count."""
+        return len(self.holders) > HOLDERS_SHOWN
 
     @property
     def shown_holders(self) -> list[dict]:
+        if self.crowded:
+            latest = max(self.holders, key=lambda h: h.get("order") or "")
+            return [self.holders[0], latest]
         return self.holders[:HOLDERS_SHOWN]
+
+    @property
+    def hidden_holders(self) -> list[dict]:
+        shown = {id(h) for h in self.shown_holders}
+        return [h for h in self.holders if id(h) not in shown][:MORE_SHOWN]
 
     @property
     def others(self) -> list[dict]:
@@ -82,6 +97,7 @@ def card(
     floor: float | None = None,
     floor_shown: str = "",
     size: int = LIST_SIZE,
+    listing: bool = False,
 ) -> Card:
     """A record card from every performance that could be on it.
 
@@ -91,7 +107,7 @@ def card(
     """
     rows = rank(perfs, lower, size)
     holders = [r for r in rows if r["rank"] == 1]
-    c = Card(key, label, tip=tip, lower=lower, rows=rows, note=note)
+    c = Card(key, label, tip=tip, lower=lower, rows=rows, note=note, listing=listing)
     if floor is not None and not _beats(holders, floor, lower):
         c.mark = {"value": floor, "shown": floor_shown or _plain(floor)}
         c.holders = []

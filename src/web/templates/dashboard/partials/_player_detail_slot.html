@@ -68,6 +68,9 @@
  {% if player.hall_of_fame %}
    <span class="badge {{ 'badge-hof' if player.hall_of_fame.elected else 'badge-hof-ballot' }}" title="{{ player.hall_of_fame.title }}">🏛️ {{ player.hall_of_fame.text }}</span>
  {% endif %}
+ {% if player.records_held %}
+   <span class="badge badge-hof" title="League record: {{ player.records_held | join('; ') }}">📖 {% if player.records_held|length > 1 %}{{ player.records_held|length }} league records{% else %}League record{% endif %}</span>
+ {% endif %}
  {% if player.icon_seasons %}
    <span class="badge badge-icon" title="{{ player.icon_seasons }} seasons with the {{ player.icon_team or player.team_mascot }} and still a top player. Owners who care about icons won't like seeing him traded or released.">Franchise icon · {{ player.icon_seasons }} seasons</span>
  {% endif %}

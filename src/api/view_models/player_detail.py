@@ -35,6 +35,7 @@ from src.db.repositories.team_repo import TeamRepository
 from src.api.services import hr_derby, rookie_game
 from src.api.services import awards as awards_service
 from src.api.services import hall_of_fame, icons
+from src.api.services.records import held as records_held
 from src.league import all_star
 from src.league import awards as awards_mod
 from src.api.services import season_value as sv
@@ -380,6 +381,7 @@ def player_panel_data(
         "all_star_years": _all_star_years(db, pid),
         "awards": player_awards(db, pid),
         "hall_of_fame": hall_of_fame.badge(db, pid),
+        "records_held": records_held.held(db, league_id, pid),
         **_icon(db, pid, team, overall_grade),
     }
 
@@ -774,6 +776,7 @@ def player_career_data(db, league_id: str, pid: str) -> dict | None:
         "all_star_years": _all_star_years(db, pid),
         "awards": award_list,
         "hall_of_fame": hall_of_fame.badge(db, pid),
+        "records_held": records_held.held(db, league_id, pid),
         "award_icons": _award_icons_by_year(award_list),
         "all_star_games": [
             {**r, "summary": all_star.line_text(r)}
