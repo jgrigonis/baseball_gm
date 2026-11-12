@@ -80,7 +80,7 @@
             {%- if o.owner_refuses -%}
               <strong class="tr-owner-past">{{ o.owner_warning }}</strong> {{ o.budget_warning }}
             {%- else -%}
-              {{ o.budget_warning }}{% if o.owner_warning %} <strong class="tr-owner-past">{{ o.owner_warning }}</strong>{% endif %}
+              {{ o.budget_warning }}{% if o.owner_warning %} <strong class="tr-owner-budget">{{ o.owner_warning }}</strong>{% endif %}
             {%- endif -%}
           </div>{% endif %}
         </div>
@@ -379,7 +379,7 @@ function budgetNote() {
   var extra = tax(after) - tax(BUDGET.payroll);
   var bits = [];
   if (extra > 0) bits.push(money(extra) + ' more luxury tax');
-  if (after > BUDGET.budget) bits.push('<strong class="tr-owner-past">past your owner\'s ' + money(BUDGET.budget) + ' budget</strong>');
+  if (after > BUDGET.budget) bits.push('<strong class="tr-owner-budget">past your owner\'s ' + money(BUDGET.budget) + ' budget</strong>');
   return '<div class="tr-budget">Payroll after: ' + money(after) + ' (cap ' + money(BUDGET.cap) +
          '), ' + bits.join(', ') + '.</div>';
 }
@@ -1004,7 +1004,7 @@ function absorbPayLine(o) {
   var extra = tax(after) - tax(BUDGET.payroll);
   var bits = [];
   if (extra > 0) bits.push(money(extra) + ' more luxury tax');
-  if (after > BUDGET.budget) bits.push('<strong class="tr-owner-past">past your owner\'s ' + money(BUDGET.budget) + ' budget</strong>');
+  if (after > BUDGET.budget) bits.push('<strong class="tr-owner-budget">past your owner\'s ' + money(BUDGET.budget) + ' budget</strong>');
   if (bits.length)
     html += '<div class="tr-budget">Payroll after: ' + money(after) + ' (cap ' + money(BUDGET.cap) + '), ' + bits.join(', ') + '.</div>';
   return html;
@@ -1149,7 +1149,10 @@ if (done) { showResult(done.msg, done.kind, done.dest); window._tradeResult = nu
   border: 1px solid var(--border-hi); background: var(--bg-2); }
 #trades-page .tr-summary { flex: 1; font-size: 12px; }
 #trades-page .tr-budget { color: var(--red); }
+/* Past the owner's hard limit (Accept is refused): bold red. Past their
+   budget (they won't like it): bold, not red. */
 #trades-page .tr-owner-past { color: var(--red); font-weight: 700; font-style: normal; }
+#trades-page .tr-owner-budget { color: var(--text); font-weight: 700; font-style: normal; }
 #trades-page .tr-k { font-family: var(--font-mono); font-size: 10px; color: var(--amber); text-transform: uppercase;
   margin-left: 8px; }
 #trades-page .tr-k:first-child { margin-left: 0; }
