@@ -1,0 +1,158 @@
+{# templates/dashboard/partials/records.html
+   The record book (services/records): a view per kind of record, each
+   section a grid of cards. A card is the record and its holders (everyone
+   tied at the top, the first to get there first), then the next best.
+   The view and club live in the query string so a refresh keeps them. #}
+{% macro rec_click(r) -%}
+{%- if r.player_id %} onclick="openPlayerPanel('{{ r.player_id }}')"{% elif r.game_id %} onclick="openGamePanel('{{ r.game_id }}')"{% endif -%}
+{%- endmacro %}
+{% macro rec_card(c) %}
+<div class="rec-card{% if c.holders and c.holders[0].is_mine %} mine{% endif %}">
+  <div class="rec-title">{% if c.tip %}<span class="setting-tip tip-card" tabindex="0" data-tip="{{ c.tip }}">{{ c.label }}</span>{% else %}{{ c.label }}{% endif %}</div>
+  {% if c.note %}<div class="rec-note">{{ c.note }}</div>{% endif %}
+  {% if c.empty %}
+  <div class="rec-none">Nobody yet.</div>
+  {% else %}
+  <div class="rec-top">
+    {% if c.mark %}
+    <span class="rec-value">{{ c.mark.shown }}</span>
+    <div class="rec-holders">
+      <div class="rec-holder-name rec-mark-name">League mark</div>
+      <div class="rec-holder-meta">Nobody has beaten it yet</div>
+    </div>
+    {% else %}
+    <span class="rec-value">{{ c.holders[0].shown }}</span>
+    <div class="rec-holders">
+      {% for h in c.shown_holders %}
+      <div class="rec-holder{% if h.is_mine %} mine{% endif %}"{{ rec_click(h) }}>
+        <span class="rec-holder-name">{{ h.name }}</span>{% if h.active %}<span class="rec-live" title="Still going">live</span>{% endif %}
+        <div class="rec-holder-meta">{{ h.detail }}{% if h.team %} · {{ h.team }}{% endif %}</div>
+      </div>
+      {% endfor %}
+      {% if c.more_holders %}
+      <details class="rec-more">
+        <summary>+{{ c.more_holders }} more tied</summary>
+        {% for h in c.holders[3:] %}
+        <div class="rec-holder{% if h.is_mine %} mine{% endif %}"{{ rec_click(h) }}>
+          <span class="rec-holder-name">{{ h.name }}</span>
+          <div class="rec-holder-meta">{{ h.detail }}{% if h.team %} · {{ h.team }}{% endif %}</div>
+        </div>
+        {% endfor %}
+      </details>
+      {% endif %}
+      {% if c.times > c.holders|length %}<div class="rec-times">Done {{ c.times }} times</div>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+  {% set rest = c.rows if c.mark else c.others %}
+  {% if rest %}
+  <div class="rec-list">
+    {% for r in rest %}
+    <div class="rec-row{% if r.is_mine %} mine{% endif %}"{{ rec_click(r) }}>
+      <span class="rec-rank">{{ r.rank }}</span>
+      <span class="rec-row-who">
+        <span class="rec-row-name">{{ r.name }}</span>{% if r.active %}<span class="rec-live" title="Still going">live</span>{% endif %}
+        <span class="rec-row-meta">{{ r.detail }}{% if r.team %} · {{ r.team }}{% endif %}</span>
+      </span>
+      <span class="rec-row-val">{{ r.shown }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endif %}
+</div>
+{% endmacro %}
+
+{% set rec_base = '/leagues/' ~ league_id ~ '/records' %}
+<div class="tab-head">
+  <div class="rec-head">
+    <h1 class="page-title">Records{% if rec_team_name %} <span class="rec-club">· {{ rec_team_name }}</span>{% endif %}</h1>
+    <div class="rec-views" role="tablist">
+      {% for key, label in rec_views %}
+      {% set href = rec_base ~ '?view=' ~ key ~ ('&team=' ~ rec_team_id if rec_team_id else '') %}
+      <a href="{{ href }}" hx-get="{{ href }}" hx-target="#tab-content" hx-swap="innerHTML" hx-push-url="true"
+         role="tab" aria-selected="{{ 'true' if key == rec_view else 'false' }}"
+         class="rec-view{% if key == rec_view %} on{% endif %}">{{ label }}</a>
+      {% endfor %}
+    </div>
+    {% if rec_clubs %}
+    <select class="rec-team" name="team" aria-label="Club"
+            hx-get="{{ rec_base }}" hx-include="this" hx-vals='{"view": "{{ rec_view }}"}' hx-trigger="change"
+            hx-target="#tab-content" hx-swap="innerHTML" hx-push-url="true">
+      <option value="">Whole league</option>
+      {% for c in rec_clubs %}<option value="{{ c.id }}"{% if c.id == rec_team_id %} selected{% endif %}>{{ c.name }}</option>{% endfor %}
+    </select>
+    {% endif %}
+  </div>
+  <div class="rec-rules">
+    Regular season, counting the seasons before the league started. Rate stats need a finished season. Ties are shared, and whoever got there first is listed first.
+    {% if rec_team_name %}Only what players did for the {{ rec_team_name }} counts.{% endif %}
+  </div>
+</div>
+
+<div class="tab-body">
+  {% if rec_empty %}
+  <div class="rec-empty">No records yet. They fill in as games are played.</div>
+  {% else %}
+  {% for title, cards in rec_sections %}
+  {% if cards %}
+  <div class="rec-section-head"><span class="rec-kicker">{{ title }}</span></div>
+  <div class="rec-grid">
+    {% for c in cards %}{{ rec_card(c) }}{% endfor %}
+  </div>
+  {% endif %}
+  {% endfor %}
+  {% endif %}
+</div>
+
+<style>
+.rec-head { display:flex;align-items:center;gap:10px;flex-wrap:wrap; }
+.rec-club { color:var(--text-dim);font-weight:400; }
+.rec-views { display:flex;border:1px solid var(--border);flex-wrap:wrap; }
+.rec-view { padding:5px 14px;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);text-decoration:none;
+  border-left:1px solid var(--border); }
+.rec-view:first-child { border-left:none; }
+.rec-view.on { background:var(--green-dim);color:var(--green); }
+.rec-team { width:auto;flex:none;margin:0;max-width:220px;font-family:var(--font-mono);font-size:12px;background:var(--bg-2);
+  color:var(--text);border:1px solid var(--border);border-radius:4px;padding:4px 6px; }
+.rec-rules { font-size:12px;color:var(--text-dim);margin-top:6px;max-width:720px;line-height:1.5; }
+.rec-empty { padding:48px 0;text-align:center;font-family:var(--font-mono);font-size:13px;color:var(--text-dim); }
+.rec-section-head { margin:18px 0 10px; }
+.rec-section-head:first-child { margin-top:4px; }
+.rec-kicker { font-family:var(--font-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--amber); }
+.rec-grid { display:grid;grid-template-columns:repeat(auto-fill, minmax(250px, 1fr));gap:12px; }
+.rec-card { background:var(--bg-2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;min-width:0; }
+.rec-card.mine { box-shadow:inset 3px 0 0 var(--green); }
+.rec-title { font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim); }
+.rec-note { font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:2px; }
+.rec-none { font-family:var(--font-mono);font-size:11px;color:var(--text-dim);padding:10px 0 4px; }
+.rec-top { display:flex;gap:12px;align-items:flex-start;margin-top:8px; }
+.rec-value { font-family:var(--font-display);font-size:30px;font-weight:700;line-height:1;color:var(--amber);flex:none;min-width:44px; }
+.rec-holders { min-width:0;flex:1; }
+.rec-holder { cursor:pointer;padding:1px 0; }
+.rec-holder + .rec-holder { margin-top:3px; }
+.rec-holder:hover .rec-holder-name { text-decoration:underline; }
+.rec-holder-name { font-weight:600;font-size:13px;color:var(--text-hi); }
+.rec-holder.mine .rec-holder-name { color:var(--green); }
+.rec-mark-name { color:var(--text-dim); }
+.rec-holder-meta { font-family:var(--font-mono);font-size:10px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.rec-more summary { cursor:pointer;font-family:var(--font-mono);font-size:10px;color:var(--sky);margin-top:3px; }
+.rec-times { font-family:var(--font-mono);font-size:10px;color:var(--amber);margin-top:4px; }
+.rec-live { font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--green);
+  border:1px solid var(--green-dim);border-radius:3px;padding:0 4px;margin-left:6px;vertical-align:1px; }
+.rec-list { margin-top:8px;border-top:1px solid var(--border); }
+.rec-row { display:grid;grid-template-columns:18px 1fr auto;gap:6px;align-items:baseline;padding:4px 0;cursor:pointer;
+  border-top:1px solid var(--border); }
+.rec-row:first-child { border-top:none; }
+.rec-row:hover { background:var(--bg-3); }
+.rec-rank { font-family:var(--font-mono);font-size:10px;color:var(--muted); }
+.rec-row-who { min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.rec-row-name { font-size:12px;font-weight:600;color:var(--text); }
+.rec-row.mine .rec-row-name { color:var(--green); }
+.rec-row-meta { font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-left:4px; }
+.rec-row-val { font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--text); }
+@media (max-width: 600px) {
+  .rec-grid { grid-template-columns:1fr; }
+  .rec-team { max-width:100%;flex:1 1 100%; }
+}
+</style>

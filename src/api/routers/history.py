@@ -9,7 +9,7 @@ from fastapi import APIRouter, Query, Request
 from fastapi.responses import HTMLResponse
 
 from src.api.dependencies import DB, GM, GMOrViewer, IsHTMX, User
-from src.api.services import hall_of_fame
+from src.api.services import hall_of_fame, records
 from src.api.view_models.seasons import history_context
 from src.league import hall_of_fame as hof_rules
 from src.db.repositories.gm_evaluation_repo import GMEvaluationRepository
@@ -65,6 +65,25 @@ def hall_of_fame_page(
         }
     )
     return tab_response(request, htmx, "dashboard/partials/hall_of_fame.html", ctx)
+
+
+@router.get("/leagues/{league_id}/records", response_class=HTMLResponse)
+def records_page(
+    request: Request,
+    htmx: IsHTMX,
+    league_id: str,
+    db: DB,
+    user: User,
+    gm: GMOrViewer,
+    view: str = Query("season"),
+    team: str | None = Query(None),
+):
+    """The record book (services/records): ?view= picks the kind of record,
+    ?team= narrows it to one club."""
+    ctx = _shell_ctx(request, db, gm, league_id, user=user)
+    my_team_id = gm["team_id"] if gm else None
+    ctx.update(records.book(db, league_id, view, team or None, my_team_id))
+    return tab_response(request, htmx, "dashboard/partials/records.html", ctx)
 
 
 def _first_election_year(db, league_id: str) -> int | None:
