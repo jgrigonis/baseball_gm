@@ -384,6 +384,9 @@
   font-size: 11px; white-space: nowrap;
 }
 .lu-hdr-view { display: inline-flex; align-items: center; gap: 6px; margin-left: 12px; }
+/* Breathing room between the view toggles and the action buttons, even when
+   the column is narrow enough that the spacer between them collapses. */
+.lu-hdr-view:has(+ .spacer + .lu-hdr-actions) { margin-right: 24px; }
 .lu-col-hdr select { height: 28px; padding-top: 0; padding-bottom: 0; }
 .lu-hdr-actions + div { margin-left: 6px; }
 .lu-hdr-seg { display: inline-flex; border: 1px solid var(--border); }
