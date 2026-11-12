@@ -168,9 +168,14 @@ def test_after_a_season_the_cap_follows_what_teams_owe_next_season(lg):
     x = lg()
     x.budgets.for_league(x.league.id, 2026)
     now = x.budgets.cap(x.league.id, 2026)
-    # Payroll climbs past the cap before the season ends.
+    # Payroll climbs past the cap before the season ends: four stars on
+    # deals that run past next season (a random starting-roster deal could
+    # end this season and leave next season's payroll short of the cap).
     for _ in range(4):
-        x.factory.rated_player(x.mine, x.league, level=85)
+        star = x.factory.rated_player(x.mine, x.league, level=85)
+        x.contracts.insert_deal(
+            star.id, x.league.id, x.mine.id, ct.Deal(30_000_000, 3, "standard"), 2026
+        )
     x.contracts.sign_unsigned(x.league.id, 2026)
     x.contracts.guarantee(
         [
