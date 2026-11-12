@@ -39,7 +39,7 @@ SETTINGS: tuple[tuple[str, tuple[Setting, ...]], ...] = (
                 mp.LINEUP_STYLE,
                 ("Traditional", "Analytics", "Speed-first", "Power-first", "Defensive"),
                 ("Traditional", "Defensive"),
-                "How Auto-fill, Rebuild and the AI build your lineup. Every style "
+                "How Fill, Rebuild and the AI build your lineup. Every style "
                 "leads off with your best on-base hitter. Traditional bats the best "
                 "hitter 3rd; Analytics bats him 2nd; Speed-first plays faster bats "
                 "and puts speed 2nd and 9th; Power-first plays bigger bats and "
@@ -102,7 +102,7 @@ SETTINGS: tuple[tuple[str, tuple[Setting, ...]], ...] = (
                 "benches a "
                 "regular only for a bench player who's close to him and has the "
                 "better matchup. Aggressive plays the best matchup lineup. Used "
-                "by Auto-fill, Rebuild and the AI, and to fill gaps in your "
+                "by Fill, Rebuild and the AI, and to fill gaps in your "
                 "saved lineups; a lineup you save is played as you set it.",
             ),
         ),
@@ -123,7 +123,7 @@ SETTINGS: tuple[tuple[str, tuple[Setting, ...]], ...] = (
                 ),
                 ("Ratings", "Results"),
                 "How much a player's stats this season count against his "
-                "ratings when Auto-fill, Rebuild and the AI pick who plays. Stats "
+                "ratings when Fill, Rebuild and the AI pick who plays. Stats "
                 "are regressed to the ratings by how much he's played, so a hot "
                 "couple of weeks barely moves anyone.",
             ),
@@ -177,7 +177,7 @@ SETTINGS: tuple[tuple[str, tuple[Setting, ...]], ...] = (
                 mp.ROTATION_SIZE,
                 ("4-man", "5-man", "6-man"),
                 ("4", "6"),
-                "How many starters Auto-fill and Rebuild put in your rotation on the Lineup "
+                "How many starters Fill and Rebuild put in your rotation on the Lineup "
                 "tab. Whoever is in your saved rotation is who pitches.",
             ),
             Setting(
@@ -262,7 +262,7 @@ CHECKBOXES: tuple[tuple[str, tuple[Checkbox, ...]], ...] = (
                 "Rest rusty players",
                 "A player back from an injury is rusty for a while: a few "
                 "ratings are down until it fades. When this is on he sits "
-                "until it's gone. Rebuild and Auto-fill leave him out of the "
+                "until it's gone. Rebuild and Fill leave him out of the "
                 "lineup and rotation, the bullpen gives him no role, and on "
                 "game day he's out like an injured player. Rust fades twice as "
                 "fast on days he doesn't play. Off plays him through it.",
