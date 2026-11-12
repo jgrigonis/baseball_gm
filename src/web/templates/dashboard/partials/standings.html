@@ -30,7 +30,7 @@
         <th class="phone-hide st-extra" style="text-align:center;">RA</th>
         <th style="text-align:center;"><span class="phone-hide">Streak</span><span class="phone-only">Strk</span></th>
         <th class="phone-hide" title="Where each front office sees its team">Direction</th>
-        {% if show_money %}<th class="phone-hide" title="Where each team stands with its owner's budget">Money</th>{% endif %}
+        {% if show_money %}<th class="phone-hide" title="AI teams: where each stands with its owner's budget. Teams run by people: payroll against the cap, spending against the owner's budget and limit">Money</th>{% endif %}
       </tr>
     </thead>
     <tbody>
@@ -316,5 +316,10 @@ tr.row-out td { opacity: .6; }
 .money-state-flush { color: var(--green); }
 .money-state-capped-out { color: var(--amber); }
 .money-state-cutting-costs { color: var(--red); }
+/* A person's team: under the cap green through past the owner's limit red */
+.money-state-under-cap { color: var(--green); }
+.money-state-over-cap { color: var(--amber); }
+.money-state-over-budget { color: #f2914e; }
+.money-state-over-limit { color: var(--red); }
 </style>
 

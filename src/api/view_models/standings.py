@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from src.api.services import owners, sim_summary
+from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.injury_repo import InjuryRepository
@@ -43,11 +44,26 @@ def standings_rows(
     states = TeamStateRepository(db).latest(league_id, season_id)
     # And where it stands with its owner's money (src/league/money_state.py),
     # this season only: the books are now, not then.
-    money = (
-        owners.season_money_states(db, league_id, season_id)
-        if season_id == SeasonRepository(db).get_current_id_for_league(league_id)
-        else {}
-    )
+    # A person's team shows its payroll and spending against the cap and
+    # its owner instead (money_state.payroll_state).
+    current = season_id == SeasonRepository(db).get_current_id_for_league(league_id)
+    money = owners.season_money_states(db, league_id, season_id) if current else {}
+    money_tags: dict[str, tuple[str, str, str]] = {
+        t: (m, money_state.label(m), money_state.TIPS.get(m, ""))
+        for t, m in money.items()
+    }
+    if money:
+        year = SeasonRepository(db).get_year(season_id)["year"]
+        budgets = BudgetRepository(db)
+        for t in human_team_ids:
+            standing = budgets.standing(league_id, t, year)
+            m = money_state.payroll_state(standing)
+            if m:
+                money_tags[t] = (
+                    m,
+                    money_state.PAYROLL_LABELS[m],
+                    money_state.payroll_tip(m, standing),
+                )
     gms = team_gms(db, league_id)
 
     # Build per-team recent results
@@ -117,9 +133,9 @@ def standings_rows(
                 "state_label": team_state.LABELS.get(
                     states.get(r["team_id"], {}).get("state"), ""
                 ),
-                "money": money.get(r["team_id"]),
-                "money_label": money_state.label(money.get(r["team_id"])),
-                "money_tip": money_state.TIPS.get(money.get(r["team_id"]) or "", ""),
+                "money": money_tags.get(r["team_id"], (None, "", ""))[0],
+                "money_label": money_tags.get(r["team_id"], (None, "", ""))[1],
+                "money_tip": money_tags.get(r["team_id"], (None, "", ""))[2],
                 "is_mine": r["team_id"] == my_team_id,
                 "gm": gms.get(r["team_id"]),
             }

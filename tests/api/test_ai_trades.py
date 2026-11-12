@@ -243,3 +243,22 @@ def test_a_team_cutting_costs_sells_from_the_start():
     assert ai_trades._role(early) == "other"
     assert ai_trades._role(early, "flush") == "other"
     assert ai_trades._role(early, "cutting-costs") == "seller"
+
+
+def test_ai_offers_dont_add_salary_to_a_gm_past_their_owners_limit(ai, monkeypatch):
+    """A GM past their owner's limit gets no offer that adds salary: their
+    owner would refuse it (src/league/money_state.py person_pay_room)."""
+    from src.api.services import owners
+    from src.db.repositories.budget_repo import BudgetRepository
+    from src.league import budget as bg
+
+    monkeypatch.setattr(owners, "pay_rooms", lambda *a, **k: {ai.theirs.id: 10**9})
+    # 250M payroll + 25M tax: past a 270M limit.
+    over = bg.standing(250_000_000, 200_000_000, 260_000_000, 270_000_000)
+    monkeypatch.setattr(BudgetRepository, "standing", lambda *a: over)
+    states = {ai.mine.id: "rebuilding", ai.theirs.id: "contending"}
+    sides = ai_trades._sides(
+        ai.db, ai.league.id, ai.season.id, [ai.mine.id, ai.theirs.id], states, {}, TODAY
+    )
+    assert sides[ai.mine.id].pay_room == 0
+    assert sides[ai.theirs.id].pay_room == 10**9
