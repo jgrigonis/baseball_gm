@@ -38,6 +38,40 @@ function fetchNews() {
     .finally(function() { fetchingNews = false; });
 }
 
+// The sim card (shell.html simCard) follows the league's periods the way it
+// follows a single player's sims: "Simming season period 3…" while one
+// runs, then "✓ Season period 3 done · 42W-31L · 1st in East by 2.5" and the
+// period's news. A period starts the card's news fresh.
+function cardStatus(msg) { if (window.simCardStatus) window.simCardStatus(msg); }
+function periodName(state, from, to) {
+  var phase = PHASES[state] || 'League';
+  return phase + (to > from ? ' periods ' + from + '–' + to : ' period ' + from);
+}
+function teamLine(t) {
+  if (!t || t.wins === undefined) return '';
+  var parts = [t.wins + 'W-' + t.losses + 'L', t.standing];
+  if (t.race) parts.push(t.race);
+  if (t.games_left > 0 && t.games_left <= 20) parts.push(t.games_left + (t.games_left === 1 ? ' game left' : ' games left'));
+  if (t.story) parts.push(t.story.headline);
+  return parts.join(' · ');
+}
+function periodRan(prev, d) {
+  // This GM's own poll ran it: the card never saw it start.
+  if (!prev.simming && window.simCard) window.simCard.newRun();
+  if (window.simCard) window.simCard.running(false);
+  var done = '✓ ' + periodName(prev.league_state, prev.period, d.period - 1) + ' done';
+  cardStatus(done);
+  fetchingNews = true;
+  fetch(URL + '/news?team=1').then(function(r) { return r.json(); })
+    .then(function(n) {
+      var line = teamLine(n.my_team);
+      if (line) cardStatus(done + ' · ' + line);
+      if (window.showInjuryNews) window.showInjuryNews(n);
+    })
+    .catch(function() {})
+    .finally(function() { fetchingNews = false; });
+}
+
 function fmt(sec) {
   var m = Math.floor(sec / 60), s = sec % 60;
   return m + ':' + (s < 10 ? '0' : '') + s;
@@ -126,8 +160,15 @@ function apply(d) {
       return;
     }
     window.refreshActiveTab();
-    fetchNews();
-  } else if (d.has_news && prev) {
+    periodRan(prev, d);
+  } else if (d.simming && !(prev && prev.simming)) {
+    // A period started (another GM's poll, or the window ran out).
+    if (window.simCard) { window.simCard.newRun(); window.simCard.running(true); }
+    cardStatus('Simming ' + periodName(d.league_state, d.period, d.period).toLowerCase() + '…');
+  } else if (prev && prev.simming && !d.simming && window.simCard) {
+    window.simCard.running(false);
+  }
+  if (d.has_news && prev && prev.period === d.period) {
     // (The shell fetches the news on page load, before the first poll.)
     fetchNews();
   }

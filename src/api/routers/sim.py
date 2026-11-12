@@ -132,10 +132,25 @@ def job_status(league_id: str, job_id: str, db: DB, gm: GMOrViewer):
 
 
 @router.get("/leagues/{league_id}/news")
-def injury_news(league_id: str, db: DB, gm: GM):
+def injury_news(league_id: str, db: DB, gm: GM, team: bool = False):
     """The GM's injury news from sims they didn't see, e.g. ones another GM
-    ran. Marked seen once returned."""
-    return JSONResponse(take_injury_news(db, gm["id"]))
+    ran. Marked seen once returned. ``team`` (a multiplayer period just ran)
+    adds the GM's team after the last day played, in the regular season,
+    for the sim card's line."""
+    body = take_injury_news(db, gm["id"])
+    if team:
+        league = LeagueRepository(db).get_by_id(league_id)
+        if league and league["state"] == "season":
+            season_id = SeasonRepository(db).get_current_id_for_league(league_id)
+            row = db.execute(
+                """SELECT MAX(game_date) AS d FROM games
+                   WHERE season_id = %s AND completed = 1 AND series_id IS NULL""",
+                (season_id,),
+            ).fetchone()
+            body["my_team"] = my_day(
+                db, league_id, season_id, gm.get("team_id"), row["d"] if row else None
+            )
+    return JSONResponse(body)
 
 
 @router.get("/leagues/{league_id}/progress")
