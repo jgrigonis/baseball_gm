@@ -322,3 +322,28 @@ def test_multiplayer_preseason_bids_pill_before_roster():
     assert pick(_ctx(**pre), "free-agents")["pill"] is None
     pre["fa_bidding"] = False
     assert pick(_ctx(**pre), "standings")["pill"]["label"] == "👥 Roster"
+
+
+def test_multiplayer_offseason_pills_summary_then_expiring_deals():
+    # Josh, 2026-11-12: in multiplayer the Expiring Deals tab was never in
+    # front of him. Beside the ready toggle: the season summary, then the
+    # Expiring Deals tab until it's opened (web/utils marks it).
+    mp = dict(multiplayer=True, league_state="offseason")
+    move = pick(_ctx(expiring_due=True, **mp), "playoffs")
+    assert move["key"] == "ready"
+    assert move["pill"]["href"] == "/leagues/L1/season-summary"
+    # On the summary, and anywhere once it's been opened: Expiring Deals.
+    move = pick(_ctx(expiring_due=True, **mp), "season-summary")
+    assert move["pill"]["href"] == "/leagues/L1/expiring"
+    move = pick(_ctx(expiring_due=True, summary_seen=True, **mp), "standings")
+    assert move["pill"]["href"] == "/leagues/L1/expiring"
+    # Not on the tab itself, and gone once it's been opened.
+    assert (
+        pick(_ctx(expiring_due=True, summary_seen=True, **mp), "expiring")["pill"]
+        is None
+    )
+    assert pick(_ctx(summary_seen=True, **mp), "standings")["pill"] is None
+    assert pick(_ctx(**mp), "playoffs")["pill"] is None
+    # Solo keeps its own button.
+    move = pick(_ctx(league_state="offseason", summary_seen=True), "standings")
+    assert move["key"] == "go-expiring" and "pill" not in move
