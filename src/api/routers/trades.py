@@ -236,6 +236,7 @@ def trades_tab(
             rest, owner = bg.split_owner(warning)
             o["budget_warning"] = rest
             o["owner_warning"] = refusal or owner
+            o["owner_refuses"] = bool(refusal)
             o["caps"] = offer_caps(db, league_id, o, team_id, standing["cap"])
     my_players = (
         team_cards(db, league_id, season_id, team_id)

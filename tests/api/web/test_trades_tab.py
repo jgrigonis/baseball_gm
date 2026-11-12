@@ -299,8 +299,9 @@ def test_an_offer_past_your_owners_limit_says_so_in_bold_red(
     no = "Your owner won't allow it: that takes spending to $235.5M, past their $228.5M limit."
     monkeypatch.setattr(trades_router.trades, "owner_refusal", lambda *a: no)
     html = client.get(f"/leagues/{league.id}/trades").text
-    assert "This adds $10.3M more luxury tax." in html
     assert "won&#39;t like it" not in html
+    # The limit leads, then the tax.
+    assert html.index("past their $228.5M limit") < html.index("This adds $10.3M")
     assert (
         '<strong class="tr-owner-past">Your owner won&#39;t allow it: that takes '
         "spending to $235.5M, past their $228.5M limit.</strong>"

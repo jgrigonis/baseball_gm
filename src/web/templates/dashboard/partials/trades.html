@@ -76,7 +76,12 @@
           </table>
           {% endif %}
           {% if o.budget_warning or o.owner_warning %}<div class="tr-reason tr-budget">
-            {{- o.budget_warning }}{% if o.owner_warning %} <strong class="tr-owner-past">{{ o.owner_warning }}</strong>{% endif -%}
+            {#- Past the hard limit leads: Accept would be refused. -#}
+            {%- if o.owner_refuses -%}
+              <strong class="tr-owner-past">{{ o.owner_warning }}</strong> {{ o.budget_warning }}
+            {%- else -%}
+              {{ o.budget_warning }}{% if o.owner_warning %} <strong class="tr-owner-past">{{ o.owner_warning }}</strong>{% endif %}
+            {%- endif -%}
           </div>{% endif %}
         </div>
         <div class="tr-offer-btns">
