@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from src.api.grade_curves import overall_to_grade, role_to_grade
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_skills import PlayerSkills
+from src.player.positions import PITCHER_POSITIONS
 
 log = logging.getLogger(__name__)
 
@@ -127,7 +128,9 @@ class PlayerGrades(BaseModel):
 def player_row_to_grades(player: dict, skills: dict, status: str) -> PlayerGrades:
     """
     Build a PlayerGrades from raw dicts.
-    Determines player_type from whether pitching skills dominate.
+    player_type follows the listed position; ratings only decide when a
+    player has no position (a terrible hitter can rate higher as a pitcher,
+    and he is still a hitter).
     """
     throws = player.get("throws", "R") or "R"
     try:
@@ -151,9 +154,12 @@ def player_row_to_grades(player: dict, skills: dict, status: str) -> PlayerGrade
     pitcher_overall = max(ratings.get("sp", 0), ratings.get("rp", 0))
     hitter_overall = ratings.get("overall_player", 0)
 
-    # Classify by whichever role produces the higher overall rating
-    is_pitcher = pitcher_overall > hitter_overall
-    raw_overall = max(pitcher_overall, hitter_overall)
+    position = (player.get("position") or "").lower()
+    if position:
+        is_pitcher = position in PITCHER_POSITIONS
+    else:
+        is_pitcher = pitcher_overall > hitter_overall
+    raw_overall = pitcher_overall if is_pitcher else hitter_overall
 
     offense = ratings.get("overall_offense", 0)
 

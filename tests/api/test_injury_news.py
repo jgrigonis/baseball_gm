@@ -142,9 +142,9 @@ def test_returning_pitcher_with_no_stats_goes_by_position(db_conn, factory):
     assert _returned_is_pitcher(db_conn, factory, "ss") is False
 
 
-def test_returning_player_with_no_stats_goes_by_ratings(db_conn, factory):
-    # The prospect's skills rate as a hitter, so the listed position loses
-    assert _returned_is_pitcher(db_conn, factory, "sp", skills=True) is False
+def test_returning_player_with_no_stats_goes_by_position_over_ratings(db_conn, factory):
+    # The prospect's skills rate as a hitter, but he is listed as a pitcher
+    assert _returned_is_pitcher(db_conn, factory, "sp", skills=True) is True
 
 
 def test_returning_player_with_stats_goes_by_usage(db_conn, factory):
