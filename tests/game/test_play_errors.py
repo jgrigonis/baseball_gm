@@ -168,7 +168,8 @@ def test_bad_throw_home_on_sac_fly_moves_trailing_runner_two(game, intent):
     trailer = _player()
     game.bases.set_runner(THIRD, _player())
     game.bases.set_runner(FIRST, trailer)
-    events = resolve_sac_fly(_resolver(0.0), intent, game)
+    # 0.99: the runner beats the throw; 0.0: the throw gets away
+    events = resolve_sac_fly(_resolver(0.99, 0.0), intent, game)
     assert len(_of(events, OutRecordedEvent)) == 1
     assert _of(events, OutfielderThrowingErrorEvent)
     moved = {e.runner: e.to_base for e in _of(events, RunnerAdvancedEvent)}
@@ -179,8 +180,8 @@ def test_bad_throw_home_on_sac_fly_moves_trailing_runner_two(game, intent):
 
 
 def test_fly_ball_can_be_dropped(game, intent):
-    # 0.0: dropped; 0.99: batter holds at first
-    events = resolve_fly_out(_resolver(0.0, 0.99), intent, game)
+    # 0.99: a fly ball, not a liner; 0.0: dropped; 0.99: batter holds at first
+    events = resolve_fly_out(_resolver(0.99, 0.0, 0.99), intent, game)
     assert not _of(events, OutRecordedEvent)
     assert not _of(events, PutOutEvent)
     assert _of(events, FieldingErrorEvent)

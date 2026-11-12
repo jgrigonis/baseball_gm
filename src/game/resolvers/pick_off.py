@@ -18,6 +18,7 @@ from src.game.resolvers.base_running import advance_all_runners
 from src.game.probabilities import (
     PICKOFF_SUCCESS_PROB,
     PICKOFF_ERROR_PROB,
+    PICKOFF_DROP_SHARE,
     STEAL_ON_PICKOFF_MODIFIER,
     SS_OVER_2B_PROB,
 )
@@ -31,7 +32,8 @@ def resolve_pickoff(resolver, intent: PickOffIntent, game) -> list[GameEvent]:
     Possible outcomes:
     1. Successful pickoff (runner out)
     2. Failed pickoff (runner safe, no advancement)
-    3. Throwing error (runner advances)
+    3. Error (runner advances): the pitcher's throw gets away, or the man
+       at the bag drops it, and the error goes to whoever it was
     """
     events: list[GameEvent] = []
 
@@ -43,44 +45,39 @@ def resolve_pickoff(resolver, intent: PickOffIntent, game) -> list[GameEvent]:
 
     events.append(PickoffAttemptEvent(base=base, runner=runner, pitcher=intent.pitcher))
 
-    # Determine outcome
-    r = resolver.rng.random()
-
-    pickoff_success_prob, pickoff_error_prob = adjust_pickoff_success(
+    cover = bag_fielder(resolver, game, base)
+    success_prob, throw_error_prob, drop_error_prob = adjust_pickoff_success(
         resolver,
         base,
         intent.pitcher,
         game,
         runner.skills["base_running"],
         intent.steal_on,
+        cover=cover,
     )
-    # base_running skill of runner
-    if r < pickoff_success_prob:
+    r = resolver.rng.random()
+    if r < success_prob:
         # Successful pickoff - runner out
         resolver.logger.debug(f"Successful pickoff at base {base}")
         events.append(
             PickoffSuccessEvent(base=base, runner=runner, pitcher=intent.pitcher)
         )
-        if base == THIRD:
-            fielder = game.pos("3b")
-        elif base == SECOND:
-            if resolver.rng.random() < SS_OVER_2B_PROB:
-                fielder = game.pos("ss")
-            else:
-                fielder = game.pos("2b")
-        else:
-            fielder = game.pos("1b")
-        events.append(PutOutEvent(fielder=fielder, assist=intent.pitcher))
+        events.append(PutOutEvent(fielder=cover, assist=intent.pitcher))
         events.append(OutRecordedEvent(reason="pickoff", pitcher=intent.pitcher))
         events.append(
             RunnerRemovedEvent(runner=runner, from_base=base, reason="pickoff")
         )
 
-    elif r < pickoff_success_prob + pickoff_error_prob:
-        # Throwing error - runner advances
-        resolver.logger.debug(f"Pickoff throwing error at base {base}")
+    elif r < success_prob + throw_error_prob + drop_error_prob:
+        dropped = r >= success_prob + throw_error_prob
+        resolver.logger.debug(f"Pickoff error at base {base}, dropped={dropped}")
         events.append(
-            PickoffErrorEvent(base=base, runner=runner, pitcher=intent.pitcher)
+            PickoffErrorEvent(
+                base=base,
+                runner=runner,
+                pitcher=intent.pitcher,
+                fielder=cover if dropped else intent.pitcher,
+            )
         )
         # Advance all runners one base
         events.extend(
@@ -102,11 +99,28 @@ def resolve_pickoff(resolver, intent: PickOffIntent, game) -> list[GameEvent]:
     return events
 
 
+def bag_fielder(resolver, game, base: int) -> PlayerInGame:
+    """The man who takes a pickoff throw at this base."""
+    if base == THIRD:
+        return game.pos("3b")
+    if base == SECOND:
+        if resolver.rng.random() < SS_OVER_2B_PROB:
+            return game.pos("ss")
+        return game.pos("2b")
+    return game.pos("1b")
+
+
 def adjust_pickoff_success(
-    resolver, base: int, pitcher: PlayerInGame, game, br_skill=50, steal_on=False
+    resolver,
+    base: int,
+    pitcher: PlayerInGame,
+    game,
+    br_skill=50,
+    steal_on=False,
+    cover: PlayerInGame | None = None,
 ):
+    """(success, pitcher's throwing error, bag man's drop) chances."""
     success = PICKOFF_SUCCESS_PROB
-    error = PICKOFF_ERROR_PROB
     resolver.logger.trace(
         f"pickoff success vars, base={base}, pitcher.throws={pitcher.throws}, baserunning={br_skill}"
     )
@@ -116,18 +130,11 @@ def adjust_pickoff_success(
         success *= 1.1
     success = success * 50 / max(30, br_skill)
     accuracy = pitcher.get_effective_stat(pitcher.skills["accuracy"])
-    error *= 50 / max(30, accuracy)
-    if base is FIRST:
-        error *= 50 / max(1, game.pos("1b").skills["infield"])
-    if base is SECOND:
-        r = resolver.rng.random()
-        # 50/50 2nd baseman or short stop
-        if r < 0.5:
-            error *= 50 / max(1, game.pos("2b").skills["infield"])
-        else:
-            error *= 50 / max(1, game.pos("ss").skills["infield"])
-    if base is THIRD:
-        error *= 50 / max(1, game.pos("3b").skills["infield"])
+    throw = PICKOFF_ERROR_PROB * (1 - PICKOFF_DROP_SHARE) * 50 / max(30, accuracy)
+    if cover is None:
+        cover = bag_fielder(resolver, game, base)
+    infield = cover.skills["infield"]
+    drop = PICKOFF_ERROR_PROB * PICKOFF_DROP_SHARE * 50 / max(30, infield)
     if steal_on:
         success *= STEAL_ON_PICKOFF_MODIFIER
-    return success, error
+    return success, throw, drop

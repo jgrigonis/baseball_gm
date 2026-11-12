@@ -175,6 +175,7 @@ def stat_lines(
                     "BB": bb,
                     "K": k,
                     "SB": sb,
+                    "CS": s.get("bat_caught_stealing") or 0,
                     "AVG": avg,
                     "OBP": obp,
                     "SLG": slg,
@@ -230,6 +231,7 @@ def stat_lines(
                     "BB": pbb,
                     "K": pk,
                     "HR": phr,
+                    "PK": s.get("pitch_pickoffs") or 0,
                     "ERA": era,
                     "WHIP": whip,
                     "BB9": bb9,
@@ -243,6 +245,21 @@ def stat_lines(
             )
 
     return batters, pitchers
+
+
+def catcher_lines(r) -> dict:
+    """A catcher's running game: steals allowed, runners caught stealing,
+    caught-stealing rate and runners he picked off. None (shown as —) at
+    other positions."""
+    if (r.get("position") or "").lower() != "c":
+        return {"SB": None, "CS": None, "CS_PCT": None, "PK": None}
+    sb, cs = r.get("sb") or 0, r.get("cs") or 0
+    return {
+        "SB": sb,
+        "CS": cs,
+        "CS_PCT": round(100 * cs / (sb + cs), 1) if sb + cs else None,
+        "PK": r.get("cpk") or 0,
+    }
 
 
 def fielding_lines(
@@ -276,6 +293,7 @@ def fielding_lines(
                 "DP": r["dp"] or 0,
                 "TP": r["tp"] or 0,
                 "PB": r["pb"] if r["pb"] else None,
+                **catcher_lines(r),
                 "FPCT": fpct,
                 "qualified": qualified,
             }

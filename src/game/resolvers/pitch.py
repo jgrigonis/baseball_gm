@@ -1,6 +1,19 @@
 # src/game/resolvers/pitch.py
 
+from src.game.bases import FIRST, SECOND, THIRD
 from src.game.event import GameEvent
+from src.game.events.error import ErrorChargedEvent
+from src.game.events.strike import DroppedThirdStrikeEvent
+from src.game.probabilities import (
+    DROPPED_THIRD_STRIKE_LOOKING_MOD,
+    DROPPED_THIRD_STRIKE_PROB,
+    DROPPED_THIRD_STRIKE_REACH_PROB,
+    DROPPED_THIRD_STRIKE_TAG_PROB,
+    DROPPED_THIRD_STRIKE_THROW_FACTOR,
+    DROPPED_THIRD_STRIKE_WP_SHARE,
+)
+from src.game.resolvers.base_running import advance_all_runners, advance_batter_to_base
+from src.game.resolvers.errors import fielder_rating, throwing_error_chance
 from src.game.events.balk import BalkEvent
 from src.game.events.ball import BallEvent, IllegalPitch
 from src.game.events.noop import NoOpEvent
@@ -37,17 +50,83 @@ def resolve_strike(
     # Check for strikeout
     if game.count.strikes + 1 >= 3:
         resolver.logger.debug("strike out ending pa")
+        strikeout = StrikeOutEvent(
+            batter=intent.batter, pitcher=intent.pitcher, swinging=swinging
+        )
+        if _strike_three_dropped(resolver, game, swinging):
+            events.extend(_dropped_third_strike(resolver, intent, game, strikeout))
+            return events
         events.extend(
             [
-                StrikeOutEvent(
-                    batter=intent.batter, pitcher=intent.pitcher, swinging=swinging
-                ),
+                strikeout,
                 PutOutEvent(game.pos("c")),
                 OutRecordedEvent(reason="strikeout", pitcher=intent.pitcher),
                 PlateAppearanceEndEvent(reason="strikeout", batter=intent.batter),
             ]
         )
 
+    return events
+
+
+def _strike_three_dropped(resolver, game, swinging: bool) -> bool:
+    """The batter may run on strike three when first base is open or there
+    are two outs; this is the chance the catcher didn't hold it. A better
+    catcher (his rating behind the plate) drops fewer."""
+    if game.bases.runner_on(FIRST) is not None and game.inning.outs < 2:
+        return False
+    catcher = game.pos("c")
+    p = DROPPED_THIRD_STRIKE_PROB * (100 - fielder_rating(catcher)) / 22
+    if not swinging:
+        p *= DROPPED_THIRD_STRIKE_LOOKING_MOD
+    return resolver.rng.random() < p
+
+
+def _dropped_third_strike(resolver, intent, game, strikeout) -> list[GameEvent]:
+    """Strike three got by the catcher. The pitcher still gets his strikeout.
+    Most of the time the catcher picks it up and tags the batter or throws
+    him out at first (a bad throw puts him on); now and then it rolls far
+    enough that he makes first, a wild pitch or a passed ball."""
+    catcher = game.pos("c")
+    events: list[GameEvent] = [DroppedThirdStrikeEvent(batter=intent.batter), strikeout]
+    r = resolver.rng.random()
+    if r < DROPPED_THIRD_STRIKE_REACH_PROB:
+        if resolver.rng.random() < DROPPED_THIRD_STRIKE_WP_SHARE:
+            events.append(WildPitchEvent(pitcher=intent.pitcher))
+            reason = "strikeout_wild_pitch"
+        else:
+            events.append(PassedBallEvent(catcher=catcher, pitcher=intent.pitcher))
+            reason = "strikeout_passed_ball"
+        events.extend(
+            advance_batter_to_base(intent.batter, intent.pitcher, FIRST, reason)
+        )
+        events.append(PlateAppearanceEndEvent(reason=reason, batter=intent.batter))
+        return events
+
+    if resolver.rng.random() < DROPPED_THIRD_STRIKE_TAG_PROB:
+        events.append(PutOutEvent(catcher))
+    else:
+        if resolver.rng.random() < throwing_error_chance(
+            catcher, DROPPED_THIRD_STRIKE_THROW_FACTOR
+        ):
+            # Into right field: everyone moves up, the batter takes first.
+            events.append(ErrorChargedEvent(fielder=catcher))
+            events.extend(
+                advance_all_runners(game, (THIRD, SECOND, FIRST), 1, "strikeout_error")
+            )
+            events.extend(
+                advance_batter_to_base(
+                    intent.batter, intent.pitcher, FIRST, "strikeout_error"
+                )
+            )
+            events.append(
+                PlateAppearanceEndEvent(reason="strikeout_error", batter=intent.batter)
+            )
+            return events
+        events.append(PutOutEvent(fielder=game.pos("1b"), assist=catcher))
+    events.append(OutRecordedEvent(reason="strikeout", pitcher=intent.pitcher))
+    events.append(
+        PlateAppearanceEndEvent(reason="strikeout_dropped", batter=intent.batter)
+    )
     return events
 
 

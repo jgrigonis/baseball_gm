@@ -106,6 +106,7 @@ def test_three_strikes_ends_plate_appearance_with_strikeout():
             0.99,  # pitch 1 -> strike
             0.99,  # pitch 2 -> strike
             0.99,  # pitch 3 -> strike
+            0.99,  # strike three held by the catcher
         ]
     )
     resolver = Resolver(rng=rng)

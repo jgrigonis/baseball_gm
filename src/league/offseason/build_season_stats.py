@@ -48,7 +48,7 @@ INSERT INTO player_season_stats (
     pitch_count,
 
     field_putouts, field_assists, field_errors,
-    field_passed_balls, field_catcher_cs, field_catcher_sb,
+    field_passed_balls, field_catcher_cs, field_catcher_sb, field_catcher_pickoffs,
     field_double_plays, field_triple_plays,
     bat_wpa, bat_re24, pitch_wpa, pitch_re24
 )
@@ -109,6 +109,7 @@ SELECT
     SUM(pgs.passed_balls),
     SUM(pgs.catcher_cs),
     SUM(pgs.catcher_sb),
+    SUM(COALESCE(pgs.catcher_pickoffs, 0)),
     SUM(pgs.field_double_plays),
     SUM(pgs.field_triple_plays),
     SUM(pgs.bat_wpa),

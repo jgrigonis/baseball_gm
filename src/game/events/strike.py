@@ -65,3 +65,18 @@ class FoulTipCaughtThirdStrikeEvent(GameEvent):
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
         return "Foul ball tipped and caught"
+
+
+@dataclass(frozen=True)
+class DroppedThirdStrikeEvent(GameEvent):
+    """Strike three got by the catcher with first base open (or two outs),
+    so the batter can run. Logging only: the strikeout and what follows
+    (a tag, a throw to first, or the batter safe) are their own events."""
+
+    batter: object = None
+
+    def apply(self, game):
+        pass
+
+    def describe(self, game) -> str:
+        return "Strike three gets away from the catcher!"

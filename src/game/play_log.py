@@ -15,10 +15,13 @@ An entry is kept small and holds no text: the panel words it
     r      how the plate appearance ended: single, strikeout, fly_out, ...
     f      fielders on the out: [putout position, assist position or None]
     e      position charged with an error on the play
+    d      [runner, base] for a runner doubled off on a liner or thrown out
+           tagging up on a fly ball (an air double play)
     s      names of runners who scored
     n      other things during it: [kind, name, base] for steals, caught
-           stealing, pickoffs, wild pitches, passed balls, balks, extra
-           bases on errors
+           stealing, pickoffs (pitcher's "po", catcher's "cpo"), pickoff
+           errors ("poe"/"cpoe", base is the position charged), wild
+           pitches, passed balls, balks, extra bases on errors
     o      outs after it
     sc     score after it, [away, home]
     g      game_events rows written before it, so substitutions and
@@ -31,14 +34,20 @@ from typing import TYPE_CHECKING
 
 from src.game.events.balk import BalkEvent
 from src.game.events.error import (
+    ErrorChargedEvent,
     FieldingErrorEvent,
     OutfielderThrowingErrorEvent,
     RunnerAdvancedOnErrorEvent,
     ThrowingErrorEvent,
 )
-from src.game.events.out import PutOutEvent
+from src.game.events.out import AirDoublePlayEvent, PutOutEvent
 from src.game.events.passed_ball import PassedBallEvent
-from src.game.events.pick_off import PickoffErrorEvent, PickoffSuccessEvent
+from src.game.events.pick_off import (
+    CatcherPickoffErrorEvent,
+    CatcherPickoffSuccessEvent,
+    PickoffErrorEvent,
+    PickoffSuccessEvent,
+)
 from src.game.events.plate_appearance import PlateAppearanceEndEvent
 from src.game.events.scoring import RunScoredEvent
 from src.game.events.steal import CaughtStealingEvent, StolenBaseEvent
@@ -63,6 +72,7 @@ class PlayLog:
         self._error: str | None = None
         self._scored: list[str] = []
         self._notes: list[list] = []
+        self._doubled: list | None = None
 
     def see(self, event, game: Game) -> None:
         """Note one applied event."""
@@ -74,8 +84,12 @@ class PlayLog:
                     event.fielder.current_position,
                     event.assist.current_position if event.assist else None,
                 ]
-        elif isinstance(event, (FieldingErrorEvent, ThrowingErrorEvent)):
+        elif isinstance(
+            event, (FieldingErrorEvent, ThrowingErrorEvent, ErrorChargedEvent)
+        ):
             self._error = event.fielder.current_position
+        elif isinstance(event, AirDoublePlayEvent):
+            self._doubled = [short_name(event.runner), event.base]
         elif isinstance(event, StolenBaseEvent):
             self._notes.append(["sb", short_name(event.runner), event.to_base])
         elif isinstance(event, CaughtStealingEvent):
@@ -83,7 +97,12 @@ class PlayLog:
         elif isinstance(event, PickoffSuccessEvent):
             self._notes.append(["po", short_name(event.runner), event.base])
         elif isinstance(event, PickoffErrorEvent):
-            self._notes.append(["poe", None, None])
+            who = event.fielder or event.pitcher
+            self._notes.append(["poe", None, who.current_position])
+        elif isinstance(event, CatcherPickoffSuccessEvent):
+            self._notes.append(["cpo", short_name(event.runner), event.base])
+        elif isinstance(event, CatcherPickoffErrorEvent):
+            self._notes.append(["cpoe", None, event.fielder.current_position])
         elif isinstance(event, WildPitchEvent):
             self._notes.append(["wp", None, None])
         elif isinstance(event, PassedBallEvent):
@@ -130,6 +149,8 @@ class PlayLog:
             play["f"] = self._fielders
         if self._error:
             play["e"] = self._error
+        if self._doubled:
+            play["d"] = self._doubled
         if self._scored:
             play["s"] = self._scored
         if self._notes:

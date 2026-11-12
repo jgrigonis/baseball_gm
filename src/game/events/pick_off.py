@@ -84,11 +84,14 @@ class PickoffFailedEvent(GameEvent):
 
 @dataclass(frozen=True)
 class PickoffErrorEvent(GameEvent):
-    """Throwing error on pickoff - runner advances"""
+    """Error on a pickoff - runners advance. `fielder` is charged with it:
+    the pitcher for a bad throw, the man at the bag for a drop (the pitcher
+    when not given)."""
 
     base: int
     runner: PlayerInGame
     pitcher: PlayerInGame
+    fielder: PlayerInGame | None = None
 
     def apply(self, game):
         """
@@ -97,14 +100,55 @@ class PickoffErrorEvent(GameEvent):
         Note: The actual runner advancement is handled by
         RunnerAdvancedEvent that follows this event.
         """
-        self.pitcher.game_stats.fielding.error()
+        (self.fielder or self.pitcher).game_stats.fielding.error()
+        game._inning_had_error = True
         # The RunnerAdvancedEvent handles the state mutation
         # This event is for logging/statistics
         game.logger.info(f"Throwing error on pickoff at base {self.base}")
 
     def describe(self, game) -> str:
         """Return human-readable description with game context."""
-        return "An error on the pickoff!"
+        who = self.fielder or self.pitcher
+        if who is self.pitcher:
+            return f"{self.pitcher.name} throws the pickoff away!"
+        return f"{who.name} drops the pickoff throw!"
+
+
+@dataclass(frozen=True)
+class CatcherPickoffSuccessEvent(GameEvent):
+    """The catcher threw behind a runner and got him. The putout, out and
+    runner removal follow as their own events."""
+
+    base: int
+    runner: PlayerInGame
+    catcher: PlayerInGame
+
+    def apply(self, game):
+        self.catcher.game_stats.fielding.catcher_pickoff()
+
+    def describe(self, game) -> str:
+        return f"{self.catcher.name} picked off {self.runner.name} on {self.base}!"
+
+
+@dataclass(frozen=True)
+class CatcherPickoffErrorEvent(GameEvent):
+    """A catcher's pickoff throw went wrong and the runners move up:
+    `fielder` is charged, the catcher for a bad throw or the man at the bag
+    for a drop."""
+
+    base: int
+    runner: PlayerInGame
+    catcher: PlayerInGame
+    fielder: PlayerInGame
+
+    def apply(self, game):
+        self.fielder.game_stats.fielding.error()
+        game._inning_had_error = True
+
+    def describe(self, game) -> str:
+        if self.fielder is self.catcher:
+            return f"{self.catcher.name}'s pickoff throw gets away!"
+        return f"{self.fielder.name} drops the catcher's pickoff throw!"
 
 
 """
