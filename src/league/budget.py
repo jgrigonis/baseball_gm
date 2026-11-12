@@ -423,6 +423,11 @@ def standing(
     }
 
 
+# The owner-spending line of warning() when the GM is already past it; the
+# Trades tab shows it in bold red (dashboard/partials/trades.html).
+ALREADY_PAST = "You're already past what your owner will spend."
+
+
 def warning(
     payroll: int,
     cap: int,
@@ -455,7 +460,7 @@ def warning(
             )
     if payroll_cost(after, cap) + front_office > budget:
         if payroll_cost(payroll, cap) + front_office > budget:
-            parts.append("You're already past what your owner will spend.")
+            parts.append(ALREADY_PAST)
         else:
             parts.append(
                 f"Your owner won't like it: this will drive total "

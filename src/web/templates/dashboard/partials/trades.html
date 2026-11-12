@@ -75,7 +75,11 @@
             </tbody>
           </table>
           {% endif %}
-          {% if o.budget_warning %}<div class="tr-reason tr-budget">{{ o.budget_warning }}</div>{% endif %}
+          {% if o.budget_warning %}<div class="tr-reason tr-budget">
+            {%- if already_past in o.budget_warning -%}
+              {{ o.budget_warning.replace(already_past, '').strip() }} <strong class="tr-owner-past">{{ already_past }}</strong>
+            {%- else -%}{{ o.budget_warning }}{%- endif -%}
+          </div>{% endif %}
         </div>
         <div class="tr-offer-btns">
           {{ compare_btn(o.sent, o.received) }}
@@ -952,7 +956,7 @@ function absorbPayLine(o) {
   if (extra > 0) bits.push(money(extra) + ' more luxury tax');
   if (after > BUDGET.budget) bits.push('past your owner\'s ' + money(BUDGET.budget));
   if (bits.length)
-    html += '<div class="tr-reason tr-budget">Payroll after: ' + money(after) + ' (cap ' + money(BUDGET.cap) + '), ' + bits.join(', ') + '.</div>';
+    html += '<div class="tr-budget">Payroll after: ' + money(after) + ' (cap ' + money(BUDGET.cap) + '), ' + bits.join(', ') + '.</div>';
   return html;
 }
 
@@ -1090,6 +1094,7 @@ if (done) { showResult(done.msg, done.kind, done.dest); window._tradeResult = nu
   border: 1px solid var(--border-hi); background: var(--bg-2); }
 #trades-page .tr-summary { flex: 1; font-size: 12px; }
 #trades-page .tr-budget { color: var(--red); }
+#trades-page .tr-owner-past { color: var(--red); font-weight: 700; font-style: normal; }
 #trades-page .tr-k { font-family: var(--font-mono); font-size: 10px; color: var(--amber); text-transform: uppercase;
   margin-left: 8px; }
 #trades-page .tr-k:first-child { margin-left: 0; }

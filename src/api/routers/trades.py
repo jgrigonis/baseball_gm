@@ -278,6 +278,7 @@ def trades_tab(
             else [],
             "offers_to_me": offers_to_me,
             "budget": standing,
+            "already_past": bg.ALREADY_PAST,
             "owner_icons": owner_icons,
             "my_votes": trade_repo.votes_for_gm(league_id, gm["id"])
             if gm.get("id")

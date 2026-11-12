@@ -225,3 +225,38 @@ def test_shop_show_more_calls_a_global_handler(client_for):
     html = client.get(f"/leagues/{league.id}/trades").text
     assert 'onclick="trShopMore()"' in html
     assert "window.trShopMore = function" in html
+
+
+def test_already_past_the_owners_spending_is_bold_red_on_an_offer(
+    client_for, db_conn, factory, monkeypatch
+):
+    from src.api.routers import trades as trades_router
+    from src.db.repositories.trade_repo import TradeRepository
+    from src.league import budget as bg
+
+    client, league, theirs, roster = client_for("blitz", players=1)
+    other = factory.rated_player(theirs, league, 60)
+    mine = roster[0]
+    team = db_conn.execute(
+        "SELECT team_id FROM team_players WHERE player_id = %s", (mine.id,)
+    ).fetchone()["team_id"]
+    season_id = db_conn.execute(
+        "SELECT season_id FROM games WHERE home_team_id = %s LIMIT 1", (team,)
+    ).fetchone()["season_id"]
+    TradeRepository(db_conn).create_offer(
+        league.id,
+        season_id,
+        theirs.id,
+        team,
+        None,
+        "2025-04-01",
+        [(other.id, theirs.id), (mine.id, team)],
+    )
+    text = "You're already over the $145M cap. This adds $7.6M more luxury tax. "
+    monkeypatch.setattr(trades_router.bg, "warning", lambda *a: text + bg.ALREADY_PAST)
+    html = client.get(f"/leagues/{league.id}/trades").text
+    assert (
+        '<strong class="tr-owner-past">You&#39;re already past what your owner will spend.</strong>'
+        in html
+    )
+    assert "This adds $7.6M more luxury tax." in html
