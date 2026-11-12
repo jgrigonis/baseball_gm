@@ -230,3 +230,22 @@ def test_only_the_commissioner_proposes(as_gm, db_conn, league):
         data=_form(pace_control="confirmed"),
     )
     assert settings_votes.open_proposal(db_conn, lg.id) is None
+
+
+def test_injury_rate_goes_to_a_vote(as_gm, db_conn, league):
+    lg, gms = league
+
+    _propose(as_gm, league, injury_rate="200")
+
+    proposal = settings_votes.open_proposal(db_conn, lg.id)
+    assert proposal["changes"] == {"injury_rate": {"old": 100, "new": 200}}
+    assert settings_votes.describe(proposal["changes"])[0]["new"] == "200%"
+
+
+def test_injury_rate_off_the_steps_cant_be_proposed(as_gm, db_conn, league):
+    lg, _ = league
+
+    r = _propose(as_gm, league, injury_rate="150")
+
+    assert "settings_error=" in r.headers["location"]
+    assert settings_votes.open_proposal(db_conn, lg.id) is None

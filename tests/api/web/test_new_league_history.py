@@ -110,3 +110,32 @@ def test_real_seasons_are_for_paid_contributors(client, db_conn):
     # Generated leagues are open to everyone.
     r = client.post("/leagues/new", data={"name": "Made up"})
     assert r.status_code in (302, 303)
+
+
+# ── Injury rate (league_constants.INJURY_RATES) ──────────────────────────────
+
+
+def _rate(client, db_conn, **form):
+    r = client.post("/leagues/new", data={"name": "Fresh League", **form})
+    league_id = r.headers["location"].split("/")[2]
+    return LeagueRepository(db_conn).get_by_id(league_id)["injury_rate"]
+
+
+def test_injury_rate_defaults_to_normal(client, db_conn):
+    assert _rate(client, db_conn) == 100
+
+
+def test_injury_rate_picked_on_the_form(client, db_conn):
+    assert _rate(client, db_conn, injury_rate="50") == 50
+
+
+def test_injury_rate_off_the_steps_is_refused(client):
+    r = client.post("/leagues/new", data={"name": "Fresh League", "injury_rate": "75"})
+    assert r.status_code >= 400
+
+
+def test_injury_rate_slider_under_advanced(client):
+    html = client.get("/leagues/new").text
+    advanced = html[html.index('class="advanced-settings"') :]
+    assert 'name="injury_rate" value="100"' in advanced
+    assert 'class="injuries-only"' in advanced

@@ -14,6 +14,7 @@
 #     are over, below the next one (see fewest_seasons).
 #   - Injuries off: nobody gets hurt from the next game on. Players already
 #     hurt heal on their usual timeline.
+#   - Injury rate: how often players get hurt, from the next game on.
 #   - Trades off: every open offer expires.
 #   - Draft pick trades off: open offers with a pick in them are called off.
 #     Picks already traded stay traded.
@@ -28,7 +29,12 @@ from src.db.repositories.career_repo import CareerRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.trade_repo import TradeRepository
 from src.api.view_models.league_info import league_gms
-from src.league.league_constants import MAX_SEASONS, UNLIMITED_SEASONS
+from src.league.league_constants import (
+    DEFAULT_INJURY_RATE,
+    INJURY_RATES,
+    MAX_SEASONS,
+    UNLIMITED_SEASONS,
+)
 from src.league.league_modes import injuries_allowed, is_blitz_style
 from src.league.trade_deadline import trades_enabled_for
 
@@ -38,6 +44,7 @@ SOLO_SETTINGS = (
     "num_seasons",
     "sim_period_days",
     "injuries_enabled",
+    "injury_rate",
     "trades_enabled",
     "pick_trades",
     "weighted_schedule",
@@ -60,6 +67,8 @@ def current_values(league: dict, keys) -> dict:
     for k in keys:
         if k == "injuries_enabled":
             out[k] = injuries_allowed(league)
+        elif k == "injury_rate":
+            out[k] = league.get("injury_rate") or DEFAULT_INJURY_RATE
         elif k == "trades_enabled":
             out[k] = trades_enabled_for(league)
         elif k in ("pick_trades", "trade_vote", "weighted_schedule", "reentry_enabled"):
@@ -112,6 +121,26 @@ def solo_error(league: dict, settings: dict, season_count: int) -> str | None:
         low, high = SIM_PERIOD_RANGE
         if not low <= days <= high:
             return f"Days per sim period must be between {low} and {high}."
+    error = injury_rate_error(settings.get("injury_rate"), league)
+    if error:
+        return error
+    return None
+
+
+def injury_rate_choices(current: int) -> list[int]:
+    """The Injury rate slider's stops, with the league's own rate among them
+    even if the steps have changed since it was set."""
+    return sorted({*INJURY_RATES, current})
+
+
+def injury_rate_error(rate, league: dict | None = None) -> str | None:
+    """Why this Injury rate can't be saved, or None. A league keeps the rate
+    it has even if the steps change."""
+    if rate is None or (league and rate == league.get("injury_rate")):
+        return None
+    if rate not in INJURY_RATES:
+        steps = ", ".join(f"{r}%" for r in INJURY_RATES)
+        return f"Injury rate must be one of {steps}."
     return None
 
 
@@ -126,7 +155,11 @@ def save_solo(conn, league_id: str, gm_id: str, settings: dict) -> str | None:
         if not league or not can_edit(dict(league), gm_id, humans):
             return "Only the commissioner of a one-person league can change these."
         league = dict(league)
-        settings = {k: settings[k] for k in SOLO_SETTINGS}
+        settings = {k: settings.get(k) for k in SOLO_SETTINGS}
+        if settings["injury_rate"] is None:  # an older form without the slider
+            settings["injury_rate"] = current_values(league, ["injury_rate"])[
+                "injury_rate"
+            ]
         if not is_blitz_style(league["mode"]):
             # Long Form doesn't trade yet, so its trade settings stay put.
             settings["trades_enabled"] = league["trades_enabled"]

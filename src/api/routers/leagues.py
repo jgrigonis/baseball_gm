@@ -53,6 +53,8 @@ from src.db.repositories.sim_job_repo import SimJobRepository
 from src.league import divisions, real_seasons
 from src.league.league_constants import (
     DEFAULT_BACKSTORY_YEARS,
+    DEFAULT_INJURY_RATE,
+    INJURY_RATES,
     MAX_BACKSTORY_YEARS,
     MAX_SEASONS,
     UNLIMITED_SEASONS,
@@ -205,6 +207,7 @@ def new_league_page(request: Request, user: User):
             "max_backstory_years": MAX_BACKSTORY_YEARS,
             # The seasons slider runs 1..MAX_SEASONS, then unlimited (0).
             "season_choices": [*range(1, MAX_SEASONS + 1), UNLIMITED_SEASONS],
+            "injury_rates": list(INJURY_RATES),
             "real_seasons": real_seasons.available(),
             # Real seasons are for paid contributors (others can join one).
             "can_real_season": custom_teams.can_build(user),
@@ -233,6 +236,7 @@ def new_league(
     trades_enabled: bool | None = Form(None),
     pick_trades: bool = Form(False),
     injuries_enabled: bool | None = Form(None),
+    injury_rate: int = Form(DEFAULT_INJURY_RATE),
     num_teams: int = Form(divisions.DEFAULT_TEAM_COUNT),
     weighted_schedule: bool = Form(True),
     backstory_years: int = Form(DEFAULT_BACKSTORY_YEARS),
@@ -261,6 +265,8 @@ def new_league(
         raise ValueError(
             f"Number of seasons must be between 1 and {MAX_SEASONS}, or unlimited."
         )
+    if injury_rate not in INJURY_RATES:
+        raise ValueError(f"Unknown injury rate {injury_rate}%.")
     if not 0 <= backstory_years <= MAX_BACKSTORY_YEARS:
         raise ValueError(
             f"Years of history must be between 0 and {MAX_BACKSTORY_YEARS}."
@@ -309,6 +315,7 @@ def new_league(
                 if injuries_enabled is None
                 else injuries_enabled
             ),
+            "injury_rate": injury_rate,
         },
     )
     # 2. GM setup
@@ -834,6 +841,7 @@ def league_page(
                 league["state"], info["season_number"], league["num_seasons"]
             ),
             "sim_period_range": league_settings.SIM_PERIOD_RANGE,
+            "injury_rates": league_settings.injury_rate_choices(info["injury_rate"]),
             "windows": {
                 k: admin_service.NUMBER_RANGES[k] for k in admin_service.WINDOW_KEYS
             },
@@ -874,6 +882,7 @@ def solo_settings(
     sim_period_days: int = Form(...),
     weighted_schedule: bool = Form(False),
     injuries_enabled: bool = Form(False),
+    injury_rate: int | None = Form(None),
     trades_enabled: bool = Form(False),
     pick_trades: bool = Form(False),
     reentry_enabled: bool = Form(False),
@@ -892,6 +901,7 @@ def solo_settings(
                 "sim_period_days": sim_period_days,
                 "weighted_schedule": weighted_schedule,
                 "injuries_enabled": injuries_enabled,
+                "injury_rate": injury_rate,
                 "trades_enabled": trades_enabled,
                 "pick_trades": pick_trades,
                 "reentry_enabled": reentry_enabled,
@@ -941,6 +951,7 @@ def propose_settings(
     sim_period_days: int = Form(...),
     weighted_schedule: bool = Form(False),
     injuries_enabled: bool = Form(False),
+    injury_rate: int | None = Form(None),
     trades_enabled: bool = Form(False),
     trade_vote: bool | None = Form(None),
     pick_trades: bool = Form(False),
@@ -962,6 +973,8 @@ def propose_settings(
         "pick_trades": pick_trades,
         "reentry_enabled": reentry_enabled,
     }
+    if injury_rate is not None:
+        form["injury_rate"] = injury_rate
     # The form only has Trade vote with three or more people in the league.
     if trade_vote is not None:
         form["trade_vote"] = trade_vote

@@ -8,7 +8,8 @@
    only sets waiver length), so their values are greyed out (.setting-off)
    while there's one human GM. Trade vote needs a third human GM (the two
    trading don't vote on their own trade), so it's greyed under three. The
-   windows also stay greyed under Confirmed pace, which has no clock. Rows
+   windows also stay greyed under Confirmed pace, which has no clock, and
+   Injury rate is greyed while Injuries are off. Rows
    marked data-needs-humans="N" are the ones the lobby un-greys live once N
    people are in (see lobby.html). #}
 {% set started = info.state != "lobby" %}
@@ -85,6 +86,8 @@
   ("Injuries", "On" if info.injuries_enabled else "Off",
    "On: players can get hurt in games and miss time." if info.injuries_enabled
    else "Off: nobody gets hurt, so every player is always available."),
+  ("Injury rate", (info.injury_rate or 100) ~ "%",
+   "How often players get hurt: 100% is normal, which is lighter than MLB on purpose. 50% is half as many injuries, 200% twice as many." ~ ("" if info.injuries_enabled else " Only used with Injuries on.")),
 ] %}
 {% set settings = settings + [
   ("Trades", "On" if info.trades_enabled else "Off",
@@ -131,7 +134,7 @@
   "Late joiners": ("late_joins", info.late_joins, "Turn off" if info.late_joins else "Allow"),
 } if can_edit_settings and not info.is_practice and not info.single_player else {} %}
 {% for label, value, tip in settings %}
-{% set off = label in always_off or (label in needs_humans and info.human_gms < needs_humans[label]) %}
+{% set off = label in always_off or (label == "Injury rate" and not info.injuries_enabled) or (label in needs_humans and info.human_gms < needs_humans[label]) %}
 <tr{% if label in needs_humans and label not in always_off %} data-needs-humans="{{ needs_humans[label] }}"{% endif %}{% if off %} class="setting-off"{% endif %}>
   <td style="color:var(--text-dim);">
     <span class="setting-tip" tabindex="0" data-tip="{{ tip }}">{{ label }}</span>

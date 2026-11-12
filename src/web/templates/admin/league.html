@@ -108,6 +108,9 @@
       {# The same settings a solo commissioner can change on the League page
          (src/api/services/league_settings.py says what each change does). #}
       <label class="admin-check"><input type="checkbox" name="injuries_enabled" value="true" {% if injuries_on %}checked{% endif %}> Injuries</label>
+      {% call step_slider("injury_rate", "injury-rate", "Injury Rate", injury_rates, league.injury_rate, unit="%") %}
+        <span class="hint">How often players get hurt. 100% is normal{% if not injuries_on %}; only used with Injuries on{% endif %}.</span>
+      {% endcall %}
       <label class="admin-check"><input type="checkbox" name="trades_enabled" value="true" {% if trades_on %}checked{% endif %}> Trades (turning off expires open offers)</label>
       <label class="admin-check"><input type="checkbox" name="pick_trades" value="true" {% if league.pick_trades %}checked{% endif %}> Draft pick trades (turning off calls off offers with picks)</label>
       <label class="admin-check"><input type="checkbox" name="weighted_schedule" value="true" {% if league.weighted_schedule %}checked{% endif %}> Weighted schedule{% if started %} (from next season){% endif %}</label>

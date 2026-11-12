@@ -139,9 +139,9 @@ def test_lobby_settings_explain_themselves_on_hover(client, db_conn, lobby):
 
     r = client.get(f"/leagues/{league.id}/")
 
-    # Thirteen settings (Speed Blitz has no owner firing, so no Re-entry
+    # Fourteen settings (Speed Blitz has no owner firing, so no Re-entry
     # either), plus the GM list's and the settings card's own headers.
-    assert r.text.count('class="setting-tip"') == 15
+    assert r.text.count('class="setting-tip"') == 16
     assert "Speed Blitz" in r.text
     assert "Trades and injuries are off by default" in r.text
     assert "trade with each other." in r.text

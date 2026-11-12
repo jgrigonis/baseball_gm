@@ -28,9 +28,14 @@ from src.api.services import owner_review
 from src.api.services import owners as owner_service
 from src.db.repositories.owner_repo import OwnerRepository
 from src.db.repositories.persona_repo import PersonaRepository
+from src.api.services.league_settings import injury_rate_choices
 from src.league import owners, personas
 from src.db.repositories.user_repo import UserRepository
-from src.league.league_constants import MAX_SEASONS, UNLIMITED_SEASONS
+from src.league.league_constants import (
+    DEFAULT_INJURY_RATE,
+    MAX_SEASONS,
+    UNLIMITED_SEASONS,
+)
 from src.league.league_modes import LEAGUE_MODES, injuries_allowed
 from src.league.trade_deadline import trades_enabled_for
 from src.player.contracts import format_salary
@@ -123,6 +128,9 @@ def _league_page(request, db, user, league_id: str, status_code=200, **ctx):
             "season_choices": _season_choices(league["num_seasons"]),
             # Leagues made before these settings go by their mode's default.
             "injuries_on": injuries_allowed(league),
+            "injury_rates": injury_rate_choices(
+                league.get("injury_rate") or DEFAULT_INJURY_RATE
+            ),
             "trades_on": trades_enabled_for(league),
             "owners": _league_owners(db, league),
             "owner_cap": _league_cap(db, league),
@@ -262,6 +270,7 @@ def league_settings(
     is_public: bool = Form(False),
     late_joins: bool = Form(False),
     injuries_enabled: bool = Form(False),
+    injury_rate: int | None = Form(None),
     trades_enabled: bool = Form(False),
     pick_trades: bool = Form(False),
     weighted_schedule: bool = Form(False),
@@ -288,6 +297,11 @@ def league_settings(
             "is_public": is_public,
             "late_joins": late_joins,
             "injuries_enabled": injuries_enabled,
+            "injury_rate": (
+                league.get("injury_rate", DEFAULT_INJURY_RATE)
+                if injury_rate is None
+                else injury_rate
+            ),
             "trades_enabled": trades_enabled,
             "pick_trades": pick_trades,
             "weighted_schedule": weighted_schedule,

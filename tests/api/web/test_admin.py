@@ -441,6 +441,19 @@ class TestPause:
 
 
 class TestSettings:
+    def test_saves_injury_rate(self, client, db_conn, factory, admin):
+        league = _league(db_conn, factory, state="season")
+
+        r = client.post(
+            f"/admin/leagues/{league.id}/settings",
+            data=_settings_form(injury_rate="63"),
+        )
+
+        assert r.status_code == 303
+        assert LeagueRepository(db_conn).get_by_id(league.id)["injury_rate"] == 63
+        html = client.get(f"/admin/leagues/{league.id}").text
+        assert 'name="injury_rate" value="63"' in html
+
     def test_saves(self, client, db_conn, factory, admin):
         league = _league(db_conn, factory, state="lobby")
 

@@ -96,6 +96,9 @@ def settings_error(
         and league["state"] != "lobby"
     ):
         return "The years of history can only change before the league starts."
+    error = league_settings.injury_rate_error(settings.get("injury_rate"), league)
+    if error:
+        return error
     low = league_settings.fewest_seasons(league["state"], season_count)
     if (
         settings["num_seasons"] != league["num_seasons"]

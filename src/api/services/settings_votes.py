@@ -46,6 +46,7 @@ VOTABLE = {
     "sim_period_days": "Days per sim period",
     "weighted_schedule": "Weighted schedule",
     "injuries_enabled": "Injuries",
+    "injury_rate": "Injury rate",
     "trades_enabled": "Trades",
     "trade_vote": "Trade vote",
     "pick_trades": "Draft pick trades",
@@ -61,6 +62,8 @@ def show(key: str, value) -> str:
     """A setting's value as the League page writes it."""
     if key == "num_seasons":
         return "Unlimited" if value == UNLIMITED_SEASONS else str(value)
+    if key == "injury_rate":
+        return f"{value}%"
     if key.endswith("_sec"):
         return f"{value}s"
     if key == "pace_control":
