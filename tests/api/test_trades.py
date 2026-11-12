@@ -715,3 +715,38 @@ def test_an_ai_trade_sends_the_gm_to_the_roster(lg):
     spare = lg.factory.rated_player(lg.theirs, lg.league, 52, status="minors")
     assert _offer(lg, [star], [spare])["accepted"]
     assert _roster_due(lg, lg.gm)
+
+
+# ── What the AI would take instead (trades.suggest) ─────────────────────────
+
+
+def test_a_no_comes_with_what_would_make_it_a_yes(lg):
+    good = lg.factory.rated_player(lg.theirs, lg.league, 66)
+    even = lg.factory.rated_player(lg.mine, lg.league, 62)
+    prospect = lg.factory.rated_player(lg.mine, lg.league, 66, status="minors")
+    result = _offer(lg, [even], [good])
+    assert not result["accepted"]
+    assert result["suggest"] == [prospect.id]
+    # Sending it with the suggested add goes through.
+    again = _offer(lg, [even, prospect], [good])
+    assert again["accepted"]
+
+
+def test_no_suggestion_when_nothing_would_do_it(lg):
+    great = lg.factory.rated_player(lg.theirs, lg.league, 80)
+    scrub = lg.factory.rated_player(lg.mine, lg.league, 50, status="minors")
+    result = _offer(lg, [scrub], [great])
+    assert not result["accepted"]
+    assert "suggest" not in result
+
+
+def test_a_deal_it_would_take_goes_through_after_its_calls_run_out(lg):
+    good = lg.factory.rated_player(lg.theirs, lg.league, 66)
+    even = lg.factory.rated_player(lg.mine, lg.league, 62)
+    for _ in range(trades.MAX_REJECTIONS_A_DAY):
+        result = _offer(lg, [even], [good])
+        assert not result["accepted"]
+    with pytest.raises(TradeError, match="taking any more calls"):
+        _offer(lg, [even], [good])
+    star = lg.factory.rated_player(lg.mine, lg.league, 74)
+    assert _offer(lg, [even, star], [good])["accepted"]

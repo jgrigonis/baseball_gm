@@ -573,6 +573,30 @@ function showResult(html, kind, dest) {
   el.scrollIntoView({behavior: 'smooth', block: 'nearest'});
 }
 
+// What the AI team said it would take instead (trades.suggest): more from
+// your side, with a button that adds it and sends the offer again.
+var SUGGEST = null;
+function suggestLine(ids) {
+  SUGGEST = ids && ids.length ? ids : null;
+  if (!SUGGEST) return '';
+  var names = SUGGEST.map(function(pid) {
+    var p = SIDES.mine.players.filter(function(q) { return q.player_id === pid; })[0];
+    return p ? '<strong>' + esc(p.first_name + ' ' + p.last_name) + '</strong> (' +
+      esc(p.overall) + ' ' + esc(posLabel(p.position)) + ', ' + p.age + ')' : 'another player';
+  });
+  return '<div class="tr-suggest"><span>They\'d take it if you add ' + names.join(' and ') + '.</span>' +
+    '<button class="btn btn-primary" onclick="event.stopPropagation();trTakeSuggest()">Add ' +
+    (SUGGEST.length > 1 ? 'them' : 'him') + ' and send</button></div>';
+}
+window.trTakeSuggest = function() {
+  if (!SUGGEST) return;
+  SUGGEST.forEach(function(pid) { SIDES.mine.picked.add(pid); });
+  SUGGEST = null;
+  render('mine');
+  summarize();
+  trSend();
+};
+
 window.trSend = function() {
   var btn = document.getElementById('tr-send');
   var teamSel = document.getElementById('tr-team');
@@ -605,7 +629,8 @@ window.trSend = function() {
           markCountered(countered);
           after = '<br>Their first offer is off the table now. You can still send this as a new offer.';
         }
-        showResult('✗ The ' + esc(teamName) + ' said no: “' + esc(d.reason) + '”' + after, 'warn');
+        showResult('✗ The ' + esc(teamName) + ' said no: “' + esc(d.reason) + '”' + after +
+                   suggestLine(d.suggest), 'warn');
         summarize();
         return;
       }
@@ -1160,6 +1185,8 @@ if (done) { showResult(done.msg, done.kind, done.dest); window._tradeResult = nu
 #trades-page .tr-shop-close-head { margin: 12px 0 6px; font-size: 13px; color: var(--text-dim); }
 #trades-page .tr-shop-short { opacity: 0.85; }
 #trades-page .tr-shop-more { margin: 4px 0 8px; }
+#trades-page .tr-suggest { margin-top: 8px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+#trades-page .tr-suggest .btn { font-size: 11px; padding: 4px 10px; }
 #trades-page .tr-link.tr-why-more { font: inherit; text-transform: none; }
 #trades-page .tr-tag.tr-tag-far { color: var(--text-dim); border-color: var(--muted); }
 #trades-page .tr-shop-pick { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }

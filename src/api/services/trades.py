@@ -169,6 +169,11 @@ def _propose(
         call_limit
         and trade_repo.rejections_today(league_id, my_team_id, to_team_id, today)
         >= MAX_REJECTIONS_A_DAY
+        # Out of calls, but a deal it would take still goes through (say,
+        # the one it suggested after its last no).
+        and not ai_answer(
+            conn, league_id, season_id, to_team_id, my_team_id, get_ids, give_ids, today
+        ).accept
     ):
         raise TradeError(
             f"The {team_repo.get_name(to_team_id)} aren't taking any more calls today."
@@ -192,10 +197,25 @@ def _propose(
     if not verdict.accept:
         _decide(conn, offer_id, "rejected", verdict.reason)
         conn.commit()
+        # What would turn it into a yes: more from the GM's side. More
+        # can't fix a deal its owner won't pay for.
+        add = None
+        if verdict.reason != ai_evaluator.OVER_BUDGET_REASON:
+            add = suggest(
+                conn,
+                league_id,
+                season_id,
+                to_team_id,
+                my_team_id,
+                give_ids,
+                get_ids,
+                today,
+            )
         return {
             "accepted": False,
             "reason": verdict.reason,
             "offer_id": offer_id,
+            **({"suggest": add} if add else {}),
         }
 
     _decide(conn, offer_id, "accepted", verdict.reason)
@@ -947,39 +967,146 @@ def ai_answer(
     """The AI team's answer to giving `giving` for `getting`, wanting to win
     by margin_share (by default its margin for this team today). It judges
     as its GM's persona would (src/league/personas.py)."""
-    lean = personas.leaning_of(conn, league_id, ai_team_id)
-    injuries = InjuryRepository(conn, league_id)
-    roster = _assets(
-        conn, ai_team_id, injuries.get_team_injuries(ai_team_id, today), season_id
-    )
-    theirs = _assets(
-        conn,
-        other_team_id,
-        injuries.get_team_injuries(other_team_id, today),
-        season_id,
-    )
-    by_id = {a.id: a for a in roster + theirs}
-    by_id.update(_pick_assets(conn, league_id, season_id, giving + getting))
-    w = lean.stats_weight
-    state = team_states.state_of(conn, league_id, season_id, ai_team_id, today)
-    room = owners.pay_rooms(conn, league_id, season_id, [ai_team_id]).get(ai_team_id)
-    return ai_evaluator.evaluate(
-        roster=ai_evaluator.seen(roster, w),
-        giving=ai_evaluator.seen([by_id[pid] for pid in giving], w),
-        getting=ai_evaluator.seen([by_id[pid] for pid in getting], w),
-        state=state,
-        days_left=_season_days_left(conn, league_id, season_id, today),
-        margin_share=ai_evaluator.margin(
-            ai_team_id, other_team_id, today, lean.margin_factor
+    judge = _AiJudge(conn, league_id, season_id, ai_team_id, other_team_id, today)
+    return judge(giving, getting, margin_share)
+
+
+class _AiJudge:
+    """An AI team weighing deals with one other team today, its rosters
+    and money looked up once (ai_answer, suggest)."""
+
+    def __init__(self, conn, league_id, season_id, ai_team_id, other_team_id, today):
+        self.lean = personas.leaning_of(conn, league_id, ai_team_id)
+        injuries = InjuryRepository(conn, league_id)
+        self.roster = _assets(
+            conn, ai_team_id, injuries.get_team_injuries(ai_team_id, today), season_id
         )
-        if margin_share is None
-        else margin_share,
-        horizon=lean.horizon,
-        pay_room=room,
-        money=owners.money_rate(
-            owners.money_terms(conn, league_id, season_id), room, state
-        ),
+        self.theirs = _assets(
+            conn,
+            other_team_id,
+            injuries.get_team_injuries(other_team_id, today),
+            season_id,
+        )
+        self.conn, self.league_id, self.season_id = conn, league_id, season_id
+        self.by_id = {a.id: a for a in self.roster + self.theirs}
+        self.state = team_states.state_of(conn, league_id, season_id, ai_team_id, today)
+        self.room = owners.pay_rooms(conn, league_id, season_id, [ai_team_id]).get(
+            ai_team_id
+        )
+        self.money = owners.money_rate(
+            owners.money_terms(conn, league_id, season_id), self.room, self.state
+        )
+        self.days_left = _season_days_left(conn, league_id, season_id, today)
+        self.margin = ai_evaluator.margin(
+            ai_team_id, other_team_id, today, self.lean.margin_factor
+        )
+        w = self.lean.stats_weight
+        self.seen_roster = ai_evaluator.seen(self.roster, w)
+        self.base = ai_evaluator.strengths(self.seen_roster, self.days_left)
+
+    def __call__(self, giving, getting, margin_share=None) -> ai_evaluator.Verdict:
+        missing = [i for i in giving + getting if i not in self.by_id]
+        if missing:
+            self.by_id.update(
+                _pick_assets(self.conn, self.league_id, self.season_id, missing)
+            )
+        w = self.lean.stats_weight
+        return ai_evaluator.evaluate(
+            roster=self.seen_roster,
+            giving=ai_evaluator.seen([self.by_id[pid] for pid in giving], w),
+            getting=ai_evaluator.seen([self.by_id[pid] for pid in getting], w),
+            state=self.state,
+            days_left=self.days_left,
+            margin_share=self.margin if margin_share is None else margin_share,
+            base=self.base,
+            horizon=self.lean.horizon,
+            pay_room=self.room,
+            money=self.money,
+        )
+
+
+# When an AI team turns an offer down, what it would take instead: the
+# GM's players that cost them least, one at a time from the cheapest
+# SUGGEST_SINGLES, then in pairs from the cheapest SUGGEST_PAIRS.
+SUGGEST_SINGLES = 40
+SUGGEST_PAIRS = 10
+
+
+def suggest(
+    conn,
+    league_id: str,
+    season_id: str,
+    ai_team_id: str,
+    my_team_id: str,
+    give_ids: list[str],
+    get_ids: list[str],
+    today: str,
+) -> list[str] | None:
+    """The cheapest add from the GM's side (one player, or two) that would
+    turn the AI team's no into a yes, or None. Cheapest as the GM's team
+    sees it: what losing him does to its strength, now and later, by its
+    team state. Only healthy players who can be traded and can go to that
+    team, and never past MAX_PER_SIDE."""
+    from itertools import combinations
+
+    room = MAX_PER_SIDE - len(give_ids)
+    if room <= 0:
+        return None
+    judge = _AiJudge(conn, league_id, season_id, ai_team_id, my_team_id, today)
+    statuses = {
+        r["player_id"]: r["status"]
+        for r in conn.execute(
+            """SELECT tp.player_id, s.status FROM team_players tp
+               JOIN player_status s ON s.player_id = tp.player_id
+               WHERE tp.team_id = %s""",
+            (my_team_id,),
+        ).fetchall()
+    }
+    mine = [
+        a
+        for a in judge.theirs
+        if a.id not in give_ids
+        and statuses.get(a.id) in TRADEABLE
+        and not a.injured_days
+    ]
+    former = TradeRepository(conn).former_teams(season_id, [a.id for a in mine])
+    mine = [a for a in mine if ai_team_id not in former.get(a.id, ())]
+    if not mine:
+        return None
+
+    # What each costs the GM's team, judged as a person would: no margin,
+    # no money, its own team state.
+    my_state = team_states.state_of(conn, league_id, season_id, my_team_id, today)
+    w = personas.leaning_of(conn, league_id, my_team_id).stats_weight
+    my_roster = ai_evaluator.seen(judge.theirs, w)
+    my_base = ai_evaluator.strengths(my_roster, judge.days_left)
+
+    def cost(a):
+        return -ai_evaluator.evaluate(
+            my_roster,
+            ai_evaluator.seen([a], w),
+            [],
+            my_state,
+            judge.days_left,
+            0.0,
+            my_base,
+        ).score
+
+    costs = {a.id: cost(a) for a in mine}
+    ranked = sorted(mine, key=lambda a: (round(costs[a.id], 1), -a.rating))
+    for a in ranked[:SUGGEST_SINGLES]:
+        if judge(get_ids, give_ids + [a.id]).accept:
+            return [a.id]
+    if room < 2:
+        return None
+    pairs = sorted(
+        combinations(ranked[:SUGGEST_PAIRS], 2),
+        key=lambda p: costs[p[0].id] + costs[p[1].id],
     )
+    for pair in pairs:
+        if judge(get_ids, give_ids + [a.id for a in pair]).accept:
+            return [a.id for a in pair]
+    return None
 
 
 def _pick_assets(conn, league_id: str, season_id: str, ids) -> dict[str, Asset]:
