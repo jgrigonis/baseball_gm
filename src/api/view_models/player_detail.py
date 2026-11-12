@@ -370,14 +370,22 @@ def player_panel_data(
         "all_star_years": _all_star_years(db, pid),
         "awards": player_awards(db, pid),
         "hall_of_fame": hall_of_fame.badge(db, pid),
-        "icon_seasons": (
-            icons.find(db, [(pid, team["id"])], {pid: overall_grade}).get(
-                (pid, team["id"])
-            )
-            if team
-            else None
-        ),
+        **_icon(db, pid, team, overall_grade),
     }
+
+
+def _icon(db, pid: str, team, grade) -> dict:
+    """icon_seasons + icon_team for the badge: his own club's icon, or for
+    a free agent the club he's an icon of, so every GM sees the same badge
+    the Free Agents tab shows (Josh, 2026-11-12)."""
+    if team:
+        n = icons.find(db, [(pid, team["id"])], {pid: grade}).get((pid, team["id"]))
+        return {"icon_seasons": n, "icon_team": team["mascot"] if n else None}
+    hit = icons.club_icons(db, [{"player_id": pid, "overall": grade}]).get(pid)
+    if not hit:
+        return {"icon_seasons": None, "icon_team": None}
+    name = TeamRepository(db).get_names([hit[0]]).get(hit[0])
+    return {"icon_seasons": hit[1], "icon_team": name}
 
 
 def player_awards(db, pid: str) -> list[dict]:

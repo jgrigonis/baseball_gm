@@ -69,7 +69,7 @@
    <span class="badge {{ 'badge-hof' if player.hall_of_fame.elected else 'badge-hof-ballot' }}" title="{{ player.hall_of_fame.title }}">🏛️ {{ player.hall_of_fame.text }}</span>
  {% endif %}
  {% if player.icon_seasons %}
-   <span class="badge badge-icon" title="{{ player.icon_seasons }} seasons with the {{ player.team_mascot }} and still a top player. Owners who care about icons won't like seeing him traded or released.">Franchise icon · {{ player.icon_seasons }} seasons</span>
+   <span class="badge badge-icon" title="{{ player.icon_seasons }} seasons with the {{ player.icon_team or player.team_mascot }} and still a top player. Owners who care about icons won't like seeing him traded or released.">Franchise icon · {{ player.icon_seasons }} seasons</span>
  {% endif %}
  {% if player.all_star_years %}
    <span class="badge badge-all-star" title="All-Star {{ player.all_star_years | join(', ') }}">

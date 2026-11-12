@@ -12,7 +12,8 @@ Owners who care about icons (the "icons" weight in src/league/owners.py)
 react when one is traded away and mark down the season for each one
 traded or released (src/api/services/owner_review.py). Roster, Lineup,
 the player panel and the trade builder show the ICON tag so GMs can see
-it coming.
+it coming. Free agents carry the tag of whichever club they are an icon of,
+so every GM sees the same thing.
 """
 
 from __future__ import annotations
@@ -98,3 +99,49 @@ def attach(conn, team_id: str | None, players: list[dict]) -> None:
         n = found.get((p.get("player_id"), team_id))
         if n:
             p["icon_seasons"] = n
+
+
+def club_icons(conn, players: list[dict]) -> dict[str, tuple[str, int]]:
+    """For players with no club (free agents): the club each one is an icon
+    of, if any, as {player_id: (team_id, seasons)}. A player who was an icon
+    in two places counts for the one he gave the most seasons. Cards
+    already carry their overall grade."""
+    good = [
+        p["player_id"]
+        for p in players
+        if p.get("player_id") and is_icon_grade(p.get("overall"))
+    ]
+    if not good:
+        return {}
+    rows = conn.execute(
+        """SELECT player_id, team_id, COUNT(DISTINCT season_id) AS n
+           FROM player_season_stats
+           WHERE player_id = ANY(%s) AND team_id IS NOT NULL
+             AND NOT is_postseason
+             AND (bat_games_played > 0 OR pitch_games_played > 0)
+           GROUP BY player_id, team_id
+           HAVING COUNT(DISTINCT season_id) >= %s""",
+        (good, ICON_SEASONS),
+    ).fetchall()
+    out: dict[str, tuple[str, int]] = {}
+    for r in rows:
+        n = int(r["n"])
+        if n > out.get(r["player_id"], ("", 0))[1]:
+            out[r["player_id"]] = (r["team_id"], n)
+    return out
+
+
+def attach_free_agents(conn, players: list[dict]) -> None:
+    """Mark free agent cards of any club's icons, the same for every GM:
+    p["icon_seasons"] and p["icon_team"] (the club's name)."""
+    from src.db.repositories.team_repo import TeamRepository
+
+    found = club_icons(conn, players)
+    if not found:
+        return
+    names = TeamRepository(conn).get_names(list({t for t, _ in found.values()}))
+    for p in players:
+        hit = found.get(p.get("player_id"))
+        if hit:
+            p["icon_seasons"] = hit[1]
+            p["icon_team"] = names.get(hit[0])

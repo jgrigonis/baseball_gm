@@ -604,6 +604,18 @@ def test_our_icon_in_the_pool_carries_the_icon_tag(lg, client):
     assert '"icon_seasons": 5' in html
 
 
+def test_another_clubs_icon_in_the_pool_carries_the_tag_too(lg, client):
+    # Every GM sees the same ICON tag (Josh, 2026-11-12).
+    star = lg.factory.rated_player(
+        lg.theirs, lg.league, level=85, status="free_agent", name="Legend"
+    ).id
+    lg.db.execute("DELETE FROM team_players WHERE player_id = %s", (star,))
+    _icon_seasons(lg, star, lg.theirs)
+    html = client.get(f"/leagues/{lg.league.id}/free-agents").text
+    assert '"icon_seasons": 5' in html
+    assert '"icon_team": "AI Club"' in html
+
+
 def test_expiring_players_who_want_a_trade_carry_the_tag(lg, client):
     lg.db.execute(
         "UPDATE leagues SET state = 'offseason' WHERE id = %s", (lg.league.id,)
