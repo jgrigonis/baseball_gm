@@ -10,12 +10,15 @@ class ReadyCheckRepository:
     _HUMAN = "league_id = %s AND NOT is_ai AND user_id IS NOT NULL AND fired_at IS NULL"
 
     # Seconds in the current period's window: the draft gets the Draft Window,
-    # the preseason period (setting the first lineup) the Lineup Window, and
-    # every other period the Decision Window. Read after the period has run,
+    # the preseason period (setting the first lineup) the Lineup Window, the
+    # offseason period (Summary, Expiring Deals, re-signs) the Lineup Window
+    # or the Decision Window if that's longer, and every other period the
+    # Decision Window. Read after the period has run,
     # so it times the period that is starting.
     _WINDOW = """CASE state
                      WHEN 'draft' THEN draft_window_sec
                      WHEN 'preseason' THEN lineup_window_sec
+                     WHEN 'offseason' THEN GREATEST(lineup_window_sec, decision_window_sec)
                      ELSE decision_window_sec
                  END"""
 

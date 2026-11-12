@@ -57,7 +57,7 @@
   ("Draft window", info.draft_window_sec ~ "s",
    "How long GMs get to set their draft before it runs. It runs early once every GM clicks Ready." ~ timer_note ~ solo_note),
   ("Lineup window", info.lineup_window_sec ~ "s",
-   "How long GMs get after the draft to set their first lineup before the season starts." ~ timer_note ~ solo_note),
+   "How long GMs get after the draft to set their first lineup before the season starts, and in the offseason to re-sign their expiring deals (or the decision window, if that's longer)." ~ timer_note ~ solo_note),
   ("Days per sim period", info.sim_period_days,
    "How many days of the regular season each sim period plays before GMs get their next decision window." ~
    (" With one human GM there are no sim periods: the GM sims at their own pace. All it sets then is how long a released player sits on waivers, two periods of game days." if solo else "")),
