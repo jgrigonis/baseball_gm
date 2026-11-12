@@ -304,7 +304,9 @@ class TestWhichWindow:
             (league.id,),
         )
         ready_check.advance_if_due(db_conn, league.id)
-        assert 495 <= ready_check.status(db_conn, league.id, a.id)["seconds_left"] <= 500
+        assert (
+            495 <= ready_check.status(db_conn, league.id, a.id)["seconds_left"] <= 500
+        )
 
 
 class TestPlayoffs:
