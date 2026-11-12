@@ -92,3 +92,20 @@ def test_after_a_trade_the_roster_tab_turns_it_back_to_play_day(db_conn, factory
     assert "Go to Roster" in before and "Play Day" not in before
     assert "▶ Play Day" in there
     assert "▶ Play Day" in after and "Go to Roster" not in after
+
+
+def test_a_multiplayer_draft_points_to_the_draft_then_free_agents(db_conn, factory):
+    first, on_draft, on_fa, after = _get(
+        db_conn,
+        factory,
+        "draft",
+        "/leagues/{id}/next-move?page=standings",
+        "/leagues/{id}/next-move?page=draft",
+        "/leagues/{id}/next-move?page=free-agents",
+        "/leagues/{id}/next-move?page=standings",
+        joined=True,
+    )
+    assert 'class="nm-pill"' in first and "/draft" in first and "📋 Draft" in first
+    assert "✍️ Free Agents" in on_draft and "📋 Draft" not in on_draft
+    assert 'class="nm-pill"' not in on_fa
+    assert 'class="nm-pill"' not in after and 'onclick="readyToggle()"' in after
