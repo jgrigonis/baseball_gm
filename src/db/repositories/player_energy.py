@@ -130,12 +130,15 @@ def recover_player_energy(
     player_id: str,
     game_date: date,
     durability: int = 50,
+    rate_mult: float = 1.0,
 ) -> PlayerEnergyState:
     """
     Return a copy of a stored energy state with recovery applied up to game_date.
 
     ``state`` is the raw row as returned by ``PlayerEnergyRepository.get`` or
     ``get_many`` (None when the player has no history). It is not modified.
+    ``rate_mult`` speeds or slows the daily recovery: his team's Facilities
+    (src/league/budget.py facilities_recovery).
     """
     if not state:
         return PlayerEnergyState(player_id=player_id)
@@ -162,7 +165,7 @@ def recover_player_energy(
             state.consecutive_days = 0
 
         # Exponential approach toward max_energy
-        rate = _daily_recovery_rate(durability)
+        rate = min(0.95, _daily_recovery_rate(durability) * rate_mult)
         energy = state.current_energy
         for _ in range(days_rest):
             energy += (state.max_energy - energy) * rate
@@ -259,6 +262,7 @@ class PlayerEnergyRepository:
         player_id: str,
         game_date: date,
         durability: int = 50,
+        rate_mult: float = 1.0,
     ) -> PlayerEnergyState:
         """
         Get player energy state with recovery applied up to game_date.
@@ -277,13 +281,14 @@ class PlayerEnergyRepository:
             reflecting time elapsed since last appearance.
         """
         return recover_player_energy(
-            self.get(player_id), player_id, game_date, durability
+            self.get(player_id), player_id, game_date, durability, rate_mult
         )
 
     def get_many_with_recovery(
         self,
         durabilities: dict[str, int],
         game_date: date,
+        rate_mults: dict[str, float] | None = None,
     ) -> dict[str, PlayerEnergyState]:
         """
         Batch version of get_with_recovery, using one query.
@@ -293,10 +298,15 @@ class PlayerEnergyRepository:
                           player in it gets an entry in the result, in the
                           same order.
             game_date:    Date of the upcoming game.
+            rate_mults:   Optional player_id → recovery speed (Facilities);
+                          missing players recover at the normal rate.
         """
         raw = self.get_many(durabilities)
+        rate_mults = rate_mults or {}
         return {
-            pid: recover_player_energy(raw.get(pid), pid, game_date, durability)
+            pid: recover_player_energy(
+                raw.get(pid), pid, game_date, durability, rate_mults.get(pid, 1.0)
+            )
             for pid, durability in durabilities.items()
         }
 

@@ -77,3 +77,14 @@ def test_recover_player_energy_does_not_modify_input():
     assert recovered.current_energy > 0.3
     assert recovered.consecutive_days == 0
     assert stored == _state("p", energy=0.3)
+
+
+def test_facilities_speed_position_player_recovery():
+    """Better Facilities bring a tired hitter back faster (rate_mult)."""
+    stored = _state("p", energy=0.3)
+    game_date = date(2026, 5, 4)
+    slow = recover_player_energy(stored, "p", game_date, 50, 0.85)
+    normal = recover_player_energy(stored, "p", game_date, 50)
+    fast = recover_player_energy(stored, "p", game_date, 50, 1.15)
+
+    assert slow.current_energy < normal.current_energy < fast.current_energy
