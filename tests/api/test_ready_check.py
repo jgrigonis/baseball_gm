@@ -242,7 +242,8 @@ def _moves_to(state):
 
 class TestWhichWindow:
     """The draft gets the Draft Window and the preseason period, when GMs set
-    their first lineup, gets the Lineup Window."""
+    their first lineup, gets the Lineup Window, as does the offseason (or the
+    Decision Window, if that's longer)."""
 
     def _set_windows(self, db, league):
         db.execute(
@@ -280,6 +281,30 @@ class TestWhichWindow:
             ready_check.set_ready(db_conn, league.id, gm.id, True)
         assert ready_check.advance_if_due(db_conn, league.id)
         assert 55 <= ready_check.status(db_conn, league.id, a.id)["seconds_left"] <= 60
+
+    def test_offseason_gets_the_lineup_window(self, db_conn, factory, run_period):
+        # Expiring deals and re-signs take longer than one decision.
+        league, (a, b) = _league(db_conn, factory, state="playoffs")
+        self._set_windows(db_conn, league)
+        run_period.side_effect = _moves_to("offseason")
+        for gm in (a, b):
+            ready_check.set_ready(db_conn, league.id, gm.id, True)
+        assert ready_check.advance_if_due(db_conn, league.id)
+        assert (
+            1795 <= ready_check.status(db_conn, league.id, a.id)["seconds_left"] <= 1800
+        )
+
+    def test_offseason_keeps_a_longer_decision_window(
+        self, db_conn, factory, run_period
+    ):
+        league, (a, _) = _league(db_conn, factory, state="offseason")
+        db_conn.execute(
+            """UPDATE leagues SET decision_window_sec = 500,
+                   lineup_window_sec = 120 WHERE id = %s""",
+            (league.id,),
+        )
+        ready_check.advance_if_due(db_conn, league.id)
+        assert 495 <= ready_check.status(db_conn, league.id, a.id)["seconds_left"] <= 500
 
 
 class TestPlayoffs:

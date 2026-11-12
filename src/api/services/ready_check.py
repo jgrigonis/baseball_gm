@@ -7,7 +7,9 @@
 # pace_control:
 #   timer      every GM ready, or the window runs out: draft_window_sec for
 #              the draft, lineup_window_sec for the preseason period (setting
-#              the first lineup), decision_window_sec for everything else
+#              the first lineup), the longer of lineup_window_sec and
+#              decision_window_sec for the offseason (expiring deals and
+#              re-signs take a while), decision_window_sec for everything else
 #   confirmed  every GM ready; no clock
 #   scheduled  a fixed real-world interval (not built yet)
 #
