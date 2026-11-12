@@ -186,8 +186,18 @@ class TestWhenNothingRuns:
         with psycopg.connect(url, row_factory=dict_row) as other:
             with league_lock(other, league.id):
                 ready_check.advance_if_due(db_conn, league.id)
-                assert ready_check.status(db_conn, league.id, gms[0].id)["simming"]
+        # (The real worker leaves the job queued to try again, which shows as
+        # simming: test_already_queued.)
         run_period.assert_not_called()
+
+    def test_league_lock_alone_isnt_simming(self, db_conn, factory, request):
+        """A trade, a budget save or another GM's poll holds the league lock
+        for a moment; only a queued or running sim counts as simming."""
+        league, gms = _league(db_conn, factory)
+        url = request.config.getoption("--db-url") or os.environ["DATABASE_TEST_URL"]
+        with psycopg.connect(url, row_factory=dict_row) as other:
+            with league_lock(other, league.id):
+                assert not ready_check.status(db_conn, league.id, gms[0].id)["simming"]
 
     def test_already_queued(self, db_conn, factory, run_period):
         """However many polls see the period come due, it's queued once."""
