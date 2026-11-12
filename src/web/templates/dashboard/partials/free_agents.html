@@ -72,6 +72,42 @@ const CAN_SIGN = {{ 'true' if can_sign else 'false' }};
 const BIDDING = {{ 'true' if bidding else 'false' }};
 let faTypeVal = '';
 
+// The view (All/Hit/Pit, position, sort, name) lives in the page address,
+// so a bid, sign or claim (reloadTab reloads location.pathname + search),
+// a refresh after another GM's move, or a browser reload keeps it.
+function isFaPage() {
+  return /\/leagues\/[^\/]+\/free-agents\/?$/.test(window.location.pathname);
+}
+function saveView() {
+  if (!isFaPage()) return;
+  const q = new URLSearchParams();
+  const pos = document.getElementById('fa-pos').value;
+  const sort = document.getElementById('fa-sort').value;
+  const name = document.getElementById('fa-q').value.trim();
+  if (faTypeVal) q.set('type', faTypeVal);
+  if (pos) q.set('pos', pos);
+  if (sort !== 'overall') q.set('sort', sort);
+  if (name) q.set('q', name);
+  const qs = q.toString();
+  history.replaceState(history.state, '', window.location.pathname + (qs ? '?' + qs : ''));
+}
+function restoreView() {
+  if (!isFaPage()) return;
+  const q = new URLSearchParams(window.location.search);
+  const type = q.get('type');
+  if (type === 'hitter' || type === 'pitcher') {
+    faTypeVal = type;
+    document.querySelectorAll('.fa-seg-btn').forEach(b => b.classList.toggle('active', b.dataset.type === type));
+  }
+  const setSel = (id, v) => {
+    const el = document.getElementById(id);
+    if (v && [...el.options].some(o => o.value === v)) el.value = v;
+  };
+  setSel('fa-pos', q.get('pos'));
+  setSel('fa-sort', q.get('sort'));
+  if (q.get('q')) document.getElementById('fa-q').value = q.get('q');
+}
+
 function shown() {
   const pos = document.getElementById('fa-pos').value;
   const q = document.getElementById('fa-q').value.trim().toLowerCase();
@@ -139,6 +175,7 @@ function faRender() {
   box.replaceChildren(...list.map(row));
   box.style.display = list.length ? '' : 'none';
   document.getElementById('fa-none').style.display = list.length ? 'none' : '';
+  saveView();
 }
 window.faRender = faRender;
 window.faType = function (btn) {
@@ -146,6 +183,6 @@ window.faType = function (btn) {
   btn.parentElement.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
   faRender();
 };
-faRender();
+if (document.getElementById('fa-list')) { restoreView(); faRender(); }
 })();
 </script>
