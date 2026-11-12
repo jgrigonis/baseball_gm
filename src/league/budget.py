@@ -426,6 +426,21 @@ def standing(
 # The owner-spending line of warning() when the GM is already past it; the
 # Trades tab shows it in bold red (dashboard/partials/trades.html).
 ALREADY_PAST = "You're already past what your owner will spend."
+# How each owner sentence starts (warning() and refusal()), so a view can
+# set the owner's part apart (split_owner).
+OWNER_STARTS = (ALREADY_PAST, "Your owner won't like it:", "Your owner won't allow it:")
+
+
+def split_owner(text: str | None) -> tuple[str, str]:
+    """A warning split into its cap/tax part and its owner part (always
+    last), either one "" when it isn't there."""
+    if not text:
+        return "", ""
+    hits = [i for i in (text.find(s) for s in OWNER_STARTS) if i >= 0]
+    if not hits:
+        return text, ""
+    i = min(hits)
+    return text[:i].strip(), text[i:].strip()
 
 
 def warning(

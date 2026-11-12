@@ -216,7 +216,7 @@ def trades_tab(
     offers_to_me = trade_repo.offers_to_team(league_id, team_id) if team_id else []
     if standing:
         for o in offers_to_me:
-            o["budget_warning"] = bg.warning(
+            warning = bg.warning(
                 standing["payroll"],
                 standing["cap"],
                 standing["budget"],
@@ -224,6 +224,18 @@ def trades_tab(
                 standing["front_office"],
                 standing["minors"],
             )
+            # Past the owner's hard limit, Accept is refused (trades.respond):
+            # say that instead of "won't like it".
+            refusal = trades.owner_refusal(
+                db,
+                league_id,
+                team_id,
+                [p["player_id"] for p in o["sent"]],
+                [p["player_id"] for p in o["received"]],
+            )
+            rest, owner = bg.split_owner(warning)
+            o["budget_warning"] = rest
+            o["owner_warning"] = refusal or owner
             o["caps"] = offer_caps(db, league_id, o, team_id, standing["cap"])
     my_players = (
         team_cards(db, league_id, season_id, team_id)
@@ -278,7 +290,6 @@ def trades_tab(
             else [],
             "offers_to_me": offers_to_me,
             "budget": standing,
-            "already_past": bg.ALREADY_PAST,
             "owner_icons": owner_icons,
             "my_votes": trade_repo.votes_for_gm(league_id, gm["id"])
             if gm.get("id")
