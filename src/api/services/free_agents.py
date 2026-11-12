@@ -58,7 +58,7 @@ class FreeAgentError(Exception):
 
 # Free agency bargains (Josh, 2026-11-07: "people should be getting picked
 # up off there for cheap"). A free agent still unsigned once offseason
-# bidding is over asks MARKET_STEP less as the preseason starts, and another
+# bidding is over asks MARKET_STEP less once the bids settle, and another
 # MARKET_STEP each MARKET_STEP_DAYS of the season, down to MARKET_FLOOR of
 # his price. A fringe player (FRINGE_GRADE or worse) asks the minimum, for
 # one season, any time.
@@ -103,7 +103,8 @@ def asking_deal(
 
 def discount_for(state: str | None, days_played: int) -> float:
     """How far free agents' prices have fallen: full price through the
-    offseason and its bidding, a step off in the preseason, then another
+    offseason and its bidding, a step off in the preseason once the bids
+    settle (market_discount), then another
     step every MARKET_STEP_DAYS of the season, to the floor."""
     if state not in ("preseason", "season", "playoffs"):
         return 1.0
@@ -116,6 +117,9 @@ def market_discount(conn, league_id: str) -> float:
     of the regular season have been played."""
     league = LeagueRepository(conn).get_by_id(league_id)
     state = league["state"] if league else None
+    if state == "preseason" and league.get("fa_bidding"):
+        # Bids are still open: full price until they settle.
+        return 1.0
     if state not in ("season", "playoffs"):
         return discount_for(state, 0)
     season_id = SeasonRepository(conn).get_current_id_for_league(league_id)
@@ -327,10 +331,11 @@ def sign(conn, league_id: str, team_id: str, player_id: str) -> dict:
     """Sign a free agent at his asking price."""
     with league_lock(conn, league_id, wait=MOVE_WAIT):
         season_id, year = _context(conn, league_id)
-        if LeagueRepository(conn).get_by_id(league_id)["state"] == "draft":
+        league = LeagueRepository(conn).get_by_id(league_id)
+        if league.get("fa_bidding") and league["state"] in ("draft", "preseason"):
             # Offseason free agency (src/api/services/offseason_fa.py).
             raise FreeAgentError(
-                "During the draft, free agents take bids. Make him an offer."
+                "Free agents take bids until bidding closes. Make him an offer."
             )
         player = PlayerRepository(conn).look_up(player_id)
         status_repo = PlayerStatusRepository(conn)

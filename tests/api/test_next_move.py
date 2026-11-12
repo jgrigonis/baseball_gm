@@ -298,3 +298,27 @@ def test_multiplayer_preseason_roster_pill_after_the_budget():
         _ctx(multiplayer=True, league_state="season", roster_due=True), "standings"
     )
     assert move["pill"] is None
+
+
+def test_preseason_bids_come_before_the_roster():
+    """Free agent bids stay open into the preseason (Josh, 2026-11-12): the
+    Free Agents tab after the budget, Close Bidding there, then the Roster."""
+    pre = dict(
+        league_state="preseason", fa_bidding=True, roster_due=True, lineup_due=True
+    )
+    assert pick(_ctx(**pre, budget_due=True), "standings")["key"] == "set-budget"
+    assert pick(_ctx(**pre), "roster")["key"] == "go-bids"
+    move = pick(_ctx(**pre), "free-agents")
+    assert move["key"] == "close-bidding" and move["fn"] == "closeBidding"
+    pre["fa_bidding"] = False
+    assert pick(_ctx(**pre), "free-agents")["key"] == "go-roster"
+
+
+def test_multiplayer_preseason_bids_pill_before_roster():
+    pre = dict(
+        multiplayer=True, league_state="preseason", fa_bidding=True, roster_due=True
+    )
+    assert pick(_ctx(**pre), "standings")["pill"]["label"] == "✍️ Bids"
+    assert pick(_ctx(**pre), "free-agents")["pill"] is None
+    pre["fa_bidding"] = False
+    assert pick(_ctx(**pre), "standings")["pill"]["label"] == "👥 Roster"

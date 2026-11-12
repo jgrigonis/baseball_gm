@@ -21,17 +21,23 @@ Offseason free agency (free agency phase 2, PR 3; Josh's decisions
    offseason runs (close_window): re-signed players get their new deal, and
    the ones let go become free agents.
 
-2. Bidding (league state 'draft'). Free agents can't be signed outright:
-   teams bid a salary and a number of seasons (fa_bids). AI teams bid on
-   free agents who fill a hole, within their budget.
+2. Bidding (from the draft into the preseason, while leagues.fa_bidding is
+   set: bidding_open). Free agents can't be signed outright: teams bid a
+   salary and a number of seasons (fa_bids). AI teams bid on free agents
+   who fill a hole, within their budget, as the bids settle. Bids stay open
+   past the draft so a GM can bid knowing who they drafted (Josh,
+   2026-11-12).
 
-3. Settling (as the preseason starts, settle). Each free agent with bids,
+3. Settling (close_bidding, partway through the preseason: the solo GM's
+   Close Bidding step, the first preseason period in a multiplayer league,
+   and at the latest just before Opening Day). Each free agent with bids,
    best first, takes the one he likes best: the money against his asking
    price, plus how well the team suits him (winning, home, market, coaching:
    src/player/happiness.py team_fit), as much as he cares about those. He
    won't take less than MIN_BID_SHARE of his asking price. A bid the
-   owner's hard limit no longer allows is skipped. Free agents nobody gets
-   can still be signed at their asking price in the preseason and season.
+   owner's hard limit no longer allows is skipped, and so is one from a
+   team whose minors are full. Free agents nobody gets can still be signed
+   at their asking price in the rest of the preseason and the season.
 """
 
 from __future__ import annotations
@@ -40,7 +46,13 @@ import random
 from datetime import date
 
 from src.api.grade_curves import GRADES
-from src.api.services import ai_free_agents, free_agents, owners, waivers
+from src.api.services import (
+    ai_free_agents,
+    free_agents,
+    front_office,
+    owners,
+    waivers,
+)
 from src.api.services.news.moves import shown_grade
 from src.api.services.news.names import Names
 from src.db.locks import league_lock
@@ -59,6 +71,7 @@ from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_state_repo import TeamStateRepository
+from src.league.offseason.roster_trimmer import MINORS_LIMIT
 from src.league import money_state
 from src.player import contracts as ct
 from src.player import happiness as hp
@@ -509,7 +522,7 @@ def _news_market(conn, league_id: str, year: int, gone: list[tuple[str, str]]):
         f"{len(players)} players hit free agency",
         names
         + (f" and {more} more" if more > 0 else "")
-        + ". Teams bid during the draft; players choose as the preseason starts.",
+        + ". Teams bid from the draft into the preseason; players choose when bidding closes.",
         weight=2,
         player_ids=[p.id for p in players[:4]],
     )
@@ -570,7 +583,7 @@ def _news_departures(
             f"{name} leaves the {club} for free agency",
             f"The {club} {_why_gone(r, human)}. {grade} {p.position}, age {p.age}, "
             f"was making {ct.format_salary(r['old_salary'])} and asks "
-            f"{ct.format_salary(r['deal'].salary)}. Teams bid during the draft.",
+            f"{ct.format_salary(r['deal'].salary)}. Teams bid from the draft into the preseason.",
             weight=3 if human or grade.startswith("A") else 2,
             team_ids=[team],
             player_ids=[p.id],
@@ -649,6 +662,22 @@ def expiring_view(conn, league_id: str, team_id: str) -> list[dict]:
 # ── 2. Bidding ────────────────────────────────────────────────────────────────
 
 
+def bidding_open_for(league: dict | None) -> bool:
+    """Bids are open: from the draft into the preseason, until they settle."""
+    return bool(
+        league
+        and league.get("state") in ("draft", "preseason")
+        and league.get("fa_bidding")
+    )
+
+
+def bidding_open(conn, league_id: str) -> bool:
+    return bidding_open_for(LeagueRepository(conn).get_by_id(league_id))
+
+
+CLOSED = "Free agent bidding is closed. Sign him at his asking price."
+
+
 def _biddable(conn, league_id: str, player_id: str) -> object:
     p = PlayerRepository(conn).look_up(player_id)
     if (
@@ -673,8 +702,8 @@ def asking(conn, league_id: str, player, year: int) -> ct.Deal:
 
 def bid_preview(conn, league_id: str, team_id: str, player_id: str) -> dict:
     """His asking deal, the team's bid so far, and how many bids he has."""
-    if _league(conn, league_id)["state"] != "draft":
-        raise OffseasonFAError("Bidding is open during the draft.")
+    if not bidding_open_for(_league(conn, league_id)):
+        raise OffseasonFAError(CLOSED)
     year = _year(conn, league_id)
     p = _biddable(conn, league_id, player_id)
     ask = asking(conn, league_id, p, year)
@@ -704,8 +733,8 @@ def place_bid(
     conn, league_id: str, team_id: str, player_id: str, salary: int, years: int
 ) -> dict:
     with league_lock(conn, league_id):
-        if _league(conn, league_id)["state"] != "draft":
-            raise OffseasonFAError("Bidding is open during the draft.")
+        if not bidding_open_for(_league(conn, league_id)):
+            raise OffseasonFAError(CLOSED)
         year = _year(conn, league_id)
         _biddable(conn, league_id, player_id)
         try:
@@ -892,9 +921,39 @@ def _last_team(conn, league_id: str, player_id: str) -> str | None:
     return row["team_id"] if row else None
 
 
+def close_bidding(conn, league_id: str) -> list[dict]:
+    """Bids settle (settle) and bidding closes for the year. AI teams that
+    signed someone re-pick their rosters around him; a GM who did gets the
+    Roster tab in their preseason next moves again. The caller holds the
+    league lock and commits. Returns the signings."""
+    league = LeagueRepository(conn).get_by_id(league_id)
+    if not bidding_open_for(league):
+        return []
+    signed = settle(conn, league_id)
+    conn.execute("UPDATE leagues SET fa_bidding = FALSE WHERE id = %s", (league_id,))
+    season_id = SeasonRepository(conn).get_current_id_for_league(league_id)
+    year = ContractRepository(conn).current_year(league_id)
+    teams = {s["team_id"] for s in signed}
+    if not teams or not season_id or year is None:
+        return signed
+    humans = GMRepository(conn).get_human_team_ids(league_id)
+    ai = teams - humans
+    outlooks = front_office.outlooks(conn, league_id, season_id) if ai else {}
+    for team_id in sorted(ai):
+        front_office.replan_roster(
+            conn, league_id, season_id, team_id, outlooks.get(team_id), f"{year}-04-01"
+        )
+    conn.execute(
+        """UPDATE gms SET roster_seen_season_id = NULL
+           WHERE league_id = %s AND team_id = ANY(%s)""",
+        (league_id, sorted(teams & humans)),
+    )
+    return signed
+
+
 def settle(conn, league_id: str) -> list[dict]:
-    """The preseason starts: AI teams bid, then each free agent with bids
-    signs with the one he likes best. Returns the signings."""
+    """Bidding closes: AI teams bid, then each free agent with bids signs
+    with the one he likes best. Returns the signings."""
     season_id = SeasonRepository(conn).get_current_id_for_league(league_id)
     year = ContractRepository(conn).current_year(league_id)
     if not season_id or year is None:
@@ -929,6 +988,7 @@ def settle(conn, league_id: str) -> list[dict]:
     names = TeamRepository(conn).get_names(teams)
     nm = Names(conn, league_id)
     signed = []
+    minors = {t: len(status.get_by_team_and_status(t, "minors")) for t in teams}
     order = sorted(
         (pid for pid in by_player if players.get(pid)),
         key=lambda pid: -role_rating(players[pid]),
@@ -945,6 +1005,8 @@ def settle(conn, league_id: str) -> list[dict]:
                 continue
             if budgets.refusal(league_id, b["team_id"], year, b["salary"]):
                 continue
+            if minors.get(b["team_id"], 0) >= MINORS_LIMIT:
+                continue
             fit, share = team_fit_for(person, p, homes.get(pid), fits[b["team_id"]])
             value = bid_value(b["salary"], b["years"], ask, p.age, fit, share)
             value += random.Random(f"fa-tie:{pid}:{b['team_id']}").random() * 1e-6
@@ -957,6 +1019,7 @@ def settle(conn, league_id: str) -> list[dict]:
         was = _last_team(conn, league_id, pid)
         team_repo.add_player(b["team_id"], pid)
         status.set_status(pid, "minors")
+        minors[b["team_id"]] = minors.get(b["team_id"], 0) + 1
         contracts.sign_free_agent(pid, league_id, b["team_id"], deal, year)
         contracts.apply_offset(pid, year, deal.salary, year + deal.years - 1)
         signed.append(

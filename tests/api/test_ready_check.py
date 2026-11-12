@@ -437,3 +437,20 @@ class TestTopBarDate:
             (season.id,),
         )
         assert str(date()) == "2025-04-02"
+
+
+def test_preseason_period_with_open_bids_settles_without_games(monkeypatch):
+    """Bids stay open into a multiplayer preseason; its first period settles
+    them, with no games, and the next one plays Opening Day (Josh,
+    2026-11-12)."""
+    calls = []
+    monkeypatch.setattr(ready_check.offseason_fa, "bidding_open", lambda c, l: True)
+    monkeypatch.setattr(
+        ready_check.offseason_fa, "close_bidding", lambda c, l: calls.append("close")
+    )
+    monkeypatch.setattr(ready_check, "sim_days", lambda *a: calls.append("sim") or {})
+    assert ready_check._run_period(None, "L", "preseason", 3) is False
+    assert calls == ["close"]
+    monkeypatch.setattr(ready_check.offseason_fa, "bidding_open", lambda c, l: False)
+    ready_check._run_period(None, "L", "preseason", 3)
+    assert calls == ["close", "sim"]

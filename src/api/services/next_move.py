@@ -172,10 +172,26 @@ def _draft_pill(ctx: dict, page: str) -> dict | None:
             "label": "✍️ Free Agents",
             "short": "✍️",
             "href": f"{base}/free-agents",
-            "title": "Free agents take bids during the draft. They pick a "
-            "team as the preseason starts.",
+            "title": "Free agents take bids during the draft and the preseason's "
+            "first period. They pick a team when that period runs.",
         }
     return None
+
+
+def _bids_pill(ctx: dict, page: str) -> dict | None:
+    """A multiplayer preseason with free agent bids still open: they settle
+    when everyone's ready, so the Free Agents tab before the Roster tab."""
+    if ctx.get("league_state") != "preseason" or not ctx.get("fa_bidding"):
+        return None
+    if page == "free-agents":
+        return None
+    return {
+        "label": "✍️ Bids",
+        "short": "✍️",
+        "href": f"/leagues/{ctx['league_id']}/free-agents",
+        "title": "Free agent bids are still open. They settle when everyone's "
+        "ready, before Opening Day.",
+    }
 
 
 def _roster_pill(ctx: dict, page: str) -> dict | None:
@@ -183,7 +199,8 @@ def _roster_pill(ctx: dict, page: str) -> dict | None:
     (Josh, 2026-11-12), once each preseason until the Roster tab is opened."""
     if ctx.get("league_state") != "preseason" or not ctx.get("roster_due"):
         return None
-    if page == "roster":
+    # Free agent bids still open: the signings come first.
+    if page == "roster" or ctx.get("fa_bidding"):
         return None
     return {
         "label": "👥 Roster",
@@ -242,6 +259,7 @@ def pick(
             or _draft_pill(ctx, page)
             or _trade_pill(ctx, page)
             or _budget_pill(ctx, page)
+            or _bids_pill(ctx, page)
             or _roster_pill(ctx, page)
         )
         return move
@@ -274,6 +292,24 @@ def pick(
     # gets one look at the Budget tab first (Josh, 2026-11-09).
     if state == "preseason" and ctx.get("budget_due") and page != "budget":
         return _go("set-budget", "💰 Set Your Budget →", "Budget →", f"{base}/budget")
+    # Free agent bids stay open from the draft into the preseason (Josh,
+    # 2026-11-12): the last bids on the Free Agents tab, then Close Bidding
+    # there, so the Roster and Lineup come with the signings in.
+    if state == "preseason" and ctx.get("fa_bidding"):
+        if page == "free-agents":
+            return _act(
+                "close-bidding",
+                "🔨 Close Bidding ▶",
+                "Close Bids ▶",
+                "closeBidding",
+                btn_id="close-bidding-btn",
+            )
+        return _go(
+            "go-bids",
+            "✍️ Free Agent Bids →",
+            "Bids →",
+            f"{base}/free-agents",
+        )
     # Then a look at the roster and the batting order before the first game
     # (Josh, 2026-11-10). Opening the tab marks it seen (web/utils.py), so
     # on the Roster tab the button already points on to the Lineup.

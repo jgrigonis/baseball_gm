@@ -20,6 +20,7 @@ from src.api.services import (
     all_star,
     front_office,
     hr_derby,
+    offseason_fa,
     owner_office,
     rookie_game,
     team_states,
@@ -165,8 +166,11 @@ def sim_next_day(league_id: str, conn) -> dict:
 
     team_names = tr.get_names(team_ids)
 
-    # Advance league state to 'season' if still in preseason
+    # Advance league state to 'season' if still in preseason. Free agent
+    # bids still open settle first, so nobody plays Opening Day with them
+    # hanging.
     if league["state"] == "preseason":
+        offseason_fa.close_bidding(conn, league_id)
         lr.set_state(league_id, "season")
         conn.commit()
 

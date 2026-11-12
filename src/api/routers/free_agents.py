@@ -10,7 +10,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 
 from src.api.dependencies import DB, GM, ActiveLeague, GMOrViewer, IsHTMX, User
-from src.api.services import free_agents, icons, offseason_fa, waivers
+from src.api.services import free_agents, icons, offseason_fa, ready_check, waivers
 from src.api.view_models.player_cards import (
     attach_injuries,
     attach_moods,
@@ -104,10 +104,11 @@ def free_agents_tab(
     # Roster and Lineup (Josh, 2026-11-10).
     icons.attach(db, team_id, players)
 
-    # Offseason free agency (src/api/services/offseason_fa.py): bids during
-    # the draft, and the GM's expiring deals in the offseason.
-    state = ctx.get("league_state")
-    ctx["bidding"] = state == "draft"
+    # Offseason free agency (src/api/services/offseason_fa.py): bids from
+    # the draft into the preseason, and the GM's expiring deals in the
+    # offseason.
+    league = LeagueRepository(db).get_by_id(league_id)
+    ctx["bidding"] = offseason_fa.bidding_open_for(league)
     if ctx["bidding"] and year is not None:
         counts = offseason_fa.bid_counts(db, league_id, year)
         mine = offseason_fa.bids_by(db, league_id, team_id, year) if team_id else {}
@@ -193,9 +194,9 @@ def expiring_tab(
 
 @router.get("/leagues/{league_id}/free-agents/{player_id}/sign")
 def sign_preview(league_id: str, player_id: str, db: DB, gm: GM):
-    """His asking deal and any over-budget warning, for the confirm. During
-    the draft, what a bid needs instead (offseason_fa.py)."""
-    if (LeagueRepository(db).get_by_id(league_id) or {}).get("state") == "draft":
+    """His asking deal and any over-budget warning, for the confirm. While
+    bids are open, what a bid needs instead (offseason_fa.py)."""
+    if offseason_fa.bidding_open(db, league_id):
         try:
             result = offseason_fa.bid_preview(db, league_id, gm["team_id"], player_id)
         except offseason_fa.OffseasonFAError as e:
@@ -325,6 +326,46 @@ def place_bid(
     except offseason_fa.OffseasonFAError as e:
         return JSONResponse({"detail": str(e)}, status_code=422)
     return JSONResponse(_expiring_result(db, league_id, gm["team_id"], result))
+
+
+@router.post("/leagues/{league_id}/free-agents/close-bidding")
+def close_bidding(league_id: str, db: DB, gm: GM, _active: ActiveLeague):
+    """A solo GM's Close Bidding step in the preseason: the free agents pick
+    their teams now (offseason_fa.close_bidding). In a multiplayer league the
+    first preseason period does it, when everyone's ready."""
+    with league_lock(db, league_id):
+        league = LeagueRepository(db).get_by_id(league_id) or {}
+        if league.get("state") != "preseason" or not league.get("fa_bidding"):
+            return JSONResponse(
+                {"detail": "Bidding is already closed."}, status_code=422
+            )
+        if ready_check.is_multiplayer(db, league_id):
+            return JSONResponse(
+                {"detail": "Bidding closes when everyone's ready."}, status_code=422
+            )
+        signed = offseason_fa.close_bidding(db, league_id)
+        db.commit()
+    mine = [s for s in signed if s["team_id"] == gm["team_id"]]
+    names = {}
+    if mine:
+        repo = PlayerRepository(db)
+        for s in mine:
+            p = repo.look_up(s["player_id"])
+            if p:
+                names[s["player_id"]] = f"{p.first_name} {p.last_name}"
+    return JSONResponse(
+        {
+            "signed": len(signed),
+            "mine": [
+                {
+                    "name": names.get(s["player_id"], "A free agent"),
+                    "salary_text": format_salary(s["salary"]),
+                    "years": s["years"],
+                }
+                for s in mine
+            ],
+        }
+    )
 
 
 @router.post("/leagues/{league_id}/free-agents/{player_id}/bid/withdraw")

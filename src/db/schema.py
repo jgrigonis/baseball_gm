@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS leagues (
     weighted_schedule    BOOLEAN NOT NULL DEFAULT FALSE, -- division rivals play more often (src/league/weighted_schedule.py)
     real_season          INTEGER,  -- starts with this MLB season's players (src/league/real_seasons/, migration 095)
     single_player        BOOLEAN NOT NULL DEFAULT FALSE, -- has a custom team: nobody else can join (migration 096)
+    fa_bidding           BOOLEAN NOT NULL DEFAULT FALSE, -- free agent bids open: from the draft until they settle in the preseason (migration 120)
     created_at TEXT DEFAULT (NOW())
 );
 
