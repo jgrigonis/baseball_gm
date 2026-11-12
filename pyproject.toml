@@ -23,6 +23,7 @@ dependencies = [
   "psycopg[binary]>=3.3",
   # Password hashing (src/api/services/passwords.py).
   "argon2-cffi>=25.1",
+  "certifi>=2025.1",
 ]
 
 [project.optional-dependencies]
