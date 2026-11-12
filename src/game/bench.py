@@ -1,6 +1,6 @@
 # src/game/bench.py
 """
-In-game bench moves: pinch hitters and pinch runners.
+In-game bench moves: pinch hitters, pinch runners and defensive replacements.
 
 Before each plate appearance late in a close game, the batting team's manager
 looks down his bench for a better bat against the pitcher on the mound. A bench
@@ -19,6 +19,12 @@ run would tie the game or put his team ahead is run for by a faster bench
 player, when the jump in speed and baserunning (RUN_WEIGHTS) beats MIN_RUN_EDGE
 for the spot. The runner takes over the batting slot and position too, so the
 bat and glove he gives up count against him, less as the innings run out.
+
+Defensive replacements: as a team takes the field from the 7th on, a bench
+glove replaces a weaker one when the gain at that position (weighted like the
+lineup's DEFENSE_IMPORTANCE) beats the bat given up by MIN_GLOVE_GAIN. A team
+protecting a small lead does it most; otherwise only for a big mismatch, like a
+pinch hitter left at a position he can't play.
 
 Who's on the bench (TeamInGame.bench_players): hitters on today's roster who
 aren't in the lineup, aren't hurt and haven't been taken out. A bench hitter
@@ -111,11 +117,13 @@ def defense_cost(
     return max(0.0, drop) * weight * share
 
 
-def _available(game: Game, team: TeamInGame) -> list[PlayerInGame]:
+def _available(
+    game: Game, team: TeamInGame, keep_catcher: bool = True
+) -> list[PlayerInGame]:
     """Bench players fresh enough to go in. The last catcher on the bench is
-    kept for an emergency until the ninth."""
+    kept for an emergency until the ninth, unless keep_catcher is off."""
     bench = [p for p in team.bench_players if _rested_enough(game, p)]
-    if game.inning.number < 9:
+    if keep_catcher and game.inning.number < 9:
         catchers = [p for p in bench if _is_catcher(p)]
         if len(catchers) == 1:
             bench.remove(catchers[0])
@@ -217,4 +225,64 @@ def pinch_runners(game: Game) -> list[tuple[int, PlayerInGame, PlayerInGame]]:
         if best is not None:
             moves.append((base, runner, best))
             bench.remove(best)
+    return moves
+
+
+# Points of glove value (rating gap x DEFENSE_IMPORTANCE x the GM's defense
+# weight) a defensive replacement must add, after the bat he gives up, in an
+# ordinary spot: the 7th with a lead to protect.
+MIN_GLOVE_GAIN = 10.0
+# Protecting a lead of this many runs or fewer.
+PROTECT_LEAD = 3
+# Without a lead to protect, he needs this many times the gain.
+NO_LEAD_FACTOR = 2.5
+
+
+def defensive_subs(game: Game) -> list[tuple[str, PlayerInGame, PlayerInGame]]:
+    """The defensive replacements the fielding team should make now, as
+    (position, fielder, sub), biggest gain first."""
+    inning = game.inning.number
+    if inning < FIRST_INNING:
+        return []
+    team = game.pitch_team
+    if game.inning.top:
+        lead = game.score.home - game.score.away
+    else:
+        lead = game.score.away - game.score.home
+    lev = INNING_LEVERAGE.get(inning, LATE_LEVERAGE)
+    need = MIN_GLOVE_GAIN / lev
+    if not 0 < lead <= PROTECT_LEAD:
+        need *= NO_LEAD_FACTOR
+    bat_share = BAT_COST_SHARE.get(inning, LATE_BAT_COST_SHARE)
+    weight = getattr(team, "defense_weight", 1.0)
+    options = []
+    for slot in team.lineup:
+        position = slot.player.current_position or slot.position
+        if not position or position == "dh":
+            continue
+        fielder = slot.player
+        bench = _available(game, team, keep_catcher=position != "c")
+        for p in bench:
+            if (
+                position in LEFT_HAND_CAPPED_POSITIONS
+                and (p.throws or "R").upper() == "L"
+            ):
+                continue
+            glove = (
+                (p.ratings.get(position, 0) - fielder.ratings.get(position, 0))
+                * DEFENSE_IMPORTANCE.get(position, 0.5)
+                * weight
+            )
+            bat = max(0.0, bat_value(team, fielder, None) - bat_value(team, p, None))
+            edge = glove - bat * bat_share
+            if edge >= need:
+                options.append((edge, position, fielder, p))
+    moves, used = [], set()
+    for edge, position, fielder, p in sorted(
+        options, key=lambda o: (-o[0], o[1], o[3].id)
+    ):
+        if fielder.id in used or p.id in used:
+            continue
+        used |= {fielder.id, p.id}
+        moves.append((position, fielder, p))
     return moves
