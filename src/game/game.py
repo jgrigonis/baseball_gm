@@ -174,6 +174,7 @@ class Game:
         ghost_runner: bool = False,
         max_innings: int | None = None,
         injury_mults: dict[str, float] | None = None,
+        injury_rate: float = 1.0,
         analytics_levels: dict[str, int] | None = None,
     ) -> None:
         """
@@ -205,6 +206,8 @@ class Game:
             injury_mults: Each team's injury chance multiplier, by team id,
                 from its Facilities department (src/league/budget.py)
                 (default: None, 1.0 for both)
+            injury_rate: The league's Injury rate setting as a multiplier on
+                everyone's injury chance (default: 1.0, normal)
             analytics_levels: Each team's Analytics level, by team id, which
                 aims its steals and hit and runs (src/league/budget.py)
                 (default: None, Standard for both)
@@ -275,6 +278,7 @@ class Game:
         self.injured_ids = set(injured_ids or {})
         self.injuries_enabled = injuries_enabled
         self.injury_mults = injury_mults or {}
+        self.injury_rate = injury_rate
         self.analytics_levels = analytics_levels or {}
         self.max_pitcher_outs = max_pitcher_outs
         self.ghost_runner = ghost_runner
@@ -995,7 +999,7 @@ class Game:
                 continue
 
             prob = self._injury_probability(player, activity)
-            prob *= self.injury_mults.get(team_id, 1.0)
+            prob *= self.injury_mults.get(team_id, 1.0) * self.injury_rate
             if prob <= 0:
                 continue
 

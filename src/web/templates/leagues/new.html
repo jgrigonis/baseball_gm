@@ -121,6 +121,11 @@
           </label>
           <span class="mode-note">On by default, except in Speed Blitz. Changing the mode resets it unless you've set it yourself.</span>
         </div>
+        <div class="injuries-only">
+        {% call step_slider("injury_rate", "injury-rate", "Injury Rate", injury_rates, 100, unit="%") %}
+          <span class="mode-note">How often players get hurt. 100% is normal, which is lighter than MLB on purpose; 50% is half as many injuries, 200% twice as many. You can change it later on the League page.</span>
+        {% endcall %}
+        </div>
         <div class="field">
           <label for="trades-enabled">Trades</label>
           <input type="hidden" name="trades_enabled" value="false">
@@ -179,7 +184,15 @@
   const injuries = document.getElementById('injuries-enabled');
   // Once the GM flips Injuries, a mode change leaves their choice alone.
   let injuriesTouched = false;
-  injuries.addEventListener('change', function () { injuriesTouched = true; });
+  injuries.addEventListener('change', function () { injuriesTouched = true; syncInjuryFields(); });
+  // Injury rate only means something with injuries on. Its range greys out,
+  // but the hidden input still carries the rate.
+  function syncInjuryFields() {
+    document.querySelectorAll('.injuries-only').forEach(function (f) {
+      f.classList.toggle('field-disabled', !injuries.checked);
+      f.querySelectorAll('input[type=range]').forEach(function (i) { i.disabled = !injuries.checked; });
+    });
+  }
   const trades = document.getElementById('trades-enabled');
   let tradesTouched = false;
   trades.addEventListener('change', function () { tradesTouched = true; syncTradeFields(); });
@@ -198,6 +211,7 @@
       if (input) input.value = presets[name];
     });
     if (!injuriesTouched) injuries.checked = opt.dataset.injuries === 'on';
+    syncInjuryFields();
     speedBlitzNote.style.display = mode.value === 'speed_blitz' ? '' : 'none';
     if (!tradesTouched) trades.checked = opt.dataset.trades === 'on';
     syncTradeFields();

@@ -211,3 +211,56 @@ def test_pick_trades_greyed_while_trades_are_off(client, db_conn, league):
         'class="toggle-row needs-trades trade-off"><input type="checkbox" name="pick_trades"'
         in html
     )
+
+
+def test_injury_rate_slider_defaults_to_normal(client, league):
+    lg = league[0]
+
+    html = client.get(f"/leagues/{lg.id}/league").text
+
+    assert 'name="injury_rate" value="100"' in html
+    # Seven stops, half to double, normal in the middle.
+    assert "[50, 63, 79, 100, 126, 159, 200]" in html
+    assert 'class="needs-injuries"' in html
+
+
+def test_saves_injury_rate(client, db_conn, league):
+    lg = league[0]
+
+    r = client.post(f"/leagues/{lg.id}/league/settings", data=_form(injury_rate="159"))
+
+    assert r.headers["location"].endswith("/league?saved=1")
+    assert _row(db_conn, lg.id)["injury_rate"] == 159
+    assert LeagueRepository(db_conn).injury_rate(lg.id) == 1.59
+
+
+def test_injury_rate_off_the_steps_is_refused(client, db_conn, league):
+    lg = league[0]
+
+    r = client.post(f"/leagues/{lg.id}/league/settings", data=_form(injury_rate="300"))
+
+    assert "settings_error=" in r.headers["location"]
+    assert _row(db_conn, lg.id)["injury_rate"] == 100
+
+
+def test_older_form_without_injury_rate_keeps_it(client, db_conn, league):
+    lg = league[0]
+    db_conn.execute("UPDATE leagues SET injury_rate = 63 WHERE id = %s", (lg.id,))
+
+    client.post(f"/leagues/{lg.id}/league/settings", data=_form())
+
+    assert _row(db_conn, lg.id)["injury_rate"] == 63
+
+
+def test_injury_rate_greyed_while_injuries_are_off(client, db_conn, league):
+    lg = league[0]
+    db_conn.execute(
+        "UPDATE leagues SET injuries_enabled = FALSE, injury_rate = 200 WHERE id = %s",
+        (lg.id,),
+    )
+
+    html = client.get(f"/leagues/{lg.id}/league").text
+
+    assert 'class="needs-injuries injury-off"' in html
+    # The settings table shows it, greyed.
+    assert 'class="setting-off"' in html and "200%" in html

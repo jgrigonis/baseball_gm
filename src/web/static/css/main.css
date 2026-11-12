@@ -1989,6 +1989,8 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
 /* Trade vote and Draft pick trades don't matter with Trades off: greyed, and
    left as they are (still sent, so a vote doesn't propose changing them). */
 .solo-settings .toggle-row.trade-off { opacity: 0.4; pointer-events: none; }
+/* Injury rate doesn't matter with Injuries off: greyed the same way. */
+.solo-settings .needs-injuries.injury-off { opacity: 0.4; pointer-events: none; }
 
 /* The sim card (shell.html simCard): the sim's line and its news, floating
    in the bottom corner, under the side panels. × folds it to a pill. */

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from src.api.services import owner_review
 from src.db.repositories.league_repo import LeagueRepository
+from src.league.league_constants import DEFAULT_INJURY_RATE
 from src.league.league_modes import get_mode, injuries_allowed
 from src.league.trade_deadline import trades_enabled_for
 
@@ -39,6 +40,7 @@ def league_info(db, league: dict) -> dict:
         "trade_vote": bool(league["trade_vote"]),
         "pick_trades": bool(league["pick_trades"]),
         "injuries_enabled": injuries_allowed(league),
+        "injury_rate": league.get("injury_rate") or DEFAULT_INJURY_RATE,
         "weighted_schedule": bool(league.get("weighted_schedule")),
         "real_season": league.get("real_season"),
         # Seasons started so far, the current one included. 0 in the lobby.

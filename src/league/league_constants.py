@@ -29,6 +29,13 @@ MAX_BACKSTORY_YEARS = 15
 MAX_SEASONS = 60
 UNLIMITED_SEASONS = 0
 
+# How often players get hurt, as a percent of the normal rate (Josh,
+# 2026-11-12). Seven steps from half to double, each about 1.26x the last,
+# with today's rate in the middle. The normal rate is kept light on purpose:
+# about 11 injuries of 10+ days per team a season, where MLB has about 27.
+INJURY_RATES = (50, 63, 79, 100, 126, 159, 200)
+DEFAULT_INJURY_RATE = 100
+
 
 def is_last_season(num_seasons: int, seasons_played: int) -> bool:
     """Whether a league that runs num_seasons has finished its last one after

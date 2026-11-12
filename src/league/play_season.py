@@ -749,6 +749,8 @@ def _play_game(
         # Extra-innings runner on second: regular season only.
         ghost_runner=not playoffs,
         injury_mults={t: bg.facilities_injury(lv) for t, lv in facilities.items()},
+        # The commissioner's Injury rate: 0.5x to 2x how often anyone gets hurt.
+        injury_rate=LeagueRepository(conn).injury_rate(league_id),
         analytics_levels=analytics,
     )
 

@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS leagues (
     trades_enabled       BOOLEAN NOT NULL DEFAULT TRUE,  -- teams can trade (off by default in Speed Blitz)
     pick_trades          BOOLEAN NOT NULL DEFAULT FALSE, -- teams can trade draft picks
     injuries_enabled     BOOLEAN NOT NULL DEFAULT TRUE,  -- players can get hurt (off by default in Speed Blitz)
+    injury_rate          INTEGER NOT NULL DEFAULT 100,  -- how often, as a percent of normal (league_constants.INJURY_RATES)
     backstory_years      INTEGER NOT NULL DEFAULT 10,    -- past seasons generated at the start (src/league/backstory/)
     weighted_schedule    BOOLEAN NOT NULL DEFAULT FALSE, -- division rivals play more often (src/league/weighted_schedule.py)
     real_season          INTEGER,  -- starts with this MLB season's players (src/league/real_seasons/, migration 095)

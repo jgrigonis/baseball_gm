@@ -1,7 +1,7 @@
 # src/db/repositories/league_repo.py
 import uuid
 
-from src.league.league_constants import DEFAULT_BACKSTORY_YEARS
+from src.league.league_constants import DEFAULT_BACKSTORY_YEARS, DEFAULT_INJURY_RATE
 from src.league.league_modes import get_mode, injuries_allowed
 
 
@@ -34,9 +34,9 @@ class LeagueRepository:
                 draft_window_sec, lineup_window_sec, reentry_enabled, pace_control,
                 sim_period_days, num_seasons, is_public, is_practice, trade_vote,
                 trades_enabled, pick_trades, injuries_enabled, backstory_years, weighted_schedule,
-                late_joins, real_season, owner_firing, state, commissioner_gm_id)
+                late_joins, real_season, owner_firing, injury_rate, state, commissioner_gm_id)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                    %s, %s, %s, %s, %s, %s, %s, %s, 'lobby', NULL)""",
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, 'lobby', NULL)""",
             (
                 league_id,
                 name,
@@ -61,6 +61,7 @@ class LeagueRepository:
                 settings.get("late_joins", True),
                 settings.get("real_season"),
                 settings.get("owner_firing", False),
+                settings.get("injury_rate", DEFAULT_INJURY_RATE),
             ),
         )
 
@@ -332,6 +333,16 @@ class LeagueRepository:
             return get_mode(None).injuries_default
         return injuries_allowed(dict(row))
 
+    def injury_rate(self, league_id: str | None) -> float:
+        """How often players get hurt in the league, as a multiplier on the
+        normal rate (1.0 is normal; the league stores a percent)."""
+        if league_id is None:
+            return 1.0
+        row = self.conn.execute(
+            "SELECT injury_rate FROM leagues WHERE id = %s", (league_id,)
+        ).fetchone()
+        return (row["injury_rate"] if row else DEFAULT_INJURY_RATE) / 100
+
     def get_league_mode(self, league_id: str) -> str:
         """Get the mode of the league."""
         if league_id is None:
@@ -367,6 +378,7 @@ class LeagueRepository:
         "is_public",
         "late_joins",
         "injuries_enabled",
+        "injury_rate",
         "trades_enabled",
         "pick_trades",
         "weighted_schedule",
