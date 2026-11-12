@@ -21,6 +21,10 @@
   {% if nm.stop %}
   <button type="button" class="btn nm-stop" id="sched-stop-btn" onclick="schedStop()">■ Stop</button>
   {% endif %}
+  {% if nm.kind == 'ready' %}
+  {# The time left in the Decision Window, set by _ready_bar.html. #}
+  <span class="nm-clock" id="ready-clock" hidden></span>
+  {% endif %}
   <span class="nm-split">
     {% if nm.href %}
     <a class="btn nm-main" href="{{ nm.href }}"><span class="nm-long">{{ nm.label }}</span><span class="nm-short">{{ nm.short }}</span></a>

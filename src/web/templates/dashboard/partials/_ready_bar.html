@@ -85,6 +85,8 @@ function render() {
   // The top bar's next move; stand-ins when it isn't the ready toggle.
   var btn = document.getElementById('ready-btn') || {style: {}};
   var away = document.getElementById('ready-away-btn') || {style: {}};
+  var clock = document.getElementById('ready-clock');
+  if (clock) clock.hidden = true;  // shown below while a window runs
   document.getElementById('ready-inbox').hidden = true;  // set below when there's a period to get ready for
   var present = d.gms.filter(function(g) { return !g.away; });
   var readyCount = present.filter(function(g) { return g.ready; }).length;
@@ -105,9 +107,13 @@ function render() {
   } else {
     var parts = [PHASES[d.league_state] + ' · period ' + d.period];
     if (d.trade_deadline) parts.unshift('⏰ Trade deadline: last chance to trade');
-    if (deadline !== null) {
+    // The clock sits by the I'm ready button (_next_move.html).
+    if (deadline !== null && clock) {
       var left = Math.max(0, Math.round((deadline - Date.now()) / 1000));
-      parts.push('next sim in ' + fmt(left));
+      clock.hidden = false;
+      clock.textContent = '⏱ ' + fmt(left);
+      clock.title = 'Next sim in ' + fmt(left);
+      clock.classList.toggle('soon', left <= 60);  // the last minute in amber
     }
     parts.push('ready ' + readyCount + '/' + present.length);
     // Its own line in the card, opening the Trades tab.
