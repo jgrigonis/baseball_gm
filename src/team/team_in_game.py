@@ -64,6 +64,10 @@ class TeamInGame:
         # How much a glove counts in the lineup (1 is normal): an AI GM's
         # offense-vs-defense dial (src/league/front_office.py).
         self.defense_weight = 1.0
+        # Today's roster (set_lineup's restrict_to_ids; None is everyone) and
+        # the players taken out of the game, who can't come back in.
+        self._eligible_ids: set[str] | None = None
+        self.removed_ids: set[str] = set()
 
     @property
     def has_lineup(self) -> bool:
@@ -109,6 +113,7 @@ class TeamInGame:
         for player in self.players:
             player.apply_fatigue_to_ratings()
 
+        self._eligible_ids = set(restrict_to_ids) if restrict_to_ids else None
         # Build the eligible pool: not injured, within roster eligibility
         available = [
             p
@@ -251,12 +256,17 @@ class TeamInGame:
 
     @property
     def bench_players(self) -> list[PlayerInGame]:
-        """Players not currently in the active lineup."""
+        """Hitters on today's roster who can still come into the game: not in
+        the lineup, not hurt and not already taken out."""
         lineup_ids = {slot.player.id for slot in self.lineup}
         return [
             p
             for p in self.players
-            if p.id not in lineup_ids and not p.pitcher_fatigue and not p.is_injured
+            if p.id not in lineup_ids
+            and p.id not in self.removed_ids
+            and not p.pitcher_fatigue
+            and not p.is_injured
+            and (self._eligible_ids is None or p.id in self._eligible_ids)
         ]
 
     @property
@@ -366,11 +376,12 @@ class TeamInGame:
         if slot is None:
             self.logger.warning(f"substitute: {outgoing.name} not found in lineup")
             return
-        incoming.current_position = outgoing.current_position
+        incoming.current_position = outgoing.current_position or slot.position
         incoming.game_stats.batting.game_played = 1
+        self.removed_ids.add(outgoing.id)
         slot.player = incoming
         try:
-            pos = Position(outgoing.current_position)
+            pos = Position(incoming.current_position)
             self._positions[pos] = incoming
         except ValueError, TypeError:
             pass

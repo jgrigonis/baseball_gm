@@ -15,6 +15,7 @@ from src.api.view_models.box_score import (
     batting_order,
     in_order,
     pitching_order,
+    sub_labels,
     used_batting_columns,
 )
 from src.api.view_models.line_score import headline, line_score
@@ -104,6 +105,16 @@ def game_panel(
 
     home_bat = _team_rows(bat_rows, game["home_team_id"], batting_order)
     away_bat = _team_rows(bat_rows, game["away_team_id"], batting_order)
+    # Bench hitters have no lineup slot: tag them PH, or the position they
+    # took over for a hurt player.
+    for rows, team_id in (
+        (home_bat, game["home_team_id"]),
+        (away_bat, game["away_team_id"]),
+    ):
+        labels = sub_labels(events_out, team_id)
+        for r in rows:
+            if not r.get("position") and r["player_id"] in labels:
+                r["position"] = labels[r["player_id"]]
     home_pit = _team_rows(pit_rows, game["home_team_id"], pitching_order)
     away_pit = _team_rows(pit_rows, game["away_team_id"], pitching_order)
     for p in home_pit + away_pit:

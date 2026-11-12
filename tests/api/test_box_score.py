@@ -1,6 +1,11 @@
 """Box score row order for the game panel (src/api/view_models/box_score.py)."""
 
-from src.api.view_models.box_score import batting_order, in_order, pitching_order
+from src.api.view_models.box_score import (
+    batting_order,
+    in_order,
+    pitching_order,
+    sub_labels,
+)
 
 
 def _lineup(team, *pids):
@@ -60,3 +65,24 @@ def test_rows_the_log_misses_keep_their_order_at_the_end():
     ordered = in_order(rows, ["dunn", "bakke"])
 
     assert [r["player_id"] for r in ordered] == ["dunn", "bakke", "zed", "amos"]
+
+
+def test_bench_hitters_are_tagged_ph_or_their_position():
+    events = [
+        _lineup("a", "dunn", "bakke"),
+        {
+            **_event("substitution", "a", "hively", "dunn"),
+            "detail_parsed": {"kind": "ph", "position": "lf"},
+        },
+        {
+            **_event("substitution", "a", "smith", "bakke"),
+            "detail_parsed": {"kind": "injury", "position": "ss"},
+        },
+        # Logged before substitutions kept a detail
+        _event("substitution", "a", "old", "dunn"),
+        {
+            **_event("substitution", "h", "other", "x"),
+            "detail_parsed": {"kind": "ph", "position": "c"},
+        },
+    ]
+    assert sub_labels(events, "a") == {"hively": "ph", "smith": "ss"}

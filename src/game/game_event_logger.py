@@ -141,14 +141,23 @@ class GameEventLogger:
         outgoing_id: str,
         outgoing_name: str,
         position: str,
+        kind: str = "injury",
     ) -> None:
-        """Record a position player substitution."""
+        """Record a position player substitution. kind is why he came in:
+        "injury" (he replaces a hurt player) or "ph" (a pinch hitter). The
+        detail keeps the kind and the position he took over, for the box
+        score."""
+        if kind == "ph":
+            reason = f"Pinch hitter {incoming_name} bats for {outgoing_name}"
+        else:
+            reason = f"{incoming_name} replaces {outgoing_name} at {position}"
         self._insert(
             team_id=team_id,
             event_type="substitution",
             player_id=incoming_id,
             player_id_2=outgoing_id,
-            reason=f"{incoming_name} replaces {outgoing_name} at {position}",
+            reason=reason,
+            detail=json.dumps({"kind": kind, "position": position}),
         )
 
     # ------------------------------------------------------------------

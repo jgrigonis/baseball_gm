@@ -23,6 +23,7 @@ import random
 
 from src.db.repositories.pitcher_state import PitcherState
 from src.db.repositories.player_energy import PlayerEnergyState
+from src.game import bench
 from src.game.inning import Inning
 from src.game.count import Count
 from src.game.bases import SECOND, Bases
@@ -419,9 +420,10 @@ class Game:
             self._post_event()
             return
 
-        # A new batter (or the same one, to start an inning): note the state
-        # for WPA and RE24.
+        # A new batter (or the same one, to start an inning): his manager may
+        # send up a pinch hitter, then note the state for WPA and RE24.
         if self._seg is None:
+            self._consider_pinch_hitter()
             self._seg = self._seg_state()
 
         # No queued events → check for pre-pitch plays, then generate pitch intent
@@ -1084,6 +1086,31 @@ class Game:
                                     )
                                 team.substitute(player, sub)
                             break
+
+    def _consider_pinch_hitter(self) -> None:
+        """Before a plate appearance: send up a bench bat for the man due up
+        if the spot calls for it (src/game/bench.py). He takes the batting
+        slot and the position for the rest of the game."""
+        slot = self.current_batter
+        if slot is None:
+            return
+        sub = bench.pinch_hitter(self)
+        if sub is None:
+            return
+        batter = slot.player
+        position = batter.current_position or slot.position
+        self.logger.info(f"🔁 Pinch hitter {sub.name} bats for {batter.name}")
+        if self.event_logger:
+            self.event_logger.substitution(
+                team_id=self.bat_team.record.id,
+                incoming_id=sub.id,
+                incoming_name=sub.name,
+                outgoing_id=batter.id,
+                outgoing_name=batter.name,
+                position=position or "?",
+                kind="ph",
+            )
+        self.bat_team.substitute(batter, sub)
 
     def _swap_teams(self) -> None:
         """Swap batting and pitching teams."""
