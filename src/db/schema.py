@@ -318,6 +318,7 @@ CREATE TABLE IF NOT EXISTS gms (
     trade_roster_season_id TEXT,          -- season of a trade that brought them players; cleared on the Roster tab (migration 114)
     draft_tab_seen_season_id TEXT,        -- draft (shell season) whose Draft tab they opened (migration 119)
     fa_tab_seen_season_id TEXT,           -- draft (shell season) whose Free Agents tab they opened (migration 119)
+    expiring_seen_season_id TEXT,         -- season whose Expiring Deals tab they opened in the offseason (migration 121)
     roster_saved_at TIMESTAMPTZ,          -- first roster save; ends the getting-started bar
     lobby_city     TEXT,                  -- lobby: the team they'll run, by name (migration 042)
     lobby_mascot   TEXT,

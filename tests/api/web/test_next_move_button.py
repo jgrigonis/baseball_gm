@@ -109,3 +109,24 @@ def test_a_multiplayer_draft_points_to_the_draft_then_free_agents(db_conn, facto
     assert "✍️ Free Agents" in on_draft and "📋 Draft" not in on_draft
     assert 'class="nm-pill"' not in on_fa
     assert 'class="nm-pill"' not in after and 'onclick="readyToggle()"' in after
+
+
+def test_a_multiplayer_offseason_points_to_the_summary_then_expiring_deals(
+    db_conn, factory
+):
+    """Josh, 2026-11-12: in multiplayer he never saw the Expiring Deals tab."""
+    first, on_summary, on_expiring, after = _get(
+        db_conn,
+        factory,
+        "offseason",
+        "/leagues/{id}/next-move?page=playoffs",
+        "/leagues/{id}/next-move?page=season-summary",
+        "/leagues/{id}/next-move?page=expiring",
+        "/leagues/{id}/next-move?page=standings",
+        joined=True,
+    )
+    assert 'class="nm-pill"' in first and "📜 Summary" in first
+    assert "📝 Expiring Deals" in on_summary and "/expiring" in on_summary
+    assert 'class="nm-pill"' not in on_expiring
+    # Opening the tab clears it.
+    assert 'class="nm-pill"' not in after and 'onclick="readyToggle()"' in after

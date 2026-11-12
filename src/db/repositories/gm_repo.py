@@ -288,6 +288,20 @@ class GMRepository:
             (season_id, gm_id),
         )
 
+    def expiring_seen(self, gm_id: str, season_id: str) -> bool:
+        """True once the GM has opened the Expiring Deals tab in this
+        season's offseason."""
+        row = self.conn.execute(
+            "SELECT expiring_seen_season_id FROM gms WHERE id = %s", (gm_id,)
+        ).fetchone()
+        return bool(row) and row["expiring_seen_season_id"] == season_id
+
+    def mark_expiring_seen(self, gm_id: str, season_id: str) -> None:
+        self.conn.execute(
+            "UPDATE gms SET expiring_seen_season_id = %s WHERE id = %s",
+            (season_id, gm_id),
+        )
+
     PRESEASON_TABS = {
         "roster": "roster_seen_season_id",
         "lineup": "lineup_seen_season_id",

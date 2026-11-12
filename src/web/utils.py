@@ -494,6 +494,16 @@ def _shell_ctx(
     ):
         # The season summary page marks it (routers/seasons.py).
         ctx["summary_seen"] = GMRepository(db).summary_seen(gm["id"], ctx["season_id"])
+        # With several GMs the button is the ready toggle, so the summary
+        # and Expiring Deals ride beside it as pills (Josh, 2026-11-12), the
+        # Expiring Deals one until the GM opens that tab.
+        if ctx.get("multiplayer") and ctx["team_id"]:
+            gms = GMRepository(db)
+            seen = gms.expiring_seen(gm["id"], ctx["season_id"])
+            if page == "expiring" and not seen:
+                gms.mark_expiring_seen(gm["id"], ctx["season_id"])
+                seen = True
+            ctx["expiring_due"] = not seen
     weekend_ready = (
         as_phase == "done"
         and ctx["league_state"] == "season"

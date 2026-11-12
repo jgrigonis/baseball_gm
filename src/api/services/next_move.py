@@ -178,6 +178,33 @@ def _draft_pill(ctx: dict, page: str) -> dict | None:
     return None
 
 
+def _offseason_pill(ctx: dict, page: str) -> dict | None:
+    """A multiplayer offseason's to-dos beside the ready toggle, the way the
+    single player button walks them (Josh, 2026-11-12): the season summary,
+    then the Expiring Deals tab, until the GM opens it. The offseason (and
+    the calls on those deals) runs when everyone's ready."""
+    if ctx.get("league_state") != "offseason":
+        return None
+    # Once the GM has been to the deals, nothing more to point at.
+    if not ctx.get("expiring_due") or page == "expiring":
+        return None
+    base = f"/leagues/{ctx['league_id']}"
+    if page == "season-summary" or ctx.get("summary_seen"):
+        return {
+            "label": "📝 Expiring Deals",
+            "short": "📝",
+            "href": f"{base}/expiring",
+            "title": "Re-sign or let go of your players whose deals are up "
+            "before everyone's ready and the offseason runs.",
+        }
+    return {
+        "label": "📜 Summary",
+        "short": "📜",
+        "href": f"{base}/season-summary",
+        "title": "How the season went, then your expiring deals.",
+    }
+
+
 def _bids_pill(ctx: dict, page: str) -> dict | None:
     """A multiplayer preseason with free agent bids still open: they settle
     when everyone's ready, so the Free Agents tab before the Roster tab."""
@@ -256,6 +283,7 @@ def pick(
         }
         move["pill"] = (
             _pill(ctx, page)
+            or _offseason_pill(ctx, page)
             or _draft_pill(ctx, page)
             or _trade_pill(ctx, page)
             or _budget_pill(ctx, page)
