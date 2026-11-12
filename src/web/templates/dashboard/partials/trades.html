@@ -75,10 +75,13 @@
             </tbody>
           </table>
           {% endif %}
-          {% if o.budget_warning %}<div class="tr-reason tr-budget">
-            {%- if already_past in o.budget_warning -%}
-              {{ o.budget_warning.replace(already_past, '').strip() }} <strong class="tr-owner-past">{{ already_past }}</strong>
-            {%- else -%}{{ o.budget_warning }}{%- endif -%}
+          {% if o.budget_warning or o.owner_warning %}<div class="tr-reason tr-budget">
+            {#- Past the hard limit leads: Accept would be refused. -#}
+            {%- if o.owner_refuses -%}
+              <strong class="tr-owner-past">{{ o.owner_warning }}</strong> {{ o.budget_warning }}
+            {%- else -%}
+              {{ o.budget_warning }}{% if o.owner_warning %} <strong class="tr-owner-past">{{ o.owner_warning }}</strong>{% endif %}
+            {%- endif -%}
           </div>{% endif %}
         </div>
         <div class="tr-offer-btns">
@@ -376,7 +379,7 @@ function budgetNote() {
   var extra = tax(after) - tax(BUDGET.payroll);
   var bits = [];
   if (extra > 0) bits.push(money(extra) + ' more luxury tax');
-  if (after > BUDGET.budget) bits.push('past your owner\'s ' + money(BUDGET.budget));
+  if (after > BUDGET.budget) bits.push('<strong class="tr-owner-past">past your owner\'s ' + money(BUDGET.budget) + ' budget</strong>');
   return '<div class="tr-budget">Payroll after: ' + money(after) + ' (cap ' + money(BUDGET.cap) +
          '), ' + bits.join(', ') + '.</div>';
 }
@@ -997,7 +1000,7 @@ function absorbPayLine(o) {
   var extra = tax(after) - tax(BUDGET.payroll);
   var bits = [];
   if (extra > 0) bits.push(money(extra) + ' more luxury tax');
-  if (after > BUDGET.budget) bits.push('past your owner\'s ' + money(BUDGET.budget));
+  if (after > BUDGET.budget) bits.push('<strong class="tr-owner-past">past your owner\'s ' + money(BUDGET.budget) + ' budget</strong>');
   if (bits.length)
     html += '<div class="tr-budget">Payroll after: ' + money(after) + ' (cap ' + money(BUDGET.cap) + '), ' + bits.join(', ') + '.</div>';
   return html;

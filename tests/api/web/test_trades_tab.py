@@ -260,3 +260,61 @@ def test_already_past_the_owners_spending_is_bold_red_on_an_offer(
         in html
     )
     assert "This adds $7.6M more luxury tax." in html
+
+
+def test_an_offer_past_your_owners_limit_says_so_in_bold_red(
+    client_for, db_conn, factory, monkeypatch
+):
+    """Accept would be refused (trades.respond), so the card says so up
+    front instead of "won't like it"."""
+    from src.api.routers import trades as trades_router
+    from src.db.repositories.trade_repo import TradeRepository
+
+    client, league, theirs, roster = client_for("blitz", players=1)
+    other = factory.rated_player(theirs, league, 60)
+    mine = roster[0]
+    team = db_conn.execute(
+        "SELECT team_id FROM team_players WHERE player_id = %s", (mine.id,)
+    ).fetchone()["team_id"]
+    season_id = db_conn.execute(
+        "SELECT season_id FROM games WHERE home_team_id = %s LIMIT 1", (team,)
+    ).fetchone()["season_id"]
+    TradeRepository(db_conn).create_offer(
+        league.id,
+        season_id,
+        theirs.id,
+        team,
+        None,
+        "2025-04-01",
+        [(other.id, theirs.id), (mine.id, team)],
+    )
+    monkeypatch.setattr(
+        trades_router.bg,
+        "warning",
+        lambda *a: (
+            "This adds $10.3M more luxury tax. Your owner won't like it: "
+            "this will drive total spending past their $213.5M budget."
+        ),
+    )
+    no = "Your owner won't allow it: that takes spending to $235.5M, past their $228.5M limit."
+    monkeypatch.setattr(trades_router.trades, "owner_refusal", lambda *a: no)
+    html = client.get(f"/leagues/{league.id}/trades").text
+    assert "won&#39;t like it" not in html
+    # The limit leads, then the tax.
+    assert html.index("past their $228.5M limit") < html.index("This adds $10.3M")
+    assert (
+        '<strong class="tr-owner-past">Your owner won&#39;t allow it: that takes '
+        "spending to $235.5M, past their $228.5M limit.</strong>"
+    ) in html
+
+
+def test_split_owner():
+    from src.league import budget as bg
+
+    assert bg.split_owner(None) == ("", "")
+    assert bg.split_owner("Tax.") == ("Tax.", "")
+    assert bg.split_owner("Tax. " + bg.ALREADY_PAST) == ("Tax.", bg.ALREADY_PAST)
+    assert bg.split_owner("Your owner won't like it: x.") == (
+        "",
+        "Your owner won't like it: x.",
+    )
