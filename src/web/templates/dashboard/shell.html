@@ -691,6 +691,7 @@ window.simCard = (function () {
       row.textContent = item.text;
       row.dataset.dest = item.dest || 'batting';
       row.dataset.i = i;
+      if (item.trade) { row.dataset.team = item.trade.team; row.dataset.pid = item.trade.pid; }
       list.appendChild(row);
     });
     if (news.length > SIM_CARD_SHOWN) {
@@ -743,7 +744,7 @@ window.simCard = (function () {
     add: function (items) {
       if (!items || !items.length) return;
       // The newest day on top, its items in their own order.
-      news = items.map(function (it) { return {text: it.text, dest: it.dest, seen: false}; }).concat(news);
+      news = items.map(function (it) { return {text: it.text, dest: it.dest, trade: it.trade, seen: false}; }).concat(news);
       render();
     },
     chrome: chrome,
@@ -832,6 +833,9 @@ function showInjuryNews(d) {
       items.push({
         text: `📨 ${t.text}`,
         dest: t.event === 'accepted' ? 'roster' : 'trades',
+        // Another GM is shopping a player: open the trade builder with
+        // their team in You get and him picked.
+        trade: t.event === 'block' && t.team_id ? {team: t.team_id, pid: t.player_id} : null,
       });
     });
     // An answer means a popup about the same offer has nothing left to do.
@@ -892,6 +896,10 @@ function injuryNewsClick(ev) {
     var link = document.querySelector(`[hx-get="/leagues/${LEAGUE_ID}/league"]`);
     if (link) { setActiveTab(link); link.click(); }
     else window.location.href = `/leagues/${LEAGUE_ID}/league`;
+  } else if (dest === 'trades' && item.dataset.team) {
+    var want = {team: item.dataset.team, pid: item.dataset.pid};
+    if (document.getElementById('trades-page') && window.trTradeFor) window.trTradeFor(want.team, want.pid);
+    else { window._tradeWith = want; goToTab('trades'); }
   } else if (dest === 'roster' || dest === 'trades' || dest === 'free-agents') {
     goToTab(dest);
   } else {

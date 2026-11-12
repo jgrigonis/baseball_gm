@@ -451,7 +451,14 @@ window.trLoadTeam = function(teamId, picked) {
   el.innerHTML = '<div class="tr-empty">Loading…</div>';
   fetch(URL + '/team/' + encodeURIComponent(teamId))
     .then(function(r) { return r.json(); })
-    .then(function(d) { side.players = d.players || []; render('theirs'); summarize(); })
+    .then(function(d) {
+      if (side.team !== teamId) return;  // another team was picked meanwhile
+      side.players = d.players || [];
+      // Drop anyone picked who isn't theirs any more (traded or released).
+      var ids = new Set(side.players.map(function(p) { return p.player_id; }));
+      side.picked.forEach(function(pid) { if (!ids.has(pid)) side.picked.delete(pid); });
+      render('theirs'); summarize();
+    })
     .catch(function() { el.innerHTML = '<div class="tr-empty">Couldn\'t load that team.</div>'; });
 };
 
@@ -466,6 +473,17 @@ window.trCounter = function(o) {
              'Their offer is replaced by yours.', 'warn');
   document.getElementById('tr-bar').scrollIntoView({behavior: 'smooth', block: 'center'});
 };
+// From another GM's "are shopping him" notice: their team in You get, with
+// him picked. A team you can't trade with just leaves the builder alone.
+window.trTradeFor = function(teamId, pid) {
+  var sel = document.getElementById('tr-team');
+  if (!sel || !sel.querySelector('option[value="' + CSS.escape(teamId) + '"]')) return;
+  COUNTER = null;
+  sel.value = teamId;
+  trLoadTeam(teamId, pid ? [pid] : []);
+  document.getElementById('tr-team').scrollIntoView({behavior: 'smooth', block: 'center'});
+};
+
 // A counter to an AI team was turned down: the offer it answered can't be
 // countered (or accepted) again, so grey out its buttons with the reason.
 function markCountered(offerId) {
@@ -1053,6 +1071,11 @@ renderFilters('theirs');
 // From the player panel's Shop him button, or else the last shop, kept.
 if (window._shopPlayer) window.trShop(window._shopPlayer);
 else restoreShop();
+if (window._tradeWith) {
+  var tw = window._tradeWith;
+  window._tradeWith = null;
+  window.trTradeFor(tw.team, tw.pid);
+}
 var done = window._tradeResult;
 try { done = done || JSON.parse(sessionStorage.getItem('tradeResult')); sessionStorage.removeItem('tradeResult'); } catch (e) {}
 if (done) { showResult(done.msg, done.kind, done.dest); window._tradeResult = null; }

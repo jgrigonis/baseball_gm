@@ -568,6 +568,8 @@ def _tell_other_gms(conn, ctx: _Ctx, gm: dict) -> None:
                 "event": "block",
                 "offer_id": None,
                 "player_id": ctx.player_id,
+                # The notice opens Trades with this team and him picked
+                "team_id": ctx.team_id,
                 "on": ctx.today,
                 "text": text,
                 "popup": False,

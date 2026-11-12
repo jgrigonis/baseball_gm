@@ -89,6 +89,9 @@ def test_other_people_hear_hes_on_the_block_once_a_day(lg):  # noqa: F811
     assert len(news) == 1
     assert news[0]["event"] == "block"
     assert "are shopping" in news[0]["text"]
+    # Enough for the notice to open Trades with his team and him picked.
+    assert news[0]["team_id"] == lg.mine.id
+    assert news[0]["player_id"] == star.id
     # Not the GM doing the shopping.
     assert take_injury_news(lg.db, lg.gm["id"])["trades"] == []
 
