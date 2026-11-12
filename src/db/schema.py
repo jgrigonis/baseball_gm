@@ -1692,6 +1692,20 @@ CREATE TABLE IF NOT EXISTS fa_bids (          -- migration 085: offers made duri
 CREATE INDEX IF NOT EXISTS idx_fa_bids_league ON fa_bids(league_id, year);
 CREATE INDEX IF NOT EXISTS idx_fa_bids_team ON fa_bids(team_id);
 
+CREATE TABLE IF NOT EXISTS fa_talks (          -- migration 122: offers made to a free agent outside bidding (src/api/services/fa_offers.py)
+    league_id      TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    team_id        TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    player_id      TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    week           INTEGER NOT NULL,              -- fa_offers.talk_week of the offers counted
+    offers         INTEGER NOT NULL DEFAULT 0,    -- offers made that week
+    counter_salary INTEGER,                       -- what he said he'd take that week
+    counter_years  INTEGER,
+    frozen_until   INTEGER,                       -- insulted: no offers until this week
+    PRIMARY KEY (league_id, team_id, player_id)
+);
+CREATE INDEX IF NOT EXISTS idx_fa_talks_player ON fa_talks(player_id);
+CREATE INDEX IF NOT EXISTS idx_fa_talks_team ON fa_talks(team_id);
+
 CREATE TABLE IF NOT EXISTS team_budgets (     -- migration 074 (src/league/budget.py)
     league_id   TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
     team_id     TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,

@@ -105,7 +105,17 @@ def _asking(db, league_id: str, pid: str) -> dict | None:
         market_discount(db, league_id),
         price_shifts(db, league_id, year),
     )
-    return {"salary_text": format_salary(deal.salary), "years": deal.years}
+    from src.api.services import fa_offers, offseason_fa
+
+    # Room to talk him down (fa_offers.py): above the minimum, outside the
+    # offseason bidding window.
+    bidding = offseason_fa.bidding_open_for(LeagueRepository(db).get_by_id(league_id))
+    return {
+        "salary_text": format_salary(deal.salary),
+        "years": deal.years,
+        "can_offer": not bidding
+        and deal.salary > fa_offers.minimum(db, league_id, year),
+    }
 
 
 def _waiver(db, pid: str) -> dict | None:

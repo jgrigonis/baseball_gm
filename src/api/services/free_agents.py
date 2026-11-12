@@ -10,7 +10,8 @@ Releasing players and signing free agents.
   his new salary comes off what his old team owes (full offset, Josh
   2026-11-05).
 - Sign: a GM signs a free agent at his asking price, a standard deal priced
-  from his grade and age (src/player/contracts.py). It starts this season,
+  from his grade and age (src/player/contracts.py), or makes him an offer
+  he answers right away (src/api/services/fa_offers.py). It starts this season,
   is guaranteed, and he joins the organization (minors) like a traded player.
   The minors can hold MINORS_LIMIT players, so a full team releases first.
   Going over the cap or the owner's budget is allowed (past the owner's
@@ -327,8 +328,11 @@ def budget_warning(
     )
 
 
-def sign(conn, league_id: str, team_id: str, player_id: str) -> dict:
-    """Sign a free agent at his asking price."""
+def sign(
+    conn, league_id: str, team_id: str, player_id: str, deal: ct.Deal | None = None
+) -> dict:
+    """Sign a free agent at his asking price, or at a deal he agreed to
+    (src/api/services/fa_offers.py)."""
     with league_lock(conn, league_id, wait=MOVE_WAIT):
         season_id, year = _context(conn, league_id)
         league = LeagueRepository(conn).get_by_id(league_id)
@@ -351,7 +355,7 @@ def sign(conn, league_id: str, team_id: str, player_id: str) -> dict:
             raise FreeAgentError(
                 f"Your minors are full ({MINORS_LIMIT}). Release someone first."
             )
-        deal = asking_deal(
+        deal = deal or asking_deal(
             player,
             year,
             price_scale(conn, league_id, year),
