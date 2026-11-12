@@ -59,28 +59,31 @@
               style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);
                      margin-left:8px;"></span>
         {# One saved lineup for each hand of opposing starter #}
-        <span style="margin-left:12px;display:inline-flex;gap:3px;">
+        <span class="lu-hdr-view">
+        <span class="lu-hdr-seg">
           <button class="lu-filter active" id="vs-hand-R" onclick="switchHand('R')"
                   title="The lineup for games against right-handed starters">vs RHP</button>
           <button class="lu-filter" id="vs-hand-L" onclick="switchHand('L')"
                   title="The lineup for games against left-handed starters">vs LHP</button>
         </span>
-        <button class="lu-filter" id="show-def-btn" onclick="toggleShowDef()"
-                style="margin-left:12px;white-space:nowrap;" aria-pressed="false"
+        <button class="lu-filter lu-hdr-toggle" id="show-def-btn" onclick="toggleShowDef()"
+                aria-pressed="false"
                 title="Show each hitter's arm and fielding grades in the batting order">Show Def</button>
+        </span>
         <div class="spacer"></div>
+        <div class="lu-hdr-actions">
         <button class="btn btn-secondary" onclick="autoFill()"
                 title="Fill the empty and injured spots in both lineups, vs RHP and vs LHP, keeping the players already in them"
-                style="font-size:11px;padding:4px 10px;margin-right:6px;">Auto-fill</button>
+                >Auto-fill</button>
         <button class="btn btn-secondary" onclick="rebuildLineup()"
                 title="Start over, vs RHP and vs LHP: the best lineups from your whole roster, by your Strategy tab's lineup style"
-                style="font-size:11px;padding:4px 10px;margin-right:6px;">Rebuild</button>
-        <button class="btn btn-secondary" onclick="clearLineup()"
-                style="font-size:11px;padding:4px 10px;margin-right:6px;border-color:var(--red);color:var(--red);">Clear All</button>
+                >Rebuild</button>
+        <button class="btn btn-secondary lu-btn-clear" onclick="clearLineup()">Clear All</button>
         <button class="btn btn-primary" id="save-batting-btn" onclick="saveBatting()"
                 title="Save your vs RHP and vs LHP lineups">
           Save Batting
         </button>
+        </div>
       </div>
       <div id="bat-unsaved-banner"
            style="display:none;margin:6px 0 0;padding:6px 12px;
@@ -220,17 +223,18 @@
               style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);
                      margin-left:8px;"></span>
         <div class="spacer"></div>
+        <div class="lu-hdr-actions">
         <button class="btn btn-secondary" onclick="autoFillRotation()"
                 title="Keep the starters in the rotation and fill the empty and injured spots"
-                style="font-size:11px;padding:4px 10px;margin-right:6px;">Auto-fill</button>
+                >Auto-fill</button>
         <button class="btn btn-secondary" onclick="rebuildRotation()"
                 title="Start over: your best healthy starters, as many as your Strategy tab's rotation size. The next starter stays the same if he's still in the rotation."
-                style="font-size:11px;padding:4px 10px;margin-right:6px;">Rebuild</button>
-        <button class="btn btn-secondary" onclick="clearRotation()"
-                style="font-size:11px;padding:4px 10px;margin-right:6px;border-color:var(--red);color:var(--red);">Clear</button>
+                >Rebuild</button>
+        <button class="btn btn-secondary lu-btn-clear" onclick="clearRotation()">Clear</button>
         <button class="btn btn-primary" id="save-rotation-btn" onclick="saveRotation()">
           Save Rotation
         </button>
+        </div>
       </div>
       <div id="rot-unsaved-banner"
            style="display:none;margin:6px 0 0;padding:6px 12px;
@@ -259,10 +263,11 @@
               style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);
                      margin-left:8px;"></span>
         <div class="spacer"></div>
+        <div class="lu-hdr-actions">
         <button class="btn btn-secondary" onclick="autoAssignBullpen()"
-                style="font-size:11px;padding:4px 10px;margin-right:6px;">Auto Assign</button>
-        <button class="btn btn-primary" id="save-bullpen-btn" onclick="saveBullpen()"
-                style="margin-right:6px;">Save Bullpen</button>
+                >Auto Assign</button>
+        <button class="btn btn-primary" id="save-bullpen-btn" onclick="saveBullpen()">Save Bullpen</button>
+        </div>
         <div style="display:flex;align-items:center;gap:3px;
                     font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">
           <select id="bp-s1" onchange="renderBullpen()" style="width:auto;font-size:10px;">
@@ -373,7 +378,25 @@
   padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--bg-2);
 }
 .lu-col-body { flex: 1; overflow-y: auto; min-height: 0; }
+/* Header toolbars: every button the same height and type size, and a label
+   never breaks onto two lines. When the column is too narrow, the action
+   buttons drop to their own row as a group instead of squeezing. */
+.lu-col-hdr { flex-wrap: wrap; row-gap: 6px; }
+.lu-col-hdr > span { white-space: nowrap; }
+.lu-hdr-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.lu-col-hdr .btn,
+.lu-col-hdr .lu-filter {
+  box-sizing: border-box; height: 28px; padding: 0 10px; line-height: 1;
+  font-size: 11px; white-space: nowrap;
+}
+.lu-hdr-view { display: inline-flex; align-items: center; gap: 6px; margin-left: 12px; }
+.lu-col-hdr select { height: 28px; padding-top: 0; padding-bottom: 0; }
+.lu-hdr-actions + div { margin-left: 6px; }
+.lu-hdr-seg { display: inline-flex; border: 1px solid var(--border); }
+.lu-hdr-toggle { border: 1px solid var(--border) !important; }
+.lu-btn-clear, .lu-btn-clear:hover { border-color: var(--red); color: var(--red); }
 .lu-col-label {
+  white-space: nowrap;
   font-family: var(--font-mono); font-size: 10px;
   letter-spacing: .1em; text-transform: uppercase; font-weight: 600; color: var(--amber);
 }
@@ -565,7 +588,13 @@
   .lu-col-body { overflow: visible; }
   .lu-col-hdr { flex-wrap: wrap; gap: 6px; }
   .lu-col-hdr .spacer { flex: 1 0 100%; height: 0; }
-  .lu-col-hdr .btn { margin-right: 0 !important; font-size: 11px !important; padding: 6px 10px !important; }
+  .lu-col-hdr .btn, .lu-col-hdr .lu-filter { height: 34px; }
+  .lu-col-hdr select { height: 34px; }
+  .lu-hdr-actions + div { margin-left: 0; }
+  .lu-hdr-view { margin-left: 0; }
+  /* Action buttons in even halves: two to a row */
+  .lu-hdr-actions { flex: 1 1 100%; flex-wrap: wrap; margin-left: 0; }
+  .lu-hdr-actions .btn { flex: 1 1 calc(50% - 3px); justify-content: center; }
   .lu-tab { padding: 8px 12px; }
   /* Rotation | Bullpen switcher, same look as the Roster tab's 40-Man | Organization */
   .lu-seg { display: flex; margin: 10px 12px 0; border: 1px solid var(--border-hi); }
