@@ -10,9 +10,12 @@
 {% set groups = [
   ('My team', ['roster', 'lineup', 'strategy', 'owner', 'budget']),
   ('Moves', ['trades', 'free-agents', 'expiring', 'draft']),
-  ('League', ['headlines', 'schedule', 'standings', 'power', 'allstar', 'playoffs']),
+  ('League', ['headlines', 'playoffs', 'schedule', 'standings', 'power', 'allstar'] if league_state == 'playoffs'
+             else ['headlines', 'schedule', 'standings', 'power', 'allstar', 'playoffs']),
   ('Numbers', ['leaders', 'stats']),
 ] %}
+{# While the playoffs are on they're what's happening, so they sit above the
+   Schedule (Josh, 2026-11-11); the rest of the year at the bottom. #}
 {% set grouped = groups | map(attribute=1) | sum(start=[]) %}
 {% set path = request.url.path.rstrip('/') if request is defined else '' %}
 {% set nav_user = user or (request.state.user if request is defined else none) %}
