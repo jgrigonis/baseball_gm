@@ -7,12 +7,13 @@ from types import SimpleNamespace
 
 import pytest
 
-from src.api.services import ai_free_agents, free_agents, waivers
+from src.api.services import ai_free_agents, fa_offers, free_agents, waivers
 from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.waiver_repo import WaiverRepository
+from src.player import negotiation as ng
 
 GAME_DAYS = [f"2026-04-{d:02d}" for d in range(2, 12)]
 
@@ -54,6 +55,11 @@ def lg(db_conn, factory):
 @pytest.fixture(autouse=True)
 def roomy_owners(monkeypatch):
     monkeypatch.setattr(BudgetRepository, "refusal", lambda *a, **k: None)
+    # AI teams negotiate (tests/api/test_fa_offers.py): here a GM always
+    # takes the player's counter and nobody takes offence, so a team that
+    # wants him gets him.
+    monkeypatch.setattr(fa_offers, "ai_takes_counter", lambda *a: True)
+    monkeypatch.setattr(ng.Stance, "insulted", lambda *a, **k: False)
     monkeypatch.setattr(ai_free_agents, "_budget_room", lambda *a: float("inf"))
 
 

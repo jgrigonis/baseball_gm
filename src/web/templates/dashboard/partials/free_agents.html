@@ -57,6 +57,7 @@
     C- and worse ask the minimum for one season. Anyone still unsigned after the
     offseason's bidding asks {{ market_step_pct }}% less once bidding closes and
     another {{ market_step_pct }}% each week of the season, down to {{ market_floor_pct }}% of his price.
+    {% if not bidding %}Sign pays his asking price; Offer lets you try for less, or for other seasons, and he answers right away.{% endif %}
   </div>
   <div class="fa-list card" id="fa-list"></div>
   <div class="fa-empty" id="fa-none" style="display:none;">No one matches.</div>
@@ -132,6 +133,10 @@ function row(p) {
   const years = p.ask_years ? `${p.ask_years} yr${p.ask_years === 1 ? '' : 's'}${w ? ' left' : ''}` : '';
   let sign = CAN_SIGN && p.salary_text
     ? `<button class="btn btn-secondary fa-sign" title="Sign him at his asking price">Sign</button>` : '';
+  // Or talk him down (src/api/services/fa_offers.py): he answers right away.
+  if (sign && p.can_offer && !BIDDING && !w) {
+    sign = `<span class="fa-btns"><button class="btn btn-secondary fa-offer" title="Offer him a salary and seasons. He answers right away.">Offer</button>${sign}</span>`;
+  }
   if (BIDDING && CAN_SIGN && p.salary_text && !w) {
     sign = p.my_bid
       ? `<button class="btn btn-secondary fa-claimed fa-bid" title="Your bid. Click to change it.">Bid ${p.my_bid.salary_text} · ${p.my_bid.years}y</button>`
@@ -158,6 +163,7 @@ function row(p) {
   el.addEventListener('click', e => {
     if (e.target.closest('.fa-claim')) { claimWaiver(p.player_id, `${p.first_name} ${p.last_name}`); return; }
     if (e.target.closest('.fa-claimed')) { withdrawClaim(p.player_id); return; }
+    if (e.target.closest('.fa-offer')) { offerFreeAgent(p.player_id, `${p.first_name} ${p.last_name}`); return; }
     if (e.target.closest('.fa-bid')) { bidFreeAgent(p.player_id, `${p.first_name} ${p.last_name}`); return; }
     if (e.target.closest('.fa-sign')) {
       signFreeAgent(p.player_id, `${p.first_name} ${p.last_name}`, p.salary_text, p.ask_years);

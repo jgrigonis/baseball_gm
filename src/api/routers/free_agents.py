@@ -10,7 +10,14 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 
 from src.api.dependencies import DB, GM, ActiveLeague, GMOrViewer, IsHTMX, User
-from src.api.services import free_agents, icons, offseason_fa, ready_check, waivers
+from src.api.services import (
+    fa_offers,
+    free_agents,
+    icons,
+    offseason_fa,
+    ready_check,
+    waivers,
+)
 from src.api.view_models.player_cards import (
     attach_injuries,
     attach_moods,
@@ -75,6 +82,7 @@ def free_agents_tab(
     scale = free_agents.price_scale(db, league_id, year) if year is not None else 1.0
     shifts = free_agents.price_shifts(db, league_id, year) if year is not None else {}
     discount = free_agents.market_discount(db, league_id)
+    lowest = fa_offers.minimum(db, league_id, year) if year is not None else 0
     for card, row in shown:
         record = player_repo.record_from_row(row)
         card["face_url"] = face_url(row["id"], card.get("age"), None, None)
@@ -97,6 +105,8 @@ def free_agents_tab(
             card["salary"] = deal.salary
             card["salary_text"] = format_salary(deal.salary)
             card["ask_years"] = deal.years
+            # Above the minimum there's room to talk (fa_offers.py).
+            card["can_offer"] = deal.salary > lowest
         last = last_team.get(row["id"])
         card["last_team"] = names.get(last) if last else None
         players.append(card)
@@ -217,6 +227,40 @@ def sign_free_agent(
     try:
         result = free_agents.sign(db, league_id, gm["team_id"], player_id)
     except free_agents.FreeAgentError as e:
+        return JSONResponse({"detail": str(e)}, status_code=422)
+    return JSONResponse(result)
+
+
+class OfferBody(BaseModel):
+    salary: int
+    years: int
+
+
+@router.get("/leagues/{league_id}/free-agents/{player_id}/offer")
+def offer_preview(league_id: str, player_id: str, db: DB, gm: GM):
+    """For the offer dialog: his ask, hints on where he stands, offers left
+    this week (src/api/services/fa_offers.py)."""
+    try:
+        result = fa_offers.preview(db, league_id, gm["team_id"], player_id)
+    except fa_offers.OfferError as e:
+        return JSONResponse({"detail": str(e)}, status_code=422)
+    return JSONResponse(result)
+
+
+@router.post("/leagues/{league_id}/free-agents/{player_id}/offer")
+def make_offer(
+    league_id: str,
+    player_id: str,
+    body: OfferBody,
+    db: DB,
+    gm: GM,
+    _active: ActiveLeague,
+):
+    try:
+        result = fa_offers.offer(
+            db, league_id, gm["team_id"], player_id, body.salary, body.years
+        )
+    except (fa_offers.OfferError, free_agents.FreeAgentError) as e:
         return JSONResponse({"detail": str(e)}, status_code=422)
     return JSONResponse(result)
 

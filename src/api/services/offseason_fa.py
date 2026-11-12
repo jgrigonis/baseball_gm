@@ -75,6 +75,7 @@ from src.league.offseason.roster_trimmer import MINORS_LIMIT
 from src.league import money_state
 from src.player import contracts as ct
 from src.player import happiness as hp
+from src.player import negotiation as ng
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_value import role_rating
 
@@ -881,11 +882,12 @@ def _fits(conn, league_id: str, season_id: str, year: int, team_ids) -> dict:
 def bid_value(
     salary: int, years: int, ask: ct.Deal, age: int, fit: float, share: float
 ) -> float:
-    """How much a player likes a bid: the money against his asking price
-    (an older player values the extra years), plus the team's fit as much as
-    he cares about it."""
-    per_year = 0.04 if age >= 30 else 0.01
-    money = salary / ask.salary + per_year * (years - ask.years)
+    """How much a player likes a bid: the money against his asking price,
+    plus the seasons of security past what he asked for, each by his age in
+    it (src/player/negotiation.py: a 27-year-old values a 5-year deal for
+    its age 30 and 31 seasons), plus the team's fit as much as he cares
+    about it."""
+    money = ng.money_value(salary, years, ask.salary, ask.years, age)
     return money + FIT_WEIGHT * share * fit
 
 

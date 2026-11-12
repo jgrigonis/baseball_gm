@@ -10,9 +10,11 @@ lineup position, by HOLE_MARGIN rating points or more. Then:
 - Waivers: an AI team claims a player on waivers who fills a hole, if his
   deal fits its owner's budget. It looks every game day, since waivers only
   last a few days.
-- Free agents: every SIGN_EVERY_DAYS game days, an AI team signs the free
-  agent who fills its biggest hole at his asking price, if it fits the
-  budget. One signing a team per look.
+- Free agents: every SIGN_EVERY_DAYS game days, an AI team goes after the
+  free agent who fills its biggest hole, if his asking price fits the
+  budget. It negotiates like a person can (src/api/services/fa_offers.py):
+  its owner's Spending and its GM's Risk say how low it opens and whether
+  it takes his counter. One signing a team per look.
 - Money: its money state (src/league/money_state.py) has a say too. A
   flush team signs a smaller upgrade; a capped-out one only bargains; one
   cutting costs only players at the minimum.
@@ -238,8 +240,13 @@ def sign_free_agents(
     effective = (date.fromisoformat(today) + timedelta(days=1)).isoformat()
     taken: set[str] = set()
     money = owners.money_states(conn, league_id, year)
+    roles = {t: role_values(_rated_team(conn, league_id, t)) for t in ai_teams}
+    from src.api.services import fa_offers
+
+    leanings = fa_offers.ai_leanings(conn, league_id)
+    rng = random.Random(f"ai-offers:{league_id}:{today}")
     for team_id in ai_teams:
-        team = role_values(_rated_team(conn, league_id, team_id))
+        team = roles[team_id]
         room = _budget_room(conn, league_id, team_id, year)
         mstate = money.get(team_id)
         best = None
@@ -271,11 +278,30 @@ def sign_free_agents(
         if not best:
             continue
         rec = best[0]
-        if not _make_room(conn, league_id, team_id):
-            continue
+        # It negotiates (src/api/services/fa_offers.py): its owner and GM say
+        # how low it opens and whether it takes his counter.
+        spending, risk = leanings.get(team_id, (50, 50))
+        others = fa_offers.callers(
+            conn, league_id, rec, year, asks[rec.id], exclude={team_id}, teams=roles
+        )
         try:
-            free_agents.sign(conn, league_id, team_id, rec.id)
-        except free_agents.FreeAgentError:
+            got = fa_offers.ai_offer(
+                conn,
+                league_id,
+                team_id,
+                rec,
+                asks[rec.id],
+                room,
+                spending,
+                risk,
+                rng,
+                others,
+                # Room in the minors only once he's said yes.
+                before_sign=lambda: _make_room(conn, league_id, team_id),
+            )
+        except free_agents.FreeAgentError, fa_offers.OfferError:
+            continue
+        if not got:
             continue
         taken.add(rec.id)
         signed.append((team_id, rec.id))

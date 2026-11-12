@@ -213,6 +213,81 @@ window.signFreeAgent = async function(pid, name, salary, years) {
   closePlayerPanel();
   reloadTab();
 };
+// Making a free agent an offer (src/api/services/fa_offers.py): a salary
+// and seasons, outside the bidding window. He answers right away: he signs,
+// or says what he'd take, with a line or two on where he stands.
+window.offerFreeAgent = async function(pid, name) {
+  const url = `/leagues/{{ league_id }}/free-agents/${pid}/offer`;
+  let ask;
+  try {
+    const r = await fetch(url);
+    ask = await r.json();
+    if (!r.ok) throw new Error(ask.detail || 'Something went wrong.');
+  } catch (e) { gmAlert(e.message); return; }
+  if (ask.frozen) { gmAlert(`${name} isn't listening`, ask.frozen); return; }
+  const term = (s, y) => `${s} a season for ${y} season${y === 1 ? '' : 's'}`;
+  const c = ask.counter;
+  if (!ask.offers_left && !c) {
+    gmAlert(`${name} isn't listening`, "That's two offers this week. He'll listen again next week.");
+    return;
+  }
+  const vals = await gmConfirm({
+    title: `Offer ${name} a deal?`,
+    lines: [
+      `He asks ${term(ask.ask_text, ask.ask_years)}. Sign pays that; an offer can try for less, or other seasons.`,
+      ...ask.hints,
+      c ? `He said he'd take ${term(c.salary_text, c.years)}.` : '',
+      ask.offers_left
+        ? `${ask.offers_left} offer${ask.offers_left === 1 ? '' : 's'} left this week. A lowball can make a hot-tempered player stop taking your calls.`
+        : "No offers left this week, but his answer stands.",
+    ],
+    fields: [
+      {name: 'salary', label: 'Salary a season ($M)', value: ((c ? c.salary : ask.ask_salary) / 1e6).toFixed(2),
+       min: (ask.min_salary / 1e6).toFixed(2), step: 0.05},
+      {name: 'years', label: 'Seasons', value: c ? c.years : ask.ask_years, min: 1, max: ask.max_years, step: 1},
+    ],
+    warn: ask.warning,
+    ok: 'Make offer', tone: 'go',
+    cancel: 'Cancel',
+  });
+  if (!vals) return;
+  const salary = Math.round(vals.salary * 1e6), years = Math.round(vals.years);
+  if (!(salary >= ask.min_salary)) {
+    gmAlert('Offer at least the minimum', `The league minimum is $${(ask.min_salary / 1e6).toFixed(2)}M a season.`);
+    return;
+  }
+  await sendOffer(url, name, salary, years);
+};
+async function sendOffer(url, name, salary, years) {
+  let d;
+  try { d = await postJson(url, {salary, years}); }
+  catch (e) { gmAlert(e.message); return; }
+  if (d.result === 'signed') {
+    gmToast(`${name} signs: ${d.salary_text} a season for ${d.years}`, 'ok');
+    closePlayerPanel();
+    reloadTab();
+    return;
+  }
+  if (d.result === 'insulted') { gmAlert(`${name} hangs up`, d.line); return; }
+  const c = d.counter;
+  const seasons = `${c.years} season${c.years === 1 ? '' : 's'}`;
+  if (d.blocked) {
+    await gmConfirm({title: `${name} says no`, lines: [`He'd take ${c.salary_text} a season for ${seasons}.`, ...d.hints, d.blocked], ok: 'OK', cancel: null});
+    return;
+  }
+  const take = await gmConfirm({
+    title: `${name} says no`,
+    lines: [
+      `He'd take ${c.salary_text} a season for ${seasons}. That stands for the rest of the week.`,
+      ...d.hints,
+      d.offers_left ? `${d.offers_left} offer left this week.` : "That's your offers for this week.",
+    ],
+    warn: d.warning,
+    ok: `Sign at ${c.salary_text}`, tone: 'go',
+    cancel: 'Walk away',
+  });
+  if (take) await sendOffer(url, name, c.salary, c.years);
+}
 // Offseason free agency (src/api/services/offseason_fa.py): a bid from the
 // draft into the preseason, and re-signing or letting go of expiring players.
 window.bidFreeAgent = async function(pid, name, ask) {
