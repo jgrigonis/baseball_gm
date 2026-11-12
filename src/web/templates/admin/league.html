@@ -5,7 +5,10 @@
 {% block main %}
 {% set section = 'leagues' %}
 {% set started = league.state != 'lobby' %}
-<div class="page-content"><div class="content-inner" style="max-width:960px;">
+<div class="page-content"><div class="content-inner" style="max-width:none;">
+{# Header and settings keep a readable width; the GM and owner tables below
+   use the whole window so they don't side scroll on big screens. #}
+<div style="max-width:960px;">
   <div class="page-header">
     <h1 class="page-title">{{ league.name }}</h1>
     <span class="topbar-state state-{{ league.state }}" style="margin-left:12px;">{{ state_label }}</span>
@@ -59,20 +62,23 @@
           <option value="confirmed" {% if league.pace_control == 'confirmed' %}selected{% endif %}>Confirmed</option>
         </select>
       </div>
-      {# Same sliders and steps as the New League form. A window whose value
-         sits off the step grid (set before sliders) steps by 1, so saving
-         doesn't quietly round it. #}
+      {# Same sliders and steps as the New League form. #}
       {{ slider("sim_period_days", "sim-period-days", "Days per Sim Period", league.sim_period_days, ranges.sim_period_days[0], [ranges.sim_period_days[1], league.sim_period_days] | max) }}
       {% call step_slider("num_seasons", "num-seasons", "Number of Seasons", season_choices, league.num_seasons) %}
         <span class="hint">All the way right for unlimited.</span>
       {% endcall %}
-      {% for key, label, step in [
-           ('decision_window_sec', 'Decision Window', 10),
-           ('draft_window_sec', 'Draft Window', 30),
-           ('lineup_window_sec', 'Lineup Window', 60)] %}
-      {% set low = ranges[key][0] %}
-      {{ slider(key, key | replace('_', '-'), label, league[key], low, [ranges[key][1], league[key]] | max,
-                step=step if (league[key] - low) % step == 0 else 1, unit=" sec") }}
+      {# Windows are typed in seconds: the admin can go from 1 to 9000, past
+         what commissioners and GMs can pick (the hint says their range). #}
+      {% for key, label in [
+           ('decision_window_sec', 'Decision Window'),
+           ('draft_window_sec', 'Draft Window'),
+           ('lineup_window_sec', 'Lineup Window')] %}
+      <div class="field">
+        <label for="{{ key | replace('_', '-') }}">{{ label }} (sec)</label>
+        <input type="number" name="{{ key }}" id="{{ key | replace('_', '-') }}" value="{{ league[key] }}"
+               min="{{ admin_windows[0] }}" max="{{ admin_windows[1] }}" step="1" inputmode="numeric" required>
+        <span class="hint">{{ admin_windows[0] }} to {{ admin_windows[1] }} here. Players: {{ ranges[key][0] }} to {{ ranges[key][1] }}.</span>
+      </div>
       {% endfor %}
       {% if started %}
       <div class="field">
@@ -111,6 +117,7 @@
       <div class="wide"><button type="submit" class="btn btn-primary">Save Settings</button></div>
     </form>
   </div></div>
+</div>
 
   <div class="admin-section">
     <div class="page-header"><h1 class="page-title" style="font-size:20px;">GMs</h1></div>

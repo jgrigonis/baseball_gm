@@ -465,7 +465,8 @@ class TestSettings:
         "field, value, error",
         [
             ("sim_period_days", "31", "between 1 and 30"),
-            ("decision_window_sec", "5", "between 30 and 600"),
+            ("decision_window_sec", "0", "between 1 and 9000"),
+            ("lineup_window_sec", "9001", "between 1 and 9000"),
             ("pace_control", "scheduled", "Unknown pace"),
             ("mode", "speed_blitz", "only change before the league starts"),
             ("name", "  ", "needs a name"),
@@ -548,22 +549,48 @@ class TestSettings:
 
         html = client.get(f"/admin/leagues/{league.id}").text
 
-        assert 'type="number"' not in html
-        assert (
-            'name="decision_window_sec" id="decision-window-sec" value="120" min="30" max="600" step="10"'
-            in html
-        )
         assert 'name="backstory_years"' in html and 'id="backstory-years"' in html
         # Seasons: 1..60 then unlimited, sent through a hidden input.
         assert '<input type="hidden" name="num_seasons" value="0">' in html
         assert 'id="num-seasons" value="60" min="0" max="60"' in html
 
-    def test_off_grid_window_steps_by_one(self, client, db_conn, factory, admin):
+    def test_windows_are_text_boxes_with_the_player_range(
+        self, client, db_conn, factory, admin
+    ):
         league = _league(db_conn, factory, decision_window_sec=45)
 
         html = client.get(f"/admin/leagues/{league.id}").text
 
-        assert 'id="decision-window-sec" value="45" min="30" max="600" step="1"' in html
+        assert (
+            'type="number" name="decision_window_sec" id="decision-window-sec" '
+            'value="45"\n               min="1" max="9000"' in html
+        )
+        assert "Players: 30 to 600." in html
+        assert "Players: 60 to 1800." in html
+        assert "Players: 60 to 3600." in html
+
+    @pytest.mark.parametrize("value", ["1", "9000"])
+    def test_admin_windows_go_past_the_player_range(
+        self, client, db_conn, factory, admin, value
+    ):
+        league = _league(db_conn, factory)
+
+        r = client.post(
+            f"/admin/leagues/{league.id}/settings",
+            data=_settings_form(
+                decision_window_sec=value,
+                draft_window_sec=value,
+                lineup_window_sec=value,
+            ),
+        )
+
+        assert r.status_code == 303
+        row = LeagueRepository(db_conn).get_by_id(league.id)
+        assert (
+            row["decision_window_sec"],
+            row["draft_window_sec"],
+            row["lineup_window_sec"],
+        ) == (int(value),) * 3
 
     def test_over_cap_seasons_get_a_slider_stop(self, client, db_conn, factory, admin):
         league = _league(db_conn, factory, state="lobby", num_seasons=100)
