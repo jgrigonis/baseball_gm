@@ -3,13 +3,13 @@
    who isn't away is ready, or (timer pace) when the Decision Window runs
    out. In the playoffs, a GM whose team is out counts as away. Polls /sim/status, which also runs the period once it is due.
    The poll also brings this GM's news as soon as there is any (e.g. a trade
-   offer another GM just made them) and keeps the Trades tab's badge right. #}
-<div id="ready-bar"
-     style="display:flex;align-items:center;gap:12px;padding:6px 24px;
-            background:var(--bg-2);border-bottom:1px solid var(--border);
-            font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">
+   offer another GM just made them) and keeps the Trades tab's badge right.
+   Its line sits in the floating sim card (shell.html), under the sim's
+   own line. #}
+<div id="ready-bar" class="sim-card-ready">
   <span id="ready-text">Loading…</span>
-  <span id="ready-waiting" style="color:var(--amber);"></span>
+  <span id="ready-waiting" class="sim-card-waiting"></span>
+  <button type="button" id="ready-inbox" class="sim-card-inbox" onclick="goToTab('trades')" hidden></button>
   {# I'm ready (and Mark me away, in its ▾ menu) is the top bar's next move,
      _next_move.html. This script sets its text and state. #}
 </div>
@@ -85,6 +85,7 @@ function render() {
   // The top bar's next move; stand-ins when it isn't the ready toggle.
   var btn = document.getElementById('ready-btn') || {style: {}};
   var away = document.getElementById('ready-away-btn') || {style: {}};
+  document.getElementById('ready-inbox').hidden = true;  // set below when there's a period to get ready for
   var present = d.gms.filter(function(g) { return !g.away; });
   var readyCount = present.filter(function(g) { return g.ready; }).length;
 
@@ -109,7 +110,10 @@ function render() {
       parts.push('next sim in ' + fmt(left));
     }
     parts.push('ready ' + readyCount + '/' + present.length);
-    if (d.trade_inbox) parts.push('📨 ' + d.trade_inbox + ' waiting on you in Trades');
+    // Its own line in the card, opening the Trades tab.
+    var inbox = document.getElementById('ready-inbox');
+    inbox.hidden = !d.trade_inbox;
+    inbox.textContent = '📨 ' + d.trade_inbox + ' waiting on you in Trades ›';
     if (d.all_star_vote_due) parts.push('★ All-Star voting is open: cast your ballot');
     if (d.all_star_turn) parts.push('★ Your pick in the All-Star draft');
     text.textContent = parts.join(' · ');
@@ -127,6 +131,7 @@ function render() {
   // Nothing to get ready for: no button (or ▾ menu) at all.
   var split = btn.closest ? btn.closest('.nm-split') : null;
   if (split) split.style.display = btn.style.display;
+  if (window.simCard) window.simCard.chrome();
 }
 
 function apply(d) {
@@ -163,8 +168,9 @@ function apply(d) {
     periodRan(prev, d);
   } else if (d.simming && !(prev && prev.simming)) {
     // A period started (another GM's poll, or the window ran out).
+    // The ready line says it's simming; the card's own line waits for the result.
     if (window.simCard) { window.simCard.newRun(); window.simCard.running(true); }
-    cardStatus('Simming ' + periodName(d.league_state, d.period, d.period).toLowerCase() + '…');
+    cardStatus('');
   } else if (prev && prev.simming && !d.simming && window.simCard) {
     window.simCard.running(false);
   }
