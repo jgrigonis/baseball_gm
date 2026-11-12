@@ -117,3 +117,79 @@ def may_sign(state: str | None, salary: int, minimum: int, bargain: bool) -> boo
 def sheds(state: str | None) -> bool:
     """Whether a team goes looking for deals that lower its payroll."""
     return state == "cutting-costs"
+
+
+# People run their own teams' money, so the AI states above mean little for
+# them: a person's team shows where its payroll and spending stand instead,
+# best to worst (src/api/view_models/standings.py). Over the owner's limit
+# happens when re-signing their own players (the bank covers it).
+PAYROLL_STATES = ("under-cap", "over-cap", "over-budget", "over-limit")
+
+PAYROLL_LABELS = {
+    "under-cap": "Under cap",
+    "over-cap": "Over cap",
+    "over-budget": "Over budget",
+    "over-limit": "Over limit",
+}
+
+
+def payroll_state(standing: dict | None) -> str | None:
+    """Where a team's money stands for a person's team, from
+    src/league/budget.py standing(): past the owner's hard limit, past
+    their budget, payroll over the cap, or under it. None without budgets."""
+    if not standing:
+        return None
+    if standing.get("over_limit_text"):
+        return "over-limit"
+    if standing.get("over_budget"):
+        return "over-budget"
+    if standing.get("over"):
+        return "over-cap"
+    return "under-cap"
+
+
+def payroll_tip(state: str | None, standing: dict | None) -> str:
+    """The tag's tooltip: the numbers behind it."""
+    if not state or not standing:
+        return ""
+    s = standing
+    if s.get("over_text"):
+        payroll = f"Payroll {s['payroll_text']}, {s['over_text']} over the {s['cap_text']} cap"
+    else:
+        payroll = f"Payroll {s['payroll_text']}, under the {s['cap_text']} cap"
+    if state == "over-limit":
+        spend = (
+            f"total spending {s['spend_text']}, {s['over_limit_text']} past the "
+            f"owner's {s['limit_text']} limit"
+        )
+    elif state == "over-budget":
+        spend = (
+            f"total spending {s['spend_text']}, {s['over_budget_text']} past the "
+            f"owner's {s['budget_text']} budget"
+        )
+    else:
+        spend = (
+            f"total spending {s['spend_text']}, within the owner's "
+            f"{s['budget_text']} budget"
+        )
+    return f"{payroll}; {spend}"
+
+
+# AI teams offering a trade to a person's team keep to that team's money
+# too, so they don't send offers its owner would refuse or hate
+# (src/api/services/ai_trades.py): nothing that adds salary once it's past
+# the owner's limit, close to even (EVEN_SHARE of the cap) once past the
+# budget, and otherwise up to what the budget leaves plus that much.
+EVEN_SHARE = 0.02
+
+
+def person_pay_room(standing: dict | None) -> int | None:
+    """How much more payroll an AI team's offer may add to a person's team,
+    from src/league/budget.py standing(); None without budgets."""
+    if not standing:
+        return None
+    limit_room = standing["limit_payroll_room"]
+    if limit_room <= 0 or standing.get("over_limit_text"):
+        return 0
+    even = round(EVEN_SHARE * standing["cap"])
+    return max(0, min(limit_room, max(0, standing["budget_payroll_room"]) + even))

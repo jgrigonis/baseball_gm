@@ -80,3 +80,29 @@ def test_extra_columns_start_hidden_behind_a_toggle(setup):
         assert 'id="standings-extra-btn"' in html
         for col in ("Home", "Away", "L10", "RS", "RA"):
             assert f'st-extra" style="text-align:center;">{col}</th>' in html
+
+
+def test_people_see_payroll_money_states(setup, db_conn, factory, monkeypatch):
+    """AI teams show their money state (Flush ... Cutting costs); a team a
+    person runs shows its payroll against the cap and its spending against
+    its owner (src/league/money_state.py payroll_state)."""
+    from src.api.services import owners
+    from src.db.repositories.budget_repo import BudgetRepository
+    from src.db.repositories.gm_repo import GMRepository
+    from src.league import budget as bg
+
+    mine = GMRepository(db_conn).get_human_team_ids(setup.id)
+    ai = db_conn.execute(
+        "SELECT team_id FROM league_season_teams WHERE league_id = %s", (setup.id,)
+    ).fetchall()
+    monkeypatch.setattr(
+        owners,
+        "season_money_states",
+        lambda *a, **k: {r["team_id"]: "cutting-costs" for r in ai},
+    )
+    over = bg.standing(250_000_000, 200_000_000, 260_000_000, 270_000_000)
+    monkeypatch.setattr(BudgetRepository, "standing", lambda *a: over)
+    html = TestClient(app).get(f"/leagues/{setup.id}/standings").text
+    assert html.count("money-state money-state-over-limit") == len(mine) == 1
+    assert "Cutting costs" in html
+    assert "past the owner&#39;s $270" in html or "past the owner's $270" in html

@@ -38,6 +38,7 @@ from dataclasses import replace
 from datetime import date, timedelta
 
 from src.api.services import owners, personas, team_states, trades
+from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
@@ -240,6 +241,17 @@ def _sides(
     rooms = owners.pay_rooms(conn, league_id, season_id)
     terms = owners.money_terms(conn, league_id, season_id)
     money = owners.season_money_states(conn, league_id, season_id)
+    # A person's team: offers keep to what its owner will stand for
+    # (money_state.person_pay_room), so none they'd refuse or hate.
+    person_rooms = {}
+    if rooms:
+        year = SeasonRepository(conn).get_year(season_id)["year"]
+        budgets = BudgetRepository(conn)
+        person_rooms = {
+            t: money_state.person_pay_room(budgets.standing(league_id, t, year))
+            for t in humans
+            if t in team_ids
+        }
     out = {}
     for t in team_ids:
         hurt = injuries.get_team_injuries(t, game_date)
@@ -253,8 +265,7 @@ def _sides(
             margin=ai_evaluator.margin(t, "offer", game_date, lean.margin_factor),
             stats_weight=lean.stats_weight,
             horizon=lean.horizon,
-            # People get a warning, not a veto: only AI teams answer to it.
-            pay_room=None if t in humans else rooms.get(t),
+            pay_room=person_rooms.get(t) if t in humans else rooms.get(t),
             money=0.0
             if t in humans
             else owners.money_rate(terms, money.get(t), states[t]),
