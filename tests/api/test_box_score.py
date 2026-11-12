@@ -82,6 +82,10 @@ def test_bench_hitters_are_tagged_ph_or_their_position():
             **_event("substitution", "a", "jones", "smith"),
             "detail_parsed": {"kind": "pr", "position": "ss"},
         },
+        {
+            **_event("substitution", "a", "glove", "dunn"),
+            "detail_parsed": {"kind": "def", "position": "cf"},
+        },
         # Logged before substitutions kept a detail
         _event("substitution", "a", "old", "dunn"),
         {
@@ -89,4 +93,9 @@ def test_bench_hitters_are_tagged_ph_or_their_position():
             "detail_parsed": {"kind": "ph", "position": "c"},
         },
     ]
-    assert sub_labels(events, "a") == {"hively": "ph", "smith": "ss", "jones": "pr"}
+    assert sub_labels(events, "a") == {
+        "hively": "ph",
+        "smith": "ss",
+        "jones": "pr",
+        "glove": "cf",
+    }

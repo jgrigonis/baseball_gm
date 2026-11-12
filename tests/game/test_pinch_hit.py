@@ -210,3 +210,51 @@ def test_pinch_runner_takes_the_base_slot_and_position():
     assert sub.game_stats.batting.game_played == 1
     assert runner.id in game.bat_team.removed_ids
     assert sub.id in game.batters_this_game
+
+
+# ------------------------------------------------------ defensive replacements
+
+
+def _defense_game(inning=8, away=2, home=4):
+    """Top of the inning: the home team is in the field with a lead."""
+    game = _game(inning=inning, away=away, home=home)
+    team = game.pitch_team
+    slot = next(s for s in team.lineup if s.position == "ss")
+    fielder = slot.player
+    fielder.ratings["ss"] = 30
+    for p in team.bench_players:
+        p.ratings["ss"] = 0
+    sub = sorted(team.bench_players, key=lambda p: p.id)[0]
+    sub.ratings["ss"] = 80
+    sub.throws = "R"
+    sub.ratings["overall_offense"] = fielder.ratings["overall_offense"]
+    return game, fielder, sub
+
+
+def test_better_glove_comes_in_to_protect_a_lead():
+    game, fielder, sub = _defense_game()
+    assert ("ss", fielder, sub) in bench.defensive_subs(game)
+
+
+def test_no_defensive_sub_early():
+    game, _, _ = _defense_game(inning=5)
+    assert bench.defensive_subs(game) == []
+
+
+def test_without_a_lead_only_a_big_mismatch():
+    game, fielder, sub = _defense_game(away=6, home=2)
+    sub.ratings["ss"] = 45
+    assert ("ss", fielder, sub) not in bench.defensive_subs(game)
+    sub.ratings["ss"] = 95
+    assert ("ss", fielder, sub) in bench.defensive_subs(game)
+
+
+def test_defensive_sub_takes_the_position_and_slot():
+    game, fielder, sub = _defense_game()
+    slot = next(s for s in game.pitch_team.lineup if s.player is fielder)
+    game._consider_defensive_subs()
+    assert slot.player is sub
+    assert sub.current_position == "ss"
+    assert game.pitch_team.current_shortstop is sub
+    assert fielder.id in game.pitch_team.removed_ids
+    assert sub.id in game.batters_this_game

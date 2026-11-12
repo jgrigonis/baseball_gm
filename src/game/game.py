@@ -902,6 +902,7 @@ class Game:
         self._swap_teams()
         self._sync_players()
         self._open_pitcher_appearance(self.current_pitcher)
+        self._consider_defensive_subs()
         # manager can change before inning starts
         self._consider_pitching_change(inning_start=True)
 
@@ -1087,6 +1088,26 @@ class Game:
                                     )
                                 team.substitute(player, sub)
                             break
+
+    def _consider_defensive_subs(self) -> None:
+        """As a team takes the field: better gloves in for weaker ones late,
+        most of all to protect a lead (src/game/bench.py)."""
+        for position, fielder, sub in bench.defensive_subs(self):
+            self.logger.info(
+                f"🧤 {sub.name} takes over at {position.upper()} for {fielder.name}"
+            )
+            if self.event_logger:
+                self.event_logger.substitution(
+                    team_id=self.pitch_team.record.id,
+                    incoming_id=sub.id,
+                    incoming_name=sub.name,
+                    outgoing_id=fielder.id,
+                    outgoing_name=fielder.name,
+                    position=position,
+                    kind="def",
+                )
+            self.pitch_team.substitute(fielder, sub)
+            self.batters_this_game.add(sub.id)
 
     def _consider_pinch_runners(self) -> None:
         """Before a plate appearance: run for slow runners whose run matters
