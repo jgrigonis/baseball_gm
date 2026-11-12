@@ -835,6 +835,12 @@ def test_facilities_move_injury_odds_and_days_out():
     assert bg.facilities_days(4, 1) == 1 and bg.facilities_days(2, 9) == 9
 
 
+def test_facilities_speed_energy_recovery():
+    assert bg.facilities_recovery(0) < bg.facilities_recovery(bg.STANDARD) == 1.0
+    assert bg.facilities_recovery(4) > 1.0
+    assert bg.facilities_recovery(None) == 1.0
+
+
 def test_department_reads_levels_without_making_rows(lg):
     x = lg()
     assert x.budgets.department(x.league.id, 2026, "facilities", [x.mine.id]) == {

@@ -177,7 +177,11 @@ def tax_shares(payrolls: dict[str, int], cap: int) -> dict[str, int]:
 # the season. Scouting waits for grade fog. Department levels are private.
 DEPARTMENTS = (
     ("coaching", "Coaching", "How fast players grow, and how they like the staff"),
-    ("facilities", "Facilities", "Injuries, time on the IL and wear over a season"),
+    (
+        "facilities",
+        "Facilities",
+        "Injuries, time on the IL and how fast tired players bounce back",
+    ),
     ("analytics", "Analytics", "How well your strategy settings are carried out"),
     (
         "marketing",
@@ -231,6 +235,10 @@ COACHING_NO_AGE = 28
 # hitters and pitchers alike (Josh, 2026-11-06).
 FACILITIES_INJURY = (1.15, 1.07, 1.0, 0.93, 0.85)
 FACILITIES_DAYS = (1.15, 1.07, 1.0, 0.93, 0.85)
+# ...and how fast tired players get their energy back between games, hitters
+# and pitchers alike (Josh, 2026-11-12): the daily recovery rate is multiplied
+# by this. Speed Blitz has no budgets, so every team stays at Standard.
+FACILITIES_RECOVERY = (0.85, 0.93, 1.0, 1.07, 1.15)
 
 
 # Marketing (Josh, 2026-11-07): points on the fans' end-of-season target
@@ -259,6 +267,11 @@ def coaching_growth(level: int, age: int) -> float:
 
 def facilities_injury(level: int) -> float:
     return FACILITIES_INJURY[clean_level(level)]
+
+
+def facilities_recovery(level) -> float:
+    """How fast this team's players get energy back between games."""
+    return FACILITIES_RECOVERY[clean_level(level)]
 
 
 def facilities_days(level: int, days: int) -> int:

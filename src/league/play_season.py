@@ -114,13 +114,16 @@ def load_energy(
     away_team,
     league_id: str,
     pitcher_states: dict[str, PitcherState] | None = None,
+    recovery_mults: dict[str, float] | None = None,
 ):
     """
     Set each pitcher's starting energy for the game and return the game date.
 
     ``pitcher_states`` are the stored (pre-recovery) states keyed by player
     id; they are loaded here in one query when not passed in.
+    ``recovery_mults`` (player id → speed) is each team's Facilities.
     """
+    recovery_mults = recovery_mults or {}
     players = home_team.players + away_team.players
     if pitcher_states is None:
         pitcher_repo = PitcherStateRepository(conn, league_id=league_id)
@@ -133,6 +136,7 @@ def load_energy(
             player.id,
             game_date,
             player.skills["recovery"],
+            recovery_mults.get(player.id, 1.0),
         )
         if player.pitcher_fatigue:
             player.pitcher_fatigue.set_energy(state.current_energy, state.max_energy)
@@ -298,6 +302,7 @@ def _pick_starter(
     profile: ManagerProfile = DEFAULT_PROFILE,
     playoffs: bool = False,
     off_day: bool = False,
+    recovery_mult: float = 1.0,
 ) -> tuple[str | None, bool]:
     """
     Returns (starter_id, should_advance_pointer).
@@ -327,7 +332,8 @@ def _pick_starter(
     The team's rotation settings (``profile``) decide how rested a starter
     must be (tired starters), whether the last starter is skipped after an
     off day (``off_day``) so the ace goes on normal rest, and how many
-    starters cycle in the ``playoffs``.
+    starters cycle in the ``playoffs``. ``recovery_mult`` is the team's
+    Facilities: how fast its pitchers get energy back.
     """
     min_energy = profile.starter_min_energy
     injured_ids = injured_ids or set()
@@ -339,10 +345,12 @@ def _pick_starter(
     def _energy(pid: str, recovery_skill: int) -> float:
         if pitcher_states is not None and pid in pitcher_states:
             state = recover_pitcher_state(
-                pitcher_states[pid], pid, game_date, recovery_skill
+                pitcher_states[pid], pid, game_date, recovery_skill, recovery_mult
             )
         else:
-            state = pitcher_repo.get_with_recovery(pid, game_date, recovery_skill)
+            state = pitcher_repo.get_with_recovery(
+                pid, game_date, recovery_skill, recovery_mult
+            )
         return state.current_energy
 
     scheduled = rotations_repo.get_scheduled_starter(team_id, season_id)
@@ -545,6 +553,17 @@ def _play_game(
     pitcher_repo = PitcherStateRepository(conn, league_id=league_id)
     stored_pitcher_states = pitcher_repo.get_many(all_player_ids)
 
+    # Facilities: each team's injury odds, days out and how fast its players
+    # get energy back between games (src/league/budget.py).
+    team_ids = [home_team.record.id, away_team.record.id]
+    facilities = _department(conn, league_id, season_id, "facilities", team_ids)
+    team_recovery = {t: bg.facilities_recovery(lv) for t, lv in facilities.items()}
+    recovery_mults = {
+        p.id: team_recovery[team.record.id]
+        for team in (home_team, away_team)
+        for p in team.players
+    }
+
     game_date = load_energy(
         conn,
         game_repo,
@@ -553,6 +572,7 @@ def _play_game(
         away_team,
         league_id=league_id,
         pitcher_states=stored_pitcher_states,
+        recovery_mults=recovery_mults,
     )
 
     # Pitching rotations
@@ -618,6 +638,7 @@ def _play_game(
         profile=home_team.profile,
         playoffs=playoffs,
         off_day=_had_off_day(conn, home_team.record.id, season_id, game_date),
+        recovery_mult=team_recovery[home_team.record.id],
     )
     away_starter_id, away_advance = _pick_starter(
         rotations_repo,
@@ -632,6 +653,7 @@ def _play_game(
         profile=away_team.profile,
         playoffs=playoffs,
         off_day=_had_off_day(conn, away_team.record.id, season_id, game_date),
+        recovery_mult=team_recovery[away_team.record.id],
     )
 
     # Fallback: if no rotation set, pick the best healthy pitcher by fatigue-adjusted stamina
@@ -684,6 +706,7 @@ def _play_game(
             for p in home_team.position_players + away_team.position_players
         },
         game_date,
+        rate_mults=recovery_mults,
     )
     for player in home_team.position_players + away_team.position_players:
         state = player_energy_states.get(player.id)
@@ -708,9 +731,6 @@ def _play_game(
     # AI teams have no saved lineup, so theirs is built fresh for every game.
 
     event_logger = GameEventLogger(conn, game_id=game_info["game_id"])
-    # Facilities: each team's injury odds and days out (src/league/budget.py).
-    team_ids = [home_team.record.id, away_team.record.id]
-    facilities = _department(conn, league_id, season_id, "facilities", team_ids)
     analytics = _department(conn, league_id, season_id, "analytics", team_ids)
     game = Game(
         home_team=home_team,

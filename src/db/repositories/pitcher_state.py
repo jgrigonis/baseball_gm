@@ -58,9 +58,11 @@ def _daily_recovery_rate(recovery_skill: int) -> float:
     return (1 / 800) * skill + 1 / 16
 
 
-def _apply_recovery(energy: float, days: int, recovery_skill: int) -> float:
+def _apply_recovery(
+    energy: float, days: int, recovery_skill: int, rate_mult: float = 1.0
+) -> float:
     """Apply linear recovery over ``days`` full days."""
-    rate = _daily_recovery_rate(recovery_skill)
+    rate = _daily_recovery_rate(recovery_skill) * rate_mult
     for _ in range(days):
         energy += rate
     return max(0.0, min(1.0, energy))
@@ -106,6 +108,7 @@ def recover_pitcher_state(
     player_id: str,
     game_date: date,
     recovery_skill: int = 50,
+    rate_mult: float = 1.0,
 ) -> PitcherState:
     """
     Return a copy of a stored pitcher state with recovery applied up to game_date.
@@ -113,6 +116,8 @@ def recover_pitcher_state(
     ``state`` is the raw row as returned by ``PitcherStateRepository.get`` or
     ``get_many`` (None when the pitcher has no history). It is not modified,
     so one set of raw states can be reused for several recovery calculations.
+    ``rate_mult`` speeds or slows the daily recovery: his team's Facilities
+    (src/league/budget.py facilities_recovery).
     """
     if not state:
         return PitcherState(player_id=player_id, current_energy=1.0, max_energy=1.0)
@@ -126,7 +131,7 @@ def recover_pitcher_state(
     if days_rest > 0:
         state.consecutive_days = 0
 
-    rate = _daily_recovery_rate(recovery_skill)
+    rate = min(0.95, _daily_recovery_rate(recovery_skill) * rate_mult)
     energy = state.current_energy
     for _ in range(days_rest):
         energy += (state.max_energy - energy) * rate
@@ -134,7 +139,7 @@ def recover_pitcher_state(
     cap_regen = CAP_REGEN_PER_DAY * recovery_skill / 50
     state.max_energy = min(1.0, state.max_energy + (cap_regen * days_rest))
     state.current_energy = _apply_recovery(
-        state.current_energy, days_rest, recovery_skill
+        state.current_energy, days_rest, recovery_skill, rate_mult
     )
     return state
 
@@ -213,6 +218,7 @@ class PitcherStateRepository:
         player_id: str,
         game_date: date,
         recovery_skill: int = 50,
+        rate_mult: float = 1.0,
     ) -> PitcherState:
         """
         Get pitcher state with exponential recovery applied up to game_date.
@@ -229,7 +235,7 @@ class PitcherStateRepository:
             last appearance.
         """
         return recover_pitcher_state(
-            self.get(player_id), player_id, game_date, recovery_skill
+            self.get(player_id), player_id, game_date, recovery_skill, rate_mult
         )
 
     # THIS CODE IS NOT USED, BUT MAY BE USEFUL

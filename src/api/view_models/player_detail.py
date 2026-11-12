@@ -57,6 +57,21 @@ def league_current_date(db, league_id: str) -> date | None:
     return current_date
 
 
+def _recovery_mult(db, league_id: str, team_id: str | None) -> float:
+    """How fast his team's Facilities bring energy back (1.0 without a team
+    or budgets), matching the sim (src/league/play_season.py)."""
+    if not team_id:
+        return 1.0
+    year = ContractRepository(db).current_year(league_id)
+    if year is None:
+        return 1.0
+    from src.db.repositories.budget_repo import BudgetRepository
+    from src.league import budget as bg
+
+    level = BudgetRepository(db).department(league_id, year, "facilities", [team_id])
+    return bg.facilities_recovery(level[team_id])
+
+
 def _contract(db, league_id: str, pid: str) -> dict | None:
     """The deal he plays under this season, for the panel."""
     repo = ContractRepository(db)
@@ -171,13 +186,17 @@ def player_panel_data(
         return None
 
     status = status_repo.get_status(pid) or "unassigned"
+    team = team_repo.get_for_player(pid)
+    # His team's Facilities speed energy recovery, as in the sim.
+    rate_mult = _recovery_mult(db, league_id, team["id"] if team else None)
     en = (
-        energy_repo.get_with_recovery(pid, current_date, p.get("durability", 50))
+        energy_repo.get_with_recovery(
+            pid, current_date, p.get("durability", 50), rate_mult
+        )
         if current_date
         else energy_repo.get(pid)
     )
     inj_log = inj_repo.get_injury_log(pid)
-    team = team_repo.get_for_player(pid)
 
     grades = player_row_to_grades(p, p, status)
     ratings = compute_ratings(p, p.get("throws", "R"))
@@ -289,7 +308,9 @@ def player_panel_data(
     else:
         ps_repo = PitcherStateRepository(db, league_id)
         ps = (
-            ps_repo.get_with_recovery(pid, current_date, p.get("recovery", 50))
+            ps_repo.get_with_recovery(
+                pid, current_date, p.get("recovery", 50), rate_mult
+            )
             if current_date
             else ps_repo.get(pid)
         )

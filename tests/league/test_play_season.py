@@ -45,7 +45,7 @@ def _make_pitcher_repo(energy_map: dict[str, float]):
     """energy_map: player_id → current_energy"""
     repo = MagicMock()
 
-    def _get(player_id, game_date, recovery_skill=50):
+    def _get(player_id, game_date, recovery_skill=50, rate_mult=1.0):
         return _state(energy_map.get(player_id, 1.0))
 
     repo.get_with_recovery.side_effect = _get

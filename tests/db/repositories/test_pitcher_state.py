@@ -375,3 +375,15 @@ def test_clear_all(repo, players):
     assert deleted >= 2
     assert repo.get(p1.id) is None
     assert repo.get(p2.id) is None
+
+
+def test_facilities_speed_pitcher_recovery():
+    """Better Facilities bring a tired pitcher back faster (rate_mult)."""
+    stored = PitcherState("p", 0.2, 1.0, date(2026, 5, 1), 90, 0)
+    game_date = date(2026, 5, 3)  # one full day of rest
+    slow = recover_pitcher_state(stored, "p", game_date, 50, 0.85)
+    normal = recover_pitcher_state(stored, "p", game_date, 50)
+    fast = recover_pitcher_state(stored, "p", game_date, 50, 1.15)
+
+    assert slow.current_energy < normal.current_energy < fast.current_energy
+    assert recover_pitcher_state(stored, "p", game_date, 50, 1.0) == normal
