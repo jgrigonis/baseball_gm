@@ -77,7 +77,7 @@
       {% endif %}
     </div>
     {% if leaders_seasons and leaders_seasons|length > 1 %}
-    <select onchange="htmx.ajax('GET','/leagues/{{ league_id }}/leaders?season='+this.value,{target:'#tab-content',swap:'innerHTML'})"
+    <select onchange="lbSeason(this.value)"
             style="font-family:var(--font-mono);font-size:11px;padding:4px 8px;max-width:80px;
                    background:var(--bg-2);color:var(--text);border:1px solid var(--border);
                    cursor:pointer;">
@@ -159,4 +159,12 @@ function lbSwitch(cat) {
   });
 }
 window.lbSwitch = lbSwitch;
+// The year lives in the page's query string, so a refresh comes back to it.
+function lbSeason(seasonId) {
+  var url = '/leagues/{{ league_id }}/leaders?season=' + encodeURIComponent(seasonId);
+  if (/\/leagues\/[^\/]+\/leaders\/?$/.test(window.location.pathname))
+    history.replaceState(history.state, '', url);
+  htmx.ajax('GET', url, {target: '#tab-content', swap: 'innerHTML'});
+}
+window.lbSeason = lbSeason;
 </script>

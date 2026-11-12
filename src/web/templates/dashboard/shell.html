@@ -416,7 +416,12 @@ function _simHold() {
 window.refreshActiveTab = function() {
   var activeLink = document.querySelector('.tab-link.active, .side-link.active');
   if (!activeLink) return;
-  _reloadTab(activeLink.getAttribute('hx-get') || activeLink.getAttribute('href'), false);
+  var url = activeLink.getAttribute('hx-get') || activeLink.getAttribute('href');
+  // A tab that keeps its view in the URL (Stats: team, season, Reg/Playoff)
+  // reloads that URL, so the refresh doesn't drop back to the tab's defaults.
+  if (url.split('?')[0].replace(/\/$/, '') === location.pathname.replace(/\/$/, ''))
+    url = location.pathname + location.search;
+  _reloadTab(url, false);
 };
 
 // Reload the open tab in place after a sim day, quietly: no fade, and the
