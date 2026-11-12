@@ -214,15 +214,21 @@ def show_rate(key: str, v: float) -> str:
 # ── Cards ─────────────────────────────────────────────────────────────────────
 
 
-def _perf(line: dict, value, shown: str, my_team_id, order, detail: str) -> dict:
+def _perf(
+    line: dict, value, shown: str, my_team_id, order, detail: str, club=None
+) -> dict:
+    """A line as a performance. With ``club`` (franchise records) every line
+    is that club's, so there's no team to show or to pick out."""
     teams = [t for t in line["teams"] if t]
+    if club:
+        teams, my_team_id = [], None
     return {
         "value": value,
         "shown": shown,
         "order": order,
         "player_id": line["player_id"],
         "name": line["name"],
-        "team": teams[0] if len(teams) == 1 else f"{len(teams)} teams",
+        "team": teams[0] if len(teams) == 1 else f"{len(teams)} teams" if teams else "",
         "detail": detail,
         "active": line.get("active", False),
         "is_mine": bool(my_team_id) and my_team_id in line["team_ids"],
@@ -240,7 +246,9 @@ def season_cards(
 
     def perf(ln, value, shown):
         # Ties go to the earlier season; within one, the order is the name.
-        return _perf(ln, value, shown, my_team_id, f"{ln['year']:05d}", str(ln["year"]))
+        return _perf(
+            ln, value, shown, my_team_id, f"{ln['year']:05d}", str(ln["year"]), team_id
+        )
 
     def counts(defs):
         return [
@@ -302,7 +310,8 @@ def career_cards(
             if ln["first"] != ln["last"]
             else str(ln["first"])
         )
-        p = _perf(ln, value, shown, my_team_id, f"{ln['last']:05d}", span)
+        p = _perf(ln, value, shown, my_team_id, f"{ln['last']:05d}", span, team_id)
+        p["live_label"] = "active"
         if not team_id and len(ln["teams"]) > 1:
             p["team"] = ln["teams"][-1]
         return p

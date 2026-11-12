@@ -25,7 +25,7 @@
     <div class="rec-holders">
       {% for h in c.shown_holders %}
       <div class="rec-holder{% if h.is_mine %} mine{% endif %}"{{ rec_click(h) }}>
-        <span class="rec-holder-name">{{ h.name }}</span>{% if h.active %}<span class="rec-live" title="Still going">live</span>{% endif %}
+        <span class="rec-holder-name">{{ h.name }}</span>{% if h.active %}<span class="rec-live" title="{{ 'Still playing' if h.live_label else 'Still going' }}">{{ h.live_label or 'live' }}</span>{% endif %}
         <div class="rec-holder-meta">{{ h.detail }}{% if h.team %} · {{ h.team }}{% endif %}</div>
       </div>
       {% endfor %}
@@ -51,7 +51,7 @@
     <div class="rec-row{% if r.is_mine %} mine{% endif %}"{{ rec_click(r) }}>
       <span class="rec-rank">{{ r.rank }}</span>
       <span class="rec-row-who">
-        <span class="rec-row-name">{{ r.name }}</span>{% if r.active %}<span class="rec-live" title="Still going">live</span>{% endif %}
+        <span class="rec-row-name">{{ r.name }}</span>{% if r.active %}<span class="rec-live" title="{{ 'Still playing' if r.live_label else 'Still going' }}">{{ r.live_label or 'live' }}</span>{% endif %}
         <span class="rec-row-meta">{{ r.detail }}{% if r.team %} · {{ r.team }}{% endif %}</span>
       </span>
       <span class="rec-row-val">{{ r.shown }}</span>

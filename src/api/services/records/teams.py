@@ -83,7 +83,7 @@ def season_cards(
             "team": f"{ln['w']}-{ln['l']}",
             "detail": str(ln["year"]),
             "active": not s.get("finished", True),
-            "is_mine": ln["team_id"] == my_team_id,
+            "is_mine": not team_id and ln["team_id"] == my_team_id,
         }
 
     def diff(ln):
@@ -174,7 +174,7 @@ def game_cards(
             "name": f"{r['city']} {r['mascot']}",
             "team": detail,
             "detail": str(r["year"]),
-            "is_mine": r["team_id"] == my_team_id,
+            "is_mine": not team_id and r["team_id"] == my_team_id,
         }
 
     def score(r):
