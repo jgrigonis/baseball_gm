@@ -109,6 +109,12 @@
            class="side-link{% if '/hall-of-fame' in path %} active{% endif %}">
           <span class="tab-icon" aria-hidden="true">🏛️</span><span class="tab-label">Hall of Fame</span></a>
         {% endif %}
+        <a href="/leagues/{{ league_id }}/records"
+           hx-get="/leagues/{{ league_id }}/records"
+           hx-target="#tab-content" hx-swap="innerHTML" hx-push-url="true"
+           onclick="setActiveTab(this)" title="Records"
+           class="side-link{% if '/records' in path %} active{% endif %}">
+          <span class="tab-icon" aria-hidden="true">📖</span><span class="tab-label">Records</span></a>
       {% endif %}
     </div>
     {% endif %}
