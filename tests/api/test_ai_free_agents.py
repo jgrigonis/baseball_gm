@@ -114,7 +114,15 @@ def test_no_hole_no_signing(lg):
     )
 
 
+def _money(monkeypatch, lg, state):
+    """Put the AI team in a money state (src/league/money_state.py)."""
+    monkeypatch.setattr(
+        ai_free_agents.owners, "money_states", lambda *a, **k: {lg.ai.id: state}
+    )
+
+
 def test_a_bargain_is_worth_a_smaller_upgrade(lg, monkeypatch):
+    _money(monkeypatch, lg, "balanced")
     for _ in range(14):
         lg.factory.rated_player(lg.ai, lg.league, level=60)
     pid = _free_agent(lg, 63)  # a little better: not a hole
@@ -128,6 +136,29 @@ def test_a_bargain_is_worth_a_smaller_upgrade(lg, monkeypatch):
         lg.db, lg.league.id, lg.season.id, [lg.ai.id], 2026, GAME_DAYS[0]
     )
     assert signed == [(lg.ai.id, pid)]
+
+
+def test_a_flush_team_signs_a_smaller_upgrade(lg, monkeypatch):
+    _money(monkeypatch, lg, "flush")
+    for _ in range(14):
+        lg.factory.rated_player(lg.ai, lg.league, level=60)
+    pid = _free_agent(lg, 63)
+    signed = ai_free_agents.sign_free_agents(
+        lg.db, lg.league.id, lg.season.id, [lg.ai.id], 2026, GAME_DAYS[0]
+    )
+    assert signed == [(lg.ai.id, pid)]
+
+
+def test_a_team_cutting_costs_signs_only_at_the_minimum(lg, monkeypatch):
+    _money(monkeypatch, lg, "cutting-costs")
+    lg.factory.rated_player(lg.ai, lg.league, level=40)
+    _free_agent(lg, 75)
+    assert (
+        ai_free_agents.sign_free_agents(
+            lg.db, lg.league.id, lg.season.id, [lg.ai.id], 2026, GAME_DAYS[0]
+        )
+        == []
+    )
 
 
 def test_an_ai_team_stays_inside_its_budget(lg, monkeypatch):

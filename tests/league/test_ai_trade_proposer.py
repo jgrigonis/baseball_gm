@@ -204,7 +204,7 @@ def test_a_player_whose_contract_costs_more_than_he_helps():
     seller = _side("retooling", [pricey], margin=0.0)
     buyer = _side("retooling")
     assert shop_offer_or_why(buyer, seller, pricey, 60) != NO_VALUE
-    buyer.money = ai_evaluator.money_rate(0, 150_000_000, 1.0, "retooling")
+    buyer.money = ai_evaluator.money_rate("capped-out", 1.0, "retooling")
     assert shop_offer_or_why(buyer, seller, pricey, 60) == NO_VALUE
 
 
@@ -305,7 +305,7 @@ def _tight(side):
     from src.league.trades import ai_evaluator
 
     side.pay_room = 0
-    side.money = ai_evaluator.money_rate(0, 150_000_000, 1.0, side.state)
+    side.money = ai_evaluator.money_rate("capped-out", 1.0, side.state)
     return side
 
 
@@ -387,3 +387,17 @@ def test_sweeteners_are_players_the_team_would_want():
     offer = dump_offer_or_why(buyer, seller, scrub, days_left=60)
     assert isinstance(offer, DumpOffer)
     assert offer.add == [prospect]
+
+
+def test_a_team_shedding_salary_only_finds_deals_that_lower_its_payroll():
+    """A team cutting costs (src/league/money_state.py) won't take a deal
+    that sends back as much salary as it sends out."""
+    veteran = _owed(70, 8_000_000, age=35)
+    prospect = _owed(65, 2_000_000, age=22)
+    contender = _side("contending", [prospect])
+    seller = _side("rebuilding", [veteran])
+    assert find_deal(contender, seller, days_left=60) is not None
+    assert find_deal(contender, seller, days_left=60, shed=True) is None
+    # The other way round, the deal sheds salary.
+    deal = find_deal(seller, contender, days_left=60, shed=True)
+    assert deal is not None and deal.give == [veteran]

@@ -30,8 +30,8 @@
 # minimum: the rest of this season, and a typical season of the next
 # FUTURE_YEARS (his deal while it runs, then the arbitration share or market
 # price he'd get). The AI charges a share of that against his worth, the
-# money rate (money_rate): more when its owner has little room, less for a
-# contender going for it. So an overpaid veteran can be worth less than
+# money rate (money_rate): set by its money state (more when capped out or
+# cutting costs, less when flush), less for a contender going for it. So an overpaid veteran can be worth less than
 # nothing, and a cheap young star more than a fairly paid one.
 
 from __future__ import annotations
@@ -41,6 +41,7 @@ import random
 from dataclasses import dataclass, field, replace
 from functools import cached_property
 
+from src.league import money_state as ms
 from src.league.team_state import BUYERS, SELLERS
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_record import PlayerRecord
@@ -269,11 +270,10 @@ FUTURE_YEARS = 3
 # Days in a regular season, to prorate what's left of this season's pay
 # (src/api/services/trades.py OFFSEASON_DAYS_LEFT counts a whole one).
 SEASON_DAYS = 180
-# The share of a player's fair pay the AI counts against him, by how much
-# room its owner leaves it: MONEY_TIGHT at no room (or less), falling
-# MONEY_SLOPE per share of the cap in room to MONEY_LOOSE.
-MONEY_TIGHT, MONEY_LOOSE, MONEY_SLOPE = 0.6, 0.15, 1.8
-# And by team state: a team going for it worries less about the bill.
+# The share of a player's fair pay the AI counts against him comes from its
+# money state (src/league/money_state.py: flush, balanced, capped out,
+# cutting costs), and is tilted by its team state: a team going for it
+# worries less about the bill.
 STATE_MONEY = {
     "all-in": 0.8,
     "contending": 0.9,
@@ -284,20 +284,18 @@ STATE_MONEY = {
 }
 
 
-def money_share(pay_room: int, cap: int, state: str) -> float:
+def money_share(money_state: str, state: str) -> float:
     """The share of fair pay an AI team charges against a player."""
-    room = pay_room / cap if cap > 0 else 0.0
-    share = max(MONEY_LOOSE, min(MONEY_TIGHT, MONEY_TIGHT - MONEY_SLOPE * room))
-    return share * STATE_MONEY.get(state, 1.0)
+    return ms.money_share(money_state) * STATE_MONEY.get(state, 1.0)
 
 
-def money_rate(pay_room: int | None, cap: int, scale: float, state: str) -> float:
+def money_rate(money_state: str | None, scale: float, state: str) -> float:
     """Value points an AI team charges per dollar owed: 0 when money
-    doesn't matter to it (no budgets). scale is how far salaries have grown
-    with the cap (src/league/budget.py salary_scale)."""
-    if pay_room is None or cap <= 0:
+    doesn't matter to it (no budgets: money_state None). scale is how far
+    salaries have grown with the cap (src/league/budget.py salary_scale)."""
+    if money_state is None or scale <= 0:
         return 0.0
-    return money_share(pay_room, cap, state) / (DOLLARS_PER_POINT * scale)
+    return money_share(money_state, state) / (DOLLARS_PER_POINT * scale)
 
 
 def money_cost(a: Asset, rate: float, days_left: int, w_now: float, w_future: float):

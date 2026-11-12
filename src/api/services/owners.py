@@ -24,7 +24,7 @@ from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.owner_repo import OwnerRepository
 from src.league import budget as bg
-from src.league import divisions, owners, team_pool
+from src.league import divisions, money_state, owners, team_pool
 from src.league.trades import ai_evaluator
 
 FALLBACK_MARKET = 3
@@ -169,11 +169,12 @@ def money_terms(conn, league_id: str, season_id: str) -> tuple[int, float] | Non
     return repo.cap(league_id, row["year"]), repo.salary_scale(league_id, row["year"])
 
 
-def money_rate(terms: tuple[int, float] | None, pay_room: int | None, state: str):
-    """An AI team's money rate (ai_evaluator.money_rate) from money_terms."""
+def money_rate(terms: tuple[int, float] | None, money: str | None, state: str):
+    """An AI team's money rate (ai_evaluator.money_rate) from money_terms
+    and its money state (money_states)."""
     if terms is None:
         return 0.0
-    return ai_evaluator.money_rate(pay_room, terms[0], terms[1], state)
+    return ai_evaluator.money_rate(money or "balanced", terms[1], state)
 
 
 def pay_rooms(
@@ -190,7 +191,14 @@ def pay_rooms(
     ).fetchone()
     if not row:
         return {}
-    year = row["year"]
+    return year_rooms(conn, league_id, row["year"], team_ids)
+
+
+def year_rooms(
+    conn, league_id: str, year: int, team_ids: list[str] | None = None
+) -> dict[str, int]:
+    """pay_rooms for a year rather than a season (the offseason looks at
+    next year's)."""
     budgets = BudgetRepository(conn).for_league(league_id, year)
     if not budgets:
         return {}
@@ -209,3 +217,39 @@ def pay_rooms(
         for t, b in budgets.items()
         if team_ids is None or t in team_ids
     }
+
+
+def money_states(
+    conn, league_id: str, year: int, team_ids: list[str] | None = None
+) -> dict[str, str]:
+    """Each team's money state this year (src/league/money_state.py), by
+    team id: its room under the owner's budget against the cap, and the
+    owner's bank. Empty without budgets."""
+    rooms = year_rooms(conn, league_id, year, team_ids)
+    if not rooms:
+        return {}
+    repo = BudgetRepository(conn)
+    cap = repo.cap(league_id, year)
+    banks = repo.banks(league_id)
+    out = {}
+    for t, room in rooms.items():
+        bank = banks.get(t)
+        out[t] = money_state.classify(
+            room,
+            cap,
+            bank["balance"] if bank else None,
+            bank["start"] if bank else None,
+        )
+    return out
+
+
+def season_money_states(
+    conn, league_id: str, season_id: str, team_ids: list[str] | None = None
+) -> dict[str, str]:
+    """money_states for a season's year."""
+    row = conn.execute(
+        "SELECT year FROM seasons WHERE id = %s", (season_id,)
+    ).fetchone()
+    if not row:
+        return {}
+    return money_states(conn, league_id, row["year"], team_ids)

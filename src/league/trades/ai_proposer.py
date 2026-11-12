@@ -82,11 +82,16 @@ def _verdict(side: Side, giving, getting, days_left, margin, base):
 
 
 def find_deal(
-    me: Side, them: Side, days_left: int, avoid: set[frozenset[str]] = frozenset()
+    me: Side,
+    them: Side,
+    days_left: int,
+    avoid: set[frozenset[str]] = frozenset(),
+    shed: bool = False,
 ) -> Deal | None:
     """The best one-for-one or two-for-one deal for `me` that `them` would
     also take, or None. avoid: deals (each the set of player ids in it)
-    already offered."""
+    already offered. shed: only deals that lower `me`'s payroll (a team
+    cutting costs, src/league/money_state.py)."""
     my_base = ai_evaluator.strengths(me.see(me.roster), days_left)
     their_base = ai_evaluator.strengths(them.see(them.roster), days_left)
 
@@ -126,6 +131,8 @@ def find_deal(
         for package in packages:
             give = [a for _, a in package]
             if frozenset(a.id for a in give + [target]) in avoid:
+                continue
+            if shed and sum(a.salary for a in give) <= target.salary:
                 continue
             verdict = _verdict(me, give, [target], days_left, me.margin, my_base)
             if not verdict.accept:
