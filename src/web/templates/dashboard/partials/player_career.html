@@ -146,11 +146,7 @@
               <div class="cs-chip">
                 <span class="cs-chip-label">{{ sk.label }}</span>
                 <span class="cs-chip-grade
-                  {% set g = sk.grade %}
-                  {% if g and g.startswith('A') %}elite
-                  {% elif g and (g.startswith('B') or g == 'C+') %}good
-                  {% elif g and (g.startswith('D') or g == 'F') %}poor
-                  {% endif %}">{{ sk.grade }}</span>
+                  {{ grade_tier(sk.grade) }}">{{ sk.grade }}</span>
               </div>
               {% endfor %}
             </div>
@@ -389,7 +385,7 @@
               <td style="text-align:left;color:var(--text-dim)">{{ row.age }}</td>
               {% for col in ['durability','clutch','speed','power','eye','contact','base_running','bunting','catching','infield','outfield','arm','accuracy','stamina','recovery','ground_balls','strikes'] %}
               {% set g = row[col] %}
-              <td class="cs-chip-grade {% if g and g.startswith('A') %}elite{% elif g and (g.startswith('B') or g == 'C+') %}good{% elif g and (g.startswith('D') or g == 'F') %}poor{% endif %}">{{ g }}</td>
+              <td class="cs-chip-grade {{ grade_tier(g) }}">{{ g }}</td>
               {% endfor %}
             </tr>
             {% endfor %}

@@ -3,15 +3,31 @@
 // Scouting grade ordering — best to worst, used for client-side sorting.
 const GRADE_ORDER = ['A+','A','A-','B+','B','B-','C+','C','C-','D+','D','D-','F','?'];
 
-// Returns a sortable integer for a grade string (lower = better).
-// Unknown or missing grades sort to the bottom.
+// Single skills can show as their 0-100 number (SKILLS_AS_NUMBERS in
+// src/api/schemas.py). A number keeps the plain-scale letter's color and
+// place: every 5 points a grade, 80+ is A+, under 25 is F.
+const SKILL_CUTS = [80, 75, 70, 65, 60, 55, 50, 45, 40, 35, 30, 25];
+function isSkillNum(g) { return typeof g === 'number' || /^\d+$/.test(g || ''); }
+function skillLetter(n) {
+  const i = SKILL_CUTS.findIndex(c => n >= c);
+  return i === -1 ? 'F' : GRADE_ORDER[i];
+}
+
+// Returns a sortable value for a grade string (lower = better).
+// Unknown or missing grades sort to the bottom. A skill number sorts inside
+// its letter's place, higher numbers first.
 function gradeVal(g) {
+  if (isSkillNum(g)) {
+    const n = Math.max(0, Math.min(100, Number(g)));
+    return GRADE_ORDER.indexOf(skillLetter(n)) + (100 - n) / 1000;
+  }
   const i = GRADE_ORDER.indexOf(g || '?');
   return i === -1 ? 99 : i;
 }
 
 // Returns a CSS class string for coloring a grade badge.
 function gradeClass(g) {
+  if (isSkillNum(g)) g = skillLetter(Number(g));
   return 'grade grade-' + (g || '?').replace('+', '-plus').replace(/-(?!plus)/g, '-minus');
 }
 
