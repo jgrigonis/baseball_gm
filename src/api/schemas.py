@@ -38,8 +38,15 @@ _GRADE_THRESHOLDS: list[tuple[int, str]] = [
 ]
 
 
-def skill_to_grade(raw: int | None) -> str:
-    """Map a raw 0-100 skill integer directly to letter grades."""
+# Experiment: single skills (Contact, Power, Arm, Durability, Stuff...) show
+# their 0-100 number instead of a letter. The number keeps its letter's color
+# (grade_class / gradeClass) and sorts as before. Set False to go back to
+# letters. Overall, role and position grades stay curved letters either way.
+SKILLS_AS_NUMBERS = True
+
+
+def skill_letter(raw: int | None) -> str:
+    """The plain-scale letter for a raw 0-100 skill: every 5 points a grade."""
     if raw is None:
         return "?"
 
@@ -52,6 +59,23 @@ def skill_to_grade(raw: int | None) -> str:
             return grade
 
     return "F"
+
+
+def skill_to_grade(raw: int | None) -> str:
+    """What a GM sees for a single skill: its number (SKILLS_AS_NUMBERS) or
+    its letter."""
+    if raw is None:
+        return "?"
+    if SKILLS_AS_NUMBERS:
+        return str(max(0, min(100, int(raw))))
+    return skill_letter(raw)
+
+
+def grade_letter(grade: str | None) -> str:
+    """The letter behind a shown grade: a skill number maps to its
+    plain-scale letter, a letter stays as it is."""
+    g = grade or "?"
+    return skill_letter(int(g)) if g.isdigit() else g
 
 
 # scaled useless version

@@ -18,6 +18,7 @@ from src.api.services import (
     takeover,
     trades,
 )
+from src.api.schemas import grade_letter
 from src.api.services.admin import uses_default_admin_name
 from src.api.services.coach import coach_ctx, mark_visit
 from src.api.services.ready_check import is_multiplayer
@@ -58,8 +59,9 @@ templates.env.filters["pos_label"] = display_position
 
 def grade_class(grade: str | None) -> str:
     """CSS class suffix for a letter grade, matching gradeClass() in
-    static/js/grades.js: "A+" -> "A-plus", "B-" -> "B-minus"."""
-    g = grade or "?"
+    static/js/grades.js: "A+" -> "A-plus", "B-" -> "B-minus". A skill shown
+    as a number takes its letter's color."""
+    g = grade_letter(grade)
     if g.endswith("+"):
         return g[:-1] + "-plus"
     if g.endswith("-"):
@@ -68,6 +70,21 @@ def grade_class(grade: str | None) -> str:
 
 
 templates.env.globals["grade_class"] = grade_class
+
+
+def grade_tier(grade: str | None) -> str:
+    """The player panel's elite/good/poor color for a grade or skill number."""
+    g = grade_letter(grade)
+    if g.startswith("A"):
+        return "elite"
+    if g.startswith("B") or g == "C+":
+        return "good"
+    if g.startswith("D") or g == "F":
+        return "poor"
+    return ""
+
+
+templates.env.globals["grade_tier"] = grade_tier
 # The injury's name, or its severity for injuries from before injury types
 templates.env.globals["injury_label"] = injury_label
 # What an injury left for good (lasting effects), from its log row

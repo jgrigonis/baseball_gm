@@ -137,13 +137,9 @@
    <div class="pd-skill-row">
      <span class="pd-skill-label">{{ skill.label }}</span>
      <span class="pd-skill-grade
-       {% set g = skill.grade %}
-       {% if g and g.startswith('A') %}elite
-       {% elif g and (g.startswith('B') or g == 'C+') %}good
-       {% elif g and (g.startswith('D') or g == 'F') %}poor
-       {% endif %}"
+       {{ grade_tier(skill.grade) }}"
        {% if is_admin and skill.value is not none %}title="{{ skill.value }}"{% endif %}>
-       {{ skill.grade or '?' }}{% if is_admin and skill.value is not none %} <span class="admin-value">{{ skill.value }}</span>{% endif %}
+       {{ skill.grade or '?' }}{% if is_admin and skill.value is not none and skill.grade != skill.value|string %} <span class="admin-value">{{ skill.value }}</span>{% endif %}
      </span>
    </div>
    {% endfor %}
