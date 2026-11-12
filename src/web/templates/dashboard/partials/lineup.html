@@ -55,9 +55,6 @@
     <div class="lu-col">
       <div class="lu-col-hdr">
         <span class="lu-col-label">Batting Order</span>
-        <span id="lu-slot-count"
-              style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);
-                     margin-left:8px;"></span>
         {# One saved lineup for each hand of opposing starter #}
         <span class="lu-hdr-view">
         <span class="lu-hdr-seg">
@@ -842,7 +839,6 @@ let _luDrag = null, _benchDrag = null;
 function renderBattingOrder() {
   const dupes  = dupePositions();
   const el     = document.getElementById('batting-order');
-  const filled = lineup.filter(Boolean).length;
   el.innerHTML = '';
 
   for (let i = 0; i < 9; i++) {
@@ -949,7 +945,6 @@ function renderBattingOrder() {
     updateSaveBattingBtn();
   };
 
-  document.getElementById('lu-slot-count').textContent = `${filled} / 9`;
   renderFieldingTable();
   updateSaveBattingBtn();
 }
