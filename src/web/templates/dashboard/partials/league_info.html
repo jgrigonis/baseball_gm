@@ -6,7 +6,15 @@
 {% from "_sliders.html" import slider, step_slider %}
 <div class="tab-head" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
   <div>
-    <h1 class="page-title">League</h1>
+    {# The league's own name. The commissioner renames it by clicking the
+       name and typing, the same way as on the Leagues page. #}
+    {% if is_commissioner %}
+    <h1 class="page-title league-title"><span class="league-title-name" contenteditable="true" spellcheck="false"
+        role="textbox" aria-label="League name, edit to rename" title="Click to rename"
+        data-original="{{ league_name }}">{{ league_name }}</span><button type="button" class="btn btn-primary league-title-save" hidden>Save</button></h1>
+    {% else %}
+    <h1 class="page-title">{{ league_name or "League" }}</h1>
+    {% endif %}
     <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim);margin-top:4px;">
       {% if info.state == "complete" %}
         Complete after {{ info.num_seasons }} season{{ "s" if info.num_seasons != 1 }}.
@@ -274,5 +282,83 @@ async function leaveThisLeague(btn) {
     r.json().then(d => failed(d.detail), () => failed());
   }, () => failed());
 }
+</script>
+{% endif %}
+
+{% if is_commissioner %}
+<style>
+.league-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.league-title-name { cursor: text; padding: 0 6px; margin: 0 -7px; border: 1px solid transparent; outline: none; min-width: 2ch; overflow-wrap: anywhere; }
+.league-title-name:hover { border-bottom: 1px dashed var(--text-dim); }
+.league-title-name:focus { border: 1px solid var(--amber); background: var(--bg); }
+.league-title-save { font-size: 11px; padding: 5px 12px; }
+.league-title-save[hidden] { display: none; }
+</style>
+<script>
+(function () {
+  const el = document.querySelector('.league-title-name');
+  if (!el) return;
+  const save = el.parentElement.querySelector('.league-title-save');
+  const current = () => el.textContent.replace(/\s+/g, ' ').trim();
+  const revert = () => { el.textContent = el.dataset.original; save.hidden = true; };
+  el.addEventListener('focus', () => {
+    // Select the whole name so typing replaces it.
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const sel = window.getSelection();
+    sel.removeAllRanges(); sel.addRange(range);
+  });
+  el.addEventListener('input', () => {
+    const name = current();
+    save.hidden = !name || name === el.dataset.original;
+  });
+  // Pasting brings in plain text only, on one line.
+  el.addEventListener('paste', e => {
+    e.preventDefault();
+    const text = (e.clipboardData || window.clipboardData).getData('text').replace(/\s+/g, ' ');
+    document.execCommand('insertText', false, text);
+  });
+  el.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); if (!save.hidden) submit(); else el.blur(); }
+    else if (e.key === 'Escape') { e.preventDefault(); revert(); el.blur(); }
+  });
+  el.addEventListener('blur', e => {
+    if (e.relatedTarget === save || save.disabled) return;
+    revert();
+  });
+  // Keep the name focused while Save is pressed, so the blur (which
+  // reverts) can't beat the click, on touch screens too.
+  save.addEventListener('pointerdown', e => e.preventDefault());
+  save.addEventListener('mousedown', e => e.preventDefault());
+  save.addEventListener('click', submit);
+  function submit() {
+    const name = current();
+    if (!name || name === el.dataset.original) return;
+    save.disabled = true;
+    save.textContent = 'Saving…';
+    const failed = detail => {
+      save.disabled = false;
+      save.textContent = 'Save';
+      gmAlert('Could not rename the league.', detail).then(() => el.focus());
+    };
+    fetch('/leagues/{{ league_id }}/rename', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({name}),
+    }).then(r => r.json().then(d => {
+      if (!r.ok || !d.name) { failed(d.detail); return; }
+      save.disabled = false;
+      save.textContent = 'Save';
+      el.dataset.original = d.name;
+      el.textContent = d.name;
+      save.hidden = true;
+      // The top bar and the Leave button carry the name too.
+      document.querySelectorAll('.topbar-league-name').forEach(n => { n.textContent = d.name; });
+      document.querySelectorAll('[data-confirm^="Leave "]').forEach(b => { b.dataset.confirm = 'Leave ' + d.name + '?'; });
+      el.blur();
+      gmToast('League renamed to ' + d.name + '.', 'ok');
+    }), () => failed()).catch(() => failed());
+  }
+})();
 </script>
 {% endif %}
