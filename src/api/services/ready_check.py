@@ -48,7 +48,7 @@ from src.api.services.draft_execute import execute_blitz_draft
 from src.api.services.offseason_service import run_offseason
 from src.api.services.sim_next import sim_days
 from src.api.services.sim_playoff import sim_playoff
-from src.db.locks import LeagueBusy, league_busy
+from src.db.locks import LeagueBusy
 from src.db.repositories.all_star_repo import AllStarRepository
 from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.happiness_repo import HappinessRepository
@@ -236,8 +236,11 @@ def status(conn, league_id: str, gm_id: str) -> dict:
         "seconds_left": max(0, round(seconds_left))
         if seconds_left is not None
         else None,
-        "simming": sim_jobs.league_has_job(conn, league_id)
-        or league_busy(conn, league_id),
+        # A period (or another sim) queued or running. Not the league lock:
+        # trades, budget saves, roster moves and even another GM's poll
+        # checking it hold that for a moment, and the page would flash
+        # "simming" with I'm ready greyed out.
+        "simming": sim_jobs.league_has_job(conn, league_id),
         # The sim stopped after deadline day's games: last chance to trade.
         "trade_deadline": window["open"] and window["deadline_day"],
         # Offers and votes waiting on this GM, and whether they have news
