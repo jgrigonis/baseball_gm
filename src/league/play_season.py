@@ -87,6 +87,7 @@ def save_player_stats(conn, game_id, home_team, away_team):
         for player in team.players:
             if (
                 player.game_stats.batting.plate_appearances > 0
+                or player.game_stats.batting.game_played
                 or player.game_stats.pitching.pitch_count > 0
                 or player.game_stats.fielding.chances > 0
             ):

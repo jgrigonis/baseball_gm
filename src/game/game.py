@@ -423,6 +423,7 @@ class Game:
         # A new batter (or the same one, to start an inning): his manager may
         # send up a pinch hitter, then note the state for WPA and RE24.
         if self._seg is None:
+            self._consider_pinch_runners()
             self._consider_pinch_hitter()
             self._seg = self._seg_state()
 
@@ -1086,6 +1087,30 @@ class Game:
                                     )
                                 team.substitute(player, sub)
                             break
+
+    def _consider_pinch_runners(self) -> None:
+        """Before a plate appearance: run for slow runners whose run matters
+        (src/game/bench.py). The runner takes the man's place on the base,
+        his batting slot and his position."""
+        for base, runner, sub in bench.pinch_runners(self):
+            self.logger.info(f"🏃 Pinch runner {sub.name} runs for {runner.name}")
+            if self.event_logger:
+                self.event_logger.substitution(
+                    team_id=self.bat_team.record.id,
+                    incoming_id=sub.id,
+                    incoming_name=sub.name,
+                    outgoing_id=runner.id,
+                    outgoing_name=runner.name,
+                    position=runner.current_position or "?",
+                    kind="pr",
+                )
+            self.bat_team.substitute(runner, sub)
+            self.bases.replace_runner(base, sub)
+            # He inherits the run's pitcher and the extra-innings tag.
+            sub.responsible_pitcher = runner.responsible_pitcher
+            sub.ghost_runner = runner.ghost_runner
+            # He played today: games played, and a day for his energy.
+            self.batters_this_game.add(sub.id)
 
     def _consider_pinch_hitter(self) -> None:
         """Before a plate appearance: send up a bench bat for the man due up

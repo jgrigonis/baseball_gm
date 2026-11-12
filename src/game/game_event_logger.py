@@ -144,11 +144,14 @@ class GameEventLogger:
         kind: str = "injury",
     ) -> None:
         """Record a position player substitution. kind is why he came in:
-        "injury" (he replaces a hurt player) or "ph" (a pinch hitter). The
+        "injury" (he replaces a hurt player), "ph" (a pinch hitter) or "pr"
+        (a pinch runner). The
         detail keeps the kind and the position he took over, for the box
         score."""
         if kind == "ph":
             reason = f"Pinch hitter {incoming_name} bats for {outgoing_name}"
+        elif kind == "pr":
+            reason = f"Pinch runner {incoming_name} runs for {outgoing_name}"
         else:
             reason = f"{incoming_name} replaces {outgoing_name} at {position}"
         self._insert(
