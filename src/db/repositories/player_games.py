@@ -450,8 +450,8 @@ class PlayerGameRepository:
     def get_batting_box_score(self, game_id: str) -> list[dict]:
         """Return batting lines for a game box score: the starting lineup in
         batting order with each starter's position (game_lineup_slots), then
-        anyone else who got into the game as a hitter (a pinch hitter who
-        walked has no at-bat). A starter shows even without an at-bat."""
+        anyone else who came to the plate (a pinch hitter who walked has no
+        at-bat). A starter shows even without an at-bat."""
         rows = self.conn.execute(
             """SELECT p.first_name, p.last_name, p.id as player_id, pgs.team_id,
                       pgs.bat_ab as "AB", pgs.bat_runs as "R", pgs.bat_hits as "H",
@@ -468,7 +468,8 @@ class PlayerGameRepository:
                  ON ls.game_id = pgs.game_id AND ls.team_id = pgs.team_id
                 AND ls.player_id = pgs.player_id AND ls.is_pitcher = 0
                WHERE pgs.game_id = %s
-                 AND (pgs.bat_ab > 0 OR pgs.bat_game_played > 0
+                 AND (pgs.bat_ab > 0 OR pgs.bat_walks > 0 OR pgs.bat_hbp > 0
+                      OR pgs.bat_sac_flys > 0 OR pgs.bat_sac_bunts > 0
                       OR ls.batting_order IS NOT NULL)
                ORDER BY pgs.team_id, ls.batting_order NULLS LAST,
                         pgs.bat_game_started DESC, p.last_name""",
