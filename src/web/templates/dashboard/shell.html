@@ -480,8 +480,8 @@ window.closeGamePanel = function() {
     <span class="sim-card-dot" aria-hidden="true"></span>
     <div class="sim-card-lines">
       <span id="sim-status-text" class="sim-card-text"></span>
-      {# Multiplayer: the ready check's line ("Season · period 3 · next sim
-         in 0:33 · ready 0/2 · waiting on ..."), so the card is always up. #}
+      {# Multiplayer: the ready check's line ("Season · period 3 · ready 0/2 ·
+         waiting on ..."), so the card is always up. #}
       {% if multiplayer and not is_viewer %}{% include "dashboard/partials/_ready_bar.html" %}{% endif %}
     </div>
     <button type="button" class="sim-card-x" onclick="simCard.fold()" title="Hide" aria-label="Hide">×</button>
@@ -722,10 +722,11 @@ window.simCard = (function () {
     if (!pill.hidden) {
       place(pill);
       // "✓ 7 days · 3 news": the line's first part and the news count.
-      // Multiplayer: the ready check's clock instead, "next sim in 0:33 ·
-      // ready 0/2 · 3 news" (or "▶ Season period 3 is simming…").
+      // Multiplayer: the ready check's line instead, "period 3 · ready 0/2
+      // · 3 news" (or "▶ Season period 3 is simming…"). Its clock is by the
+      // I'm ready button.
       var rt = el('ready-text') ? el('ready-text').textContent : '';
-      var lead = rt ? (rt.indexOf(' · ') > 0 && rt.indexOf('next sim') > 0 ? rt.slice(rt.indexOf('next sim')).split(' · ').slice(0, 2).join(' · ') : rt)
+      var lead = rt ? (rt.indexOf(' · ') > 0 ? rt.split(' · ').slice(1, 3).join(' · ') : rt)
                     : statusText().split(' · ')[0];
       var bits = [];
       if (lead) bits.push(lead);
