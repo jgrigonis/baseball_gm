@@ -1997,7 +1997,14 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
 .sim-card { width: 340px; }
 .sim-card[hidden], .sim-card-pill[hidden], .sim-card [hidden] { display: none; }
 .sim-card-head { display: flex; align-items: flex-start; gap: 8px; padding: 9px 6px 9px 12px; }
-.sim-card-text { flex: 1; min-width: 0; color: var(--green); line-height: 1.5; }
+.sim-card-lines { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.sim-card-text { color: var(--green); line-height: 1.5; }
+.sim-card-ready { color: var(--text-dim); line-height: 1.5; }
+.sim-card-ready > span, .sim-card-inbox { display: block; }
+.sim-card-ready > span:empty { display: none; }
+.sim-card-waiting { color: var(--amber); }
+.sim-card-inbox { background: none; border: none; padding: 0; font: inherit; color: var(--amber); cursor: pointer; text-align: left; }
+.sim-card-inbox:hover { text-decoration: underline; }
 .sim-card-dot { display: none; width: 8px; height: 8px; margin-top: 4px; flex-shrink: 0; border-radius: 50%;
   background: var(--green); box-shadow: 0 0 0 3px rgba(95, 217, 138, .2); animation: simCardPulse 1s infinite alternate; }
 .sim-card.running .sim-card-dot { display: block; }

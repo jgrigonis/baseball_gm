@@ -467,18 +467,23 @@ window.closeGamePanel = function() {
 <div class="league-main">
 {% endif %}
 
-{% if multiplayer and not is_viewer %}{% include "dashboard/partials/_ready_bar.html" %}{% endif %}
 {% if is_viewer %}{% include "dashboard/partials/_viewer_refresh.html" %}{% endif %}
 {% if fired is defined and fired %}{% include "dashboard/partials/_fired_banner.html" %}{% elif can_take_over %}{% include "dashboard/partials/_join_banner.html" %}{% endif %}
 {# The sim card (simCard in this page's script): a card floating in the
    bottom corner with the sim's line ("Simming day 35… · 13-21 (72-64) · 3rd
    in Europe West, 7 back"), a progress bar for runs of a set length, and the
-   run's news (injuries, returns, trades), newest first. × folds it to a
-   small pill that opens it again; the next sim starts it fresh. #}
+   run's news (injuries, returns, trades), newest first. In multiplayer it
+   also has the ready check's line and is always up. × folds it to a small
+   pill that opens it again; the next sim starts it fresh. #}
 <div id="sim-card" class="sim-card" hidden>
   <div class="sim-card-head">
     <span class="sim-card-dot" aria-hidden="true"></span>
-    <span id="sim-status-text" class="sim-card-text"></span>
+    <div class="sim-card-lines">
+      <span id="sim-status-text" class="sim-card-text"></span>
+      {# Multiplayer: the ready check's line ("Season · period 3 · next sim
+         in 0:33 · ready 0/2 · waiting on ..."), so the card is always up. #}
+      {% if multiplayer and not is_viewer %}{% include "dashboard/partials/_ready_bar.html" %}{% endif %}
+    </div>
     <button type="button" class="sim-card-x" onclick="simCard.fold()" title="Hide" aria-label="Hide">×</button>
   </div>
   <div class="sim-card-bar" hidden><i></i></div>
@@ -661,6 +666,11 @@ window.simCard = (function () {
   var progress = null;   // {done, of} for runs of a set length
   function el(id) { return document.getElementById(id); }
   function statusText() { var t = el('sim-status-text'); return t ? t.textContent : ''; }
+  // Multiplayer's ready check line (_ready_bar.html), when there is one.
+  function readyText() {
+    var r = el('ready-bar');
+    return r ? (el('ready-text').textContent + ' ' + el('ready-waiting').textContent).trim() : '';
+  }
   // Out of the way of the tutorial coach, which has the same corner.
   function place(card) {
     var coach = el('coach-panel');
@@ -696,14 +706,27 @@ window.simCard = (function () {
     var bar = card.querySelector('.sim-card-bar');
     bar.hidden = !(running && progress);
     if (progress) bar.firstElementChild.style.width = Math.min(100, 100 * progress.done / progress.of) + '%';
-    var any = !!(statusText() || news.length);
+    chrome();
+  }
+  // Whether the card or its pill shows, and the pill's text. The ready
+  // check calls this each second for its countdown.
+  function chrome() {
+    var card = el('sim-card'), pill = el('sim-card-pill');
+    if (!card || !pill) return;
+    var st = el('sim-status-text');
+    if (st) st.hidden = !st.textContent;
+    var any = !!(statusText() || news.length || readyText());
     card.hidden = !any || folded;
     pill.hidden = !any || !folded;
     if (!card.hidden) place(card);
     if (!pill.hidden) {
       place(pill);
       // "✓ 7 days · 3 news": the line's first part and the news count.
-      var lead = statusText().split(' · ')[0];
+      // Multiplayer: the ready check's clock instead, "next sim in 0:33 ·
+      // ready 0/2 · 3 news" (or "▶ Season period 3 is simming…").
+      var rt = el('ready-text') ? el('ready-text').textContent : '';
+      var lead = rt ? (rt.indexOf(' · ') > 0 && rt.indexOf('next sim') > 0 ? rt.slice(rt.indexOf('next sim')).split(' · ').slice(0, 2).join(' · ') : rt)
+                    : statusText().split(' · ')[0];
       var bits = [];
       if (lead) bits.push(lead);
       if (news.length) bits.push(news.length + (news.length === 1 ? ' news' : ' news'));
@@ -722,6 +745,7 @@ window.simCard = (function () {
       news = items.map(function (it) { return {text: it.text, dest: it.dest, seen: false}; }).concat(news);
       render();
     },
+    chrome: chrome,
     seen: function (i) { if (news[i]) { news[i].seen = true; render(); } },
     fold: function () { folded = true; render(); },
     unfold: function () { folded = false; render(); },
