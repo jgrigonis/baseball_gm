@@ -20,7 +20,7 @@
     {% if coach.current.key == 'explore' %}
     <div class="coach-chips">
       {% for t in ['schedule', 'standings', 'stats', 'leaders'] %}
-      <button type="button" class="coach-chip{% if t not in coach.explore_left %} done{% endif %}" onclick="coachGo('{{ t }}')">
+      <button type="button" class="coach-chip{% if t not in coach.explore_left %} done{% endif %}"{% if t in coach.explore_left %} data-tab="{{ t }}"{% endif %} onclick="coachGo('{{ t }}')">
         {% if t not in coach.explore_left %}✓ {% endif %}{{ t | title }}
       </button>
       {% endfor %}

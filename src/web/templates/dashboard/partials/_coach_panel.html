@@ -49,6 +49,14 @@
 .coach-list li.done { color: var(--green); }
 .coach-list li.now { color: var(--text); }
 .coach-mark { width: 12px; flex: none; text-align: center; }
+/* The sidebar tab the current step points to (and, on phones, the ☰ that
+   opens the sidebar) pulses until the GM opens it. */
+@keyframes coach-spot { 0%, 100% { box-shadow: inset 0 0 0 1px var(--amber-dim); } 50% { box-shadow: inset 0 0 0 1px var(--amber), 0 0 10px var(--amber-dim); } }
+.league-side .tab-link.coach-spot { color: var(--amber); border-left-color: var(--amber); animation: coach-spot 1.6s ease-in-out infinite; }
+.side-open-btn.coach-spot { border-radius: 4px; animation: coach-spot 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .league-side .tab-link.coach-spot, .side-open-btn.coach-spot { animation: none; box-shadow: inset 0 0 0 1px var(--amber); }
+}
 @media (max-width: 600px) {
   .coach-panel { left: 16px; right: 16px; bottom: 16px; width: auto; max-height: 55vh; }
 }
@@ -72,6 +80,21 @@
     // No "Go to" button for the tab the GM is already on.
     var go = p.querySelector('.coach-go');
     if (go) go.hidden = location.pathname.endsWith('/' + go.dataset.tab);
+    spot(p);
+  }
+  // Light up the sidebar tab(s) the step points to: its "Go to" tab, or the
+  // Explore tabs not opened yet. Not the one the GM is already on.
+  function spot(p) {
+    document.querySelectorAll('.coach-spot').forEach(function(el) { el.classList.remove('coach-spot'); });
+    var any = false;
+    p.querySelectorAll('.coach-now [data-tab]').forEach(function(b) {
+      var tab = b.dataset.tab;
+      if (location.pathname.endsWith('/' + tab)) return;
+      var link = document.querySelector('.league-side .tab-link[href$="/' + tab + '"]');
+      if (link) { link.classList.add('coach-spot'); any = true; }
+    });
+    var menu = document.querySelector('.side-open-btn');
+    if (menu && any) menu.classList.add('coach-spot');
   }
   window.coachToggle = function() {
     try { localStorage.setItem(KEY, stored() ? '0' : '1'); } catch (e) {}
