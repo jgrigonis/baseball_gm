@@ -227,7 +227,7 @@ def test_shop_show_more_calls_a_global_handler(client_for):
     assert "window.trShopMore = function" in html
 
 
-def test_already_past_the_owners_spending_is_bold_red_on_an_offer(
+def test_already_past_the_owners_spending_is_bold_not_red_on_an_offer(
     client_for, db_conn, factory, monkeypatch
 ):
     from src.api.routers import trades as trades_router
@@ -256,7 +256,7 @@ def test_already_past_the_owners_spending_is_bold_red_on_an_offer(
     monkeypatch.setattr(trades_router.bg, "warning", lambda *a: text + bg.ALREADY_PAST)
     html = client.get(f"/leagues/{league.id}/trades").text
     assert (
-        '<strong class="tr-owner-past">You&#39;re already past what your owner will spend.</strong>'
+        '<strong class="tr-owner-budget">You&#39;re already past what your owner will spend.</strong>'
         in html
     )
     assert "This adds $7.6M more luxury tax." in html
