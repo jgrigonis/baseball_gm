@@ -29,7 +29,7 @@
           <span class="lu-style-slots">{{ st.slots }}</span>
         </button>
         {% endfor %}
-        <div class="lu-style-foot">Every style uses your platoon and stats settings. Your style (Strategy tab) is what Rebuild All, Auto-fill and the sim use. Nothing is saved until you save.</div>
+        <div class="lu-style-foot">Every style uses your platoon and stats settings. Your style (Strategy tab) is what Rebuild All, Fill and the sim use. Nothing is saved until you save.</div>
       </div>
     </span>
     <button class="btn btn-secondary" id="save-all-btn" onclick="saveAll()"
@@ -55,9 +55,6 @@
     <div class="lu-col">
       <div class="lu-col-hdr">
         <span class="lu-col-label">Batting Order</span>
-        <span id="lu-slot-count"
-              style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);
-                     margin-left:8px;"></span>
         {# One saved lineup for each hand of opposing starter #}
         <span class="lu-hdr-view">
         <span class="lu-hdr-seg">
@@ -74,14 +71,14 @@
         <div class="lu-hdr-actions">
         <button class="btn btn-secondary" onclick="autoFill()"
                 title="Fill the empty and injured spots in both lineups, vs RHP and vs LHP, keeping the players already in them"
-                >Auto-fill</button>
+                >Fill</button>
         <button class="btn btn-secondary" onclick="rebuildLineup()"
                 title="Start over, vs RHP and vs LHP: the best lineups from your whole roster, by your Strategy tab's lineup style"
                 >Rebuild</button>
-        <button class="btn btn-secondary lu-btn-clear" onclick="clearLineup()">Clear All</button>
+        <button class="btn btn-secondary lu-btn-clear" onclick="clearLineup()">Clear</button>
         <button class="btn btn-primary" id="save-batting-btn" onclick="saveBatting()"
                 title="Save your vs RHP and vs LHP lineups">
-          Save Batting
+          Save
         </button>
         </div>
       </div>
@@ -219,20 +216,17 @@
     <div class="lu-col" data-pcol="rot">
       <div class="lu-col-hdr">
         <span class="lu-col-label">Starting Rotation</span>
-        <span id="rot-count"
-              style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);
-                     margin-left:8px;"></span>
         <div class="spacer"></div>
         <div class="lu-hdr-actions">
         <button class="btn btn-secondary" onclick="autoFillRotation()"
                 title="Keep the starters in the rotation and fill the empty and injured spots"
-                >Auto-fill</button>
+                >Fill</button>
         <button class="btn btn-secondary" onclick="rebuildRotation()"
                 title="Start over: your best healthy starters, as many as your Strategy tab's rotation size. The next starter stays the same if he's still in the rotation."
                 >Rebuild</button>
         <button class="btn btn-secondary lu-btn-clear" onclick="clearRotation()">Clear</button>
         <button class="btn btn-primary" id="save-rotation-btn" onclick="saveRotation()">
-          Save Rotation
+          Save
         </button>
         </div>
       </div>
@@ -266,7 +260,7 @@
         <div class="lu-hdr-actions">
         <button class="btn btn-secondary" onclick="autoAssignBullpen()"
                 >Auto Assign</button>
-        <button class="btn btn-primary" id="save-bullpen-btn" onclick="saveBullpen()">Save Bullpen</button>
+        <button class="btn btn-primary" id="save-bullpen-btn" onclick="saveBullpen()">Save</button>
         </div>
         <div style="display:flex;align-items:center;gap:3px;
                     font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">
@@ -821,7 +815,7 @@ function lineupValid(l = lineup) {
 }
 function lineupEmpty(l) { return !l.some(Boolean); }
 
-// Save Batting saves both hands. An empty lineup is skipped (games against
+// Save (batting) saves both hands. An empty lineup is skipped (games against
 // that hand use the other lineup); a half-built one blocks the save.
 function battingSaveStatus() {
   const hands = [], broken = [];
@@ -845,7 +839,6 @@ let _luDrag = null, _benchDrag = null;
 function renderBattingOrder() {
   const dupes  = dupePositions();
   const el     = document.getElementById('batting-order');
-  const filled = lineup.filter(Boolean).length;
   el.innerHTML = '';
 
   for (let i = 0; i < 9; i++) {
@@ -952,7 +945,6 @@ function renderBattingOrder() {
     updateSaveBattingBtn();
   };
 
-  document.getElementById('lu-slot-count').textContent = `${filled} / 9`;
   renderFieldingTable();
   updateSaveBattingBtn();
 }
@@ -1309,7 +1301,7 @@ async function saveBatting(only) {
       updateHeaderGlow();
     }
   } catch(e) { showFeedback('✗ Network error', 'var(--red)'); }
-  finally { btn.disabled = false; btn.textContent = 'Save Batting'; updateSaveBattingBtn(); }
+  finally { btn.disabled = false; btn.textContent = 'Save'; updateSaveBattingBtn(); }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -1530,7 +1522,6 @@ function renderRotation() {
     renderRotation();
   };
 
-  document.getElementById('rot-count').textContent = `${compact.length} pitchers`;
   updatePitchSeg();
 }
 
@@ -1901,7 +1892,7 @@ async function saveRotation() {
       showFeedback('✗ ' + (d.detail||'Error'), 'var(--red)');
     }
   } catch(e) { showFeedback('✗ Network error', 'var(--red)'); }
-  finally { btn.disabled = false; btn.textContent = 'Save Rotation'; }
+  finally { btn.disabled = false; btn.textContent = 'Save'; }
 }
 
 /* ── Save bullpen ────────────────────────────────────────────────────────────── */
@@ -1929,7 +1920,7 @@ async function saveBullpen() {
       showFeedback('✗ ' + (d.detail||'Error'), 'var(--red)');
     }
   } catch(e) { showFeedback('✗ Network error', 'var(--red)'); }
-  finally { if (btn) { btn.disabled = false; btn.textContent = 'Save Bullpen'; } }
+  finally { if (btn) { btn.disabled = false; btn.textContent = 'Save'; } }
 }
 
 /* ── Save all ─────────────────────────────────────────────────────────────────── */
