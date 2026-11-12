@@ -23,6 +23,8 @@
 {% set g = ai_gms.get(team_id) if ai_gms else none %}{% if g %} <a class="tr-gm" href="/leagues/{{ league_id }}/personas/{{ g.id }}?back=trades" hx-get="/leagues/{{ league_id }}/personas/{{ g.id }}?back=trades" hx-target="#tab-content" hx-push-url="true" title="{{ g.archetype }}">({{ g.name }})</a>{% endif %}
 {%- endmacro %}
 {% set status_labels = {'pending': 'waiting', 'pending_vote': 'league vote', 'voted_down': 'voted down'} %}
+{% set retry_statuses = ['expired', 'rejected', 'withdrawn', 'voted_down'] %}
+{% set trade_team_ids = (trade_teams or []) | map(attribute='id') | list %}
 <div class="content-inner tab-fade" id="trades-page">
 
   <div class="page-header">
@@ -199,18 +201,22 @@
             <td>
               {% if mine %}
               <div>To the <strong>{{ o.to_name }}</strong>{{ ai_gm(o.to_team_id) }}:
-                {{ o.sent | map(attribute='last_name') | join(', ') }}
-                for {{ o.received | map(attribute='last_name') | join(', ') }}</div>
+                {{ plist(o.sent) }}
+                for {{ plist(o.received) }}</div>
               {% else %}
               <div>From the <strong>{{ o.from_name }}</strong>{{ ai_gm(o.from_team_id) }}:
-                {{ o.sent | map(attribute='last_name') | join(', ') }}
-                for {{ o.received | map(attribute='last_name') | join(', ') }}</div>
+                {{ plist(o.sent) }}
+                for {{ plist(o.received) }}</div>
               {% endif %}
               {% if o.status == 'pending_vote' and o.tally %}<div class="tr-reason">League vote: {{ o.tally.yes }} yes, {{ o.tally.no }} no of {{ o.tally.voters }}</div>
               {% elif o.reason and o.status != 'accepted' %}<div class="tr-reason">“{{ o.reason }}”</div>{% endif %}
             </td>
             <td class="tr-status tr-{{ o.status }}">{{ status_labels.get(o.status, o.status) }}
               {% if mine and o.status == 'pending' and trade_window.open %}<br><button class="tr-link" onclick="trAnswer('{{ o.id }}', 'withdraw')">withdraw</button>{% endif %}
+              {# A deal that's off the table: load it back into the builder,
+                 as your offer to the same team, to send again or change. #}
+              {% set other = o.to_team_id if mine else o.from_team_id %}
+              {% if o.status in retry_statuses and trade_window.open and other in trade_team_ids %}<br><button class="tr-link" title="Load this trade into the builder to send it again" onclick='trRetry({{ {"team": other, "mine": (o.sent if mine else o.received) | map(attribute="player_id") | list, "theirs": (o.received if mine else o.sent) | map(attribute="player_id") | list} | tojson }})'>retry</button>{% endif %}
             </td>
           </tr>
           {% endfor %}
@@ -485,6 +491,32 @@ window.trTradeFor = function(teamId, pid) {
   sel.value = teamId;
   trLoadTeam(teamId, pid ? [pid] : []);
   document.getElementById('tr-team').scrollIntoView({behavior: 'smooth', block: 'center'});
+};
+
+// Retry an offer that's off the table (expired, turned down, withdrawn,
+// voted down): the builder starts from it as your offer to the same team.
+// Anyone who has since left either side is left out, and said so.
+window.trRetry = function(o) {
+  COUNTER = null;
+  document.getElementById('tr-team').value = o.team;
+  var have = new Set(SIDES.mine.players.map(function(p) { return p.player_id; }));
+  var mine = o.mine.filter(function(pid) { return have.has(pid); });
+  SIDES.mine.picked = new Set(mine);
+  render('mine');
+  trLoadTeam(o.team, o.theirs);
+  // trLoadTeam drops their players who've moved on once the roster loads.
+  var gone = o.mine.length - mine.length;
+  var tries = 0;
+  var check = function() {
+    if (SIDES.theirs.team !== o.team) return;
+    if (!SIDES.theirs.players.length) return ++tries < 50 && setTimeout(check, 100);
+    gone += o.theirs.length - SIDES.theirs.picked.size;
+    if (gone) gmToast(gone === 1 ? 'One player from that trade has moved on, so he\'s left out.'
+                                 : gone + ' players from that trade have moved on, so they\'re left out.', 'info');
+  };
+  check();
+  summarize();
+  document.getElementById('tr-bar').scrollIntoView({behavior: 'smooth', block: 'center'});
 };
 
 // A counter to an AI team was turned down: the offer it answered can't be
