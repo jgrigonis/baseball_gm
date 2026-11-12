@@ -103,12 +103,14 @@ class InjuryNews:
         """Whether the alert should link to the pitching tab for this player.
 
         Go by this season's usage when there is any. A player with no innings
-        and no at-bats (e.g. hurt since last season) is classified the way the
-        lineup tab does it, by whether the pitching or hitting rating is
-        higher, falling back to the listed position if there are no skills."""
+        and no at-bats (e.g. hurt since last season) goes by his listed
+        position, falling back to whether the pitching or hitting rating is
+        higher when there is no position."""
         outs, ab = injury["outs"], injury["ab"]
         if outs or ab:
             return outs > 0 and (ab == 0 or outs / 3 >= ab / 10)
+        if injury["position"]:
+            return is_pitcher(injury["position"].lower())
         row = PlayerRepository(self.conn).get_with_skills(player_id)
         # player_id only comes from the player_skills side of the join
         if row and row.get("player_id"):
@@ -116,7 +118,7 @@ class InjuryNews:
             if ratings:
                 pitching = max(ratings.get("sp", 0), ratings.get("rp", 0))
                 return pitching > ratings.get("overall_player", 0)
-        return is_pitcher(injury["position"] or "")
+        return False
 
 
 def take_injury_news(conn, gm_id: str) -> dict:
