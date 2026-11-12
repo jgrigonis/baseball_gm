@@ -56,6 +56,9 @@ NUMBER_LABELS = {
 # Settings that time the ready-check window. Changing one starts the current
 # period's window over, so the new length applies now.
 WINDOW_KEYS = tuple(k for k in NUMBER_RANGES if k.endswith("_sec"))
+# The admin can set any window from 1 second to 2.5 hours (testing, odd
+# leagues). Commissioners and GMs stay inside NUMBER_RANGES.
+ADMIN_WINDOW_RANGE = (1, 9000)
 _WINDOW_SETTINGS = ("pace_control", *WINDOW_KEYS)
 
 
@@ -66,8 +69,11 @@ def _new_token() -> str:
 # ── Leagues ───────────────────────────────────────────────────────────────────
 
 
-def settings_error(league: dict, settings: dict, season_count: int) -> str | None:
-    """Why these settings can't be saved for the league, or None."""
+def settings_error(
+    league: dict, settings: dict, season_count: int, admin: bool = False
+) -> str | None:
+    """Why these settings can't be saved for the league, or None. The admin
+    gets the wider ADMIN_WINDOW_RANGE for the window lengths."""
     if not settings["name"].strip():
         return "The league needs a name."
     if settings["mode"] != league["mode"]:
@@ -81,6 +87,8 @@ def settings_error(league: dict, settings: dict, season_count: int) -> str | Non
         # A value from before the range narrowed (e.g. 100 seasons) can stay.
         if settings[key] == league.get(key):
             continue
+        if admin and key in WINDOW_KEYS:
+            low, high = ADMIN_WINDOW_RANGE
         if not low <= settings[key] <= high:
             return f"{NUMBER_LABELS[key]} must be between {low} and {high}."
     if (
@@ -106,7 +114,9 @@ def update_league_settings(conn, league_id: str, settings: dict) -> str | None:
     league = league_repo.get_by_id(league_id)
     if not league:
         raise ValueError("League not found.")
-    error = settings_error(league, settings, league_repo.count_seasons(league_id))
+    error = settings_error(
+        league, settings, league_repo.count_seasons(league_id), admin=True
+    )
     if error:
         return error
 

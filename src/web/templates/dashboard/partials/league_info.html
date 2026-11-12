@@ -183,7 +183,7 @@
         </div>
         {% for key, id, label, step in [("decision_window_sec", "ss-decision", "Decision window", 10), ("draft_window_sec", "ss-draft", "Draft window", 30), ("lineup_window_sec", "ss-lineup", "Lineup window", 60)] %}
         {% set value = info[key] %}{% set low, high = se.windows[key] %}
-        {% call slider(key, id, label, value, low, [high, value] | max, step=(step if value % step == 0 else 1), unit=" sec") %}
+        {% call slider(key, id, label, value, [low, value] | min, [high, value] | max, step=(step if value % step == 0 else 1), unit=" sec") %}
           {% if loop.first %}<span class="solo-hint">Windows only count under Timer pace. A new length starts the current window over.</span>{% endif %}
         {% endcall %}
         {% endfor %}

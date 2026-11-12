@@ -119,6 +119,7 @@ def _league_page(request, db, user, league_id: str, status_code=200, **ctx):
             "gms": [dict(g) for g in gms],
             "modes": [LEAGUE_MODES[k] for k in admin_service.MODES],
             "ranges": admin_service.NUMBER_RANGES,
+            "admin_windows": admin_service.ADMIN_WINDOW_RANGE,
             "season_choices": _season_choices(league["num_seasons"]),
             # Leagues made before these settings go by their mode's default.
             "injuries_on": injuries_allowed(league),
