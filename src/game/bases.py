@@ -275,6 +275,17 @@ class Bases:
         if len(set(self._bases.values())) != len(self._bases):
             raise RuntimeError("Runner appears on multiple bases")
 
+    def replace_runner(self, base: int, runner: PlayerInGame) -> PlayerInGame:
+        """Put a pinch runner on a base in place of the man there; returns
+        the man taken off."""
+        if base not in self._bases:
+            raise ValueError(f"No runner on base {base} to replace")
+        if self.base_of(runner) is not None:
+            raise RuntimeError(f"Runner {runner.name} is already on base")
+        old = self._bases[base]
+        self._bases[base] = runner
+        return old
+
     # ------------------------------------------------------------------
     # Testing
     # ------------------------------------------------------------------

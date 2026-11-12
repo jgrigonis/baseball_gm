@@ -42,7 +42,7 @@ def batting_order(events: list[dict], team_id: str) -> list[str]:
 
 def sub_labels(events: list[dict], team_id: str) -> dict[str, str]:
     """The box score tag for each hitter who came off the bench, by player
-    id: PH for a pinch hitter, else the position he took over."""
+    id: PH for a pinch hitter, PR for a pinch runner, else the position he took over."""
     labels: dict[str, str] = {}
     for e in events:
         if e.get("team_id") != team_id or e["event_type"] != "substitution":
@@ -50,8 +50,8 @@ def sub_labels(events: list[dict], team_id: str) -> dict[str, str]:
         detail = e.get("detail_parsed") or {}
         if not isinstance(detail, dict):
             continue
-        if detail.get("kind") == "ph":
-            labels[e["player_id"]] = "ph"
+        if detail.get("kind") in ("ph", "pr"):
+            labels[e["player_id"]] = detail["kind"]
         elif detail.get("position") and detail["position"] != "?":
             labels[e["player_id"]] = detail["position"]
     return labels

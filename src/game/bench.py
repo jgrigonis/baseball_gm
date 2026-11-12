@@ -1,6 +1,6 @@
 # src/game/bench.py
 """
-In-game bench moves: pinch hitters.
+In-game bench moves: pinch hitters and pinch runners.
 
 Before each plate appearance late in a close game, the batting team's manager
 looks down his bench for a better bat against the pitcher on the mound. A bench
@@ -13,6 +13,12 @@ A pinch hitter stays in the game: he takes over the replaced hitter's batting
 slot and his position in the field, so a weak glove counts against him
 (a share of what the position's glove is worth that shrinks as the innings
 run out). The man he replaced is out of the game for good.
+
+Pinch runners: before a plate appearance from the 7th on, a slow runner whose
+run would tie the game or put his team ahead is run for by a faster bench
+player, when the jump in speed and baserunning (RUN_WEIGHTS) beats MIN_RUN_EDGE
+for the spot. The runner takes over the batting slot and position too, so the
+bat and glove he gives up count against him, less as the innings run out.
 
 Who's on the bench (TeamInGame.bench_players): hitters on today's roster who
 aren't in the lineup, aren't hurt and haven't been taken out. A bench hitter
@@ -105,6 +111,17 @@ def defense_cost(
     return max(0.0, drop) * weight * share
 
 
+def _available(game: Game, team: TeamInGame) -> list[PlayerInGame]:
+    """Bench players fresh enough to go in. The last catcher on the bench is
+    kept for an emergency until the ninth."""
+    bench = [p for p in team.bench_players if _rested_enough(game, p)]
+    if game.inning.number < 9:
+        catchers = [p for p in bench if _is_catcher(p)]
+        if len(catchers) == 1:
+            bench.remove(catchers[0])
+    return sorted(bench, key=lambda p: p.id)
+
+
 def _rested_enough(game: Game, player: PlayerInGame) -> bool:
     energy = game._live_energy(player)
     return energy is None or energy >= MIN_ENERGY
@@ -125,19 +142,13 @@ def pinch_hitter(game: Game) -> PlayerInGame | None:
     if slot is None or pitcher is None:
         return None
     batter = slot.player
-    bench = [p for p in team.bench_players if _rested_enough(game, p)]
-    if not bench:
-        return None
-    if game.inning.number < 9:
-        catchers = [p for p in bench if _is_catcher(p)]
-        if len(catchers) == 1:
-            bench.remove(catchers[0])
+    bench = _available(game, team)
     hand = (pitcher.throws or "R").upper()
     need = MIN_GAIN / lev
     base = bat_value(team, batter, hand)
     position = batter.current_position or slot.position
     best, best_edge = None, need
-    for p in sorted(bench, key=lambda p: p.id):
+    for p in bench:
         cost = defense_cost(team, batter, p, position, game.inning.number)
         if cost is None:
             continue
@@ -145,3 +156,65 @@ def pinch_hitter(game: Game) -> PlayerInGame | None:
         if edge >= best_edge:
             best, best_edge = p, edge
     return best
+
+
+# How a runner's legs are judged: speed most, then baserunning smarts.
+RUN_WEIGHTS = {"speed": 0.65, "base_running": 0.35}
+# Skill points of running a pinch runner must add in an ordinary late spot.
+MIN_RUN_EDGE = 18.0
+# Share of the bat a pinch runner gives up (rating points of overall
+# offense) that counts against him, by inning: his slot may bat again.
+BAT_COST_SHARE = {7: 0.5, 8: 0.35}
+LATE_BAT_COST_SHARE = 0.2  # 9th and extra innings
+
+
+def run_value(player: PlayerInGame) -> float:
+    """How good a runner he is, on the 0-100 skill scale."""
+    return sum(player.skills.get(k, 50) * w for k, w in RUN_WEIGHTS.items())
+
+
+def _run_matters(game: Game, base: int) -> bool:
+    """Would the runner on this base tie the game or put his team ahead if he
+    scored (counting the runners ahead of him)?"""
+    if game.inning.top:
+        diff = game.score.away - game.score.home
+    else:
+        diff = game.score.home - game.score.away
+    ahead = sum(1 for b in game.bases.occupied_map() if b > base)
+    return diff + ahead + 1 in (0, 1)
+
+
+def pinch_runners(game: Game) -> list[tuple[int, PlayerInGame, PlayerInGame]]:
+    """The pinch runners the batting team should send in now, as (base,
+    runner, sub), lead runner first."""
+    inning = game.inning.number
+    if inning < FIRST_INNING:
+        return []
+    team = game.bat_team
+    pitcher = game.current_pitcher
+    hand = (pitcher.throws or "R").upper() if pitcher else None
+    lev = INNING_LEVERAGE.get(inning, LATE_LEVERAGE)
+    need = MIN_RUN_EDGE / lev
+    bat_share = BAT_COST_SHARE.get(inning, LATE_BAT_COST_SHARE)
+    bench = _available(game, team)
+    moves = []
+    for base, runner in sorted(game.bases.occupied_map().items(), reverse=True):
+        if not bench or not _run_matters(game, base):
+            continue
+        slot = next((s for s in team.lineup if s.player is runner), None)
+        if slot is None:
+            continue
+        position = runner.current_position or slot.position
+        best, best_edge = None, need
+        for p in bench:
+            glove = defense_cost(team, runner, p, position, inning)
+            if glove is None:
+                continue
+            bat = max(0.0, bat_value(team, runner, hand) - bat_value(team, p, hand))
+            edge = run_value(p) - run_value(runner) - glove - bat * bat_share
+            if edge >= best_edge:
+                best, best_edge = p, edge
+        if best is not None:
+            moves.append((base, runner, best))
+            bench.remove(best)
+    return moves
