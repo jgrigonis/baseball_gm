@@ -92,3 +92,24 @@ def test_the_review_counts_icons_traded_away(lg):
         )
     lost = owner_review._icons_lost(lg.db, lg.league.id, last.id, last.year)
     assert lost == {lg.home.id: 1}
+
+
+def test_free_agent_cards_show_any_clubs_icon(lg):
+    # Every GM sees the same ICON tag on a free agent (Josh, 2026-11-12).
+    star = lg.f.rated_player(lg.home, lg.league, level=85, status="free_agent")
+    _played(lg, star, lg.away, lg.seasons[:1])
+    _played(lg, star, lg.home, lg.seasons)
+    cards = [{"player_id": star.id, "overall": "A"}]
+    icons.attach_free_agents(lg.db, cards)
+    assert cards[0]["icon_seasons"] == icons.ICON_SEASONS
+    assert cards[0]["icon_team"] == "Home Club"
+
+
+def test_free_agent_panel_shows_the_icon_badge(lg):
+    from src.api.view_models.player_detail import _icon
+
+    star = lg.f.rated_player(lg.home, lg.league, level=90, status="free_agent")
+    _played(lg, star, lg.home, lg.seasons)
+    d = _icon(lg.db, star.id, None, "A")
+    assert d["icon_seasons"] == icons.ICON_SEASONS
+    assert d["icon_team"] == "Home Club"

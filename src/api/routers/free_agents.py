@@ -100,9 +100,10 @@ def free_agents_tab(
         last = last_team.get(row["id"])
         card["last_team"] = names.get(last) if last else None
         players.append(card)
-    # Our own franchise icons in the pool (let go or released), tagged like
-    # Roster and Lineup (Josh, 2026-11-10).
-    icons.attach(db, team_id, players)
+    # Franchise icons in the pool (let go or released), tagged like Roster
+    # and Lineup (Josh, 2026-11-10). Any club's icon, so every GM sees the
+    # same tag (Josh, 2026-11-12: one GM saw ICON on Pardo, another didn't).
+    icons.attach_free_agents(db, players)
 
     # Offseason free agency (src/api/services/offseason_fa.py): bids from
     # the draft into the preseason, and the GM's expiring deals in the

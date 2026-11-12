@@ -152,7 +152,7 @@ function wantsTradeTag(p) {
 function iconTag(p) {
   const n = p.icon_seasons;
   if (!n) return '';
-  return `<span class="lu-icon" title="Franchise icon: ${n} seasons with the club and still a top player. Owners who care about icons won't like seeing him traded or released.">ICON</span>`;
+  return `<span class="lu-icon" title="Franchise icon: ${n} seasons with ${p.icon_team ? 'the ' + p.icon_team : 'the club'} and still a top player. Owners who care about icons won't like seeing him traded or released.">ICON</span>`;
 }
 
 // "IL (12d)" after an injured player's name; the hover names the injury.
