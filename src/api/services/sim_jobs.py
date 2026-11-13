@@ -21,6 +21,7 @@ import logging
 from collections.abc import Callable
 
 from src.api.services import awards, badges, career, coach, hall_of_fame, news
+from src.api.services.records import play as records_play
 from src.api.services.draft_execute import execute_blitz_draft
 from src.api.services.league_start import start_league
 from src.api.services.offseason_service import run_offseason
@@ -158,6 +159,8 @@ def _record_careers(conn, league_id: str) -> None:
     except Exception:
         log.exception("League %s: couldn't update career records", league_id)
     _write_news(conn, league_id)
+    # The record book reads the same games (its own savepoint).
+    records_play.update_league(conn, league_id)
 
 
 def _write_news(conn, league_id: str) -> None:

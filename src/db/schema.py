@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS leagues (
     injuries_enabled     BOOLEAN NOT NULL DEFAULT TRUE,  -- players can get hurt (off by default in Speed Blitz)
     injury_rate          INTEGER NOT NULL DEFAULT 100,  -- how often, as a percent of normal (league_constants.INJURY_RATES)
     backstory_years      INTEGER NOT NULL DEFAULT 10,    -- past seasons generated at the start (src/league/backstory/)
+    records_seeded       BOOLEAN NOT NULL DEFAULT FALSE, -- record book caught up once (services/records/play.py, migration 123)
     weighted_schedule    BOOLEAN NOT NULL DEFAULT FALSE, -- division rivals play more often (src/league/weighted_schedule.py)
     real_season          INTEGER,  -- starts with this MLB season's players (src/league/real_seasons/, migration 095)
     single_player        BOOLEAN NOT NULL DEFAULT FALSE, -- has a custom team: nobody else can join (migration 096)
@@ -405,6 +406,64 @@ CREATE INDEX IF NOT EXISTS idx_league_news_feed
     ON league_news(league_id, news_date DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_league_news_teams ON league_news USING GIN (team_ids);
 CREATE INDEX IF NOT EXISTS idx_league_news_season ON league_news(season_id);
+
+-- The record book's stored records (src/api/services/records/, migration 123):
+-- single games and streaks good enough for the league's or a club's top
+-- five (season and career records are worked out from the season lines).
+-- key names the feat, so a streak is brought up to date as it goes on.
+-- source: 'played' or 'backstory' (dealt out from a backstory line, replay.py).
+CREATE TABLE IF NOT EXISTS record_feats (
+    id          BIGSERIAL PRIMARY KEY,
+    league_id   TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    kind        TEXT NOT NULL CHECK (kind IN ('game', 'streak')),
+    stat        TEXT NOT NULL,
+    key         TEXT NOT NULL,
+    value       INTEGER NOT NULL,
+    subject     TEXT NOT NULL,              -- the player, or the club for a club streak
+    player_id   TEXT REFERENCES players(id) ON DELETE CASCADE,
+    team_id     TEXT,
+    season_id   TEXT REFERENCES seasons(id) ON DELETE CASCADE,
+    year        INTEGER,
+    game_id     TEXT,                       -- the game (a streak's last)
+    on_date     TEXT,                       -- the game's date (a streak's last)
+    start_date  TEXT,                       -- a streak's first game
+    opp_team_id TEXT,
+    innings     INTEGER,
+    source      TEXT NOT NULL DEFAULT 'played',
+    active      BOOLEAN NOT NULL DEFAULT FALSE,  -- a streak still going
+    UNIQUE (league_id, key)
+);
+CREATE INDEX IF NOT EXISTS idx_record_feats_stat
+    ON record_feats(league_id, kind, stat, value DESC);
+CREATE INDEX IF NOT EXISTS idx_record_feats_player_id ON record_feats(player_id);
+CREATE INDEX IF NOT EXISTS idx_record_feats_season_id ON record_feats(season_id);
+
+-- How far the record book has read each played season, and whether it's done.
+CREATE TABLE IF NOT EXISTS record_progress (
+    league_id TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    season_id TEXT NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
+    through   TEXT NOT NULL DEFAULT '',
+    closed    BOOLEAN NOT NULL DEFAULT FALSE,
+    PRIMARY KEY (league_id, season_id)
+);
+CREATE INDEX IF NOT EXISTS idx_record_progress_season_id ON record_progress(season_id);
+
+-- Every streak going in the season being played, one per player (or club) and
+-- kind, so the next day's games carry them on.
+CREATE TABLE IF NOT EXISTS record_runs (
+    league_id  TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    season_id  TEXT NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
+    stat       TEXT NOT NULL,
+    subject    TEXT NOT NULL,
+    team_id    TEXT,
+    length     INTEGER NOT NULL,
+    start_date TEXT,
+    last_date  TEXT,
+    start_game TEXT,
+    last_game  TEXT,
+    PRIMARY KEY (league_id, season_id, stat, subject)
+);
+CREATE INDEX IF NOT EXISTS idx_record_runs_season_id ON record_runs(season_id);
 
 CREATE TABLE IF NOT EXISTS bullpen_roles (
     team_id TEXT NOT NULL,

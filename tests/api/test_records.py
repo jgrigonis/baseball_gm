@@ -122,7 +122,10 @@ def test_everyone_tied_for_first_stays_past_the_list_size():
     ]
     c = core.card("hr", "HR", perfs)
     assert len(c.holders) == 8
-    assert c.more_holders == 5
+    # Crowded: the first and the latest, then a count.
+    assert [h["name"] for h in c.shown_holders] == ["0", "7"]
+    assert c.crowded and c.times == 8
+    assert c.more_holders == 6
 
 
 def test_a_floor_holds_until_beaten_not_tied():

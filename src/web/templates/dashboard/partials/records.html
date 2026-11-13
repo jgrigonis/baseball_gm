@@ -4,7 +4,7 @@
    tied at the top, the first to get there first), then the next best.
    The view and club live in the query string so a refresh keeps them. #}
 {% macro rec_click(r) -%}
-{%- if r.player_id %} onclick="openPlayerPanel('{{ r.player_id }}')"{% elif r.game_id %} onclick="openGamePanel('{{ r.game_id }}')"{% endif -%}
+{%- if r.player_id %} onclick="openPlayerPanel('{{ r.player_id }}')"{% elif r.game_id %} onclick="openGamePanel('{{ r.game_id }}')"{% elif r.href %} onclick="window.location='{{ r.href }}'"{% endif -%}
 {%- endmacro %}
 {% macro rec_card(c) %}
 <div class="rec-card{% if c.holders and c.holders[0].is_mine %} mine{% endif %}">
@@ -12,6 +12,19 @@
   {% if c.note %}<div class="rec-note">{{ c.note }}</div>{% endif %}
   {% if c.empty %}
   <div class="rec-none">Nobody yet.</div>
+  {% elif c.listing %}
+  <div class="rec-list rec-listing">
+    {% for r in c.rows %}
+    <div class="rec-row{% if r.is_mine %} mine{% endif %}"{{ rec_click(r) }}>
+      <span class="rec-rank">{{ r.rank }}</span>
+      <span class="rec-row-who">
+        <span class="rec-row-name">{{ r.name }}</span>
+        <span class="rec-row-meta">{{ r.detail }}{% if r.team %} · {{ r.team }}{% endif %}</span>
+      </span>
+      <span class="rec-row-val">{{ r.shown }}</span>
+    </div>
+    {% endfor %}
+  </div>
   {% else %}
   <div class="rec-top">
     {% if c.mark %}
@@ -29,18 +42,19 @@
         <div class="rec-holder-meta">{{ h.detail }}{% if h.team %} · {{ h.team }}{% endif %}</div>
       </div>
       {% endfor %}
+      {% if c.crowded %}<div class="rec-times">Done {{ c.times }} times{% if c.shown_holders|length > 1 %}: the first and the latest{% endif %}</div>{% endif %}
       {% if c.more_holders %}
       <details class="rec-more">
         <summary>+{{ c.more_holders }} more tied</summary>
-        {% for h in c.holders[3:] %}
+        {% for h in c.hidden_holders %}
         <div class="rec-holder{% if h.is_mine %} mine{% endif %}"{{ rec_click(h) }}>
           <span class="rec-holder-name">{{ h.name }}</span>
           <div class="rec-holder-meta">{{ h.detail }}{% if h.team %} · {{ h.team }}{% endif %}</div>
         </div>
         {% endfor %}
+        {% if c.more_holders > c.hidden_holders|length %}<div class="rec-holder-meta">and {{ c.more_holders - c.hidden_holders|length }} more</div>{% endif %}
       </details>
       {% endif %}
-      {% if c.times > c.holders|length %}<div class="rec-times">Done {{ c.times }} times</div>{% endif %}
     </div>
     {% endif %}
   </div>
@@ -85,12 +99,29 @@
     {% endif %}
   </div>
   <div class="rec-rules">
-    Regular season, counting the seasons before the league started. Rate stats need a finished season. Ties are shared, and whoever got there first is listed first.
-    {% if rec_team_name %}Only what players did for the {{ rec_team_name }} counts.{% endif %}
+    {% if rec_view == 'postseason' %}Playoffs only. Box scores start with the league's first season; titles go back further.
+    {% elif rec_view == 'gms' %}The people who have run clubs in this league.
+    {% elif rec_view in ('game', 'streaks') %}Regular season. Games before the league started were rebuilt from their season lines.
+    {% else %}Regular season, counting the seasons before the league started. Rate stats need a finished season.{% endif %}
+    Ties are shared, and whoever got there first is listed first.
+    {% if rec_team_name %}Only what happened for the {{ rec_team_name }} counts.{% endif %}
   </div>
 </div>
 
 <div class="tab-body">
+  {% if rec_watch %}
+  <div class="rec-section-head"><span class="rec-kicker">Record watch</span></div>
+  <div class="rec-watch">
+    {% for w in rec_watch %}
+    <div class="rec-watch-row{% if w.is_mine %} mine{% endif %}"{% if w.player_id %} onclick="openPlayerPanel('{{ w.player_id }}')"{% endif %}>
+      <span class="rec-watch-what">{{ w.label }}</span>
+      <span class="rec-watch-who">{{ w.name }}</span>
+      <span class="rec-watch-now">{{ w.now }}, {{ w.how }}</span>
+      <span class="rec-watch-rec">Record {{ w.record }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
   {% if rec_empty %}
   <div class="rec-empty">No records yet. They fill in as games are played.</div>
   {% else %}
@@ -151,8 +182,20 @@
 .rec-row.mine .rec-row-name { color:var(--green); }
 .rec-row-meta { font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-left:4px; }
 .rec-row-val { font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--text); }
+.rec-listing { border-top:none;margin-top:6px; }
+.rec-watch { display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:8px;margin-bottom:6px; }
+.rec-watch-row { display:grid;grid-template-columns:1fr auto;gap:2px 8px;background:var(--bg-2);border:1px solid var(--amber-dim);
+  border-radius:6px;padding:8px 10px;cursor:pointer; }
+.rec-watch-row.mine { box-shadow:inset 3px 0 0 var(--green); }
+.rec-watch-what { font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--amber); }
+.rec-watch-rec { font-family:var(--font-mono);font-size:10px;color:var(--text-dim);text-align:right; }
+.rec-watch-who { font-weight:600;font-size:13px;color:var(--text-hi);grid-column:1 / -1; }
+.rec-watch-row.mine .rec-watch-who { color:var(--green); }
+.rec-watch-now { font-family:var(--font-mono);font-size:11px;color:var(--text);grid-column:1 / -1; }
 @media (max-width: 600px) {
   .rec-grid { grid-template-columns:1fr; }
+  .rec-views { flex-wrap:nowrap;overflow-x:auto;max-width:100%;scrollbar-width:none; }
+  .rec-view { white-space:nowrap;flex:none; }
   .rec-team { max-width:100%;flex:1 1 100%; }
 }
 </style>

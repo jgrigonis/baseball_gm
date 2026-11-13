@@ -753,6 +753,13 @@ _STREAK_WORDS = {
     19: "Nineteen",
     20: "Twenty",
 }
+# One of the club's own set a league record (the record book's news).
+RECORD_SET = (
+    "A league record! That's the kind of thing fans tell their kids about.",
+    "Our name in the record book. Good. Keep giving them reasons to buy tickets, {gm}.",
+    "I saw the record. Put it on the scoreboard, put it on a T-shirt. Nice work.",
+)
+
 WINNING_STREAK = (
     "{n} straight wins. Now that's what I like to see.",
     "{n} in a row! Keep it going, {gm}.",
@@ -1205,6 +1212,10 @@ def streak_reaction(won: bool, length: int, fields: dict, rng: random.Random) ->
         return _pick(rng, WINNING_STREAK, {**fields, **n})
     mark = max(k for k in LOSING_STREAK if k <= length)
     return _pick(rng, LOSING_STREAK[mark], {**fields, **n})
+
+
+def record_set(fields: dict, rng: random.Random) -> str:
+    return _pick(rng, RECORD_SET, fields)
 
 
 def release_veto(icon: bool, fields: dict, rng: random.Random) -> str:
