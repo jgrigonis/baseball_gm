@@ -2093,6 +2093,30 @@ function showFeedback(msg, color) {
 }
 
 /* ── Storage ─────────────────────────────────────────────────────────────────── */
+// Unsaved edits are kept in sessionStorage, so they survive a look at
+// another tab and the sim's reload after each day. Only the parts that
+// differ from what's saved are kept, each with the saved version it was
+// made against (draftBases): if the server's has changed by the next load
+// (the sim rebuilt the lineup, a trade took a player, a save from another
+// window), that draft is dropped and the server's is shown. Before, the
+// tab kept a copy of every lineup and put it back over the server's on
+// each load, so a lineup the sim changed showed as unsaved, and Save put
+// the old one back (Josh, 2026-11-13).
+function draftBases() {
+  return {
+    R: lineupKey(savedLineups.R),
+    L: lineupKey(savedLineups.L),
+    rot: savedRot ? savedRot.rotation.filter(Boolean).join(',') : '',
+    bp: savedBullpen ? savedBullpenKey(savedBullpen) : '',
+  };
+}
+function savedBullpenKey(bp) {
+  return Object.entries(bp || {})
+    .filter(([, role]) => role)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([pid, role]) => `${pid}:${role}`).join(',');
+}
+
 function saveToStorage() {
   try {
     const s1  = document.getElementById('bat-s1')?.value  || 'overall';
@@ -2100,12 +2124,19 @@ function saveToStorage() {
     const s3  = document.getElementById('bat-s3')?.value  || '';
     const bs1 = document.getElementById('bp-s1')?.value   || 'sp_grade';
     const bs2 = document.getElementById('bp-s2')?.value   || '';
+    const draft = {};
+    unsavedHands().forEach(h => { draft[h] = lineups[h]; });
+    const rotDraft = !savedRot
+      || rotation.filter(Boolean).join(',') !== savedRot.rotation.filter(Boolean).join(',');
+    const bpDraft = !savedBullpen || savedBullpenKey(bullpen) !== savedBullpenKey(savedBullpen);
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
-      lineups, vsHand, rotation, pointerPid, bullpen,
-      rosterFilter, activeTab, pitchCol,
+      bases: draftBases(),
+      lineups: draft,
+      rotation: rotDraft ? rotation : null,
+      bullpen: bpDraft ? bullpen : null,
+      vsHand, rosterFilter, activeTab, pitchCol,
       rosterSort: { s1, s2, s3 },
       bullpenSort: { s1: bs1, s2: bs2 },
-      pitchingSaved, bullpenSaved,
     }));
   } catch(e) {}
 }
@@ -2118,8 +2149,16 @@ function loadFromStorage() {
   } catch(e) { return null; }
 }
 
-window.addEventListener('beforeunload', saveToStorage);
-document.addEventListener('visibilitychange', () => { if (document.hidden) saveToStorage(); });
+// Once per page, not once per load of the tab: each reload would otherwise
+// leave a listener behind holding that load's (by then stale) lineups.
+if (!window._lineupStorageHooked) {
+  window._lineupStorageHooked = true;
+  const saveIfOpen = () => {
+    if (document.getElementById('pane-batting') && window.saveLineupToStorage) window.saveLineupToStorage();
+  };
+  window.addEventListener('beforeunload', saveIfOpen);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) saveIfOpen(); });
+}
 
 /* ── Measure header ──────────────────────────────────────────────────────────── */
 function measureHeader() {
@@ -2164,20 +2203,22 @@ if (pitchingSaved) savedRot = { rotation: [...rotation], pointerPid };
 if (bullpenSaved)  savedBullpen = { ...SAVED_BP };
 ensureValidPointer();
 
-// Restore from sessionStorage (overrides server data if present and valid)
+// Restore unsaved edits from sessionStorage, each only if the server still
+// has the saved version it was made against (saveToStorage).
 const stored = loadFromStorage();
 if (stored) {
-  // Validate and apply stored lineup
+  const bases = stored.bases || {};
+  const now = draftBases();
   ['R', 'L'].forEach(hand => {
     const l = stored.lineups && stored.lineups[hand];
-    if (Array.isArray(l) && l.length === 9) {
+    if (Array.isArray(l) && l.length === 9 && bases[hand] === now[hand]) {
       lineups[hand] = l.map(s => s && knownAll.has(s.player_id) ? s : null);
     }
   });
   lineup = lineups[vsHand];
-  // Validate and apply stored rotation — only if DB also has a saved rotation,
-  // so an auto-filled-but-never-saved session rotation can't survive a reload
-  if (Array.isArray(stored.rotation) && SAVED_ROT.length > 0) {
+  // A rotation draft only on top of a saved rotation, so an auto-filled-but-
+  // never-saved one can't survive a reload.
+  if (Array.isArray(stored.rotation) && SAVED_ROT.length > 0 && bases.rot === now.rot) {
     rotation = stored.rotation.filter(pid => pid && knownPitcherIds.has(pid));
   }
   if (stored.rosterFilter) rosterFilter = stored.rosterFilter;
@@ -2197,12 +2238,11 @@ if (stored) {
     if (document.getElementById('bp-s1')) document.getElementById('bp-s1').value = stored.bullpenSort.s1||'sp_grade';
     if (document.getElementById('bp-s2')) document.getElementById('bp-s2').value = stored.bullpenSort.s2||'';
   }
-  // Only restore session bullpen if DB also has saved roles
-  if (stored.bullpen && typeof stored.bullpen === 'object' && Object.keys(SAVED_BP).length > 0) {
+  // Likewise the bullpen, on top of saved roles only.
+  if (stored.bullpen && typeof stored.bullpen === 'object'
+      && Object.keys(SAVED_BP).length > 0 && bases.bp === now.bp) {
     bullpen = stored.bullpen;
   }
-  if (stored.pitchingSaved) pitchingSaved = true;
-  if (stored.bullpenSaved)  bullpenSaved  = true;
   if (stored.pitchCol === 'bp') showPitchCol('bp');
   if (stored.activeTab && stored.activeTab !== 'batting') {
     switchTab(stored.activeTab);

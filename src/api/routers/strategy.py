@@ -50,6 +50,22 @@ SETTINGS: tuple[tuple[str, tuple[Setting, ...]], ...] = (
                 "can compare.",
             ),
             Setting(
+                "lineup_updates",
+                "Lineup Updates",
+                mp.LINEUP_UPDATES,
+                ("Keep mine", "Rebuild daily"),
+                ("Keep mine", "Rebuild daily"),
+                "Keep mine plays the batting orders you saved (vs RHP and vs "
+                "LHP) game after game; holes from injuries are filled for the "
+                "day. Rebuild daily redoes and saves both before every game, "
+                "the way the Lineup tab's Rebuild does, so they follow hot "
+                "and cold bats, injuries and rust. A player only loses his "
+                "spot, changes position or moves in the order when the change "
+                "is clearly better, so the lineup doesn't flip on near ties. "
+                "With Rebuild daily on, the Injury Lineup setting isn't "
+                "needed: every game is a rebuild.",
+            ),
+            Setting(
                 "baserunning",
                 "Baserunning",
                 mp.BASERUNNING,

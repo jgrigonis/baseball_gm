@@ -14,6 +14,10 @@
 # leagues, minus the injured and pitchers. With the Strategy tab's Rest rusty
 # players on, hitters still rusty from an injury are left out too, unless
 # that would leave fewer than nine.
+# Rebuild with the Strategy tab's own style keeps the lineup on screen
+# steady: a player only moves or loses his spot for a clearly better one
+# (LineupOptimizer KEEP_BONUS), so a rebuild a day later doesn't reshuffle
+# near ties. Rebuild All with a style picked from its menu starts clean.
 
 from __future__ import annotations
 
@@ -79,11 +83,14 @@ def autofill(
     by_id = {p.id: p for p in hitters}
 
     locked = [None] * 9
+    keep = None
     if not rebuild:
         for i, slot in enumerate(current[:9]):
             player = by_id.get(slot["player_id"]) if slot else None
             if player:
                 locked[i] = (player, slot.get("position"))
+    elif not style or style == profile.lineup_style:
+        keep = current_keep(current, by_id)
 
     lineup = LineupOptimizer.fill(
         locked,
@@ -93,8 +100,19 @@ def autofill(
         vs_hand=vs_hand,
         platoon=profile.platoon_usage,
         form=_form(db, league_id, hitters, profile.stats_weight),
+        keep=keep,
     )
     return [{"player_id": s.player.id, "position": s.position} for s in lineup]
+
+
+def current_keep(current: list[dict | None], available) -> dict[str, tuple[int, str]]:
+    """{player_id: (batting slot, position)} for the lineup being played,
+    leaving out anyone who can't play (not in available)."""
+    return {
+        slot["player_id"]: (i, slot.get("position") or "")
+        for i, slot in enumerate(current[:9])
+        if slot and slot.get("player_id") in available
+    }
 
 
 def _form(db, league_id: str, hitters: list[PlayerInGame], weight: float) -> dict:

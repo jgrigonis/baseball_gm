@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS leagues (
     injuries_enabled     BOOLEAN NOT NULL DEFAULT TRUE,  -- players can get hurt (off by default in Speed Blitz)
     injury_rate          INTEGER NOT NULL DEFAULT 100,  -- how often, as a percent of normal (league_constants.INJURY_RATES)
     backstory_years      INTEGER NOT NULL DEFAULT 10,    -- past seasons generated at the start (src/league/backstory/)
-    records_seeded       BOOLEAN NOT NULL DEFAULT FALSE, -- record book caught up once (services/records/play.py, migration 123)
+    records_seeded       BOOLEAN NOT NULL DEFAULT FALSE, -- record book caught up once (services/records/play.py, migration 125)
     weighted_schedule    BOOLEAN NOT NULL DEFAULT FALSE, -- division rivals play more often (src/league/weighted_schedule.py)
     real_season          INTEGER,  -- starts with this MLB season's players (src/league/real_seasons/, migration 095)
     single_player        BOOLEAN NOT NULL DEFAULT FALSE, -- has a custom team: nobody else can join (migration 096)
@@ -407,7 +407,7 @@ CREATE INDEX IF NOT EXISTS idx_league_news_feed
 CREATE INDEX IF NOT EXISTS idx_league_news_teams ON league_news USING GIN (team_ids);
 CREATE INDEX IF NOT EXISTS idx_league_news_season ON league_news(season_id);
 
--- The record book's stored records (src/api/services/records/, migration 123):
+-- The record book's stored records (src/api/services/records/, migration 125):
 -- single games and streaks good enough for the league's or a club's top
 -- five (season and career records are worked out from the season lines).
 -- key names the feat, so a streak is brought up to date as it goes on.
@@ -1047,6 +1047,9 @@ CREATE TABLE IF NOT EXISTS gm_profiles (
     injury_lineup TEXT NOT NULL DEFAULT 'fill'
                       CHECK (injury_lineup IN ('fill', 'fill-10', 'fill-7', 'fill-5', 'fill-3', 'fill-2', 'fill-1', 'rebuild')),
     injury_lineup_key TEXT,
+    -- Keep the saved lineup, or rebuild it before every game (migration 126).
+    lineup_updates TEXT NOT NULL DEFAULT 'keep'
+                      CHECK (lineup_updates IN ('keep', 'daily')),
 
     updated_at TEXT NOT NULL DEFAULT (NOW()),
 
