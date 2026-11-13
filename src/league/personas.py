@@ -330,12 +330,16 @@ def profile(dials: dict) -> dict:
     else:
         platoon = "vs-handedness"
 
-    if hook < 34:
-        starter = "long"
+    if hook < 15:
+        starter = "115"
+    elif hook < 34:
+        starter = "105"
+    elif hook >= 85 and modern >= 50:
+        starter = "75"
     elif hook >= 67 and modern >= 50:
-        starter = "quick-hook"
+        starter = "85"
     else:
-        starter = "standard"
+        starter = "95"
 
     return {
         "lineup_style": style,

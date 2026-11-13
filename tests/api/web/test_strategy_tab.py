@@ -55,6 +55,7 @@ def test_saves_every_setting(client, db_conn, gm):
     assert row["sac_bunt"] == "never"
     assert row["rest_days"] == "rest-often"
     assert row["closer_usage"] == "high-leverage"
+    assert row["starter_usage"] == "95"
     assert row["rotation_size"] == 4
     assert row["skip_fifth_starter"] is True
     assert row["playoff_rotation"] == "3"

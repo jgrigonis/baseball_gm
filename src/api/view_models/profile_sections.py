@@ -41,11 +41,7 @@ BASERUNNING = {
     "aggressive": "Aggressive on the bases",
     "very-aggressive": "Very aggressive on the bases",
 }
-STARTER_USAGE = {
-    "long": "Long leash",
-    "standard": "Standard leash",
-    "quick-hook": "Quick hook",
-}
+STARTER_USAGE = {u: f"{u}-pitch leash" for u in ("115", "105", "95", "85", "75")}
 CLOSER_USAGE = {
     "saves-only": "closer for saves",
     "high-leverage": "closer in big spots",
