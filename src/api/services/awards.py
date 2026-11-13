@@ -447,7 +447,76 @@ def for_season(conn, season_id: str) -> list[dict]:
     out = [dict(r) for r in rows if r["award"] in order]
     spot = {p: i for i, p in enumerate(awards.POSITION_NAMES)}
     out.sort(key=lambda r: (order[r["award"]], r["scope"], spot.get(r["position"], -1)))
+    _finished_with(conn, season_id, out)
     return out
+
+
+# Awards decided in a playoff series: the team he won it with.
+SERIES_AWARDS = ("semis_mvp", "finals_mvp")
+
+
+def _finished_with(conn, season_id: str, rows: list[dict]) -> None:
+    """Add to each regular-season player award the team he finished the
+    season with (finished_team_id, finished_city, finished_mascot), and his
+    games for the team the award counts for (games_with) and in all
+    (games). An award counts for the team he played the most games for
+    (its team_id: owners, GM records and team history credit that team),
+    but a player traded away is named with the team he ended up on, the way
+    MLB lists him (Josh, 2026-11-13). finished_team_id is None when it's
+    the same team."""
+    pids = list(
+        {
+            r["player_id"]
+            for r in rows
+            if r["player_id"] and r["award"] not in SERIES_AWARDS
+        }
+    )
+    for r in rows:
+        r.update(finished_team_id=None, finished_city=None, finished_mascot=None)
+    if not pids:
+        return
+    games = conn.execute(
+        """WITH g AS (
+               SELECT pgs.player_id, pgs.team_id, gm.game_date
+               FROM player_game_stats pgs JOIN games gm ON gm.id = pgs.game_id
+               WHERE gm.season_id = %s AND gm.series_id IS NULL
+                 AND pgs.player_id = ANY(%s)
+           ),
+           last AS (
+               SELECT DISTINCT ON (player_id) player_id, team_id
+               FROM g ORDER BY player_id, game_date DESC
+           )
+           SELECT g.player_id, g.team_id, COUNT(*) AS n,
+                  (g.team_id = last.team_id) AS is_last,
+                  t.city, t.mascot
+           FROM g JOIN last ON last.player_id = g.player_id
+           JOIN teams t ON t.id = g.team_id
+           GROUP BY g.player_id, g.team_id, last.team_id, t.city, t.mascot""",
+        (season_id, pids),
+    ).fetchall()
+    by_player: dict[str, list[dict]] = {}
+    for g in games:
+        by_player.setdefault(g["player_id"], []).append(dict(g))
+    for r in rows:
+        if r["award"] in SERIES_AWARDS or not r["player_id"]:
+            continue
+        mine = by_player.get(r["player_id"], [])
+        last = next((g for g in mine if g["is_last"]), None)
+        if not last or last["team_id"] == r["team_id"]:
+            continue
+        r["finished_team_id"] = last["team_id"]
+        r["finished_city"] = last["city"]
+        r["finished_mascot"] = last["mascot"]
+        r["games_with"] = sum(g["n"] for g in mine if g["team_id"] == r["team_id"])
+        r["games"] = sum(g["n"] for g in mine)
+
+
+def moved_note(r: dict) -> str:
+    """ "98 games with Berlin" for a winner who finished elsewhere, else ""."""
+    if not r.get("finished_team_id"):
+        return ""
+    n = r.get("games_with", 0)
+    return f"{n} game{'' if n == 1 else 's'} with {r['city']}"
 
 
 def for_player(conn, player_id: str) -> list[dict]:

@@ -783,14 +783,21 @@ def season_awards(
             players = [r["player_id"] for r in wins]
             parts, gm_ids = [], []
             for w, r in zip(who, wins):
+                # Named with the team he finished with; a trade's earlier
+                # team still gets the credit (awards_service.for_season).
                 text = (
-                    f"{w} of the {names.full_team(r['team_id'])} wins the"
+                    f"{w} of the {names.full_team(_finished(r))} wins the"
                     f" {_scope_phrase(r['scope'])}{award.name} ({r['line']})."
                 )
+                if r.get("finished_team_id"):
+                    text += (
+                        f" {r['games_with']} of his {r['games']} games came with"
+                        f" the {names.full_team(r['team_id'])}."
+                    )
                 how, credit = names.origin(r["player_id"], r["team_id"])
                 if how:
                     text += f" {names.last(r['player_id'])} was {how}."
-                gm_ids += names.gm_ids(r["team_id"]) + credit
+                gm_ids += names.gm_ids(*_award_teams(r)) + credit
                 parts.append(text)
             body = "\n".join(parts)
             human = any(names.is_human(r["team_id"]) for r in wins)
@@ -804,7 +811,8 @@ def season_awards(
             league_id, season_id, wins[0]["decided_on"] or _now(conn, season_id),
             "season_award", story, headline, body,
             weight=_FEATURED_WEIGHT[key] + (1 if human else 0),
-            team_ids=[r["team_id"] for r in wins], player_ids=players, gm_ids=gm_ids,
+            team_ids=list(dict.fromkeys(t for r in wins for t in _award_teams(r))),
+            player_ids=players, gm_ids=gm_ids,
         )  # fmt: skip
 
     story = f"award:roundup:{season_id}"
@@ -816,7 +824,7 @@ def season_awards(
     if rest and not news.has(league_id, story):
         lines = [
             f"{_scope_phrase(r['scope'])}{awards_mod.BY_KEY[r['award']].name}:"
-            f" {names.player(r['player_id'])}, {names.team(r['team_id'])} ({r['line']})."
+            f" {names.player(r['player_id'])}, {_team_text(names, r)} ({r['line']})."
             for r in rest
         ]
         news.add(
@@ -824,9 +832,11 @@ def season_awards(
             "season_award", story, f"The rest of the {year} awards",
             "\n".join(lines),
             weight=2 if any(names.is_human(r["team_id"]) for r in rest) else 1,
-            team_ids=list(dict.fromkeys(r["team_id"] for r in rest)),
+            team_ids=list(dict.fromkeys(t for r in rest for t in _award_teams(r))),
             player_ids=[r["player_id"] for r in rest],
-            gm_ids=names.gm_ids(*dict.fromkeys(r["team_id"] for r in rest)),
+            gm_ids=names.gm_ids(
+                *dict.fromkeys(t for r in rest for t in _award_teams(r))
+            ),
         )  # fmt: skip
 
     _position_story(
@@ -858,6 +868,29 @@ def season_awards(
         )  # fmt: skip
 
 
+def _finished(r: dict) -> str:
+    """The team an award winner is named with: the one he finished the
+    season with."""
+    return r.get("finished_team_id") or r["team_id"]
+
+
+def _award_teams(r: dict) -> list[str]:
+    """The teams an award story is about: the one it counts for, and the
+    one he finished with if that's another."""
+    return [t for t in (r["team_id"], r.get("finished_team_id")) if t]
+
+
+def _team_text(names, r: dict) -> str:
+    """ "Rain", or "Rain; 98 games with the Bears" for a winner who finished
+    with another team than the one the award counts for."""
+    if not r.get("finished_team_id"):
+        return names.team(r["team_id"])
+    return (
+        f"{names.team(r['finished_team_id'])}; {r['games_with']} games with"
+        f" the {names.team(r['team_id'])}"
+    )
+
+
 def _position_story(
     conn, news, names, league_id, season_id, year, key, rows, title
 ) -> None:
@@ -870,7 +903,7 @@ def _position_story(
     parts = []
     for r in rows:
         pos = awards_mod.POSITION_NAMES.get(r["position"], "")
-        who = f"{names.player(r['player_id'])} ({names.team(r['team_id'])})"
+        who = f"{names.player(r['player_id'])} ({_team_text(names, r)})"
         if r["award"] == "platinum_glove":
             parts.append(f"{_scope_phrase(r['scope'])}Platinum Glove: {who}, {pos}.")
         else:
@@ -882,7 +915,7 @@ def _position_story(
         n = len({r["player_id"] for r in human if r["award"] != "platinum_glove"})
         if gm and n:
             headline += f": {n} for {possessive(gm)} {names.team(human[0]['team_id'])}"
-    teams = list(dict.fromkeys(r["team_id"] for r in rows))
+    teams = list(dict.fromkeys(t for r in rows for t in _award_teams(r)))
     news.add(
         league_id, season_id, rows[0]["decided_on"] or _now(conn, season_id),
         "season_award", story, headline, "\n".join(parts),
