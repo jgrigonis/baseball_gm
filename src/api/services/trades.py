@@ -63,7 +63,7 @@ from src.db.repositories.ready_check_repo import ReadyCheckRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.trade_repo import TradeRepository
-from src.league import performance, trade_deadline
+from src.league import performance, prorate, trade_deadline
 from src.league.trades import ai_evaluator, draft_picks
 from src.league.trades.ai_evaluator import Asset
 from src.player import contracts as ct
@@ -749,7 +749,9 @@ def owner_refusal(
             deals[i]["salary"] for i in items if i in deals and deals[i]["on_payroll"]
         )
 
-    return budgets.refusal(league_id, team_id, year, pay(gets) - pay(gives))
+    # Mid-season only the rest of the season is paid (src/league/prorate.py).
+    added = round((pay(gets) - pay(gives)) * prorate.still_to_pay(conn, league_id))
+    return budgets.refusal(league_id, team_id, year, added)
 
 
 def _complete(conn, league_id: str, offer: dict, by_vote: bool = False) -> None:
@@ -1153,6 +1155,17 @@ def execute(
     team_repo = TeamRepository(conn)
     status_repo = PlayerStatusRepository(conn)
     since = date.fromisoformat(effective_date)
+    # Mid-season, each guaranteed salary is split by the share of the season
+    # each team had him (src/league/prorate.py).
+    contracts = ContractRepository(conn)
+    year = contracts.current_year(league_id)
+    deals = (
+        contracts.active_for(
+            [i for i in give_a + give_b if not draft_picks.parse(i)], year
+        )
+        if year is not None
+        else {}
+    )
     for from_team, to_team, ids in ((team_a, team_b, give_a), (team_b, team_a, give_b)):
         players = []
         for asset_id in ids:
@@ -1163,6 +1176,12 @@ def execute(
             players.append(asset_id)
             team_repo.remove_player(from_team, asset_id)
             team_repo.add_player(to_team, asset_id)
+            deal = deals.get(asset_id)
+            if deal and deal["guaranteed"]:
+                prorate.changed_teams(
+                    conn, league_id, asset_id, from_team, to_team,
+                    deal["salary"], year, "trade",
+                )  # fmt: skip
             status_repo.set_status(asset_id, "minors", since=since)
         _clear_roles(conn, from_team, season_id, players, effective_date)
 

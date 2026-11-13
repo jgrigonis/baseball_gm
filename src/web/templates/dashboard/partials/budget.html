@@ -66,7 +66,7 @@
       <div class="bud-stat">
         <div class="bud-label">Payroll</div>
         <div class="bud-value {% if money.over %}bud-bad{% endif %}">{{ money.payroll_text }}</div>
-        <div class="bud-note">Guaranteed salaries plus dead money.</div>
+        <div class="bud-note">Guaranteed salaries plus dead money.{% if moves_text %} Includes {{ moves_text }} for players who changed teams mid-season: each team pays for the part of the season it had him.{% endif %}</div>
       </div>
       <div class="bud-stat">
         <div class="bud-label">League cap</div>

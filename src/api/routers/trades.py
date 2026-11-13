@@ -37,7 +37,7 @@ from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.trade_repo import TradeRepository
 from src.league import budget as bg
-from src.league import money_state, owners, trade_deadline
+from src.league import money_state, owners, prorate, trade_deadline
 from src.league.trades import draft_picks
 from src.team.roster_limits import (
     MAX_PLAYING_ROSTER,
@@ -106,7 +106,9 @@ def offer_pay_change(db, league_id: str, offer: dict) -> int:
             if i.get("player_id") in deals and deals[i["player_id"]]["on_payroll"]
         )
 
-    return pay(offer["sent"]) - pay(offer["received"])
+    # Mid-season only the rest of the season is paid (src/league/prorate.py).
+    change = pay(offer["sent"]) - pay(offer["received"])
+    return round(change * prorate.still_to_pay(db, league_id))
 
 
 def cap_rooms(db, league_id: str) -> dict[str, int]:
@@ -298,7 +300,13 @@ def trades_tab(
             if team_id
             else [],
             "offers_to_me": offers_to_me,
-            "budget": standing,
+            # still_to_pay: the share of a salary taken on now that this
+            # season's payroll carries (src/league/prorate.py).
+            "budget": (
+                {**standing, "still_to_pay": prorate.still_to_pay(db, league_id)}
+                if standing
+                else None
+            ),
             "owner_icons": owner_icons,
             "my_votes": trade_repo.votes_for_gm(league_id, gm["id"])
             if gm.get("id")

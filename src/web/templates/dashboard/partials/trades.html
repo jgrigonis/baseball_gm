@@ -269,6 +269,11 @@ var FILTERS = [['all', 'All'], ['40', '40-man'], ['org', 'Org'], ['hit', 'Hit'],
 var UNIT = {{ ('players or picks' if pick_trades else 'players') | tojson }};
 // Payroll against the cap and owner's budget (src/league/budget.py), null without budgets.
 var BUDGET = {{ budget | tojson }};
+// Mid-season a salary taken on (or sent away) only counts for the rest of
+// the season on this year's payroll (src/league/prorate.py).
+function payNow(amount) {
+  return BUDGET && BUDGET.still_to_pay != null ? amount * BUDGET.still_to_pay : amount;
+}
 var OWNER_ICONS = {{ owner_icons | tojson }};
 var COUNTER = null;  // the offer to you this one counters
 // A deal half built: the sim's day-by-day reload leaves the tab alone
@@ -378,7 +383,7 @@ function pickedPay(key) {
 // when the season ends, and your owner judges payroll against the budget.
 function budgetNote() {
   if (!BUDGET) return '';
-  var added = pickedPay('theirs') - pickedPay('mine');
+  var added = payNow(pickedPay('theirs') - pickedPay('mine'));
   var after = BUDGET.payroll + added;
   if (added <= 0 || (after <= BUDGET.cap && after <= BUDGET.budget)) return '';
   var tax = function(p) { return Math.max(0, p - BUDGET.cap) * BUDGET.tax_rate; };
@@ -1031,7 +1036,7 @@ function absorbRow(p) {
 function absorbPayLine(o) {
   var html = dumpSavedLine(o);
   if (!BUDGET || o.saved >= 0) return html;
-  var after = BUDGET.payroll - o.saved;
+  var after = BUDGET.payroll - payNow(o.saved);
   var tax = function(p) { return Math.max(0, p - BUDGET.cap) * BUDGET.tax_rate; };
   var extra = tax(after) - tax(BUDGET.payroll);
   var bits = [];
