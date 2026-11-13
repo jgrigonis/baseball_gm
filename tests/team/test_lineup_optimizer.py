@@ -375,3 +375,52 @@ def test_form_moves_a_hitter_up_the_order():
 
     assert slot("h8", {"h8": 5.0}) == 0
     assert slot("h0", {"h0": -5.0}) == 8
+
+
+# ── Keeping the lineup being played (keep) ────────────────────────────────────
+
+
+def _keep(lineup):
+    return {s.player.id: (i, s.position) for i, s in enumerate(lineup)}
+
+
+def test_keep_holds_a_regular_over_a_slightly_better_bench_bat():
+    """Rebuild from the lineup being played: a bench bat a point better
+    doesn't take a regular's spot (Josh, 2026-11-13: no daily reshuffles on
+    near ties)."""
+    regulars = [hitter(f"h{i}") for i in range(9)]
+    lineup = LineupOptimizer.fill([None] * 9, regulars)
+    bench = hitter("bench", bat=51)
+
+    fresh = LineupOptimizer.fill([None] * 9, regulars + [bench])
+    kept = LineupOptimizer.fill([None] * 9, regulars + [bench], keep=_keep(lineup))
+
+    assert "bench" in [s.player.id for s in fresh]
+    assert "bench" not in [s.player.id for s in kept]
+    assert [(s.player.id, s.position) for s in kept] == [
+        (s.player.id, s.position) for s in lineup
+    ]
+
+
+def test_keep_still_takes_a_clearly_better_player():
+    regulars = [hitter(f"h{i}") for i in range(9)]
+    lineup = LineupOptimizer.fill([None] * 9, regulars)
+    star = hitter("star", bat=70)
+
+    kept = LineupOptimizer.fill([None] * 9, regulars + [star], keep=_keep(lineup))
+
+    assert "star" in [s.player.id for s in kept]
+
+
+def test_keep_holds_the_batting_order_on_a_near_tie():
+    """Two hitters a point apart keep their slots; ten points apart, the
+    better one moves up."""
+    players = [hitter(f"h{i}", bat=50 + i) for i in range(9)]
+    lineup = LineupOptimizer.fill([None] * 9, players)
+    order = [s.player.id for s in lineup]
+    # The leadoff man and the second hitter swap skills by a point
+    a, b = lineup[0].player, lineup[1].player
+    a.skills = {k: v - 1 for k, v in a.skills.items()}
+    b.skills = {k: v + 1 for k, v in b.skills.items()}
+    kept = LineupOptimizer.fill([None] * 9, players, keep=_keep(lineup))
+    assert [s.player.id for s in kept] == order

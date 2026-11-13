@@ -1,4 +1,4 @@
-# src/db/migration_files/migration_123_record_book.py
+# src/db/migration_files/migration_125_record_book.py
 """
 The record book (src/api/services/records/, Josh 2026-11-12): single-game
 and streak records kept as games are played, how far each season has been
@@ -6,7 +6,7 @@ read, the streaks still going, and whether a league has been caught up
 (its backstory replayed and its played days read) once.
 """
 
-VERSION = 123
+VERSION = 125
 
 
 def upgrade(conn):

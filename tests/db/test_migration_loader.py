@@ -35,3 +35,23 @@ def test_load_migrations_no_duplicates():
     versions = [v for v, _ in migrations]
 
     assert len(versions) == len(set(versions)), "Duplicate migration versions found"
+
+
+def test_every_migration_has_its_own_version():
+    """Two migrations with one VERSION: a database records only one of them,
+    so the other never runs there, or the second insert into
+    schema_migrations fails (migrations 123-125, 2026-11-13)."""
+    import pkgutil
+    import importlib
+
+    import src.db.migration_files as files
+
+    seen: dict[int, str] = {}
+    for info in pkgutil.iter_modules(files.__path__):
+        if not info.name.startswith("migration_"):
+            continue
+        version = importlib.import_module(f"{files.__name__}.{info.name}").VERSION
+        assert version not in seen, (
+            f"{info.name} and {seen[version]} are both {version}"
+        )
+        seen[version] = info.name

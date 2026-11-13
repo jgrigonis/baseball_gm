@@ -1,11 +1,11 @@
-# src/db/migration_files/migration_123_catcher_pickoffs.py
+# src/db/migration_files/migration_124_catcher_pickoffs.py
 """
 Catcher pickoffs (Josh, 2026-11-12): the game engine now has catchers
 throwing behind runners (src/game/resolvers/catcher_pickoff.py). Each one
 the catcher gets is counted on his game, position and season lines.
 """
 
-VERSION = 123
+VERSION = 124
 
 
 def upgrade(conn):

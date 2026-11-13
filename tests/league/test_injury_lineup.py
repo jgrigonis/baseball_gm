@@ -157,3 +157,45 @@ def test_always_auto_fill_never_rebuilds(db_conn, team_setup):
         assert not injury_lineup.rebuild_if_needed(
             db_conn, league.id, t, None, hurt, hurt, {}
         )
+
+
+# ── Lineup Updates: Rebuild daily ─────────────────────────────────────────────
+
+
+def _daily_team(db_conn, team):
+    t = TeamInGame(TeamRepository(db_conn).get(team.id))
+    t.profile = ManagerProfile(lineup_updates="daily")
+    return t
+
+
+def test_rebuild_daily_saves_both_hands_then_keeps_them(db_conn, team_setup):
+    league, team, gm, hitters = team_setup
+    t = _daily_team(db_conn, team)
+    assert injury_lineup.update_lineups(db_conn, league.id, t, None, set(), set(), {})
+    first = {h: _saved(db_conn, gm, h) for h in ("R", "L")}
+    assert all(len(v) == 9 for v in first.values())
+    # Nothing new: the saved lineups stand
+    assert not injury_lineup.update_lineups(
+        db_conn, league.id, t, None, set(), set(), {}
+    )
+    assert {h: _saved(db_conn, gm, h) for h in ("R", "L")} == first
+
+
+def test_rebuild_daily_takes_out_the_injured(db_conn, team_setup):
+    league, team, gm, hitters = team_setup
+    t = _daily_team(db_conn, team)
+    injury_lineup.update_lineups(db_conn, league.id, t, None, set(), set(), {})
+    best = hitters[-1]
+    assert best.id in _saved(db_conn, gm, "R")
+    hurt = {best.id}
+    assert injury_lineup.update_lineups(db_conn, league.id, t, None, hurt, hurt, {})
+    assert best.id not in _saved(db_conn, gm, "R")
+
+
+def test_keep_mine_never_rebuilds_without_injury_lineup(db_conn, team_setup):
+    league, team, gm, hitters = team_setup
+    t = _game_team(db_conn, team, mode="fill")
+    assert not injury_lineup.update_lineups(
+        db_conn, league.id, t, None, set(), set(), {}
+    )
+    assert _saved(db_conn, gm, "R") == set()

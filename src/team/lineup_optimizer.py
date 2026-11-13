@@ -34,6 +34,13 @@ It works in two steps:
 Locked players (a person's partly filled lineup) keep their batting slot and
 position; only the gaps are solved.
 
+Keeping a lineup steady: given the lineup a team is playing now (keep),
+everyone already in it gets KEEP_BONUS points, a bit more at the position he
+plays now (KEEP_POSITION_BONUS), and a bit more in his own batting slot
+(KEEP_SLOT_BONUS). So a rebuild only swaps someone in, moves him or reorders
+the lineup when the change is clearly better, not for a near tie that the
+next game's stats would flip back (Josh, 2026-11-13).
+
 Platoons (section 5): given the hand of the starter the lineup faces, a hitter
 who bats from the same side loses PLATOON_PENALTY points of offense, in both
 steps. The platoon setting decides whether that's used: "none" ignores
@@ -81,6 +88,11 @@ PLATOON_PENALTY = 7.0
 # regular's by to take his spot.
 REGULAR_BONUS = 3.0
 PLATOON_SETTINGS = ("none", "vs-handedness", "aggressive")
+# How much better (in rating points) a change must be before a rebuild
+# makes it, when it's given the lineup being played now.
+KEEP_BONUS = 3.0
+KEEP_POSITION_BONUS = 2.0
+KEEP_SLOT_BONUS = 3.0
 
 # The role each batting slot plays in a lineup style, as weights on hitting
 # skills. Slots with no special role use OVERALL and are sorted by bat alone.
@@ -248,6 +260,7 @@ class LineupOptimizer:
         platoon: str = "none",
         form: dict[str, float] | None = None,
         defense: float = 1.0,
+        keep: dict[str, tuple[int, str]] | None = None,
     ) -> list[LineupSlot]:
         """Fill the empty slots of a lineup.
 
@@ -260,6 +273,9 @@ class LineupOptimizer:
         offense (by player id): how his season stats look to this GM
         (src/league/performance.py). defense multiplies how much a glove
         counts: above 1 for a glove-first GM, below for a bat-first one.
+        keep is the lineup being played now, {player_id: (batting slot,
+        position)}: its players stay put unless a change is clearly better
+        (KEEP_BONUS, KEEP_POSITION_BONUS, KEEP_SLOT_BONUS).
         """
         size = 9 if dh else 8
         positions = FIELD_POSITIONS + (["dh"] if dh else [])
@@ -296,15 +312,20 @@ class LineupOptimizer:
         # Step 1: who plays where.
         hand = vs_hand if platoon in ("vs-handedness", "aggressive") else None
         form = form or {}
+        keep = keep or {}
         bonus: dict[str, float] = dict(form)
+        for pid in keep:
+            bonus[pid] = bonus.get(pid, 0.0) + KEEP_BONUS
+        stay = {pid: pos for pid, (_, pos) in keep.items() if pos}
         if hand and platoon == "vs-handedness":
             everyday = LineupOptimizer.assign_positions(
                 pool,
                 open_positions,
                 must_play=set(must_play.values()),
-                bonus=form,
+                bonus=dict(bonus),
                 defense=defense,
                 style=style,
+                stay=stay,
             )
             for p, _ in everyday:
                 bonus[p.record.id] = bonus.get(p.record.id, 0) + REGULAR_BONUS
@@ -316,6 +337,7 @@ class LineupOptimizer:
             bonus=bonus,
             defense=defense,
             style=style,
+            stay=stay,
         )
 
         # Step 2: the new players' batting slots. Locked-without-position
@@ -330,7 +352,14 @@ class LineupOptimizer:
         open_slots = [i for i in range(size) if i not in by_slot]
         for i, (p, pos) in zip(
             open_slots,
-            LineupOptimizer.batting_order(newcomers, open_slots, style, hand, form),
+            LineupOptimizer.batting_order(
+                newcomers,
+                open_slots,
+                style,
+                hand,
+                form,
+                {pid: slot for pid, (slot, _) in keep.items()},
+            ),
         ):
             by_slot[i] = LineupSlot(p, pos)
 
@@ -377,11 +406,14 @@ class LineupOptimizer:
         bonus: dict[str, float] | None = None,
         defense: float = 1.0,
         style: str | None = None,
+        stay: dict[str, str] | None = None,
     ) -> list[tuple[PlayerInGame, str]]:
         """The best player at each position, all chosen together. bonus adds
-        to a player's value everywhere (by player id). Returns (player,
-        position) for each position."""
+        to a player's value everywhere (by player id); stay gives a player
+        KEEP_POSITION_BONUS more at the position he plays now. Returns
+        (player, position) for each position."""
         bonus = bonus or {}
+        stay = stay or {}
         if not positions:
             return []
         value = np.array(
@@ -389,6 +421,7 @@ class LineupOptimizer:
                 [
                     LineupOptimizer.position_value(p, pos, vs_hand, defense, style)
                     + bonus.get(p.record.id, 0)
+                    + (KEEP_POSITION_BONUS if stay.get(p.record.id) == pos else 0)
                     + (MUST_PLAY_BONUS if p in must_play else 0)
                     for pos in positions
                 ]
@@ -412,14 +445,18 @@ class LineupOptimizer:
         style: str,
         vs_hand: str | None = None,
         form: dict[str, float] | None = None,
+        slot_of: dict[str, int] | None = None,
     ) -> list[tuple[PlayerInGame, str]]:
         """Order players into these batting slots (0-based), top-down: each
         slot in turn takes the best fit for its role among those left,
         against today's starter if given. form (by player id) adds to a
         hitter's fit in every slot, so a hot hitter moves up the order and a
-        cold one moves down. Returns them in slot order."""
+        cold one moves down. slot_of is where each hitter bats now: he keeps
+        that slot unless someone fits it clearly better (KEEP_SLOT_BONUS).
+        Returns them in slot order."""
         roles = BATTING_ROLES[style]
         form = form or {}
+        slot_of = slot_of or {}
         left = sorted(players, key=lambda pp: pp[0].record.id)
         order = []
         for s in sorted(slots)[: len(left)]:
@@ -429,6 +466,7 @@ class LineupOptimizer:
                     LineupOptimizer.slot_fit(pp[0], roles[s])
                     - LineupOptimizer.matchup(pp[0], vs_hand)
                     + form.get(pp[0].record.id, 0.0)
+                    + (KEEP_SLOT_BONUS if slot_of.get(pp[0].record.id) == s else 0.0)
                 ),
             )
             left.remove(best)

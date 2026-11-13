@@ -34,6 +34,9 @@ PLAYOFF_ROTATION = ("3", "4", "same")
 TIRED_STARTERS = ("push", "standard", "protect")
 REST_DAYS = ("iron-man", "standard", "rest-often")
 STATS_VS_SCOUTING = (0, 25, 50, 75, 100)
+# Lineup updates: play the saved batting orders as they are, or rebuild and
+# save them before every game (src/league/injury_lineup.py).
+LINEUP_UPDATES = ("keep", "daily")
 # Injury lineup: auto-fill outs up to this many days, rebuild longer ones.
 INJURY_FILL_DAYS = (10, 7, 5, 3, 2, 1)
 INJURY_LINEUP = ("fill", *(f"fill-{d}" for d in INJURY_FILL_DAYS), "rebuild")
@@ -105,6 +108,9 @@ class ManagerProfile:
     # auto-fill his slot for the day, or rebuild them for outs longer than
     # some number of days, or for any out (INJURY_LINEUP).
     injury_lineup: str = "fill"
+    # Keep a person's saved batting orders, or rebuild them before every game,
+    # changing them only when a change is clearly better (LINEUP_UPDATES).
+    lineup_updates: str = "keep"
 
     @classmethod
     def from_row(cls, row: dict | None) -> ManagerProfile:
@@ -125,6 +131,7 @@ class ManagerProfile:
             "tired_starters": TIRED_STARTERS,
             "rest_days": REST_DAYS,
             "injury_lineup": INJURY_LINEUP,
+            "lineup_updates": LINEUP_UPDATES,
         }
         values = {k: row[k] for k, ok in allowed.items() if row.get(k) in ok}
         if row.get("skip_fifth_starter") is not None:

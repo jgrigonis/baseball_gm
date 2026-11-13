@@ -39,9 +39,11 @@ def test_rebuild_makes_a_full_lineup_of_eligible_hitters(db_conn, team_setup):
     assert pitcher.id not in ids(lineup)
 
 
-def test_autofill_keeps_players_already_in_the_lineup(db_conn, team_setup):
+def test_autofill_keeps_players_already_in_the_lineup(db_conn, factory, team_setup):
     league, team, hitters, *_ = team_setup
-    worst = hitters[0]  # rated 50, wouldn't make a rebuilt lineup
+    # Far below everyone else: a rebuild drops him even from the lineup on
+    # screen.
+    worst = factory.rated_player(team, league, 20, status="26man", name="Worst")
     current = [None] * 9
     current[4] = {"player_id": worst.id, "position": "ss"}
 
@@ -210,3 +212,33 @@ def test_rebuild_can_use_another_lineup_style(db_conn, team_setup, monkeypatch):
     autofill(db_conn, league.id, team.id, [None] * 9, rebuild=True)
     autofill(db_conn, league.id, team.id, [None] * 9, True, style="speed-first")
     assert seen == ["analytics", "speed-first"]
+
+
+def test_rebuild_keeps_a_close_call_from_the_lineup_on_screen(db_conn, team_setup):
+    """A hitter in the lineup now keeps his spot over a bench bat who's only
+    a little better: Rebuild changes the lineup for clearly better players,
+    not near ties (Josh, 2026-11-13)."""
+    league, team, hitters, *_ = team_setup
+    fresh = autofill(db_conn, league.id, team.id, [None] * 9, rebuild=True)
+    bench = [h for h in hitters if h.id not in ids(fresh)]
+    assert bench
+    close = max(bench, key=lambda h: hitters.index(h))
+    current = [dict(s) for s in fresh]
+    weakest = min(
+        (i for i, s in enumerate(current) if s["position"] != "dh"),
+        key=lambda i: next(
+            (hitters.index(h) for h in hitters if h.id == current[i]["player_id"]), 99
+        ),
+    )
+    out = current[weakest]["player_id"]
+    current[weakest] = {"player_id": close.id, "position": current[weakest]["position"]}
+
+    rebuilt = autofill(db_conn, league.id, team.id, current, rebuild=True)
+
+    assert close.id in ids(rebuilt)
+    assert out not in ids(rebuilt)
+    # The Rebuild All menu's own style starts clean, without the margin.
+    other = autofill(
+        db_conn, league.id, team.id, current, rebuild=True, style="power-first"
+    )
+    assert len(set(ids(other))) == 9

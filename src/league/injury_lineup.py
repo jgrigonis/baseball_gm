@@ -15,6 +15,12 @@
 # How long an out is counts the injury's days, plus the days he sits rusty
 # when Rest rusty players is on (rust fades twice as fast on days he doesn't
 # play). AI teams have no saved lineup and are built fresh every game.
+#
+# The Strategy tab's Lineup Updates setting can instead rebuild both batting
+# orders before every game (Rebuild daily, Josh 2026-11-13); then the Injury
+# Lineup setting has nothing left to do. Every rebuild here starts from the
+# lineup being played, so a player only moves or loses his spot when the
+# change is clearly better (LineupOptimizer KEEP_BONUS).
 
 from __future__ import annotations
 
@@ -56,12 +62,37 @@ def absence_key(team, eligible, hurt: set, out: set, rust: dict, lengths: dict) 
     return ",".join(sorted(entries))
 
 
+def update_lineups(
+    conn, league_id: str, team, eligible, hurt: set, out: set, rust: dict
+) -> bool:
+    """Before a game: this person's batting orders rebuilt and saved if
+    their Lineup Updates or Injury Lineup setting calls for it. True if
+    either changed."""
+    if team.profile.lineup_updates == "daily":
+        gm_id = _person(conn, league_id, team)
+        return bool(gm_id) and _rebuild(conn, gm_id, team, eligible, out)
+    return rebuild_if_needed(conn, league_id, team, eligible, hurt, out, rust)
+
+
+def _person(conn, league_id: str, team) -> str | None:
+    """The id of the person running this team, or None for an AI team."""
+    row = conn.execute(
+        """SELECT id FROM gms
+           WHERE team_id = %s AND league_id = %s AND NOT is_ai
+             AND fired_at IS NULL
+           LIMIT 1""",
+        (team.record.id, league_id),
+    ).fetchone()
+    return row["id"] if row else None
+
+
 def rebuild_if_needed(
     conn, league_id: str, team, eligible, hurt: set, out: set, rust: dict
 ) -> bool:
     """Rebuild and save this person's batting orders if their Injury Lineup
     setting calls for it today. hurt is who's injured today, out is hurt plus
-    anyone resting his rust, rust is who still has some. True if it rebuilt.
+    anyone resting his rust, rust is who still has some. True if the rebuild
+    changed either batting order.
     The first look after the setting changes only notes who's out."""
     if team.profile.rebuild_after_days is None:
         return False
@@ -91,7 +122,9 @@ def rebuild_if_needed(
 
 
 def _rebuild(conn, gm_id: str, team, eligible, out: set) -> bool:
-    """The Lineup tab's Rebuild for both hands, saved."""
+    """The Lineup tab's Rebuild for both hands, starting from the saved
+    batting orders so only clearly better changes are made, and saved. True
+    if either hand changed."""
     team._ensure_players_rated()
     hitters = [
         p
@@ -101,9 +134,19 @@ def _rebuild(conn, gm_id: str, team, eligible, out: set) -> bool:
         and (not eligible or p.id in eligible)
     ]
     profile = team.profile
+    repo = LineupPreferenceRepository(conn)
+    saved = repo.get_by_gm_id(gm_id)
+    playing = {p.id for p in hitters}
     lineups = {}
     try:
         for hand in HANDS:
+            # A hand never saved plays the other one (get_preferences).
+            now = saved[hand] or saved["L" if hand == "R" else "R"]
+            keep = {
+                s["player_id"]: (s["batting_order"] - 1, s.get("position") or "")
+                for s in now
+                if s["player_id"] in playing and 1 <= s["batting_order"] <= 9
+            }
             slots = LineupOptimizer.fill(
                 [None] * 9,
                 hitters,
@@ -113,6 +156,7 @@ def _rebuild(conn, gm_id: str, team, eligible, out: set) -> bool:
                 platoon=profile.platoon_usage,
                 form=getattr(team, "form", None) or None,
                 defense=getattr(team, "defense_weight", 1.0),
+                keep=keep,
             )
             lineups[hand] = [
                 {
@@ -124,7 +168,16 @@ def _rebuild(conn, gm_id: str, team, eligible, out: set) -> bool:
             ]
     except ValueError:
         return False  # too few hitters: today's fill will cope
-    repo = LineupPreferenceRepository(conn)
+    changed = False
     for hand, lineup in lineups.items():
-        repo.save_preferences(gm_id, lineup, hand)
-    return True
+        if _key(lineup) != _key(saved[hand]):
+            repo.save_preferences(gm_id, lineup, hand)
+            changed = True
+    return changed
+
+
+def _key(lineup: list[dict]) -> list[tuple]:
+    """A batting order to compare: (slot, player, position) for each spot."""
+    return sorted(
+        (s["batting_order"], s["player_id"], s.get("position") or "") for s in lineup
+    )

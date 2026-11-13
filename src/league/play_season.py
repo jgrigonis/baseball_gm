@@ -720,10 +720,11 @@ def _play_game(
     # that hand, and the platoon setting, go by his throwing hand.
     home_vs = _throws(away_team, away_starter_id)
     away_vs = _throws(home_team, home_starter_id)
-    # Strategy tab "Injury Lineup": a person whose hitter is out long enough
-    # gets both batting orders rebuilt and saved (src/league/injury_lineup.py).
+    # Strategy tab "Lineup Updates" (Rebuild daily) and "Injury Lineup": a
+    # person's batting orders rebuilt and saved before the game when either
+    # calls for it (src/league/injury_lineup.py).
     for team, eligible in ((home_team, home_eligible), (away_team, away_eligible)):
-        injury_lineup.rebuild_if_needed(
+        injury_lineup.update_lineups(
             conn, league_id, team, eligible, hurt_ids, out_ids, rust
         )
     lpr = LineupPreferenceRepository(conn)
