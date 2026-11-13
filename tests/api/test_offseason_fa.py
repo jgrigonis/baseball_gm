@@ -563,3 +563,64 @@ def test_a_full_minors_skips_the_bid(lg, monkeypatch):
         lg.db, lg.league.id, lg.mine.id, pid, _ask(lg, pid).salary, 2
     )
     assert offseason_fa.settle(lg.db, lg.league.id) == []
+
+
+# ── Veterans who won't re-sign (Josh, 2026-11-13) ─────────────────────────────
+
+
+def test_refusals_are_rare_and_only_for_miserable_or_fame_driven_players():
+    from src.player import happiness as hp
+
+    fame = hp.Personality("Spotlight Seeker", {d: 20 for d in hp.DRIVES} | {"fame": 90},
+                          {"ego": 50, "temper": 50, "loyalty": 50})  # fmt: skip
+    plain_guy = hp.Personality("Easygoing", {d: 20 for d in hp.DRIVES},
+                               {"ego": 50, "temper": 50, "loyalty": 50})  # fmt: skip
+    assert hp.refuses_to_resign(-0.9, plain_guy, 3, 0.1) == "miserable"
+    assert hp.refuses_to_resign(-0.9, plain_guy, 3, 0.8) is None
+    assert hp.refuses_to_resign(-0.5, plain_guy, 1, 0.0) is None  # just unhappy
+    assert hp.refuses_to_resign(0.0, fame, 1, 0.1) == "fame"
+    assert hp.refuses_to_resign(0.0, fame, 3, 0.1) == "fame"
+    assert hp.refuses_to_resign(0.0, fame, 4, 0.1) is None  # a big market
+    assert hp.refuses_to_resign(0.0, fame, 1, 0.6) is None
+    assert hp.refuses_to_resign(0.5, fame, 1, 0.1) is None  # happy there
+    assert hp.refuses_to_resign(0.0, plain_guy, 1, 0.1) is None
+
+
+def test_a_refusing_veteran_cant_be_re_signed_and_leaves(lg, monkeypatch):
+    monkeypatch.setattr(offseason_fa.hp, "refuses_to_resign", lambda *a: "miserable")
+    vet = _expiring(lg, lg.mine, 2021, 6, level=80)
+    young = _expiring(lg, lg.mine, 2024, 3)  # under team control: never refuses
+    ai_vet = _expiring(lg, lg.ai, 2021, 6, level=80)
+    rows = {r["player_id"]: r for r in offseason_fa.expiring(lg.db, lg.league.id, 2026)}
+    assert rows[vet]["refuses"] == "miserable"
+    assert rows[young]["refuses"] is None
+    with pytest.raises(OffseasonFAError, match="any price"):
+        offseason_fa.choose(lg.db, lg.league.id, lg.mine.id, vet, "resign")
+    view = {
+        v["player_id"]: v
+        for v in offseason_fa.expiring_view(lg.db, lg.league.id, lg.mine.id)
+    }
+    assert view[vet]["fate"] == "go" and "any price" in view[vet]["refuses_text"]
+    # Re-sign All skips him.
+    plan = offseason_fa.resign_all_plan(lg.db, lg.league.id, lg.mine.id)
+    assert plan["count"] == 1
+
+    offseason_fa.close_window(lg.db, lg.league.id)
+    assert lg.status.get_status(vet) == "free_agent"
+    assert lg.status.get_status(ai_vet) == "free_agent"  # AI can't keep him
+    assert lg.contracts.active(young, 2027)["start_year"] == 2027
+    story = _news(lg, f"fa-leave:2026:{vet}")
+    assert "refused to re-sign" in plain(story[0]["body"])
+
+    # His old team can't win him back next season.
+    assert free_agents.refused(lg.db, lg.league.id, lg.mine.id, vet, 2027)
+    assert not free_agents.refused(lg.db, lg.league.id, lg.other.id, vet, 2027)
+    assert not free_agents.refused(lg.db, lg.league.id, lg.mine.id, vet, 2028)
+
+    # Bidding next season (the draft): his old team's bid is turned away.
+    nxt = lg.factory.season(year=2027)
+    lg.factory.league_season(lg.league, nxt)
+    _set_state(lg, "draft")
+    with pytest.raises(OffseasonFAError, match="refused"):
+        offseason_fa.place_bid(lg.db, lg.league.id, lg.mine.id, vet, 9_000_000, 2)
+    offseason_fa.place_bid(lg.db, lg.league.id, lg.other.id, vet, 9_000_000, 2)

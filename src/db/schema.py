@@ -1731,6 +1731,20 @@ CREATE INDEX IF NOT EXISTS idx_payroll_adjustments_team ON payroll_adjustments(t
 CREATE INDEX IF NOT EXISTS idx_payroll_adjustments_league ON payroll_adjustments(league_id);
 CREATE INDEX IF NOT EXISTS idx_payroll_adjustments_player ON payroll_adjustments(player_id);
 
+-- Veterans who won't re-sign at any price (migration 128,
+-- src/player/happiness.py refuses_to_resign): year = the season his deal
+-- ran out; the team he left can't sign him back for the next season.
+CREATE TABLE IF NOT EXISTS resign_refusals (
+    league_id  TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    player_id  TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    team_id    TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    year       INTEGER NOT NULL,
+    reason     TEXT NOT NULL,              -- miserable, fame
+    PRIMARY KEY (player_id, year)
+);
+CREATE INDEX IF NOT EXISTS idx_resign_refusals_league ON resign_refusals(league_id);
+CREATE INDEX IF NOT EXISTS idx_resign_refusals_team ON resign_refusals(team_id);
+
 CREATE TABLE IF NOT EXISTS waivers (          -- migration 084 (src/api/services/waivers.py)
     id            SERIAL PRIMARY KEY,
     league_id     TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,

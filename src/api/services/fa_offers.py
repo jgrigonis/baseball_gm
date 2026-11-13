@@ -366,6 +366,8 @@ def offer(
         )
         if frozen:
             raise OfferError(_frozen_text(frozen, week))
+        if free_agents.refused(conn, league_id, team_id, player_id, year):
+            raise OfferError(free_agents.REFUSED)
         refusal = BudgetRepository(conn).refusal(league_id, team_id, year, salary)
         if refusal:
             raise OfferError(refusal)

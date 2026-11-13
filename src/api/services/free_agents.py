@@ -329,6 +329,22 @@ def budget_warning(
     )
 
 
+def refused(conn, league_id: str, team_id: str, player_id: str, year: int) -> bool:
+    """Whether he refused to re-sign with this team when his deal ran out
+    the season before `year`: the team can't sign him for `year`."""
+    return bool(
+        conn.execute(
+            """SELECT 1 FROM resign_refusals
+               WHERE league_id = %s AND team_id = %s AND player_id = %s
+                 AND year = %s""",
+            (league_id, team_id, player_id, year - 1),
+        ).fetchone()
+    )
+
+
+REFUSED = "He refused to re-sign with you, so he won't sign with you this season."
+
+
 def sign(
     conn, league_id: str, team_id: str, player_id: str, deal: ct.Deal | None = None
 ) -> dict:
@@ -351,6 +367,8 @@ def sign(
         ):
             raise FreeAgentError("He isn't a free agent.")
         _not_on_waivers(conn, player_id)
+        if refused(conn, league_id, team_id, player_id, year):
+            raise FreeAgentError(REFUSED)
         minors = len(status_repo.get_by_team_and_status(team_id, "minors"))
         if minors >= MINORS_LIMIT:
             raise FreeAgentError(
