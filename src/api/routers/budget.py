@@ -802,6 +802,12 @@ def _render(
     )
     ctx["year"] = year
     ctx["money"] = standing
+    # Salary split by days for players who changed teams this season
+    # (src/league/prorate.py), already in the payroll.
+    moved = ContractRepository(db).adjustments(team_id, year) if standing else 0
+    ctx["moves_text"] = (
+        ("+" if moved > 0 else "-") + _money(abs(moved)) if moved else None
+    )
     past = budgets.history(league_id, team_id) if standing else []
     if standing:
         from src.player.contracts import minors_salary

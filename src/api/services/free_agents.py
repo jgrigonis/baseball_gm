@@ -40,6 +40,7 @@ from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.league import budget as bg
+from src.league import prorate
 from src.league.offseason.roster_trimmer import MINORS_LIMIT
 from src.player import contracts as ct
 from src.player.player_value import role_rating
@@ -362,7 +363,13 @@ def sign(
             market_discount(conn, league_id),
             price_shifts(conn, league_id, year),
         )
-        refusal = BudgetRepository(conn).refusal(league_id, team_id, year, deal.salary)
+        # Mid-season only the rest of the season is paid (src/league/prorate.py).
+        refusal = BudgetRepository(conn).refusal(
+            league_id,
+            team_id,
+            year,
+            round(deal.salary * prorate.still_to_pay(conn, league_id)),
+        )
         if refusal:
             raise FreeAgentError(refusal)
         released_by = move_news.last_released_by(conn, league_id, player_id)
@@ -370,6 +377,15 @@ def sign(
         team_repo.add_player(team_id, player_id)
         status_repo.set_status(player_id, "minors")
         contracts = ContractRepository(conn)
+        prorate.signed_mid_season(
+            conn,
+            league_id,
+            player_id,
+            team_id,
+            deal.salary,
+            year,
+            contracts.released_owed(player_id, year),
+        )
         contracts.sign_free_agent(player_id, league_id, team_id, deal, year)
         # Full offset: his new salary comes off what old teams still owe.
         contracts.apply_offset(player_id, year, deal.salary, year + deal.years - 1)

@@ -295,3 +295,51 @@ class TestPositionAwards:
             for r in NewsRepository(db_conn).feed(lg["league"].id, limit=100)
         ]
         assert "The 2026 Silver Sluggers: 1 for GM Josh's Captains" in headlines
+
+
+class TestTradedWinner:
+    """A winner traded away is named with the team he finished with, plus a
+    note on his games for the team the award counts for (most games)."""
+
+    @pytest.fixture
+    def traded(self, db_conn, lg, played):
+        games = db_conn.execute(
+            "SELECT id, game_date FROM games WHERE season_id = %s ORDER BY game_date",
+            (lg["season"].id,),
+        ).fetchall()
+        for i, g in enumerate(games):
+            team, opp = (
+                (lg["mine"], lg["theirs"]) if i < 4 else (lg["theirs"], lg["mine"])
+            )
+            db_conn.execute(
+                """INSERT INTO player_game_stats (game_id, player_id, team_id,
+                       opponent_team_id, bat_ab, bat_hits)
+                   VALUES (%s, %s, %s, %s, 4, 2)""",
+                (g["id"], played["star"], team.id, opp.id),
+            )
+        awards.decide_league(db_conn, lg["league"].id)
+
+    def test_for_season(self, db_conn, lg, played, traded):
+        rows = awards.for_season(db_conn, lg["season"].id)
+        mvp = next(r for r in rows if r["award"] == "mvp")
+        assert mvp["team_id"] == lg["mine"].id  # credit stays
+        assert mvp["finished_team_id"] == lg["theirs"].id
+        assert (mvp["games_with"], mvp["games"]) == (4, 6)
+        assert awards.moved_note(mvp) == "4 games with Amsterdam"
+        cy = next(r for r in rows if r["award"] == "cy_young")
+        assert cy["finished_team_id"] is None  # no game rows: unchanged
+
+    def test_news_and_summary(self, db_conn, lg, played, traded):
+        news.update_league(db_conn, lg["league"].id)
+        stories = {
+            plain(r["headline"]): plain(r["body"])
+            for r in NewsRepository(db_conn).feed(lg["league"].id, limit=100)
+            if r["kind"] == "season_award"
+        }
+        body = stories["Ruben Ruiz is the 2026 MVP"]
+        assert body.startswith("Ruben Ruiz of the Tokyo Samurai wins the MVP")
+        assert "4 of his 6 games came with the Amsterdam Captains." in body
+        shown = season_awards(db_conn, lg["season"].id, lg["mine"].id)
+        mvp = shown[0]["winners"][0]
+        assert mvp["team"] == "Tokyo Samurai (4 games with Amsterdam)"
+        assert mvp["is_mine"]

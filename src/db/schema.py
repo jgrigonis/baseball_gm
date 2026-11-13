@@ -1712,6 +1712,25 @@ CREATE TABLE IF NOT EXISTS player_contracts (
 CREATE INDEX IF NOT EXISTS idx_player_contracts_league ON player_contracts(league_id);
 CREATE INDEX IF NOT EXISTS idx_player_contracts_team ON player_contracts(team_id);
 
+-- Salaries split by days for in-season moves (src/league/prorate.py,
+-- migration 127): a trade, waiver claim or free agent signing after Opening
+-- Day adds the share of a salary for the part of the season a team did (+)
+-- or didn't (-) have the player. ContractRepository.payroll adds them up.
+CREATE TABLE IF NOT EXISTS payroll_adjustments (
+    id         BIGSERIAL PRIMARY KEY,
+    league_id  TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    team_id    TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    year       INTEGER NOT NULL,
+    player_id  TEXT REFERENCES players(id) ON DELETE SET NULL,
+    amount     BIGINT NOT NULL,
+    reason     TEXT NOT NULL,              -- trade, claim, signed, offset
+    played     REAL NOT NULL,              -- share of the regular season played at the move
+    created_at TEXT NOT NULL DEFAULT (NOW())
+);
+CREATE INDEX IF NOT EXISTS idx_payroll_adjustments_team ON payroll_adjustments(team_id, year);
+CREATE INDEX IF NOT EXISTS idx_payroll_adjustments_league ON payroll_adjustments(league_id);
+CREATE INDEX IF NOT EXISTS idx_payroll_adjustments_player ON payroll_adjustments(player_id);
+
 CREATE TABLE IF NOT EXISTS waivers (          -- migration 084 (src/api/services/waivers.py)
     id            SERIAL PRIMARY KEY,
     league_id     TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,

@@ -36,6 +36,7 @@ from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.waiver_repo import WaiverRepository
+from src.league import prorate
 from src.league.offseason.roster_trimmer import MINORS_LIMIT
 from src.player import contracts as ct
 
@@ -108,9 +109,9 @@ def _why_not(conn, league_id: str, team_id: str, deal, year: int) -> str | None:
     minors = len(PlayerStatusRepository(conn).get_by_team_and_status(team_id, "minors"))
     if minors >= MINORS_LIMIT:
         return f"Your minors are full ({MINORS_LIMIT}). Release someone first."
-    return BudgetRepository(conn).refusal(
-        league_id, team_id, year, _salary_now(deal, year)
-    )
+    # Mid-season only the rest of the season is paid (src/league/prorate.py).
+    added = round(_salary_now(deal, year) * prorate.still_to_pay(conn, league_id))
+    return BudgetRepository(conn).refusal(league_id, team_id, year, added)
 
 
 def deal_view(deal: dict | None, year: int) -> dict:
@@ -213,8 +214,15 @@ def clear(
         deal = ContractRepository(conn).released_deal(pid, waiver["from_team_id"])
         if _why_not(conn, league_id, team_id, deal, year):
             continue
-        ContractRepository(conn).claim(pid, waiver["from_team_id"], team_id)
+        claimed = ContractRepository(conn).claim(pid, waiver["from_team_id"], team_id)
         TeamRepository(conn).add_player(team_id, pid)
+        # Mid-season, the team that let him go keeps his salary for the
+        # season played so far (src/league/prorate.py).
+        if claimed and claimed["guaranteed"]:
+            prorate.changed_teams(
+                conn, league_id, pid, waiver["from_team_id"], team_id,
+                claimed["salary"], year, "claim",
+            )  # fmt: skip
         PlayerStatusRepository(conn).set_status(pid, "minors")
         repo.close(waiver["id"], team_id)
         if player:

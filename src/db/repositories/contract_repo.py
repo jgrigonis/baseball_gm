@@ -140,7 +140,8 @@ class ContractRepository:
     def payroll(self, team_id: str, year: int) -> int:
         """What the team owes this season: the deals of its 40-man and the
         guaranteed deals of the rest it holds, plus dead money for players
-        it released."""
+        it released, with each salary split by days for players who changed
+        teams during the season (src/league/prorate.py)."""
         row = self.conn.execute(
             f"""
             SELECT COALESCE(SUM(c.salary), 0) AS total
@@ -161,7 +162,33 @@ class ContractRepository:
                 year,
             ),
         ).fetchone()
-        return int(row["total"]) + self.dead_money(team_id, year)
+        return (
+            int(row["total"])
+            + self.dead_money(team_id, year)
+            + self.adjustments(team_id, year)
+        )
+
+    def adjustments(self, team_id: str, year: int) -> int:
+        """This season's payroll adjustments for in-season moves: the share
+        of a salary for the part of the season the team did (+) or didn't
+        (-) have the player (src/league/prorate.py)."""
+        row = self.conn.execute(
+            """SELECT COALESCE(SUM(amount), 0) AS total FROM payroll_adjustments
+               WHERE team_id = %s AND year = %s""",
+            (team_id, year),
+        ).fetchone()
+        return int(row["total"])
+
+    def released_owed(self, player_id: str, year: int) -> list[tuple[str, int]]:
+        """(team, salary) for each team still paying him this season from a
+        guaranteed deal it released."""
+        rows = self.conn.execute(
+            """SELECT released_team_id, salary FROM player_contracts
+               WHERE player_id = %s AND guaranteed AND released_team_id IS NOT NULL
+                 AND released_year <= %s AND start_year + years > %s""",
+            (player_id, year, year),
+        ).fetchall()
+        return [(r["released_team_id"], r["salary"]) for r in rows]
 
     def minor_league_pay(
         self, team_ids, year: int, each: int = ct.MINORS_SALARY

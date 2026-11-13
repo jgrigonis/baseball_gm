@@ -461,9 +461,9 @@ def position_awards(db, season_id: str, my_team_id: str | None) -> list[dict]:
             by_pos.setdefault(r["position"], {})[r["scope"]] = {
                 "player_id": r["player_id"],
                 "name": f"{r['first_name']} {r['last_name']}",
-                "team": f"{r['city']} {r['mascot']}",
+                "team": _award_team(r),
                 "line": r["line"].split(", ", 1)[-1],
-                "is_mine": bool(my_team_id and r["team_id"] == my_team_id),
+                "is_mine": _award_mine(r, my_team_id),
             }
         award = awards_mod.BY_KEY[key]
         out.append(
@@ -517,12 +517,28 @@ def season_awards(db, season_id: str, my_team_id: str | None) -> list[dict]:
                 else "",
                 "player_id": r["player_id"],
                 "name": who,
-                "team": f"{r['city']} {r['mascot']}" if r["city"] else "",
+                "team": _award_team(r) if r["city"] else "",
                 "line": r["line"],
-                "is_mine": bool(my_team_id and r["team_id"] == my_team_id),
+                "is_mine": _award_mine(r, my_team_id),
             }
         )
     return out
+
+
+def _award_team(r: dict) -> str:
+    """The team a winner is listed with: the one he finished the season
+    with, and his games for the team the award counts for when that's
+    another (awards_service.for_season)."""
+    if r.get("finished_team_id"):
+        note = awards_service.moved_note(r)
+        return f"{r['finished_city']} {r['finished_mascot']} ({note})"
+    return f"{r['city']} {r['mascot']}"
+
+
+def _award_mine(r: dict, my_team_id: str | None) -> bool:
+    """Whether the winner played for my team: the team the award counts
+    for, or the one he finished with."""
+    return bool(my_team_id) and my_team_id in (r["team_id"], r.get("finished_team_id"))
 
 
 def retirement_context(
