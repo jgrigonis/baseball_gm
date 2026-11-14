@@ -71,17 +71,27 @@ def news_context(
     season_id: str | None = None,
     mine: bool = False,
     before_id: int | None = None,
+    gm_id: str | None = None,
+    hidden: bool = False,
 ) -> dict:
+    """With `gm_id`, the GM's hidden stories and filtered-out kinds are
+    left out; `hidden` shows just the stories they hid, whatever their kind,
+    to bring back."""
     repo = NewsRepository(db)
     seasons = repo.seasons(league_id)
     if season_id is None and seasons:
         season_id = seasons[0]["id"]
+    hidden = bool(hidden and gm_id)
+    kinds_off = repo.hidden_kinds(gm_id) if gm_id else []
     stories = repo.feed(
         league_id,
         season_id=season_id,
         team_id=my_team_id if mine and my_team_id else None,
         limit=PAGE + 1,
         before_id=before_id,
+        gm_id=gm_id,
+        hidden=hidden,
+        skip_kinds=() if hidden else kinds_off,
     )
     more = len(stories) > PAGE
     stories = stories[:PAGE]
@@ -100,12 +110,32 @@ def news_context(
         "news_mine": mine,
         "news_more_before": stories[-1]["id"] if more and stories else None,
         "news_newest_id": repo.newest_id(league_id),
+        "news_can_hide": bool(gm_id),
+        "news_hidden_view": hidden,
+        "news_hidden_count": (
+            repo.hidden_count(league_id, gm_id, season_id) if gm_id else 0
+        ),
+        "news_kinds": [
+            {"kind": k, "label": label, "icon": KIND_ICONS[k], "on": k not in kinds_off}
+            for k, label in sorted(KIND_LABELS.items(), key=lambda kv: kv[1])
+        ],
+        "news_kinds_off": sum(1 for k in kinds_off if k in KIND_LABELS),
     }
 
 
-def headlines(db, league_id: str, my_team_id: str | None) -> list[dict]:
-    """The newest big stories, for the top of the Standings tab."""
-    stories = NewsRepository(db).feed(league_id, min_weight=2, limit=HEADLINES)
+def headlines(
+    db, league_id: str, my_team_id: str | None, gm_id: str | None = None
+) -> list[dict]:
+    """The newest big stories, for the top of the Standings tab, leaving out
+    what the GM hid or filtered out on the News tab."""
+    repo = NewsRepository(db)
+    stories = repo.feed(
+        league_id,
+        min_weight=2,
+        limit=HEADLINES,
+        gm_id=gm_id,
+        skip_kinds=repo.hidden_kinds(gm_id) if gm_id else (),
+    )
     return _items(db, league_id, stories, my_team_id)
 
 

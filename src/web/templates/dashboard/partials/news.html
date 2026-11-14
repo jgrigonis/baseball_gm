@@ -3,7 +3,8 @@
 <div style="position:sticky;top:0;z-index:10;background:var(--bg);
             padding:12px 24px;border-bottom:1px solid var(--border);
             display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-  <h1 class="page-title" style="margin-right:auto;">League News</h1>
+  <h1 class="page-title" style="margin-right:auto;">{% if news_hidden_view %}Hidden Stories{% else %}League News{% endif %}</h1>
+  {% set news_base = "/leagues/" ~ league_id ~ "/headlines?mine=" ~ (1 if news_mine else 0) ~ ("&season_id=" ~ news_season_id if news_season_id else "") %}
   {% if team_id and not is_viewer %}
   <div class="news-switch" role="group" aria-label="Which stories">
     {% for value, text in [(0, 'All'), (1, 'My team')] %}
@@ -22,18 +23,95 @@
     {% endfor %}
   </select>
   {% endif %}
+  {% if news_can_hide %}
+  {% if news_hidden_view %}
+  <a class="news-switch-btn news-back" href="{{ news_base }}" hx-get="{{ news_base }}"
+     hx-target="#tab-content" hx-push-url="true">← Back to the news</a>
+  {% else %}
+  <a class="news-switch-btn news-hidden-link" id="news-hidden-link" href="{{ news_base }}&hidden=1"
+     hx-get="{{ news_base }}&hidden=1" hx-target="#tab-content" hx-push-url="true"
+     {% if not news_hidden_count %}hidden{% endif %}>Hidden (<span id="news-hidden-n">{{ news_hidden_count }}</span>)</a>
+  <details class="news-filter" id="news-filter">
+    <summary class="news-switch-btn{% if news_kinds_off %} active{% endif %}">Filter{% if news_kinds_off %} ({{ news_kinds_off }} off){% endif %}</summary>
+    <form class="news-filter-panel" onchange="newsSetFilter(this)">
+      <div class="news-filter-actions">
+        <button type="button" class="news-switch-btn news-filter-btn" onclick="newsFilterAll(this.form, true)">All on</button>
+        <button type="button" class="news-switch-btn news-filter-btn" onclick="newsFilterAll(this.form, false)">All off</button>
+      </div>
+      {% for k in news_kinds %}
+      <label class="news-filter-row"><input type="checkbox" name="kind" value="{{ k.kind }}" {% if k.on %}checked{% endif %}>
+        <span aria-hidden="true">{{ k.icon }}</span> {{ k.label }}</label>
+      {% endfor %}
+    </form>
+  </details>
+  {% endif %}
+  {% endif %}
 </div>
 
 <div class="news-feed">
   {% if not news_days %}
   <div style="padding:48px 0;text-align:center;font-family:var(--font-mono);
               font-size:13px;color:var(--text-dim);">
-    {% if news_mine %}No stories about your team yet.{% else %}No news yet. Stories show up here as the league plays: trades, streaks, milestones, injuries, the All-Star break and the playoffs.{% endif %}
+    {% if news_hidden_view %}No hidden stories{% if news_seasons|length > 1 %} this season{% endif %}. The × on a story hides it.{% elif news_kinds_off %}No stories. {{ news_kinds_off }} kind{{ 's' if news_kinds_off != 1 }} of story {{ 'are' if news_kinds_off != 1 else 'is' }} filtered out.{% elif news_mine %}No stories about your team yet.{% else %}No news yet. Stories show up here as the league plays: trades, streaks, milestones, injuries, the All-Star break and the playoffs.{% endif %}
   </div>
   {% else %}
   {% include "dashboard/partials/_news_page.html" %}
   {% endif %}
 </div>
+
+{% if news_can_hide %}
+<script>
+// The x on a story hides it (and Show again brings it back); the filter
+// turns whole kinds of story off. Both are saved for this GM.
+window.newsHide = function (btn, hide) {
+  const story = btn.closest('.news-story');
+  const id = story && story.dataset.newsId;
+  if (!id) return;
+  fetch('/leagues/{{ league_id }}/headlines/' + id + '/hide', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({hidden: hide}),
+  }).then(r => {
+    if (!r.ok) throw new Error();
+    const day = story.closest('.news-day');
+    story.remove();
+    if (day && !day.querySelector('.news-story')) day.remove();
+    const n = document.getElementById('news-hidden-n');
+    if (n) {
+      n.textContent = Math.max(0, (+n.textContent || 0) + (hide ? 1 : -1));
+      document.getElementById('news-hidden-link').hidden = n.textContent === '0';
+    }
+    gmToast(hide ? 'Story hidden. Hidden at the top brings it back.' : 'Story back in the news', 'ok');
+  }).catch(() => gmToast("Couldn't save that. Try again.", 'err'));
+};
+window.newsFilterAll = function (form, on) {
+  form.querySelectorAll('input[name=kind]').forEach(b => { b.checked = on; });
+  newsSetFilter(form);
+};
+window.newsSetFilter = function (form) {
+  const off = [...form.querySelectorAll('input[name=kind]')].filter(b => !b.checked).map(b => b.value);
+  clearTimeout(window._newsFilterTimer);
+  // A few quick clicks save once.
+  window._newsFilterTimer = setTimeout(() => {
+    fetch('/leagues/{{ league_id }}/headlines/filter', {
+      method: 'PUT', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({kinds_off: off}),
+    }).then(r => {
+      if (!r.ok) throw new Error();
+      try { sessionStorage.setItem('newsFilterOpen', '1'); } catch (e) {}
+      htmx.ajax('GET', '{{ news_base }}', {target: '#tab-content', swap: 'innerHTML'});
+    }).catch(() => gmToast("Couldn't save the filter. Try again.", 'err'));
+  }, 400);
+};
+// Keep the filter open across the reload its own change makes.
+try {
+  if (sessionStorage.getItem('newsFilterOpen')) {
+    sessionStorage.removeItem('newsFilterOpen');
+    const f = document.getElementById('news-filter');
+    if (f) f.open = true;
+  }
+} catch (e) {}
+</script>
+{% endif %}
 
 {% if not is_viewer %}
 {# Opening the tab marks the stories seen. #}

@@ -6,11 +6,11 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Body, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from src.api.dependencies import DB, GM, GMOrViewer, IsHTMX, User
-from src.api.view_models.news import news_context
+from src.api.view_models.news import KIND_LABELS, news_context
 from src.config import settings
 from src.db.repositories.news_repo import NewsRepository
 from src.web.utils import _shell_ctx, render, tab_response
@@ -34,8 +34,9 @@ def news_tab(
     season_id: str | None = None,
     mine: int | None = None,
     before: int | None = None,
+    hidden: int | None = None,
 ):
-    """``mine`` shows only stories about the GM's team; ``before`` (a story
+    """``hidden`` lists the stories the GM hid, to bring back. ``mine`` shows only stories about the GM's team; ``before`` (a story
     id) is the next page, older than that story. The All / My team choice
     is remembered per league in a cookie, so the live refresh after each
     sim day (which reloads the plain tab URL) keeps it."""
@@ -46,8 +47,16 @@ def news_tab(
         if chosen is not None
         else request.cookies.get(_mine_cookie(league_id)) == "1"
     )
+    gm_id = None if gm.get("is_viewer") else gm.get("id")
     ctx_news = news_context(
-        db, league_id, my_team_id, season_id or None, wanted, before
+        db,
+        league_id,
+        my_team_id,
+        season_id or None,
+        wanted,
+        before,
+        gm_id=gm_id,
+        hidden=bool(hidden),
     )
     if not gm.get("is_viewer") and gm.get("id"):
         NewsRepository(db).mark_seen(gm["id"], ctx_news["news_newest_id"])
@@ -84,3 +93,26 @@ def news_unseen(league_id: str, db: DB, gm: GM):
     """How many stories the GM hasn't seen: the News tab's badge, refreshed
     after each sim."""
     return JSONResponse({"count": NewsRepository(db).count_unseen(league_id, gm["id"])})
+
+
+@router.post("/leagues/{league_id}/headlines/{news_id}/hide")
+def hide_story(
+    league_id: str, news_id: int, db: DB, gm: GM, hidden: bool = Body(True, embed=True)
+):
+    """The x on a story hides it from the GM's News tab (and the Standings
+    headlines); ``hidden`` false brings it back."""
+    repo = NewsRepository(db)
+    if repo.story_league(news_id) != league_id:
+        raise HTTPException(404, "No such story")
+    repo.set_hidden(gm["id"], news_id, hidden)
+    db.commit()
+    return JSONResponse({"hidden_count": repo.hidden_count(league_id, gm["id"], None)})
+
+
+@router.put("/leagues/{league_id}/headlines/filter")
+def set_filter(league_id: str, db: DB, gm: GM, kinds_off: list[str] = Body(embed=True)):
+    """The kinds of story the GM turned off on the News tab."""
+    off = [k for k in kinds_off if k in KIND_LABELS]
+    NewsRepository(db).set_hidden_kinds(gm["id"], off)
+    db.commit()
+    return JSONResponse({"kinds_off": sorted(set(off))})

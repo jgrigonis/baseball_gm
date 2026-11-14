@@ -60,11 +60,25 @@ class NewsRepository:
         min_weight: int = 1,
         limit: int = 60,
         before_id: int | None = None,
+        gm_id: str | None = None,
+        hidden: bool = False,
+        skip_kinds: list[str] | tuple[str, ...] = (),
     ) -> list[dict]:
         """Stories newest first: by league date, the biggest first on a day,
-        then the order written."""
+        then the order written. With `gm_id`, the stories that GM hid with
+        the x are left out, or with `hidden` they're the only ones shown;
+        `skip_kinds` leaves out whole kinds (the News tab's filter)."""
         where = ["league_id = %s", "weight >= %s"]
         args: list = [league_id, min_weight]
+        if gm_id:
+            where.append(
+                ("" if hidden else "NOT ") + "EXISTS (SELECT 1 FROM news_hidden h"
+                " WHERE h.gm_id = %s AND h.news_id = league_news.id)"
+            )
+            args.append(gm_id)
+        if skip_kinds:
+            where.append("NOT (kind = ANY(%s))")
+            args.append(list(skip_kinds))
         if season_id:
             where.append("season_id = %s")
             args.append(season_id)
@@ -107,14 +121,16 @@ class NewsRepository:
 
     def count_unseen(self, league_id: str, gm_id: str) -> int:
         """Stories since the GM last opened the News tab. Notes (weight 1)
-        don't count, so the badge is for news worth a look."""
+        don't count, so the badge is for news worth a look. Nor do the kinds
+        they filtered out."""
         row = self.conn.execute(
-            """SELECT COUNT(*) AS n FROM league_news n
-               WHERE n.league_id = %s AND n.weight >= 2
-                 AND n.id > COALESCE((SELECT news_seen_id FROM gms WHERE id = %s), 0)""",
-            (league_id, gm_id),
+            """SELECT COUNT(*) AS n FROM league_news n, gms g
+               WHERE g.id = %s AND n.league_id = %s AND n.weight >= 2
+                 AND n.id > COALESCE(g.news_seen_id, 0)
+                 AND NOT (n.kind = ANY(g.news_hidden_kinds))""",
+            (gm_id, league_id),
         ).fetchone()
-        return row["n"]
+        return row["n"] if row else 0
 
     def mark_seen(self, gm_id: str, newest_id: int | None) -> None:
         if newest_id is None:
@@ -123,6 +139,49 @@ class NewsRepository:
             """UPDATE gms SET news_seen_id = GREATEST(COALESCE(news_seen_id, 0), %s)
                WHERE id = %s""",
             (newest_id, gm_id),
+        )
+
+    # ── Hidden stories and the kind filter (migration 134) ─────────────────
+
+    def set_hidden(self, gm_id: str, news_id: int, hidden: bool) -> None:
+        if hidden:
+            self.conn.execute(
+                """INSERT INTO news_hidden (gm_id, news_id) VALUES (%s, %s)
+                   ON CONFLICT DO NOTHING""",
+                (gm_id, news_id),
+            )
+        else:
+            self.conn.execute(
+                "DELETE FROM news_hidden WHERE gm_id = %s AND news_id = %s",
+                (gm_id, news_id),
+            )
+
+    def hidden_count(self, league_id: str, gm_id: str, season_id: str | None) -> int:
+        row = self.conn.execute(
+            """SELECT COUNT(*) AS n FROM news_hidden h
+               JOIN league_news n ON n.id = h.news_id
+               WHERE h.gm_id = %s AND n.league_id = %s
+                 AND (%s::text IS NULL OR n.season_id = %s)""",
+            (gm_id, league_id, season_id, season_id),
+        ).fetchone()
+        return row["n"]
+
+    def story_league(self, news_id: int) -> str | None:
+        row = self.conn.execute(
+            "SELECT league_id FROM league_news WHERE id = %s", (news_id,)
+        ).fetchone()
+        return row["league_id"] if row else None
+
+    def hidden_kinds(self, gm_id: str) -> list[str]:
+        row = self.conn.execute(
+            "SELECT news_hidden_kinds FROM gms WHERE id = %s", (gm_id,)
+        ).fetchone()
+        return list(row["news_hidden_kinds"] or []) if row else []
+
+    def set_hidden_kinds(self, gm_id: str, kinds: list[str]) -> None:
+        self.conn.execute(
+            "UPDATE gms SET news_hidden_kinds = %s WHERE id = %s",
+            (sorted(set(kinds)), gm_id),
         )
 
     # ── Progress ─────────────────────────────────────────────────────────────

@@ -89,7 +89,10 @@ class TestCompleteLeagueIsReadOnly:
         # Leaving stays open so GMs can clear a finished league off their
         # list; starting, joining, rerolling an AI GM and picking a team need
         # the lobby anyway, and taking over a team checks for between seasons.
+        # Hiding news and the News filter only change what the GM sees.
         exempt = {
+            "/leagues/{league_id}/headlines/{news_id}/hide",
+            "/leagues/{league_id}/headlines/filter",
             "/leagues/{league_id}/leave",
             "/leagues/{league_id}/start",
             "/leagues/{league_id}/join",

@@ -326,6 +326,7 @@ CREATE TABLE IF NOT EXISTS gms (
     lobby_city     TEXT,                  -- lobby: the team they'll run, by name (migration 042)
     lobby_mascot   TEXT,
     news_seen_id   BIGINT,                -- newest league_news story they've seen (the News tab's badge)
+    news_hidden_kinds TEXT[] NOT NULL DEFAULT '{{}}', -- league_news kinds the News tab filters out (migration 134)
     seen_at        TIMESTAMPTZ,           -- last had the league open (ready-check poll; migration 062)
     alerted_at     TIMESTAMPTZ,           -- last turn email for this league (turn_alerts.py)
     joined_year    INTEGER,               -- took over a running league: first season their career counts (migration 069)
@@ -402,6 +403,14 @@ CREATE TABLE IF NOT EXISTS league_news (
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (league_id, key)
 );
+
+-- Stories a GM hid with the x on the News tab (migration 134).
+CREATE TABLE IF NOT EXISTS news_hidden (
+    gm_id    TEXT NOT NULL REFERENCES gms(id) ON DELETE CASCADE,
+    news_id  BIGINT NOT NULL REFERENCES league_news(id) ON DELETE CASCADE,
+    PRIMARY KEY (gm_id, news_id)
+);
+CREATE INDEX IF NOT EXISTS idx_news_hidden_news ON news_hidden(news_id);
 
 CREATE INDEX IF NOT EXISTS idx_league_news_feed
     ON league_news(league_id, news_date DESC, id DESC);

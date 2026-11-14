@@ -4,7 +4,14 @@
 <section class="news-day">
   <h2 class="news-date">{{ day.label }}</h2>
   {% for s in day.stories %}
-  <article class="news-story news-w{{ s.weight }}{% if s.mine %} news-mine{% endif %}">
+  <article class="news-story news-w{{ s.weight }}{% if s.mine %} news-mine{% endif %}" data-news-id="{{ s.id }}">
+    {% if news_can_hide %}
+    {% if news_hidden_view %}
+    <button type="button" class="news-unhide" onclick="newsHide(this, false)">Show again</button>
+    {% else %}
+    <button type="button" class="news-hide" title="Hide this story" aria-label="Hide this story" onclick="newsHide(this, true)">×</button>
+    {% endif %}
+    {% endif %}
     <div class="news-kicker"><span aria-hidden="true">{{ s.icon }}</span> {{ s.label }}</div>
     <div class="news-head">
       {% if s.teams %}<span class="news-teams">{% for t in s.teams %}<a class="news-team" title="{{ t.city }} {{ t.mascot }}"
@@ -21,7 +28,7 @@
 {% if news_more_before %}
 <div class="news-more" id="news-more">
   <button class="btn btn-secondary"
-          hx-get="/leagues/{{ league_id }}/headlines?before={{ news_more_before }}&mine={{ 1 if news_mine else 0 }}{% if news_season_id %}&season_id={{ news_season_id }}{% endif %}"
+          hx-get="/leagues/{{ league_id }}/headlines?before={{ news_more_before }}&mine={{ 1 if news_mine else 0 }}{% if news_hidden_view %}&hidden=1{% endif %}{% if news_season_id %}&season_id={{ news_season_id }}{% endif %}"
           hx-target="#news-more" hx-swap="outerHTML">Show older stories</button>
 </div>
 {% endif %}
