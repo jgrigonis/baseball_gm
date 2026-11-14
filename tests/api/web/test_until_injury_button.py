@@ -36,24 +36,24 @@ def _schedule_html(db_conn, factory, mode, injuries_enabled=None):
 def test_blitz_has_until_injury(db_conn, factory):
     html = _schedule_html(db_conn, factory, "blitz")
     assert "Play Day" in html
-    assert "Until Injury" in html
+    assert 'id="sched-stop-injury-box"' in html
 
 
 def test_speed_blitz_has_no_until_injury(db_conn, factory):
     html = _schedule_html(db_conn, factory, "speed_blitz")
     assert "Play Day" in html
     assert "Full Season" in html
-    assert "Until Injury" not in html
+    assert 'id="sched-stop-injury-box"' not in html
 
 
 def test_speed_blitz_with_injuries_turned_on_has_until_injury(db_conn, factory):
     html = _schedule_html(db_conn, factory, "speed_blitz", injuries_enabled=True)
-    assert "Until Injury" in html
+    assert 'id="sched-stop-injury-box"' in html
 
 
 def test_blitz_with_injuries_turned_off_has_no_until_injury(db_conn, factory):
     html = _schedule_html(db_conn, factory, "blitz", injuries_enabled=False)
-    assert "Until Injury" not in html
+    assert 'id="sched-stop-injury-box"' not in html
 
 
 def test_sim_rejects_an_until_injury_count():

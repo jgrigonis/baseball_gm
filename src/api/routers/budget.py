@@ -466,7 +466,6 @@ def set_sponsor(
 
 def _sponsor_view(deal: dict, open_: bool) -> dict:
     steady = deal["steady"]
-    per_10 = fn.SPONSOR_PER_WIN_PCT * 0.1 * steady
     best = fn.sponsor_money(steady, "incentive", 0.62, True, 3)["total"]
     return {
         "kind": deal["kind"],
@@ -476,7 +475,12 @@ def _sponsor_view(deal: dict, open_: bool) -> dict:
         "amount_text": _money(deal["total"]),
         "steady_text": _money(steady),
         "base_text": _money(fn.sponsor_money(steady, "incentive")["base"]),
-        "per_10_text": _money(per_10),
+        # The win bonus at a few records, and its most (a 110-win pace).
+        "wins_texts": [
+            (f"{p:.3f}".lstrip("0"), _money(steady * fn.sponsor_win_share(p)))
+            for p in (0.55, 0.6, 0.65)
+        ],
+        "wins_cap_text": _money(steady * fn.sponsor_win_share(1.0)),
         "playoffs_text": _money(steady * fn.SPONSOR_PLAYOFFS),
         "round_text": _money(steady * fn.SPONSOR_PER_ROUND),
         "best_text": _money(best),

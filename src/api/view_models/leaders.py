@@ -296,7 +296,12 @@ def batting_leaders(
     with_war = [b for b in batters if b["WAR"] is not None]
     bat_cats = [
         *(
-            [bat_card("WAR", "WAR", pool=with_war, fmt=lambda v: f"{v:.1f}")]
+            [
+                bat_card(
+                    "WAR (batters)", "WAR", pool=with_war, fmt=lambda v: f"{v:.1f}"
+                )
+                | {"tip": glossary.tip("bat", "WAR")}
+            ]
             if with_war
             else []
         ),
@@ -465,7 +470,14 @@ def pitching_leaders(
 
     return glossary.tag(
         [
-            *([card("WAR", "WAR", pool=with_war, fmt=_f1)] if with_war else []),
+            *(
+                [
+                    card("WAR (pitchers)", "WAR", pool=with_war, fmt=_f1)
+                    | {"tip": glossary.tip("pit", "WAR")}
+                ]
+                if with_war
+                else []
+            ),
             *(
                 [card("WPA", "WPA", pool=with_wpa, fmt=_wpa)]
                 if (with_wpa := [p for p in pitchers if p["WPA"] is not None])

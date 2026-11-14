@@ -15,6 +15,11 @@ from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.player import contracts as ct
+from src.player import happiness as hp
+
+# The real refusal rule, for its own test: every other test turns refusals
+# off, since the draw is seeded by each player's random id.
+REFUSES_TO_RESIGN = hp.refuses_to_resign
 
 
 @pytest.fixture
@@ -50,6 +55,7 @@ def roomy_owners(monkeypatch):
     monkeypatch.setattr(ai_free_agents, "_budget_room", lambda *a: float("inf"))
     monkeypatch.setattr(offseason_fa, "_room", _roomy)
     monkeypatch.setattr(offseason_fa, "_bank", lambda *a: 0)
+    monkeypatch.setattr(hp, "refuses_to_resign", lambda *a: None)
 
 
 def _roomy(conn, league_id, team_id, year, human):
@@ -569,21 +575,19 @@ def test_a_full_minors_skips_the_bid(lg, monkeypatch):
 
 
 def test_refusals_are_rare_and_only_for_miserable_or_fame_driven_players():
-    from src.player import happiness as hp
-
     fame = hp.Personality("Spotlight Seeker", {d: 20 for d in hp.DRIVES} | {"fame": 90},
                           {"ego": 50, "temper": 50, "loyalty": 50})  # fmt: skip
     plain_guy = hp.Personality("Easygoing", {d: 20 for d in hp.DRIVES},
                                {"ego": 50, "temper": 50, "loyalty": 50})  # fmt: skip
-    assert hp.refuses_to_resign(-0.9, plain_guy, 3, 0.1) == "miserable"
-    assert hp.refuses_to_resign(-0.9, plain_guy, 3, 0.8) is None
-    assert hp.refuses_to_resign(-0.5, plain_guy, 1, 0.0) is None  # just unhappy
-    assert hp.refuses_to_resign(0.0, fame, 1, 0.1) == "fame"
-    assert hp.refuses_to_resign(0.0, fame, 3, 0.1) == "fame"
-    assert hp.refuses_to_resign(0.0, fame, 4, 0.1) is None  # a big market
-    assert hp.refuses_to_resign(0.0, fame, 1, 0.6) is None
-    assert hp.refuses_to_resign(0.5, fame, 1, 0.1) is None  # happy there
-    assert hp.refuses_to_resign(0.0, plain_guy, 1, 0.1) is None
+    assert REFUSES_TO_RESIGN(-0.9, plain_guy, 3, 0.1) == "miserable"
+    assert REFUSES_TO_RESIGN(-0.9, plain_guy, 3, 0.8) is None
+    assert REFUSES_TO_RESIGN(-0.5, plain_guy, 1, 0.0) is None  # just unhappy
+    assert REFUSES_TO_RESIGN(0.0, fame, 1, 0.1) == "fame"
+    assert REFUSES_TO_RESIGN(0.0, fame, 3, 0.1) == "fame"
+    assert REFUSES_TO_RESIGN(0.0, fame, 4, 0.1) is None  # a big market
+    assert REFUSES_TO_RESIGN(0.0, fame, 1, 0.6) is None
+    assert REFUSES_TO_RESIGN(0.5, fame, 1, 0.1) is None  # happy there
+    assert REFUSES_TO_RESIGN(0.0, plain_guy, 1, 0.1) is None
 
 
 def test_a_refusing_veteran_cant_be_re_signed_and_leaves(lg, monkeypatch):

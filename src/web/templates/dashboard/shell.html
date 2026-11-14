@@ -70,9 +70,10 @@ window.ppSyncTabs = function(body) {
   document.querySelectorAll('#player-panel .pp-tabs button')
     .forEach((b, j) => b.classList.toggle('on', i === j));
 };
-// Off-role ratings toggle together across compared players so rows line up.
+// A ratings group (Hitting, Defense, Pitching) toggles together across
+// compared players so rows line up.
 window.ppToggleOffRole = function(el) {
-  document.querySelectorAll('#player-panel details.pd-offrole')
+  document.querySelectorAll('#player-panel details.pd-group[data-group="' + el.dataset.group + '"]')
     .forEach(d => { if (d.open !== el.open) d.open = el.open; });
 };
 window.closePlayerPanel = function() {
@@ -107,6 +108,15 @@ window.shopPlayer = function(pid) {
   window._shopPlayer = pid;
   closePlayerPanel();
   if (document.getElementById('trades-page') && window.trShop) { window.trShop(pid); return; }
+  window.goToTab('trades');
+};
+
+// Trade for another team's player: the Trades builder opens with his team
+// and him ticked in You get.
+window.tradeForPlayer = function(teamId, pid) {
+  closePlayerPanel();
+  if (document.getElementById('trades-page') && window.trTradeFor) { window.trTradeFor(teamId, pid); return; }
+  window._tradeWith = {team: teamId, pid: pid};
   window.goToTab('trades');
 };
 
@@ -698,6 +708,23 @@ document.body.addEventListener('htmx:historyRestore', function(e) {
 // failed, the error is brought into view.
 // A live refresh after a sim day (liveRefreshTab) is quiet too, and also
 // keeps the scroll of the tab's own scrolling table (#stats-scroll).
+// Several drop-downs on one tab (the Budget tab's front office) each save
+// and reload the tab. An answer that lands while another pick is still
+// saving would put that pick's old value back, so only the last answer
+// out is swapped in (Josh, 2026-11-13).
+var _quietPending = 0;
+function _isQuietForm(elt) { return !!(elt && elt.closest && elt.closest('[data-quiet-swap]')); }
+document.body.addEventListener('htmx:beforeRequest', function(e) {
+  if (_isQuietForm(e.detail.elt)) _quietPending++;
+});
+document.body.addEventListener('htmx:afterRequest', function(e) {
+  if (_isQuietForm(e.detail.elt)) _quietPending = Math.max(0, _quietPending - 1);
+});
+document.body.addEventListener('htmx:beforeSwap', function(e) {
+  if (e.detail.target.id !== 'tab-content') return;
+  var elt = e.detail.requestConfig && e.detail.requestConfig.elt;
+  if (_isQuietForm(elt) && _quietPending > 1 && e.detail.shouldSwap) e.detail.shouldSwap = false;
+});
 var _quietScroll = null;
 var _quietInner = null;
 var _quietHeight = 0;
@@ -1076,6 +1103,60 @@ window.nextMoveStatus = function(msg, color) { window.simCardStatus(msg, color);
 // Reload the button for the page now showing: the league may have moved on
 // (the champion is crowned), or a tab swap changed go-to into do-it. Not
 // while a sim runs, which owns the button (Stop).
+// Back to Meet your team (Josh, 2026-11-14): a page opened from a link on
+// it gets a small "← Meet your team" in its title row, so the GM can go
+// back and pick the next thing. Kept in sessionStorage so it survives the
+// links that load a whole page.
+var WELCOME_BACK_KEY = 'welcomeBack:' + LEAGUE_ID;
+document.addEventListener('click', function(e) {
+  var a = e.target.closest && e.target.closest('#tab-content a[href]');
+  if (!a || !document.querySelector('#tab-content .wl-hero')) return;
+  var path = (a.getAttribute('hx-get') || a.getAttribute('href') || '').split('?')[0].split('#')[0];
+  if (path.indexOf('/leagues/' + LEAGUE_ID + '/') !== 0 || /\/welcome$/.test(path)) return;
+  try { sessionStorage.setItem(WELCOME_BACK_KEY, path); } catch (err) {}
+}, true);
+function welcomeBack() {
+  var want = null;
+  try { want = sessionStorage.getItem(WELCOME_BACK_KEY); } catch (err) {}
+  if (!want) return;
+  var here = location.pathname.replace(/\/$/, '');
+  if (here !== want.replace(/\/$/, '')) {
+    // Somewhere else now: the way back is gone.
+    if (!/\/welcome$/.test(here)) try { sessionStorage.removeItem(WELCOME_BACK_KEY); } catch (err) {}
+    return;
+  }
+  var title = document.querySelector('#tab-content .page-title, #tab-content h1');
+  if (!title || title.querySelector('.welcome-back')) return;
+  var side = document.querySelector('[hx-get$="/welcome"] .tab-label');
+  var label = side ? side.textContent.trim() : 'Meet your team';
+  var link = document.createElement('a');
+  link.className = 'welcome-back';
+  link.href = '/leagues/' + LEAGUE_ID + '/welcome';
+  link.textContent = '← ' + label;
+  link.title = 'Back to ' + label;
+  link.onclick = function(ev) {
+    ev.preventDefault();
+    try { sessionStorage.removeItem(WELCOME_BACK_KEY); } catch (err) {}
+    var nav = document.querySelector('[hx-get$="/welcome"]');
+    if (nav) { setActiveTab(nav); nav.click(); } else location.href = link.href;
+  };
+  title.insertBefore(link, title.firstChild);
+}
+document.body.addEventListener('htmx:afterSettle', function(e) {
+  if (e.detail && e.detail.target && e.detail.target.id === 'tab-content') welcomeBack();
+});
+welcomeBack();
+
+// Point at the next-move button (Play...) for a few seconds: after the last
+// trade offer on the board is turned down, the next thing is to play on.
+window.pulseNextMove = function() {
+  window._nmPulseUntil = Date.now() + 5000;
+  var nm = document.getElementById('next-move');
+  if (!nm) return;
+  nm.classList.remove('nm-pulse');
+  void nm.offsetWidth;
+  nm.classList.add('nm-pulse');
+};
 window.refreshNextMove = function(path) {
   if (window._nmBusy || !document.getElementById('next-move')) return;
   var page = (path || location.pathname).split('?')[0].replace(/\/$/, '').split('/').pop();
@@ -1093,6 +1174,7 @@ window.refreshNextMove = function(path) {
       if (fresh.dataset.mp !== cur.dataset.mp) { window.location.reload(); return; }
       if (fresh.dataset.sig === cur.dataset.sig) return;
       cur.replaceWith(fresh);
+      if (window._nmPulseUntil > Date.now()) fresh.classList.add('nm-pulse');
       if (window.schedSyncBoxes) window.schedSyncBoxes();
     })
     .catch(function() {});

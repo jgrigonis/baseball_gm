@@ -561,7 +561,7 @@ def test_past_seasons_rows_add_up_to_profit(lg, client_for):
     assert rows[0]["revenue"] == bg.format_salary(revenue)
     assert rows[0]["revenue_lines"][0]["label"] == "Regular season tickets"
     html = client_for(x).get(f"/leagues/{x.league.id}/budget").text
-    past = html[html.index("Past seasons") :]
+    past = html[html.index("Past seasons") : html.index("League payrolls")]
     assert 'id="bud-rev-2026"' in past and "Fixed costs" in past
     assert "Tax share" not in past
 

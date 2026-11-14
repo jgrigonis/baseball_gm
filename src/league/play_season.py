@@ -4,6 +4,7 @@ Play games in a season.
 """
 
 import argparse
+from dataclasses import replace
 from datetime import date, datetime, timedelta
 import logging
 import random
@@ -46,6 +47,8 @@ from src.league.personas import Leanings
 from src.league.statistics.print_standings import print_standings
 from src.team.team_in_game import TeamInGame
 from src.util.logger import setup_logger
+
+log = logging.getLogger(__name__)
 
 
 def get_args():
@@ -545,6 +548,10 @@ def _play_game(
         team.profile = ManagerProfile.from_row(
             gm_repo.get_team_profile(team.record.id, league_id)
         )
+        # Starters with their own leash (the Lineup tab's rotation rows).
+        own = gm_repo.pitcher_leashes(team.record.id)
+        if own:
+            team.profile = replace(team.profile, leashes=tuple(sorted(own.items())))
     _set_form(conn, season_id, home_team, away_team)
     _set_front_office(conn, league_id, season_id, home_team, away_team)
 
@@ -671,11 +678,11 @@ def _play_game(
     if not home_starter_id:
         home_starter_id = _best_pitcher_id(home_team)
         if home_starter_id:
-            print(f"  ⚠ No rotation for {home_team.record.mascot} — using best pitcher")
+            log.debug("No rotation for %s, using best pitcher", home_team.record.mascot)
     if not away_starter_id:
         away_starter_id = _best_pitcher_id(away_team)
         if away_starter_id:
-            print(f"  ⚠ No rotation for {away_team.record.mascot} — using best pitcher")
+            log.debug("No rotation for %s, using best pitcher", away_team.record.mascot)
 
     # Bullpen roles
     bpr = BullpenRepository(conn)
@@ -798,7 +805,8 @@ def _play_game(
         if away_starter and away_starter.pitcher_fatigue
         else "N/A"
     )
-    print(
+    # Not printed: the server's console isn't a game log (Josh, 2026-11-13).
+    log.debug(
         f"  ⚾ {away_team.record.mascot}"
         f" ({away_starter.record.last_name if away_starter else '?'}, energy={away_energy})"
         f" @ {home_team.record.mascot}"

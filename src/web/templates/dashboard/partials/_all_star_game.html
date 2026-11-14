@@ -118,34 +118,43 @@
     <span class="as-dim">{{ names[2] }} at {{ names[1] }}</span>
   </div>
   <div class="card-body as-note">
-    {% if is_rookie %}
-    The season's best {{ x.draft_total }} rookies who aren't All-Stars, picked by their stats. The GMs with the most
-    of them, other than the All-Star captains, are the captains: the {{ x.game.city1 }} {{ x.game.mascot1 }} GM
-    ({{ names[1] }}, the home side, picks first) and the {{ x.game.city2 }} {{ x.game.mascot2 }} GM
-    ({{ names[2] }}). They draft their sides taking turns 1, 2, 2, 1, 1, …
-    {% else %}
-    The GMs of the teams with the 2 best records are the captains: the {{ x.game.city1 }} {{ x.game.mascot1 }} GM
-    ({{ names[1] }}, the home side, picks first) and the {{ x.game.city2 }} {{ x.game.mascot2 }} GM
-    ({{ names[2] }}). They draft their sides from the {{ x.draft_total }} healthy All-Stars, taking turns 1, 2, 2, 1, 1, …
-    {% endif %}
-    Every pitcher comes out after {{ x.pitcher_outs_cap }} outs. Nothing's at stake but the MVP and bragging rights.
-    <br>
+    {% set day = x.game.game_date | long_date %}
     {% if x.game.state == 'tie' %}
       {% if x.my_turn %}
-      <span class="as-warn">You break the tie.</span> These players tied on votes for the last spot. Pick who gets it.
-      If you don't by game day, the stats decide.
+      <span class="as-warn">You break the tie.</span> These players tied on votes for the last spot. Pick who gets it
+      by {{ day }}, or the stats decide.
       {% else %}
       <span class="as-warn">Waiting on the {{ x.game.city2 }} {{ x.game.mascot2 }} GM</span> to pick who gets the last
-      spot: {{ x.tied | length }} players tied on votes for it. The draft starts after that.
+      spot ({{ x.tied | length }} players tied on votes). The draft starts after that.
       {% endif %}
     {% elif x.picks_made < x.draft_total %}
+      {% if x.my_side %}
       Pick {{ x.picks_made + 1 }} of {{ x.draft_total }}:
       {% if x.my_turn %}<span class="as-warn">you're up.</span>
       {% else %}{{ names[x.up_side] }} is up.{% endif %}
-      Any picks still to make on {{ x.game.game_date }} are made by the scouts.
+      Picks still open on {{ day }} are made by the scouts.
+      {% else %}
+      The captains are drafting the teams ({{ x.picks_made }} of {{ x.draft_total }} picked). The game is {{ day }}.
+      {% endif %}
+    {% elif x.my_side %}
+      <span class="as-ok">The draft is done.</span> The game is {{ day }}.
     {% else %}
-      <span class="as-ok">The draft is done.</span> The game is played on {{ x.game.game_date }}.
+      Teams are set. The game is {{ day }}.
     {% endif %}
+    <details class="as-how">
+      <summary>How it works</summary>
+      {% if is_rookie %}
+      The season's best {{ x.draft_total }} rookies who aren't All-Stars, picked by their stats. The GMs with the most
+      of them, other than the All-Star captains, are the captains: the {{ x.game.city1 }} {{ x.game.mascot1 }} GM
+      ({{ names[1] }}, the home side, picks first) and the {{ x.game.city2 }} {{ x.game.mascot2 }} GM
+      ({{ names[2] }}). They draft their sides taking turns 1, 2, 2, 1, 1, …
+      {% else %}
+      The GMs of the teams with the 2 best records are the captains: the {{ x.game.city1 }} {{ x.game.mascot1 }} GM
+      ({{ names[1] }}, the home side, picks first) and the {{ x.game.city2 }} {{ x.game.mascot2 }} GM
+      ({{ names[2] }}). They draft their sides from the {{ x.draft_total }} healthy All-Stars, taking turns 1, 2, 2, 1, 1, …
+      {% endif %}
+      Every pitcher comes out after {{ x.pitcher_outs_cap }} outs. Nothing's at stake but the MVP and bragging rights.
+    </details>
     {% if x.out_hurt %}
     <br><span class="as-warn">Out hurt:</span>
     {% for r in x.out_hurt %}<span class="as-player" onclick="openPlayerPanel('{{ r.player_id }}')">{{ r.name }}</span>{{ ', ' if not loop.last }}{% endfor %}.

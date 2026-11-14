@@ -79,7 +79,7 @@ def test_an_unhappy_player_asks_for_a_trade_and_it_makes_the_news(lg):
     pid = lg.players[lg.a.id][0].id
     with (
         patch.object(hp, "target", return_value=-1.0),
-        patch.object(hp, "asks_for_trade", side_effect=lambda m, w, t, r: True),
+        patch.object(hp, "asks_for_trade", side_effect=lambda m, w, t, r, v=1.0: True),
     ):
         _repo(lg).update(lg.season.id, date(2025, 4, 11))
     repo = _repo(lg)
@@ -89,11 +89,32 @@ def test_an_unhappy_player_asks_for_a_trade_and_it_makes_the_news(lg):
     assert any("asks the" in s["headline"] and pid in s["player_ids"] for s in feed)
 
 
+def test_requests_past_the_deadline_wait_for_one_roundup(lg):
+    from src.league import trade_deadline
+
+    pid = lg.players[lg.a.id][0].id
+    with (
+        patch.object(hp, "target", return_value=-1.0),
+        patch.object(hp, "asks_for_trade", side_effect=lambda m, w, t, r, v=1.0: True),
+        patch.object(trade_deadline, "window", return_value={"open": False}),
+    ):
+        _repo(lg).update(lg.season.id, date(2025, 4, 11))
+    assert pid in _repo(lg).trade_requests([pid])
+    feed = NewsRepository(lg.db).feed(lg.league.id)
+    assert not any("asks the" in s["headline"] for s in feed)
+    with patch.object(trade_deadline, "deadline_date", return_value="2025-04-05"):
+        n = _repo(lg).trade_request_roundup(lg.season.id, "2025-10-01")
+    assert n == 20
+    feed = NewsRepository(lg.db).feed(lg.league.id)
+    story = next(s for s in feed if "after the deadline" in s["headline"])
+    assert pid in story["player_ids"] and "and 12 more" in story["body"]
+
+
 def test_a_traded_player_drops_his_request(lg):
     pid = lg.players[lg.a.id][0].id
     with (
         patch.object(hp, "target", return_value=-1.0),
-        patch.object(hp, "asks_for_trade", side_effect=lambda m, w, t, r: True),
+        patch.object(hp, "asks_for_trade", side_effect=lambda m, w, t, r, v=1.0: True),
     ):
         _repo(lg).update(lg.season.id, date(2025, 4, 11))
     lg.db.execute(
@@ -178,7 +199,7 @@ def test_an_unhappy_morale_ruiner_drags_his_teammates_down(lg):
 def test_the_roster_badge_counts_the_teams_trade_requests(lg):
     with (
         patch.object(hp, "target", return_value=-1.0),
-        patch.object(hp, "asks_for_trade", side_effect=lambda m, w, t, r: True),
+        patch.object(hp, "asks_for_trade", side_effect=lambda m, w, t, r, v=1.0: True),
     ):
         _repo(lg).update(lg.season.id, date(2025, 4, 11))
     assert _repo(lg).team_trade_requests(lg.a.id) == 10
@@ -226,7 +247,7 @@ def test_a_player_happy_again_takes_back_his_trade_request(lg):
     pid = lg.players[lg.a.id][0].id
     with (
         patch.object(hp, "target", return_value=-1.0),
-        patch.object(hp, "asks_for_trade", side_effect=lambda m, w, t, r: True),
+        patch.object(hp, "asks_for_trade", side_effect=lambda m, w, t, r, v=1.0: True),
     ):
         _repo(lg).update(lg.season.id, date(2025, 4, 11))
     assert pid in _repo(lg).trade_requests([pid])
@@ -257,7 +278,7 @@ def test_restless_is_settled_enough_to_take_back_a_request(lg):
     with (
         patch.object(hp, "personality_for", _middling()),
         patch.object(hp, "target", return_value=-1.0),
-        patch.object(hp, "asks_for_trade", side_effect=lambda m, w, t, r: True),
+        patch.object(hp, "asks_for_trade", side_effect=lambda m, w, t, r, v=1.0: True),
     ):
         _repo(lg).update(lg.season.id, date(2025, 4, 11))
     # Restless, even with the ignored-request penalty on top.

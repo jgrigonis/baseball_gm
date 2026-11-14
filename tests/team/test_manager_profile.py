@@ -73,7 +73,7 @@ def test_no_row_is_the_default():
 def test_default_changes_nothing():
     p = DEFAULT_PROFILE
     assert p.steal_factor == p.extra_base_factor == p.bunt_factor == 1.0
-    assert p.leash_pitches == 95
+    assert p.leash_pitches == 85
     assert p.starter_hook(batters_faced=30) == 1.0
     assert p.trouble_hook == 1.0
     assert p.playoff_rotation_size is None
@@ -94,15 +94,14 @@ def test_baserunning_steps_rise():
 
 
 def test_a_short_leash_pulls_sooner_third_time_through():
-    for u in ("85", "75"):
-        p = ManagerProfile(starter_usage=u)
-        assert p.starter_hook(batters_faced=10) == 1.0
-        assert p.starter_hook(batters_faced=19) > 1.0
-    assert ManagerProfile(starter_usage="95").starter_hook(batters_faced=19) == 1.0
+    p = ManagerProfile(starter_usage="75")
+    assert p.starter_hook(batters_faced=10) == 1.0
+    assert p.starter_hook(batters_faced=19) > 1.0
+    assert ManagerProfile(starter_usage="85").starter_hook(batters_faced=19) == 1.0
 
 
 def test_old_leash_values_fall_back_to_the_default():
-    assert ManagerProfile.from_row({"starter_usage": "long"}).starter_usage == "95"
+    assert ManagerProfile.from_row({"starter_usage": "long"}).starter_usage == "85"
 
 
 def test_catchers_rest_sooner_but_iron_men_never_rest():

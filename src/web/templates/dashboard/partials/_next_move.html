@@ -13,7 +13,7 @@
 {% set nm = next_move %}
 <div id="next-move" class="next-move{% if nm %} nm-{{ nm.kind }}{% endif %}"
      data-mp="{{ 1 if multiplayer else 0 }}"
-     data-sig="{% if nm %}{{ nm.key }}|{{ nm.label }}|{{ nm.pill.label if nm.pill else '' }}|{{ 1 if nm.trade_stops else 0 }}{{ 1 if nm.through_break else 0 }}|{{ nm.menu|map(attribute='note')|join('/') }}{% endif %}">
+     data-sig="{% if nm %}{{ nm.key }}|{{ nm.label }}|{{ nm.pill.label if nm.pill else '' }}|{{ 1 if nm.trade_stops else 0 }}{{ 1 if nm.through_break else 0 }}{{ 1 if nm.injury_stop else 0 }}|{{ nm.menu|map(attribute='note')|join('/') }}{% endif %}">
 {% if nm %}
   {% if nm.pill %}
   <a class="nm-pill" href="{{ nm.pill.href }}" title="{{ nm.pill.title }}" aria-label="{{ nm.pill.label }}"><span class="nm-long">{{ nm.pill.label }}</span><span class="nm-short" aria-hidden="true">{{ nm.pill.short or "★" }}</span></a>
@@ -35,7 +35,7 @@
     <button type="button" class="btn nm-main"{% if nm.id %} id="{{ nm.id }}"{% endif %}
             data-fn="{{ nm.fn }}" data-arg="{{ nm.arg }}" onclick="nextMoveAct(this)"><span class="nm-long">{{ nm.label }}</span><span class="nm-short">{{ nm.short }}</span></button>
     {% endif %}
-    {% if nm.menu or nm.trade_stops or nm.through_break %}
+    {% if nm.menu or nm.trade_stops or nm.through_break or nm.injury_stop %}
     <details class="nm-more">
       <summary class="btn nm-caret" aria-label="More ways to play" title="More ways to play">▾</summary>
       <div class="nm-menu">
@@ -45,6 +45,15 @@
                 {% else %}data-fn="{{ it.fn }}" data-arg="{{ it.arg }}" onclick="nextMoveAct(this)"{% endif %}
                 {% if it.stops %}data-stops="{{ it.stops|tojson|forceescape }}"{% endif %}>{{ it.label }}{% if it.note %} <small class="nm-note">{{ it.note }}</small>{% endif %}</button>
         {% endfor %}
+        {% if nm.injury_stop %}
+        {# Multi-day sims stop when one of your players is hurt for more
+           than a day or two, comes back, or loses his rust. #}
+        <label id="sched-stop-injury" class="nm-item nm-check"
+               title="Multi-day sims stop the day one of your players goes on the IL, comes back, or shakes off his rust, so you can fix the lineup. Unchecked, they play on and your Injury Lineup setting handles it.">
+          <input type="checkbox" id="sched-stop-injury-box" onchange="schedSetStopInjury(this.checked)">
+          Stop for injuries
+        </label>
+        {% endif %}
         {% if nm.through_break %}
         {# Multi-day sims stop for the All-Star vote, the All-Stars and the
            weekend. Unchecked, the scouts vote and make a captain's picks. #}

@@ -99,3 +99,34 @@ def test_show_def_toggle_starts_hidden(client, setup):
     # The batting order hides fielding lines until Show Def is turned on.
     assert 'id="show-def-btn"' in r.text
     assert '<div id="batting-order" class="hide-def"></div>' in r.text
+
+
+def test_a_starter_gets_his_own_leash_and_can_go_back(client, db_conn, setup, factory):
+    league, team, gm, _ = setup
+    arm = factory.rated_player(team, league, 60, pitcher=True, status="26man")
+    url = f"/leagues/{league.id}/rotation/leash"
+    r = client.put(url, json={"player_id": arm.id, "pitches": "105"})
+    assert r.status_code == 200
+    from src.db.repositories.gm_repo import GMRepository
+
+    assert GMRepository(db_conn).pitcher_leashes(team.id) == {arm.id: "105"}
+    page = client.get(f"/leagues/{league.id}/lineup").text
+    assert f'const PITCHER_LEASHES = {{"{arm.id}": "105"}}' in page
+    assert (
+        client.put(url, json={"player_id": arm.id, "pitches": "200"}).status_code == 400
+    )
+    client.put(url, json={"player_id": arm.id, "pitches": None})
+    assert GMRepository(db_conn).pitcher_leashes(team.id) == {}
+    # Not his player: refused.
+    other = factory.rated_player(factory.team(), league, 60, pitcher=True)
+    assert (
+        client.put(url, json={"player_id": other.id, "pitches": "95"}).status_code
+        == 400
+    )
+
+
+def test_the_unsaved_bars_have_a_what_changed_button(client, setup):
+    league, _, _, _ = setup
+    page = client.get(f"/leagues/{league.id}/lineup").text
+    for kind in ("bat", "rot", "bp"):
+        assert f"showChanges('{kind}')" in page

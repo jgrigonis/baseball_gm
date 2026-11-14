@@ -163,7 +163,7 @@ def build_season(conn, season_id: str) -> int:
         cur = conn.execute(sql, (season_id,))
     conn.commit()
     if deleted:
-        log.info("Cleared %s existing rows for season %s", deleted, season_id)
+        log.debug("Cleared %s existing rows for season %s", deleted, season_id)
     return cur.rowcount
 
 

@@ -128,14 +128,18 @@ BROADCAST_WIN_LOW = 0.35
 BROADCAST_WIN_SPAN = 0.30
 BROADCAST_YEARS = (2, 3, 5)
 BROADCAST_DEFAULT_YEARS = 3
-BROADCAST_LENGTH_MULT = {2: 1.0, 3: 1.0, 5: 1.05}
+# Each step longer pays a little more (Josh, 2026-11-13: 2 and 3 years were
+# the same price).
+BROADCAST_LENGTH_MULT = {2: 0.97, 3: 1.0, 5: 1.05}
 
 # Sponsors (Josh, 2026-11-09): the one money line that follows how the team
 # does THIS season. Each season the GM takes one of two offers between
 # seasons. Steady pays SPONSOR_SHARE of the league's average revenue times
 # the market, whatever happens. Incentive pays SPONSOR_BASE of that up front,
-# plus SPONSOR_PER_WIN_PCT times it for every point of win % over .500 (.600
-# is +0.5), SPONSOR_PLAYOFFS for making the playoffs and SPONSOR_PER_ROUND for
+# a win bonus that grows with the square of win % over .500 (Josh,
+# 2026-11-14: small at .550, +0.5 at .600 as before, strong past it, capped
+# at SPONSOR_WIN_CAP, a 110-win pace), SPONSOR_PLAYOFFS for making the
+# playoffs and SPONSOR_PER_ROUND for
 # each playoff series won: a bad team gets less than Steady, a champion about
 # twice it. A team that hasn't picked (every AI team) takes Incentive after a
 # season over SPONSOR_AI_FROM, Steady otherwise.
@@ -143,7 +147,10 @@ SPONSOR_KINDS = ("steady", "incentive")
 SPONSOR_NAMES = {"steady": "Steady", "incentive": "Incentive"}
 SPONSOR_SHARE = 0.04
 SPONSOR_BASE = 0.6
-SPONSOR_PER_WIN_PCT = 5.0
+# The win bonus, in Steady deals, at .100 over .500; it's this times the
+# square of (win % - .500) / .100.
+SPONSOR_PER_10 = 0.5
+SPONSOR_WIN_CAP = 110 / 162
 SPONSOR_PLAYOFFS = 0.3
 SPONSOR_PER_ROUND = 0.2
 SPONSOR_AI_FROM = 0.540
@@ -766,6 +773,13 @@ def sponsor_kind(kind, last_win_pct: float | None = None) -> str:
     return "steady"
 
 
+def sponsor_win_share(win_pct: float) -> float:
+    """The Incentive win bonus, in Steady deals: SPONSOR_PER_10 at .600,
+    a quarter of that at .550, growing with the square up to the cap."""
+    tenths = max(0.0, min(win_pct, SPONSOR_WIN_CAP) - 0.5) / 0.1
+    return SPONSOR_PER_10 * tenths**2
+
+
 def sponsor_money(
     steady: int,
     kind: str,
@@ -779,7 +793,7 @@ def sponsor_money(
         return {"total": steady, "base": steady, "wins": 0, "playoffs": 0, "rounds": 0}
     parts = {
         "base": _round(steady * SPONSOR_BASE),
-        "wins": _round(steady * SPONSOR_PER_WIN_PCT * max(0.0, win_pct - 0.5)),
+        "wins": _round(steady * sponsor_win_share(win_pct)),
         "playoffs": _round(steady * SPONSOR_PLAYOFFS) if playoffs else 0,
         "rounds": _round(steady * SPONSOR_PER_ROUND * max(0, rounds)),
     }

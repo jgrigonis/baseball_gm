@@ -7,6 +7,8 @@
 
 from __future__ import annotations
 
+from datetime import date
+
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
@@ -17,7 +19,7 @@ from src.api.schemas import (
     TradeVoteRequest,
 )
 from src.api.services.ready_check import is_multiplayer
-from src.api.services import icons, trade_shop, trades
+from src.api.services import icons, team_states, trade_shop, trades
 from src.api.services import owners as owner_service
 from src.api.view_models.player_cards import (
     attach_injuries,
@@ -37,7 +39,7 @@ from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.trade_repo import TradeRepository
 from src.league import budget as bg
-from src.league import money_state, owners, prorate, trade_deadline
+from src.league import money_state, owners, prorate, team_state, trade_deadline
 from src.league.trades import draft_picks
 from src.team.roster_limits import (
     MAX_PLAYING_ROSTER,
@@ -244,6 +246,12 @@ def trades_tab(
             o["owner_warning"] = refusal or owner
             o["owner_refuses"] = bool(refusal)
             o["caps"] = offer_caps(db, league_id, o, team_id, standing["cap"])
+    # Where each offering team stands (Rebuilding, Contending...), so an
+    # offer reads with the reason behind it.
+    if offers_to_me and season_id:
+        states = team_states.states(db, league_id, season_id, date.today().isoformat())
+        for o in offers_to_me:
+            o["state_label"] = team_state.LABELS.get(states.get(o["from_team_id"]), "")
     my_players = (
         team_cards(db, league_id, season_id, team_id)
         + trades.pick_cards(db, dict(league), season_id, team_id)

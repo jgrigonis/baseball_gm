@@ -167,6 +167,18 @@ class HappinessRepository:
             for i, pid in enumerate(group):
                 ranks[pid] = (i, len(group))
 
+        # Each 40-man player's rank among the league's hitters or pitchers
+        # on a 40-man, 0 to 1: low-value players rarely ask out.
+        league_rank: dict[str, float] = {}
+        by_kind = defaultdict(list)
+        for pid, p in players.items():
+            if p["status"] != "minors":
+                by_kind[p["pitcher"]].append(pid)
+        for group in by_kind.values():
+            group.sort(key=lambda pid: players[pid]["rating"])
+            for i, pid in enumerate(group):
+                league_rank[pid] = i / max(1, len(group) - 1)
+
         # Morale ruiners on each active roster, by last week's mood. The
         # clubhouse is the 26 men: the 40-man and the minors are elsewhere.
         ruiners: dict[str, list[tuple[float, str]]] = defaultdict(list)
@@ -270,8 +282,9 @@ class HappinessRepository:
                 refusing = None
 
             rng = random.Random(f"mood:{pid}:{as_of.isoformat()}")
+            value = hp.request_value(league_rank.get(pid), p["status"] == "minors")
             if not request and hp.asks_for_trade(
-                mood, weeks, person.traits, rng.random()
+                mood, weeks, person.traits, rng.random(), value
             ):
                 request = as_of.isoformat()
                 events.append(("request", pid, p["team_id"], person))
@@ -338,7 +351,9 @@ class HappinessRepository:
                 """,
                 rows,
             )
-        self._news(season_id, as_of, events)
+        self._news(
+            season_id, as_of, events, quiet_requests=self._trades_closed(season_id)
+        )
         return len(rows)
 
     # ── What the league already knows ──────────────────────────────────────
@@ -594,8 +609,74 @@ class HappinessRepository:
 
     # ── What it does ────────────────────────────────────────────────────────
 
-    def _news(self, season_id: str, as_of: date, events: list[tuple]) -> None:
-        """Stories for trade requests and players who bench themselves."""
+    def _trades_closed(self, season_id: str) -> bool:
+        """Past the trade deadline (or a league without trades): a trade
+        request makes no story then, since nothing can be done about it.
+        trade_request_roundup tells them all when trading reopens."""
+        from src.db.repositories.league_repo import LeagueRepository
+        from src.league import trade_deadline
+
+        league = LeagueRepository(self.conn).get_by_id(self.league_id)
+        if not league:
+            return False
+        return not trade_deadline.window(self.conn, dict(league), season_id)["open"]
+
+    def trade_request_roundup(self, season_id: str, on: str) -> int:
+        """One story, once trading reopens after the season: the players who
+        asked out after the deadline and still want out. Returns how many."""
+        from src.api.services.news.names import Names
+        from src.db.repositories.news_repo import NewsRepository
+        from src.league import trade_deadline
+
+        from src.db.repositories.league_repo import LeagueRepository
+
+        league = LeagueRepository(self.conn).get_by_id(self.league_id)
+        if not league or not trade_deadline.trades_enabled_for(dict(league)):
+            return 0
+        deadline = trade_deadline.deadline_date(self.conn, season_id)
+        if not deadline:
+            return 0
+        rows = self.conn.execute(
+            """SELECT player_id, team_id FROM player_moods
+               WHERE season_id = %s AND league_id = %s
+                 AND trade_request_on > %s
+               ORDER BY trade_request_on, player_id""",
+            (season_id, self.league_id, deadline),
+        ).fetchall()
+        if not rows:
+            return 0
+        names = Names(self.conn, self.league_id)
+        parts = [
+            f"{names.player(r['player_id'])} ({names.team(r['team_id'])})" for r in rows
+        ]
+        shown = parts[:8]
+        more = len(parts) - len(shown)
+        body = ", ".join(shown) + (f" and {more} more" if more else "") + "."
+        team_ids = list(dict.fromkeys(r["team_id"] for r in rows))
+        gm_ids = list(dict.fromkeys(g for t in team_ids for g in names.gm_ids(t)))
+        n = len(rows)
+        NewsRepository(self.conn).add(
+            self.league_id, season_id, on, "clubhouse",
+            f"trade-request-roundup:{season_id}",
+            f"{n} player{'s' if n != 1 else ''} asked for a trade after the deadline",
+            "Trading is open again. Still wanting out: " + body,
+            weight=2, team_ids=team_ids, player_ids=[r["player_id"] for r in rows],
+            gm_ids=gm_ids,
+        )  # fmt: skip
+        return n
+
+    def _news(
+        self,
+        season_id: str,
+        as_of: date,
+        events: list[tuple],
+        quiet_requests: bool = False,
+    ) -> None:
+        """Stories for trade requests and players who bench themselves.
+        Past the deadline (quiet_requests) trade requests wait for the
+        roundup."""
+        if quiet_requests:
+            events = [e for e in events if e[0] != "request"]
         if not events:
             return
         from src.api.services.news.names import Names

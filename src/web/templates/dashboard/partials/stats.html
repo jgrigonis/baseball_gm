@@ -79,6 +79,10 @@
   </div>
 </div>
 
+<div class="stats-qual-note" style="padding:4px 16px 6px;font-size:11px;color:var(--text-dim);">
+  Rate stats in <span style="color:var(--amber);font-weight:600;">gold</span> qualify: 3.1 plate appearances a team game for hitters,
+  1 inning a team game for pitchers (half that for relievers). <i>Grey</i> ones don't yet; hover one for what he needs.
+</div>
 <div id="stats-scroll" class="tab-body table-scroll pin-first" style="padding-top:0;--pin-bg:var(--bg);">
   <table id="stats-table" class="data-table" style="width:100%;white-space:nowrap;font-size:12px;">
     <thead id="stats-head"></thead>
@@ -356,7 +360,7 @@ function renderTable() {
       var isRate = col.rate;
       var unqual = isRate && !row.qualified;
       var color = unqual ? 'var(--text-dim)' : (isRate ? 'var(--amber)' : '');
-      var title = unqual ? ' title="Below qualification threshold"' : '';
+      var title = unqual ? ' title="' + (row.qual_tip || 'Below qualification threshold') + '"' : '';
       var style = 'text-align:' + (isName?'left':'right') + ';font-family:var(--font-mono);';
       if (color) style += 'color:' + color + ';';
       if (unqual) style += 'font-style:italic;';

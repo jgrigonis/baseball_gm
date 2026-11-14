@@ -463,7 +463,7 @@ class InjuryRepository:
                 ),
             )
 
-        logger.info(
+        logger.debug(
             "Player %s injured: %s %s (%d days, back %s).",
             player_id,
             severity,
@@ -602,7 +602,7 @@ class InjuryRepository:
                     ),
                 )
             if result:
-                logger.info(
+                logger.debug(
                     "Player %s back from %s: %s %s",
                     pid, r["injury_type"], result.outcome, effects,
                 )  # fmt: skip

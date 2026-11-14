@@ -392,8 +392,10 @@
     {% if injuries %}
     {#- (label, alignment, first-click ascending?): dates and names run A→Z
         first, injuries and days worst first. #}
+    {# One line each, with lingering effects in their own column (Josh, 2026-11-13). #}
     {% set inj_cols = [('Date', 'left', true), ('Player', 'left', true),
-                       ('Injury', 'left', false), ('Days', 'right', false)] %}
+                       ('Injury', 'left', false), ('Lingering', 'left', false),
+                       ('Days', 'right', false)] %}
     <table id="injury-table" class="data-table ss-inj-table" data-sort-col="0" data-sort-asc="true">
       <thead>
         <tr>
@@ -409,15 +411,16 @@
           <td data-sort="{{ inj.injury_date }}"
               style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);white-space:nowrap;" title="{{ inj.injury_date }}"><span class="phone-hide">{{ (inj.injury_date|string)[:5] }}</span>{{ (inj.injury_date|string)[5:] }}</td>
           <td data-sort="{{ inj.sort_name }}">
-            <div class="ss-ellipsis" style="font-size:12px;font-weight:600;">{{ inj.name }}</div>
-            <div class="ss-ellipsis" style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">
-              {{ inj.position|pos_label }}{% if injuries_league_wide and inj.team %} · {{ inj.team }}{% endif %}</div>
+            <div class="ss-ellipsis" style="font-size:12px;"><b>{{ inj.name }}</b>
+              <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">({{ inj.position|pos_label }}){% if injuries_league_wide and inj.team %} · {{ inj.team }}{% endif %}</span></div>
           </td>
           <td data-sort="{{ severity_rank.get(inj.severity, 0) }}" style="font-size:12px;">
-            <span class="ss-sev-{{ inj.severity }}">{{ injury_label(inj.injury_type, inj.severity) }}</span>
-            {% if inj.activity %}<span class="ss-inj-activity"> · {{ inj.activity }}</span>{% endif %}
-            {% set eff = injury_effect(inj) %}
-            {% if eff and eff.text %}<div class="inj-effect inj-effect-{{ eff.dir }}" title="{{ eff.title }}">{{ eff.text }}</div>{% endif %}
+            <div class="ss-ellipsis"><span class="ss-sev-{{ inj.severity }}">{{ injury_label(inj.injury_type, inj.severity) }}</span>
+            {% if inj.activity %}<span class="ss-inj-activity"> · {{ inj.activity }}</span>{% endif %}</div>
+          </td>
+          {% set eff = injury_effect(inj) %}
+          <td data-sort="{{ eff.text if eff and eff.text else '' }}" style="font-size:12px;">
+            {% if eff and eff.text %}<div class="ss-ellipsis inj-effect inj-effect-{{ eff.dir }}" style="margin:0;" title="{{ eff.title }}">{{ eff.text }}</div>{% else %}<span class="admin-dim">—</span>{% endif %}
           </td>
           <td data-sort="{{ inj.days_missed }}"
               style="font-family:var(--font-mono);font-size:12px;text-align:right;">{{ inj.days_missed }}d</td>
@@ -563,15 +566,17 @@
 .ss-inj-table { width:100%;table-layout:fixed; }
 .ss-inj-table th { cursor:pointer;user-select:none;white-space:nowrap; }
 .ss-inj-table th:nth-child(1) { width:96px; }
-.ss-inj-table th:nth-child(3) { width:250px; }
-.ss-inj-table th:nth-child(4) { width:64px; }
+.ss-inj-table th:nth-child(3) { width:200px; }
+.ss-inj-table th:nth-child(4) { width:170px; }
+.ss-inj-table th:nth-child(5) { width:64px; }
 .ss-inj-activity { font-family:var(--font-mono);font-size:10px;color:var(--text-dim); }
 @media (max-width: 720px) {
   .ss-leader-row { grid-template-columns:repeat(2,1fr); }
   .ss-two-col { grid-template-columns:1fr; }
   .ss-inj-table th:nth-child(1) { width:84px; }
   .ss-inj-table th:nth-child(3) { width:120px; }
-  .ss-inj-table th:nth-child(4) { width:52px; }
+  .ss-inj-table th:nth-child(4) { width:110px; }
+  .ss-inj-table th:nth-child(5) { width:52px; }
   .ss-inj-activity { display:none; }
 }
 /* Phones: less margin, one stat per row for your team's leaders so the
@@ -582,6 +587,10 @@
   .ss-mine-leaders { grid-template-columns:minmax(0,1fr); }
   .ss-pos-team { display:block; }
   .ss-inj-table th:nth-child(1) { width:50px; }
+  .ss-inj-table th:nth-child(3) { width:84px; }
+  .ss-inj-table th:nth-child(4) { width:76px; }
+  .ss-inj-table th:nth-child(5) { width:40px; }
+  .ss-inj-table th, .ss-inj-table td { overflow:hidden;text-overflow:ellipsis; }
 }
 </style>
 

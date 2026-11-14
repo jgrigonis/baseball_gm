@@ -157,7 +157,8 @@ def stat_lines(
             obp = round(formulas.on_base_pct(h, bb, hbp, ab, sf), 3)
             tb = formulas.total_bases(h, d, tr, hr)
             slg = round(formulas.slugging_pct(tb, ab), 3)
-            qualifies_bat = q.plate_appearances(s) >= min_pa
+            pa = q.plate_appearances(s)
+            qualifies_bat = pa >= min_pa
             ab_k = round(ab / k, 2) if k else None
             hr_ab = round(hr / ab, 3) if ab else None
             batters.append(
@@ -187,6 +188,8 @@ def stat_lines(
                     "WAR": sval.bat_war(values, s["player_id"]),
                     **advanced.win_values(s, "bat"),
                     "qualified": qualifies_bat,
+                    # Why a grey line is grey (Josh, 2026-11-13).
+                    "qual_tip": f"Needs {min_pa} PA to qualify, has {pa}",
                 }
             )
 
@@ -209,9 +212,8 @@ def stat_lines(
             k9 = round(formulas.per_nine(pk, outs), 2)
             gs = s.get("pitch_games_started") or 0
             ip_disp = formulas.ip_str(outs)
-            qualifies_pit = outs >= q.min_outs(
-                team_games, reliever=q.is_reliever(pg, gs)
-            )
+            need_outs = q.min_outs(team_games, reliever=q.is_reliever(pg, gs))
+            qualifies_pit = outs >= need_outs
             pitchers.append(
                 {
                     "player_id": s["player_id"],
@@ -241,6 +243,11 @@ def stat_lines(
                     "WAR": sval.pit_war(values, s["player_id"]),
                     **advanced.win_values(s, "pitch"),
                     "qualified": qualifies_pit,
+                    "qual_tip": (
+                        f"Needs {formulas.ip_str(need_outs)} IP to qualify"
+                        f"{' as a reliever' if q.is_reliever(pg, gs) else ''},"
+                        f" has {ip_disp}"
+                    ),
                 }
             )
 
@@ -276,11 +283,17 @@ def fielding_lines(
         fpct = round((po + a) / denom, 3) if denom else 1.0
         pos = r["position"]
         if pos == "p":
-            qualified = pitcher_outs.get(r["player_id"], 0) >= q.min_field_outs(
-                team_games
+            need = q.min_field_outs(team_games)
+            have = pitcher_outs.get(r["player_id"], 0)
+            qualified = have >= need
+            tip = (
+                f"Needs {formulas.ip_str(need)} IP to qualify, "
+                f"has {formulas.ip_str(have)}"
             )
         else:
-            qualified = (r["g"] or 0) >= q.min_field_games(pos, team_games)
+            need = q.min_field_games(pos, team_games)
+            qualified = (r["g"] or 0) >= need
+            tip = f"Needs {need} games at {pos.upper()} to qualify, has {r['g'] or 0}"
         fielders.append(
             {
                 "player_id": r["player_id"],
@@ -296,6 +309,7 @@ def fielding_lines(
                 **catcher_lines(r),
                 "FPCT": fpct,
                 "qualified": qualified,
+                "qual_tip": tip,
             }
         )
 

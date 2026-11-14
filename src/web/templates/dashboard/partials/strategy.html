@@ -74,6 +74,10 @@
         {% for title, settings in cards if title in ("Batting", "Platoon", "Scouting") %}
           {{ card(title, settings) }}
         {% endfor %}
+        {# Injuries sits at the bottom left (Josh, 2026-11-13). #}
+        {% for title, boxes, sliders in checkbox_cards if title == "Injuries" %}
+          {{ checkbox_card(title, boxes, sliders) }}
+        {% endfor %}
       </div>
 
       {# ── Pitching and rotation ────────────────────────────────────────────── #}
@@ -81,7 +85,7 @@
         {% for title, settings in cards if title in ("Pitching", "Rotation") %}
           {{ card(title, settings) }}
         {% endfor %}
-        {% for title, boxes, sliders in checkbox_cards %}
+        {% for title, boxes, sliders in checkbox_cards if title != "Injuries" %}
           {{ checkbox_card(title, boxes, sliders) }}
         {% endfor %}
 

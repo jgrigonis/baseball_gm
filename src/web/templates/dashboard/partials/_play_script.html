@@ -1,6 +1,6 @@
 {# src/web/templates/dashboard/partials/_play_script.html
    The regular season's sims, run from the top bar's next-move button
-   (_next_move.html): Play Day, Until Injury, Full Season, Stop. Included
+   (_next_move.html): Play Day, 1 Week, 1 Month, Full Season, Stop. Included
    once by the shell. #}
 <script>
 (function() {
@@ -61,6 +61,19 @@ function schedStopDeadline() { return schedTradeStop(STOP_DEADLINE_KEY, '_stopDe
 window.schedSetStopOffers = function(on) { schedSetTradeStop(STOP_OFFERS_KEY, '_stopOffers', on); };
 window.schedSetStopDeadline = function(on) { schedSetTradeStop(STOP_DEADLINE_KEY, '_stopDeadline', on); };
 
+// "Stop for injuries": multi-day runs stop the day one of your players is
+// hurt, comes back or loses his rust (showInjuryNews). Off to start, as
+// Full Season always played through them; remembered per browser.
+var STOP_INJURY_KEY = 'sim-stop-injury-{{ league_id }}';
+function schedStopInjury() {
+  if (typeof window._stopInjury === 'boolean') return window._stopInjury;
+  try { return localStorage.getItem(STOP_INJURY_KEY) === '1'; } catch (e) { return false; }
+}
+window.schedSetStopInjury = function(on) {
+  window._stopInjury = !!on;
+  try { localStorage.setItem(STOP_INJURY_KEY, on ? '1' : '0'); } catch (e) {}
+};
+
 // "Stop for All-Star breaks" unchecked: multi-day runs don't stop when the
 // ballot opens, when the All-Stars are named or after the weekend. The
 // scouts cast an unsaved ballot and make a captain's picks, and the weekend
@@ -111,6 +124,8 @@ function schedSyncBoxes() {
   if (dl) dl.checked = schedStopDeadline();
   var brk = document.getElementById('sched-stop-allstar-box');
   if (brk) brk.checked = !schedThroughBreak();
+  var inj = document.getElementById('sched-stop-injury-box');
+  if (inj) inj.checked = schedStopInjury();
   schedUpdateStops();
 }
 window.schedSyncBoxes = schedSyncBoxes;
@@ -160,6 +175,9 @@ async function schedSimRun(count) {
   var multi = count !== 1;
   var skipOffers = multi && !!document.getElementById('sched-stop-offers-box') && !schedStopOffers();
   var skipDeadline = multi && !!document.getElementById('sched-stop-deadline-box') && !schedStopDeadline();
+  // Stop for injuries (or the old Until Injury run, count 'injury').
+  var injuryStops = count === 'injury' ||
+    (multi && !!document.getElementById('sched-stop-injury-box') && schedStopInjury());
   // While it runs past offers, trade offers and votes go in the news bar
   // instead of popping up: the sim won't stop for them, so the card would
   // only flash.
@@ -261,8 +279,8 @@ async function schedSimRun(count) {
         return;
       }
 
-      // Stop on injury — read from window._stopOnInjury which persists across tab re-renders
-      if (hasNews && (count === 'injury')) {
+      // Stop for injuries, when the box is checked.
+      if (hasNews && injuryStops) {
         window._simStop = true;
       }
 

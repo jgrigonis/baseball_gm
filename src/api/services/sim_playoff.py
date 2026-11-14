@@ -219,6 +219,14 @@ def end_playoffs(conn, league: dict, season_id: str) -> None:
         lr.set_state(league["id"], "complete")
     else:
         lr.set_state(league["id"], "offseason")
+        # Trading is open again: the requests made after the deadline, in
+        # one story.
+        from src.api.services.news.moves import today
+        from src.db.repositories.happiness_repo import HappinessRepository
+
+        HappinessRepository(conn, league["id"]).trade_request_roundup(
+            season_id, today(conn, season_id)
+        )
 
 
 def _round_progress(playoff_repo, season_id: str) -> list[dict]:

@@ -216,6 +216,31 @@ class GMRepository:
         ).fetchone()
         return dict(row) if row else None
 
+    def pitcher_leashes(self, team_id: str) -> dict[str, str]:
+        """{player_id: pitches} for the team's starters with their own leash."""
+        rows = self.conn.execute(
+            "SELECT player_id, pitches FROM pitcher_leashes WHERE team_id = %s",
+            (team_id,),
+        ).fetchall()
+        return {r["player_id"]: r["pitches"] for r in rows}
+
+    def set_pitcher_leash(
+        self, team_id: str, player_id: str, pitches: str | None
+    ) -> None:
+        """Give a starter his own leash, or (None) put him back on the team's."""
+        if pitches is None:
+            self.conn.execute(
+                "DELETE FROM pitcher_leashes WHERE team_id = %s AND player_id = %s",
+                (team_id, player_id),
+            )
+            return
+        self.conn.execute(
+            """INSERT INTO pitcher_leashes (team_id, player_id, pitches)
+               VALUES (%s, %s, %s)
+               ON CONFLICT (team_id, player_id) DO UPDATE SET pitches = EXCLUDED.pitches""",
+            (team_id, player_id, pitches),
+        )
+
     def save_profile(self, gm_id: str, updates: dict) -> None:
         """Update strategy fields on gm_profiles."""
         set_clause = ", ".join(f"{col} = %s" for col in updates)
@@ -305,14 +330,15 @@ class GMRepository:
     PRESEASON_TABS = {
         "roster": "roster_seen_season_id",
         "lineup": "lineup_seen_season_id",
+        "strategy": "strategy_seen_season_id",
     }
 
     def preseason_seen(self, gm_id: str, season_id: str) -> set[str]:
-        """The preseason tabs (roster, lineup) the GM has opened before this
-        season's Opening Day."""
+        """The preseason tabs (roster, lineup, strategy) the GM has opened
+        before this season's Opening Day."""
         row = self.conn.execute(
-            "SELECT roster_seen_season_id, lineup_seen_season_id FROM gms"
-            " WHERE id = %s",
+            "SELECT roster_seen_season_id, lineup_seen_season_id,"
+            " strategy_seen_season_id FROM gms WHERE id = %s",
             (gm_id,),
         ).fetchone()
         if not row:

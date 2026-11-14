@@ -688,7 +688,8 @@ class GameStrategy:
         stats = pitcher.game_stats.pitching
 
         if pitcher.is_starter:
-            threshold = profile.leash_pitches
+            pid = getattr(pitcher, "id", None)
+            threshold = profile.leash_pitches_for(pid)
             if stats.runs == 0:
                 prob *= PITCHER_CHANGE_MULTIPLIERS.get("runs_0", 0.21)
             elif stats.runs == 1:
@@ -710,7 +711,7 @@ class GameStrategy:
                 # quickly a starter who's getting hit comes out.
                 prob *= profile.trouble_hook
             batters_faced = stats.outs + stats.hits + stats.walks + stats.hb
-            prob = min(1.0, prob * profile.starter_hook(batters_faced))
+            prob = min(1.0, prob * profile.starter_hook(batters_faced, pid))
 
         elif pitcher.bullpen_role == "Closer":
             outs = stats.outs

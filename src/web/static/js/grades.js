@@ -35,7 +35,7 @@ function playerGradesHtml(p) {
   const pairs = p.player_type === 'pitcher'
     ? [['STF',p.stuff],['CTL',p.control],['STA',p.stamina],['REC',p.recovery],['GB',p.ground_balls]]
     : [['CON',p.contact],['POW',p.power],['EYE',p.eye],['SPD',p.speed],
-       ['ARM',p.arm],[p.best_def_label||'DEF',p.best_def_grade]];
+       [p.best_def_label||'DEF',p.best_def_grade],['ARM',p.arm]];
   return pairs.filter(([,v])=>v)
     .map(([k,v])=>`<span><span class="gl">${k}</span><span class="${gradeClass(v)}">${v}</span></span>`)
     .join('');
@@ -57,10 +57,11 @@ function faceImgHtml(p, clickable = true) {
 function hitterGradesHtml(p, assignedPos) {
   // Two lines: hitting grades, then arm and fielding grades
   const hitPairs = [['CON',p.contact],['POW',p.power],['EYE',p.eye],['SPD',p.speed]];
+  // ARM last, after the positions (Josh, 2026-11-13).
   const defPairs = [
-    ['ARM',p.arm],
     ['C',p.pos_c],['1B',p.pos_1b],['2B',p.pos_2b],['3B',p.pos_3b],
     ['SS',p.pos_ss],['LF',p.pos_lf],['CF',p.pos_cf],['RF',p.pos_rf],
+    ['ARM',p.arm],
   ];
   const hitHtml = hitPairs.filter(([,v])=>v)
     .map(([k,v])=>`<span><span class="gl">${k}</span><span class="${gradeClass(v)}">${v}</span></span>`)
@@ -153,6 +154,12 @@ function iconTag(p) {
   const n = p.icon_seasons;
   if (!n) return '';
   return `<span class="lu-icon" title="Franchise icon: ${n} seasons with ${p.icon_team ? 'the ' + p.icon_team : 'the club'} and still a top player. Owners who care about icons won't like seeing him traded or released.">ICON</span>`;
+}
+
+// "NEW" after a player who joined in the last week (src/api/services/arrivals.py).
+function newTag(p) {
+  if (!p.arrived) return '';
+  return `<span class="lu-new" title="${p.arrived}: new to the team this week">NEW</span>`;
 }
 
 // "IL (12d)" after an injured player's name; the hover names the injury.

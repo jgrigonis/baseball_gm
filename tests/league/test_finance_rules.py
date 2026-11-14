@@ -1,6 +1,8 @@
 # tests/league/test_finance_rules.py
 """Fan interest, revenue and owner-set budgets (src/league/finances.py)."""
 
+import pytest
+
 from src.league import finances as fn
 
 M = 1_000_000
@@ -132,7 +134,7 @@ def test_broadcast_deals_pay_popular_winners_in_big_markets():
     assert worst < middle < best
     assert 12 * M < worst < 15 * M and 50 * M < best < 55 * M
     assert fn.broadcast_amount(middle, 5) > fn.broadcast_amount(middle, 3)
-    assert fn.broadcast_amount(middle, 2) == middle
+    assert fn.broadcast_amount(middle, 2) < middle == fn.broadcast_amount(middle, 3)
     assert fn.broadcast_years(4) == fn.BROADCAST_DEFAULT_YEARS
 
 
@@ -183,6 +185,15 @@ def test_incentive_sponsors_reward_contenders_and_cost_bad_teams():
         champ["total"]
         == champ["base"] + champ["wins"] + champ["playoffs"] + champ["rounds"]
     )
+
+
+def test_the_incentive_win_bonus_grows_faster_and_stops_at_110_wins():
+    share = fn.sponsor_win_share
+    assert share(0.5) == share(0.4) == 0
+    assert share(0.6) == pytest.approx(fn.SPONSOR_PER_10)
+    assert share(0.55) == pytest.approx(fn.SPONSOR_PER_10 / 4)
+    assert share(0.65) - share(0.6) > share(0.6) - share(0.55)
+    assert share(0.75) == share(110 / 162) == share(1.0)
 
 
 def test_a_team_that_hasnt_picked_goes_by_last_season():

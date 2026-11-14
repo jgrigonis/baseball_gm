@@ -637,6 +637,13 @@ def tab_context(conn, league_id: str, season_id: str | None, team_id) -> dict:
         saved = repo.ballot(season_id, team_id) if team_id else None
         ballot = saved or all_star.ballot(cands)
         neutral = {c["player_id"]: all_star.score(c) for c in cands}
+        from src.api.services import season_value
+        from src.stats import advanced
+
+        lg = advanced.LeagueRates.of(
+            PlayerSeasonStatsRepository(conn).get_season_totals(season_id)
+        )
+        values = season_value.season_values(conn, season_id)
         options = {}
         for slot in all_star.SLOTS:
             at = sorted(
@@ -649,6 +656,7 @@ def tab_context(conn, league_id: str, season_id: str | None, team_id) -> dict:
                     "name": c["name"],
                     "line": _line(c),
                     "stats": _full_stats(c),
+                    "adv": _adv_stats(c, lg, values),
                     **_team(c),
                 }
                 for c in at
@@ -657,6 +665,7 @@ def tab_context(conn, league_id: str, season_id: str | None, team_id) -> dict:
             ballot={s: list(ballot.get(s) or []) for s in all_star.SLOTS},
             options=options,
             stat_heads={"bat": BAT_HEADS, "pitch": PITCH_HEADS},
+            adv_heads={"bat": BAT_ADV_HEADS, "pitch": PITCH_ADV_HEADS},
             saved=saved is not None,
             voted=repo.voted_count(season_id),
             teams=len(
@@ -825,6 +834,49 @@ BAT_HEADS = (
     "OPS",
 )
 PITCH_HEADS = ("G", "GS", "W", "L", "SV", "IP", "H", "HR", "BB", "SO", "ERA", "WHIP")
+
+
+# The same lists in advanced stats (Josh, 2026-11-14), behind a toggle.
+BAT_ADV_HEADS = ("G", "PA", "wOBA", "OPS+", "wRC+", "K%", "BB%", "WAR")
+PITCH_ADV_HEADS = ("G", "GS", "IP", "FIP", "ERA+", "K%", "BB%", "WAR")
+
+
+def _adv_stats(c: dict, lg, values: dict) -> list[tuple[str, float]]:
+    """The advanced columns for a candidate, in the order of BAT_ADV_HEADS
+    or PITCH_ADV_HEADS: (what it shows, what it sorts by)."""
+    from src.api.services import season_value as sv
+    from src.stats import advanced
+
+    def cell(v, fmt="{}"):
+        return ("—", -9999) if v is None else (fmt.format(v), v)
+
+    g = c.get
+    pid = c["player_id"]
+    if c["slot"] == "p":
+        a = advanced.pitching(c, lg)
+        outs = g("pitch_outs", 0)
+        return [
+            cell(g("pitch_games_played", 0)),
+            cell(g("pitch_games_started", 0)),
+            (f"{outs // 3}.{outs % 3}", outs / 3),
+            cell(a["FIP"], "{:.2f}"),
+            cell(a["ERA_PLUS"]),
+            cell(a["K_PCT"], "{:.1f}"),
+            cell(a["BB_PCT"], "{:.1f}"),
+            cell(sv.pit_war(values, pid), "{:.1f}"),
+        ]
+    a = advanced.batting(c, lg)
+    w = a["wOBA"]
+    return [
+        cell(g("bat_games_played", 0)),
+        cell(advanced.pa(c)),
+        ((f"{w:.3f}".lstrip("0"), w) if w is not None else ("—", -9999)),
+        cell(a["OPS_PLUS"]),
+        cell(a["wRC_PLUS"]),
+        cell(a["K_PCT"], "{:.1f}"),
+        cell(a["BB_PCT"], "{:.1f}"),
+        cell(sv.bat_war(values, pid), "{:.1f}"),
+    ]
 
 
 def _rate(x: float) -> str:

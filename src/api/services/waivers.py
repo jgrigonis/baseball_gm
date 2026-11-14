@@ -26,6 +26,7 @@ from __future__ import annotations
 import random
 from datetime import date, timedelta
 
+from src.api.services import arrivals
 from src.api.services import front_office
 from src.api.services.news import moves as move_news
 from src.db.repositories.gm_repo import GMRepository
@@ -216,6 +217,7 @@ def clear(
             continue
         claimed = ContractRepository(conn).claim(pid, waiver["from_team_id"], team_id)
         TeamRepository(conn).add_player(team_id, pid)
+        arrivals.mark(conn, league_id, team_id, pid)
         # Mid-season, the team that let him go keeps his salary for the
         # season played so far (src/league/prorate.py).
         if claimed and claimed["guaranteed"]:

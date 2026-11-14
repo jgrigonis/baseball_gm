@@ -2,7 +2,7 @@
 """
 Injuries are a setting picked when a league is created. Speed Blitz starts
 with them off and Blitz with them on, and the GM can flip either. The sim and
-the Until Injury button follow the league's setting, not its mode.
+the Stop for injuries box follow the league's setting, not its mode.
 """
 
 import uuid

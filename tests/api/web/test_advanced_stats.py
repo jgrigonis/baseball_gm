@@ -135,7 +135,7 @@ def test_war_shows_on_the_stats_tab_and_leaders(client, league):
     r = client.get(
         f"/leagues/{lid}/leaders?season={sid}", headers={"HX-Request": "true"}
     )
-    assert ">WAR</span>" in r.text
+    assert ">WAR (batters)</span>" in r.text and ">WAR (pitchers)</span>" in r.text
 
 
 def test_season_values_split_hitters_and_pitchers(db_conn, league):

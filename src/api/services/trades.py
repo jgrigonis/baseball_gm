@@ -46,6 +46,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import date
 
+from src.api.services import arrivals
 from src.api.services import front_office, owners, personas, team_states
 from src.db.locks import LeagueBusy, league_lock
 from src.db.repositories.budget_repo import BudgetRepository
@@ -1176,6 +1177,7 @@ def execute(
             players.append(asset_id)
             team_repo.remove_player(from_team, asset_id)
             team_repo.add_player(to_team, asset_id)
+            arrivals.mark(conn, league_id, to_team, asset_id)
             deal = deals.get(asset_id)
             if deal and deal["guaranteed"]:
                 prorate.changed_teams(

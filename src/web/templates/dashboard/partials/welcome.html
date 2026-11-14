@@ -25,6 +25,7 @@
   .wl-body { padding:20px 24px 32px; display:grid; gap:16px;
              grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); align-items:start; }
   .wl-wide { grid-column:1 / -1; }
+  .wl-expected { margin:6px 0 0; padding-left:20px; font-size:13px; line-height:1.7; }
   .wl-kit { display:grid; grid-template-columns:repeat(6, minmax(0, 1fr)); gap:12px; align-items:end; }
   .wl-kit figure { margin:0; text-align:center; }
   .wl-kit img { width:100%; height:auto; display:block; }
@@ -378,6 +379,19 @@
           The draft runs pick by pick. Be ready when you're on the clock.
         {% endif %}
       </p>
+      {% if w.expected %}
+      <div class="wl-meta" style="margin-top:10px;">Likely picks with your draft strategy:</div>
+      <ol class="wl-expected">
+        {% for e in w.expected %}
+        <li><span class="as-player wl-link" onclick="openPlayerPanel('{{ e.player_id }}')">{{ e.name }}</span>
+          <span class="wl-meta">{{ e.position }} · pick {{ e.pick }}</span></li>
+        {% endfor %}
+      </ol>
+      {% endif %}
+      {% if not w.draft_done %}
+      <a href="/leagues/{{ league_id }}/draft" hx-get="/leagues/{{ league_id }}/draft" hx-target="#tab-content" hx-push-url="true"
+         class="btn btn-secondary" style="margin-top:10px;">Go to the draft →</a>
+      {% endif %}
     </div>
   </div>
 

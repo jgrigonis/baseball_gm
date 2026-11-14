@@ -1,6 +1,7 @@
 # src/web/utils.py
 import hashlib
 from functools import lru_cache
+from datetime import date
 from pathlib import Path
 
 from fastapi import Request
@@ -55,6 +56,18 @@ templates.env.globals["team_badge"] = team_badge
 templates.env.globals["player_face"] = player_face
 # "P" for any pitcher, so a generated sp/rp lean never shows ("2B" otherwise)
 templates.env.filters["pos_label"] = display_position
+
+
+def long_date(value) -> str:
+    """'2028-07-06' (or a date) -> 'July 6, 2028'; anything else as is."""
+    try:
+        d = value if hasattr(value, "strftime") else date.fromisoformat(str(value)[:10])
+    except ValueError:
+        return str(value)
+    return f"{d.strftime('%B')} {d.day}, {d.year}"
+
+
+templates.env.filters["long_date"] = long_date
 
 
 def grade_class(grade: str | None) -> str:
@@ -573,6 +586,7 @@ def _shell_ctx(
             seen.add(page)
         ctx["roster_due"] = "roster" not in seen
         ctx["lineup_due"] = "lineup" not in seen
+        ctx["strategy_due"] = "strategy" not in seen
     # A multiplayer draft: the Draft tab, then the Free Agents tab (bids),
     # each once (Josh, 2026-11-12). The button is the ready toggle there, so
     # these ride beside it as pills; opening a tab marks it.

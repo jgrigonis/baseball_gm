@@ -180,6 +180,57 @@ def _happiness(
     }
 
 
+# A position he's started at least this share of his games at shows its
+# grade in yellow beside his main one (Josh, 2026-11-14).
+SECOND_POSITION_SHARE = 0.25
+
+
+def _position_starts(db, pid: str, season_id: str | None) -> dict[str, dict]:
+    """Starts in the field at each position (game_lineup_slots), this
+    season and in his career: {"ss": {"season": 48, "career": 310}}."""
+    rows = db.execute(
+        """SELECT ls.position,
+                  COUNT(*) FILTER (WHERE g.season_id = %s) AS season,
+                  COUNT(*) AS career
+             FROM game_lineup_slots ls
+             JOIN games g ON g.id = ls.game_id
+            WHERE ls.player_id = %s AND ls.is_pitcher = 0
+            GROUP BY ls.position""",
+        (season_id, pid),
+    ).fetchall()
+    return {
+        r["position"].lower(): {"season": r["season"], "career": r["career"]}
+        for r in rows
+    }
+
+
+def _mark_positions(grade_map: list, starts: dict[str, dict]) -> None:
+    """Flag the Defense rows he plays: his main spot (most starts this
+    season, or in his career before he's played this year), any other spot
+    with SECOND_POSITION_SHARE of them, and the counts for the hover."""
+    defense = next((s for s in grade_map if s["section"] == "Defense"), None)
+    if not defense or not starts:
+        return
+    field = {k: v for k, v in starts.items() if k != "dh"}
+    basis = "season" if any(v["season"] for v in field.values()) else "career"
+    total = sum(v[basis] for v in field.values())
+    if not total:
+        return
+    main = max(field, key=lambda k: field[k][basis])
+    for skill in defense["skills"]:
+        n = field.get(skill["key"])
+        if not n:
+            continue
+        skill["starts"] = (
+            f"{n['season']} start{'s' if n['season'] != 1 else ''} here this season, "
+            f"{n['career']} in his career"
+        )
+        if skill["key"] == main:
+            skill["main"] = True
+        elif n[basis] / total >= SECOND_POSITION_SHARE:
+            skill["second"] = True
+
+
 def player_panel_data(
     db, league_id: str, pid: str, current_date: date | None
 ) -> dict | None:
@@ -300,6 +351,7 @@ def player_panel_data(
     overall_value = player_overall_value(status, grades, ratings)
 
     grade_map = ratings_to_grade_map(grades, p, ratings)
+    _mark_positions(grade_map, _position_starts(db, pid, current_season_id))
 
     # Best defensive grade for card display
     best_def_grade = (

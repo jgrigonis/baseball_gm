@@ -865,7 +865,7 @@ def preseason_memo(conn, league_id: str, team_id: str, gm_id: str, season_id: st
     don't judge this season)."""
     catch_up(conn, league_id)
     row = conn.execute(
-        """SELECT body FROM owner_messages
+        """SELECT id, body, seen_at FROM owner_messages
            WHERE league_id = %s AND team_id = %s AND gm_id = %s AND key = %s""",
         (league_id, team_id, gm_id, f"pre:{season_id}"),
     ).fetchone()
@@ -873,7 +873,25 @@ def preseason_memo(conn, league_id: str, team_id: str, gm_id: str, season_id: st
         return None
     m = moods(conn, league_id, season_id).get(team_id)
     mood = m["mood"] if m else latest_moods(conn, league_id).get(team_id, 0.0)
-    return {"body": row["body"], "mood": om.mood_word(mood)}
+    return {
+        "id": row["id"],
+        "body": row["body"],
+        "mood": om.mood_word(mood),
+        "seen": row["seen_at"] is not None,
+    }
+
+
+def mark_seen_if_only(conn, gm_id: str, message_id) -> None:
+    """Mark a message read when it's the GM's only unread one (Josh,
+    2026-11-13: Meet your team shows the whole preseason memo, so the Owner
+    tab's bubble shouldn't wait for them to open it there)."""
+    conn.execute(
+        """UPDATE owner_messages SET seen_at = NOW()
+           WHERE id = %s AND seen_at IS NULL
+             AND (SELECT COUNT(*) FROM owner_messages
+                  WHERE gm_id = %s AND seen_at IS NULL) = 1""",
+        (message_id, gm_id),
+    )
 
 
 def unseen(conn, gm_id: str) -> int:

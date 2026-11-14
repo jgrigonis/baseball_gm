@@ -393,11 +393,18 @@ def close_bidding(league_id: str, db: DB, gm: GM, _active: ActiveLeague):
     mine = [s for s in signed if s["team_id"] == gm["team_id"]]
     names = {}
     if mine:
+        from src.api.services.news.moves import shown_grade
+        from src.player.positions import display_position
+
         repo = PlayerRepository(db)
         for s in mine:
             p = repo.look_up(s["player_id"])
             if p:
-                names[s["player_id"]] = f"{p.first_name} {p.last_name}"
+                # Name, then grade and position (Josh, 2026-11-13).
+                names[s["player_id"]] = (
+                    f"{p.first_name} {p.last_name} "
+                    f"({shown_grade(p)} {display_position(p.position)})"
+                )
     return JSONResponse(
         {
             "signed": len(signed),

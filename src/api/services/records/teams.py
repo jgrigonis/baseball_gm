@@ -19,8 +19,8 @@ TOP = 60  # games pulled per single-game record, plenty for ties and a top 5
 # long games, so those two records only count games really played, and
 # start from a league mark.
 PLAYED_ONLY = "Games played since the league started"
-INNING_FLOOR = 9
-LONGEST_FLOOR = 15
+INNING_FLOOR = 7
+LONGEST_FLOOR = 12
 
 
 def season_lines(conn, league_id: str) -> list[dict]:

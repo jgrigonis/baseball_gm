@@ -25,9 +25,10 @@ BASERUNNING = (
 )
 SAC_BUNT = ("never", "situational", "frequent")
 # Starter Leash: the pitch count a starter is usually pulled at, longest
-# first (Josh, 2026-11-13: 75 to 115 in steps of 10, 95 the default).
+# first (Josh, 2026-11-13: 75 to 115 in steps of 10; 2026-11-14: 85 the
+# default, close to the old standard target of 88).
 STARTER_USAGE = ("115", "105", "95", "85", "75")
-DEFAULT_LEASH = "95"
+DEFAULT_LEASH = "85"
 CLOSER_USAGE = ("saves-only", "high-leverage", "best-available")
 BULLPEN_PREF = ("starter-heavy", "balanced", "deep-pen")
 PLATOON_USAGE = ("none", "vs-handedness", "aggressive")
@@ -59,9 +60,9 @@ EXTRA_BASE_FACTOR = dict(zip(BASERUNNING, (0.8, 0.9, 1.0, 1.1, 1.2)))
 
 BUNT_FACTOR = {"never": 0.0, "situational": 1.0, "frequent": 2.0}
 
-# A short leash (85 or 75) also pulls a starter sooner the third time
-# through the order.
-SHORT_LEASHES = ("85", "75")
+# The short leash (75) also pulls a starter sooner the third time through
+# the order.
+SHORT_LEASHES = ("75",)
 THIRD_TIME_BATTERS = 18
 THIRD_TIME_HOOK = 1.5
 
@@ -112,6 +113,10 @@ class ManagerProfile:
     # Keep a person's saved batting orders, or rebuild them before every game,
     # changing them only when a change is clearly better (LINEUP_UPDATES).
     lineup_updates: str = "keep"
+    # Starter Leash for single pitchers, overriding the team's (Josh,
+    # 2026-11-14): ((player_id, "105"), ...), from pitcher_leashes
+    # (migration 133). Loaded for games; the Lineup tab sets it.
+    leashes: tuple[tuple[str, str], ...] = ()
 
     @classmethod
     def from_row(cls, row: dict | None) -> ManagerProfile:
@@ -172,10 +177,22 @@ class ManagerProfile:
         """The pitch count his starters are usually pulled at."""
         return int(self.starter_usage)
 
-    def starter_hook(self, batters_faced: int) -> float:
+    def leash_for(self, player_id: str | None) -> str:
+        """A starter's leash: his own if he has one, else the team's."""
+        if player_id:
+            for pid, leash in self.leashes:
+                if pid == player_id and leash in STARTER_USAGE:
+                    return leash
+        return self.starter_usage
+
+    def leash_pitches_for(self, player_id: str | None) -> int:
+        return int(self.leash_for(player_id))
+
+    def starter_hook(self, batters_faced: int, player_id: str | None = None) -> float:
         """Multiplier on the chance of pulling a starter: a short leash pulls
         him sooner the third time through the order."""
-        if self.starter_usage in SHORT_LEASHES and batters_faced >= THIRD_TIME_BATTERS:
+        leash = self.leash_for(player_id)
+        if leash in SHORT_LEASHES and batters_faced >= THIRD_TIME_BATTERS:
             return THIRD_TIME_HOOK
         return 1.0
 

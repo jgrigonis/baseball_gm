@@ -152,6 +152,17 @@ def test_only_a_player_unhappy_for_weeks_asks_out():
     assert not hp.asks_for_trade(-0.8, 3, TRAITS, 0.99)
 
 
+def test_low_value_players_rarely_ask_out_and_minor_leaguers_never():
+    assert hp.request_value(0.9, False) == 1.0
+    assert hp.request_value(0.1, False) == hp.REQUEST_FLOOR
+    assert hp.REQUEST_FLOOR < hp.request_value(0.35, False) < 1.0
+    assert hp.request_value(0.9, True) == 0.0
+    # A roll that's a yes at full value is a no for a low-value player.
+    assert hp.asks_for_trade(-0.8, 3, TRAITS, 0.1)
+    assert not hp.asks_for_trade(-0.8, 3, TRAITS, 0.1, hp.request_value(0.1, False))
+    assert not hp.asks_for_trade(-0.8, 3, TRAITS, 0.0, 0.0)
+
+
 def test_a_hothead_asks_out_sooner():
     hot = {**TRAITS, "temper": 90}
     assert hp.asks_for_trade(-0.8, 2, hot, 0.0)
