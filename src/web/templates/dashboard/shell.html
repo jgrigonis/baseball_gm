@@ -712,18 +712,20 @@ document.body.addEventListener('htmx:historyRestore', function(e) {
 // and reload the tab. An answer that lands while another pick is still
 // saving would put that pick's old value back, so only the last answer
 // out is swapped in (Josh, 2026-11-13).
-var _quietPending = 0;
+// Each quiet save takes a number as it goes out; an answer that isn't the
+// newest one's is dropped. (A count of saves in flight leaked: htmx re-fires
+// afterRequest on #tab-content once the form is swapped away, so it never
+// came down and every later save stopped swapping in until a refresh.)
+var _quietSeq = 0;
 function _isQuietForm(elt) { return !!(elt && elt.closest && elt.closest('[data-quiet-swap]')); }
 document.body.addEventListener('htmx:beforeRequest', function(e) {
-  if (_isQuietForm(e.detail.elt)) _quietPending++;
-});
-document.body.addEventListener('htmx:afterRequest', function(e) {
-  if (_isQuietForm(e.detail.elt)) _quietPending = Math.max(0, _quietPending - 1);
+  var cfg = e.detail.requestConfig;
+  if (cfg && _isQuietForm(e.detail.elt)) cfg._quietSeq = ++_quietSeq;
 });
 document.body.addEventListener('htmx:beforeSwap', function(e) {
   if (e.detail.target.id !== 'tab-content') return;
-  var elt = e.detail.requestConfig && e.detail.requestConfig.elt;
-  if (_isQuietForm(elt) && _quietPending > 1 && e.detail.shouldSwap) e.detail.shouldSwap = false;
+  var cfg = e.detail.requestConfig;
+  if (cfg && cfg._quietSeq && cfg._quietSeq !== _quietSeq && e.detail.shouldSwap) e.detail.shouldSwap = false;
 });
 var _quietScroll = null;
 var _quietInner = null;
