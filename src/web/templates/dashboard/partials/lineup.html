@@ -1296,7 +1296,7 @@ async function _saveHand(hand) {
 // Each Save, like Save All, only sends what differs from what's saved; a
 // press with nothing changed says "unchanged" (Josh, 2026-11-14).
 async function saveBatting(only) {
-  if (!only && !unsavedHands().length) { showFeedback('Batting unchanged', 'var(--text-dim)'); return; }
+  if (!only && !unsavedHands().length) { showFeedback('Batting unchanged', 'var(--text-dim)'); noteLineupSaved(false); return; }
   const status = battingSaveStatus();
   const reason = status.reason;
   const hands = only ? status.hands.filter(h => only.includes(h)) : status.hands;
@@ -1326,6 +1326,7 @@ async function saveBatting(only) {
     } else {
       const which = hands.length === 2 ? 'vs RHP and vs LHP' : `vs ${HAND_LABEL[hands[0]]}`;
       showFeedback(`✓ Batting saved (${which})`, 'var(--green)');
+      noteLineupSaved(true);
       updateHeaderGlow();
     }
   } catch(e) { showFeedback('✗ Network error', 'var(--red)'); }
@@ -1924,7 +1925,7 @@ function autoAssignBullpen() {
 /* ── Pitching: save ──────────────────────────────────────────────────────────── */
 async function saveRotation() {
   syncPitchingSaved();
-  if (pitchingSaved) { showFeedback('Rotation unchanged', 'var(--text-dim)'); return; }
+  if (pitchingSaved) { showFeedback('Rotation unchanged', 'var(--text-dim)'); noteLineupSaved(false); return; }
   const btn = document.getElementById('save-rotation-btn');
   btn.disabled = true; btn.textContent = 'Saving…';
   try {
@@ -1943,6 +1944,7 @@ async function saveRotation() {
       pitchingSaved = true;
       savedRot = { rotation: [...compact], pointerPid };
       showFeedback('✓ Rotation saved', 'var(--green)');
+      noteLineupSaved(true);
       updatePitchingBanners();
       try {
         const stored = sessionStorage.getItem(STORAGE_KEY);
@@ -1964,7 +1966,7 @@ async function saveRotation() {
 /* ── Save bullpen ────────────────────────────────────────────────────────────── */
 async function saveBullpen() {
   syncPitchingSaved();
-  if (bullpenSaved) { showFeedback('Bullpen unchanged', 'var(--text-dim)'); return; }
+  if (bullpenSaved) { showFeedback('Bullpen unchanged', 'var(--text-dim)'); noteLineupSaved(false); return; }
   const btn = document.getElementById('save-bullpen-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
   try {
@@ -1981,6 +1983,7 @@ async function saveBullpen() {
       bullpenSaved = true;
       savedBullpen = { ...cleanBullpen };
       showFeedback('✓ Bullpen saved', 'var(--green)');
+      noteLineupSaved(true);
       updatePitchingBanners();
       saveToStorage();
     } else {
@@ -2004,6 +2007,20 @@ async function saveAll() {
   else showFeedback('Rotation unchanged', 'var(--text-dim)');
   if (bpDirty) await saveBullpen();
   else showFeedback('Bullpen unchanged', 'var(--text-dim)');
+  if (!battingDirty.length && !rotDirty && !bpDirty) noteLineupSaved(false);
+}
+
+/* ── Saved, for the multiplayer Lineup pill ─────────────────────────────────── */
+// In a multiplayer preseason the Lineup pill by I'm ready stays until a Save
+// (Josh, 2026-11-14). A Save with nothing changed sends nothing, so it tells
+// the server here; either way the top bar's pill is asked for again.
+let lineupSaveDue = {{ (lineup_save_due | default(false)) | tojson }};
+function noteLineupSaved(sent) {
+  if (!lineupSaveDue) return;
+  lineupSaveDue = false;
+  const done = () => { if (window.refreshNextMove) window.refreshNextMove(); };
+  if (sent) { done(); return; }
+  fetch(`/leagues/${LEAGUE_ID}/lineup/saved`, { method: 'PUT' }).then(done).catch(() => {});
 }
 
 /* ── Rebuild all ──────────────────────────────────────────────────────────────── */

@@ -1024,7 +1024,9 @@ def close_bidding(conn, league_id: str) -> list[dict]:
             conn, league_id, season_id, team_id, outlooks.get(team_id), f"{year}-04-01"
         )
     conn.execute(
-        """UPDATE gms SET roster_seen_season_id = NULL
+        """UPDATE gms SET roster_seen_season_id = NULL,
+                          roster_saved_season_id = NULL,
+                          lineup_saved_season_id = NULL
            WHERE league_id = %s AND team_id = ANY(%s)""",
         (league_id, sorted(teams & humans)),
     )

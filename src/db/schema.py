@@ -318,6 +318,8 @@ CREATE TABLE IF NOT EXISTS gms (
     strategy_seen_season_id TEXT,         -- season whose preseason they opened the Strategy tab in (migration 132)
     roster_seen_season_id TEXT,           -- season whose preseason they opened the Roster tab in (migration 112)
     lineup_seen_season_id TEXT,           -- season whose preseason they opened the Lineup tab in (migration 112)
+    roster_saved_season_id TEXT,          -- season whose preseason they saved the Roster in (migration 137)
+    lineup_saved_season_id TEXT,          -- season whose preseason they saved the Lineup in (migration 137)
     trade_roster_season_id TEXT,          -- season of a trade that brought them players; cleared on the Roster tab (migration 114)
     draft_tab_seen_season_id TEXT,        -- draft (shell season) whose Draft tab they opened (migration 119)
     fa_tab_seen_season_id TEXT,           -- draft (shell season) whose Free Agents tab they opened (migration 119)

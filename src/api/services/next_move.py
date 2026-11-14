@@ -142,9 +142,10 @@ def _budget_pill(ctx: dict, page: str) -> dict | None:
 
 
 def _strategy_pill(ctx: dict, page: str) -> dict | None:
-    """Single player, beside Play Opening Day (Josh, 2026-11-14): a look at
-    Strategy before the first game, until the GM opens it that preseason.
-    (The budget is a step of its own before this, so it needs no pill.)"""
+    """Beside Play Opening Day in single player, and after the Roster and
+    Lineup pills beside I'm ready in multiplayer (Josh, 2026-11-14): a look
+    at Strategy before the first game, until the GM opens it that preseason.
+    (The budget is a step of its own before this in single player.)"""
     if ctx.get("league_state") != "preseason" or not ctx.get("strategy_due"):
         return None
     if page == "strategy":
@@ -287,9 +288,10 @@ def _bids_pill(ctx: dict, page: str) -> dict | None:
 
 
 def _roster_pill(ctx: dict, page: str) -> dict | None:
-    """After the draft, a look at the roster the draft and free agency left
-    (Josh, 2026-11-12), once each preseason until the Roster tab is opened."""
-    if ctx.get("league_state") != "preseason" or not ctx.get("roster_due"):
+    """A multiplayer preseason's Roster pill: the roster the draft and free
+    agency left (Josh, 2026-11-12), until the GM saves it that preseason
+    (Josh, 2026-11-14), not just opens it."""
+    if ctx.get("league_state") != "preseason" or not ctx.get("roster_save_due"):
         return None
     # Free agent bids still open: the signings come first.
     if page == "roster" or ctx.get("fa_bidding"):
@@ -298,8 +300,23 @@ def _roster_pill(ctx: dict, page: str) -> dict | None:
         "label": "👥 Roster",
         "short": "👥",
         "href": f"/leagues/{ctx['league_id']}/roster",
-        "title": "See who the draft and free agency brought you, and set "
-        "your 40-man and 26-man.",
+        "title": "See who the draft and free agency brought you, and save "
+        "your 40-man and 26-man before Opening Day.",
+    }
+
+
+def _lineup_pill(ctx: dict, page: str) -> dict | None:
+    """A multiplayer preseason's Lineup pill, until the GM saves the batting
+    order, rotation or bullpen that preseason (Josh, 2026-11-14)."""
+    if ctx.get("league_state") != "preseason" or not ctx.get("lineup_save_due"):
+        return None
+    if page == "lineup" or ctx.get("fa_bidding"):
+        return None
+    return {
+        "label": "📝 Lineup",
+        "short": "📝",
+        "href": f"/leagues/{ctx['league_id']}/lineup",
+        "title": "Save your batting order, rotation and bullpen before Opening Day.",
     }
 
 
@@ -355,6 +372,8 @@ def pick(
             or _budget_pill(ctx, page)
             or _bids_pill(ctx, page)
             or _roster_pill(ctx, page)
+            or _lineup_pill(ctx, page)
+            or _strategy_pill(ctx, page)
         )
         return move
 

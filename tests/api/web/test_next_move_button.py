@@ -10,8 +10,8 @@ from src.api.main import app
 from src.db.repositories.gm_repo import GMRepository
 
 
-def _get(db_conn, factory, state, *paths, joined=False, traded=False):
-    league = factory.league(state=state, mode="blitz")
+def _get(db_conn, factory, state, *paths, joined=False, traded=False, mode="blitz"):
+    league = factory.league(state=state, mode=mode)
     season = factory.season(year=2025)
     factory.league_season(league, season)
     mine = factory.team(city="My", mascot="Team")
@@ -39,7 +39,13 @@ def _get(db_conn, factory, state, *paths, joined=False, traded=False):
     app.dependency_overrides[get_gm_or_viewer] = lambda: me
     try:
         client = TestClient(app)
-        return [client.get(p.format(id=league.id)).text for p in paths]
+        out = []
+        for p in paths:
+            if isinstance(p, tuple):  # (path, json body): a save, PUT
+                client.put(p[0].format(id=league.id), json=p[1]).raise_for_status()
+                continue
+            out.append(client.get(p.format(id=league.id)).text)
+        return out
     finally:
         app.dependency_overrides.clear()
 
@@ -129,4 +135,36 @@ def test_a_multiplayer_offseason_points_to_the_summary_then_expiring_deals(
     assert "📝 Expiring Deals" in on_summary and "/expiring" in on_summary
     assert 'class="nm-pill"' not in on_expiring
     # Opening the tab clears it.
+    assert 'class="nm-pill"' not in after and 'onclick="readyToggle()"' in after
+
+
+def test_a_multiplayer_preseason_points_to_roster_lineup_strategy_until_saved(
+    db_conn, factory
+):
+    """Josh, 2026-11-14: Roster and Lineup pills until each is saved (opening
+    isn't enough), then Strategy until it's been opened."""
+    nm = "/leagues/{id}/next-move?page="
+    roster, opened, lineup, unchanged, strategy, on_strategy, after = _get(
+        db_conn,
+        factory,
+        "preseason",
+        nm + "standings",
+        nm + "roster",
+        nm + "standings",
+        ("/leagues/{id}/roster/save", {"forty_man": [], "active": []}),
+        nm + "standings",
+        ("/leagues/{id}/lineup/saved", {}),
+        nm + "standings",
+        nm + "strategy",
+        nm + "standings",
+        joined=True,
+        mode="speed_blitz",  # no budget pill first
+    )
+    assert "👥 Roster" in roster and "/roster" in roster
+    # Opening the Roster isn't saving it: the pill is back off the tab.
+    assert "👥 Roster" not in opened and "📝 Lineup" in opened
+    assert "👥 Roster" in lineup
+    assert "📝 Lineup" in unchanged and "/lineup" in unchanged
+    assert "🧠 Strategy" in strategy and "/strategy" in strategy
+    assert 'class="nm-pill"' not in on_strategy
     assert 'class="nm-pill"' not in after and 'onclick="readyToggle()"' in after
