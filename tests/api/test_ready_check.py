@@ -140,6 +140,28 @@ class TestConfirmedPace:
         assert _period(db_conn, league)["period_deadline"] is None
         assert ready_check.status(db_conn, league.id, a.id)["seconds_left"] is None
 
+    def test_switching_from_timer_drops_the_clock(self, db_conn, factory, run_period):
+        from src.api.services import admin
+
+        league, (a, b) = _league(db_conn, factory)
+        ready_check.advance_if_due(db_conn, league.id)
+        assert ready_check.status(db_conn, league.id, a.id)["seconds_left"] > 0
+        db_conn.execute(
+            "UPDATE leagues SET pace_control = 'confirmed' WHERE id = %s", (league.id,)
+        )
+        admin.restart_window(db_conn, league.id)
+        assert _period(db_conn, league)["period_deadline"] is None
+        assert ready_check.status(db_conn, league.id, a.id)["seconds_left"] is None
+
+    def test_a_leftover_deadline_shows_no_clock(self, db_conn, factory, run_period):
+        # Leagues switched before the fix still have the timer's deadline.
+        league, (a, b) = _league(db_conn, factory, pace="confirmed")
+        db_conn.execute(
+            "UPDATE leagues SET period_deadline = NOW() + INTERVAL '90 seconds' WHERE id = %s",
+            (league.id,),
+        )
+        assert ready_check.status(db_conn, league.id, a.id)["seconds_left"] is None
+
     def test_runs_only_when_everyone_is_ready(self, db_conn, factory, run_period):
         league, (a, b) = _league(db_conn, factory, pace="confirmed")
         ready_check.set_ready(db_conn, league.id, a.id, True)
