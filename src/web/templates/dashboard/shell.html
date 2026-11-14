@@ -213,7 +213,9 @@ window.signFreeAgent = async function(pid, name, salary, years) {
   const term = `${salary} a season for ${years} season${years === 1 ? '' : 's'}`;
   const ok = await gmConfirm({
     title: `Sign ${name}?`,
-    lines: [`${term}, guaranteed.`, 'He joins your organization (minors).'],
+    // Speed Blitz has no salaries to show (free_agents.sign_preview).
+    lines: ask.no_money ? ['He joins your organization (minors).']
+      : [`${term}, guaranteed.`, 'He joins your organization (minors).'],
     warn: ask.warning,
     ok: 'Sign', tone: 'go',
   });

@@ -94,7 +94,8 @@ def roster(
     ctx["payroll_text"] = None
     contracts = ContractRepository(db)
     year = contracts.current_year(league_id)
-    if team_id and year is not None:
+    # Speed Blitz has no salaries to show (Josh, 2026-11-14).
+    if team_id and year is not None and ctx.get("has_money", True):
         deals = contracts.active_for([p["player_id"] for p in players], year)
         farm_pay = format_salary(
             minors_salary(BudgetRepository(db).salary_scale(league_id, year))

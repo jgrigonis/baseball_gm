@@ -650,3 +650,38 @@ def test_the_expiring_tab_only_in_the_offseason(lg, client):
     )
     html = client.get(f"/leagues/{lg.league.id}/expiring").text
     assert "None of your deals end with this season." in html
+
+
+def test_speed_blitz_shows_no_money(lg, client):
+    """Josh, 2026-11-14: in Speed Blitz free agents have no prices or
+    offers, just Sign; the Roster tab shows no salaries; and there's no
+    Expiring Deals tab, since those deals re-sign on their own."""
+    lg.db.execute(
+        "UPDATE leagues SET mode = 'speed_blitz' WHERE id = %s", (lg.league.id,)
+    )
+    _signed(lg, name="Keeper")
+    pid = lg.factory.rated_player(
+        lg.theirs, lg.league, level=60, status="free_agent", name="Loose"
+    ).id
+    lg.db.execute("DELETE FROM team_players WHERE player_id = %s", (pid,))
+
+    html = client.get(f"/leagues/{lg.league.id}/free-agents").text
+    assert '"last_name": "Loose"' in html
+    assert '"salary_text"' not in html and '"can_offer"' not in html
+    assert "const NO_MONEY = true" in html
+    assert 'value="cheap"' not in html and "Minors 0/120" in html
+    assert "Payroll" not in html
+
+    html = client.get(f"/leagues/{lg.league.id}/players/{pid}/panel").text
+    assert "signFreeAgent(" in html and "offerFreeAgent(" not in html
+    assert "Sign ·" not in html
+
+    html = client.get(f"/leagues/{lg.league.id}/roster").text
+    assert '"last_name": "Keeper"' in html and '"salary_text"' not in html
+    assert 'value="salary"' not in html
+
+    lg.db.execute(
+        "UPDATE leagues SET state = 'offseason' WHERE id = %s", (lg.league.id,)
+    )
+    html = client.get(f"/leagues/{lg.league.id}/standings").text
+    assert f"/leagues/{lg.league.id}/expiring" not in html

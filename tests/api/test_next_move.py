@@ -352,6 +352,22 @@ def test_multiplayer_offseason_pills_summary_then_expiring_deals():
     assert move["key"] == "go-expiring" and "pill" not in move
 
 
+def test_speed_blitz_offseason_skips_expiring_deals():
+    """Josh, 2026-11-14: no money in Speed Blitz, so expiring deals re-sign
+    on their own. The summary leads straight to Begin Offseason."""
+    solo = dict(league_state="offseason", has_money=False)
+    assert pick(_ctx(**solo), "standings")["key"] == "go-summary"
+    assert pick(_ctx(**solo), "season-summary")["key"] == "begin-offseason"
+    assert pick(_ctx(summary_seen=True, **solo), "standings")["key"] == (
+        "begin-offseason"
+    )
+    mp = dict(multiplayer=True, **solo)
+    assert pick(_ctx(expiring_due=True, **mp), "playoffs")["pill"]["href"] == (
+        "/leagues/L1/season-summary"
+    )
+    assert pick(_ctx(expiring_due=True, **mp), "season-summary")["pill"] is None
+
+
 def test_strategy_pill_before_opening_day_and_standings_pill_in_season():
     move = pick(_ctx(league_state="preseason", strategy_due=True), "roster")
     assert move["label"] == "▶ Play Opening Day"

@@ -74,7 +74,7 @@
                     font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">
           <select id="forty-s1" onchange="render()" style="width:auto;font-size:10px;">
             <option value="overall">Overall</option>
-            <option value="salary">Salary</option>
+            {% if payroll_text %}<option value="salary">Salary</option>{% endif %}
             <optgroup label="Hitting">
               <option value="contact">Contact</option>
               <option value="power">Power</option>
@@ -99,7 +99,7 @@
           <select id="forty-s2" onchange="render()" style="width:auto;font-size:10px;">
             <option value="">—</option>
             <option value="overall">Overall</option>
-            <option value="salary">Salary</option>
+            {% if payroll_text %}<option value="salary">Salary</option>{% endif %}
             <optgroup label="Hitting">
               <option value="contact">Contact</option>
               <option value="power">Power</option>
@@ -176,7 +176,7 @@
                     font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">
           <select id="org-s1" onchange="render()" style="width:auto;font-size:10px;">
             <option value="overall">Overall</option>
-            <option value="salary">Salary</option>
+            {% if payroll_text %}<option value="salary">Salary</option>{% endif %}
             <optgroup label="Hitting">
               <option value="contact">Contact</option>
               <option value="power">Power</option>
@@ -201,7 +201,7 @@
           <select id="org-s2" onchange="render()" style="width:auto;font-size:10px;">
             <option value="">—</option>
             <option value="overall">Overall</option>
-            <option value="salary">Salary</option>
+            {% if payroll_text %}<option value="salary">Salary</option>{% endif %}
             <optgroup label="Hitting">
               <option value="contact">Contact</option>
               <option value="power">Power</option>

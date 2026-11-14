@@ -110,11 +110,18 @@ def _asking(db, league_id: str, pid: str) -> dict | None:
 
     # Room to talk him down (fa_offers.py): above the minimum, outside the
     # offseason bidding window.
-    bidding = offseason_fa.bidding_open_for(LeagueRepository(db).get_by_id(league_id))
+    from src.league.league_modes import has_money
+
+    league = LeagueRepository(db).get_by_id(league_id)
+    bidding = offseason_fa.bidding_open_for(league)
+    money = has_money(league)
     return {
         "salary_text": format_salary(deal.salary),
         "years": deal.years,
-        "can_offer": not bidding
+        # Speed Blitz: just Sign, no price or Offer (Josh, 2026-11-14).
+        "no_money": not money,
+        "can_offer": money
+        and not bidding
         and deal.salary > fa_offers.minimum(db, league_id, year),
     }
 

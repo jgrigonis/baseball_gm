@@ -64,8 +64,8 @@
        {% elif my_team_id and player.roster_status == 'free_agent' and player.asking %}
        <button class="btn btn-secondary pp-action pp-sign"
                onclick="signFreeAgent('{{ player.player_id }}', '{{ player.first_name }} {{ player.last_name }}', '{{ player.asking.salary_text }}', {{ player.asking.years }})"
-               title="Sign him at his asking price: {{ player.asking.salary_text }} a season for {{ player.asking.years }} season{{ 's' if player.asking.years != 1 }}">
-         Sign · {{ player.asking.salary_text }}
+               title="{% if player.asking.no_money %}Sign him: he joins your minors{% else %}Sign him at his asking price: {{ player.asking.salary_text }} a season for {{ player.asking.years }} season{{ 's' if player.asking.years != 1 }}{% endif %}">
+         Sign{% if not player.asking.no_money %} · {{ player.asking.salary_text }}{% endif %}
        </button>
        {% if player.asking.can_offer %}
        <button class="btn btn-secondary pp-action"

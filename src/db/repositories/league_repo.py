@@ -2,7 +2,12 @@
 import uuid
 
 from src.league.league_constants import DEFAULT_BACKSTORY_YEARS, DEFAULT_INJURY_RATE
-from src.league.league_modes import get_mode, injuries_allowed
+from src.league.league_modes import (
+    DEFAULT_MODE,
+    MONEY_MODES,
+    get_mode,
+    injuries_allowed,
+)
 
 
 class LeagueRepository:
@@ -432,16 +437,17 @@ class LeagueRepository:
         """Set the league to state: state. Moving on counts as playing.
         The draft opens free agent bidding; it stays open into the preseason
         until the bids settle (offseason_fa.close_bidding), and never past
-        Opening Day."""
+        Opening Day. A league without money (Speed Blitz) never bids: its
+        free agents just sign."""
         self.conn.execute(
             """UPDATE leagues SET state = %s, last_played_at = NOW(),
                    fa_bidding = CASE
-                       WHEN %s = 'draft' THEN TRUE
+                       WHEN %s = 'draft' THEN COALESCE(mode, %s) = ANY(%s)
                        WHEN %s = 'preseason' THEN fa_bidding
                        ELSE FALSE
                    END
                WHERE id = %s""",
-            (state, state, state, league_id),
+            (state, state, DEFAULT_MODE, list(MONEY_MODES), state, league_id),
         )
 
     def mark_coach_step(self, league_id: str, step: str) -> None:
