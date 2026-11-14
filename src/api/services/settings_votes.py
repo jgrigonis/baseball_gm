@@ -33,7 +33,6 @@ from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.notification_repo import NotificationRepository
 from src.db.repositories.ready_check_repo import ReadyCheckRepository
 from src.league.league_constants import UNLIMITED_SEASONS
-from src.league.league_modes import is_blitz_style
 
 # The settings a vote can change, in the form's order, with their labels.
 VOTABLE = {
@@ -52,7 +51,6 @@ VOTABLE = {
     "pick_trades": "Draft pick trades",
     "reentry_enabled": "Re-entry",
 }
-_TRADE_KEYS = ("trades_enabled", "trade_vote", "pick_trades")
 
 # Windows a proposal stays open: the one it's made in, then two whole ones.
 WINDOWS_OPEN = 2
@@ -173,9 +171,6 @@ def propose(conn, league_id: str, gm_id: str, form: dict) -> str | None:
         return "There's already a proposal waiting on votes."
     now = current(league)
     form = {k: v for k, v in form.items() if k in VOTABLE}
-    if not is_blitz_style(league["mode"]):
-        for k in _TRADE_KEYS:
-            form.pop(k, None)
     if form.get("name") is not None:
         form["name"] = form["name"].strip()
     changes = {k: {"old": now[k], "new": v} for k, v in form.items() if v != now[k]}

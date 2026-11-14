@@ -62,9 +62,9 @@ from src.league.league_constants import (
 from src.league.league_modes import (
     BLITZ,
     DEFAULT_MODE,
+    LONGFORM,
     SPEED_BLITZ,
     get_mode,
-    is_blitz_style,
 )
 from src.web.utils import _shell_ctx, render, tab_response, templates
 
@@ -200,7 +200,8 @@ def new_league_page(request: Request, user: User):
         "leagues/new.html",
         {
             "default_mode": DEFAULT_MODE,
-            "modes": [BLITZ, SPEED_BLITZ],
+            "modes": [BLITZ, SPEED_BLITZ, LONGFORM],
+            "pick_timer_range": admin_service.NUMBER_RANGES["pick_timer_sec"],
             "team_counts": divisions.TEAM_COUNTS,
             "default_team_count": divisions.DEFAULT_TEAM_COUNT,
             "default_backstory_years": DEFAULT_BACKSTORY_YEARS,
@@ -241,7 +242,15 @@ def new_league(
     weighted_schedule: bool = Form(True),
     backstory_years: int = Form(DEFAULT_BACKSTORY_YEARS),
     real_season: str = Form(""),
+    pick_timer_sec: int = Form(90),
 ):
+    if get_mode(mode).pace:  # Long Form: Confirmed only
+        pace_control = get_mode(mode).pace
+    low, high = admin_service.NUMBER_RANGES["pick_timer_sec"]
+    if not low <= pick_timer_sec <= high:
+        raise ValueError(
+            f"The draft pick timer must be between {low} and {high} seconds."
+        )
     if not get_mode(mode).budgets:  # also rejects an unknown mode
         # Owners never fire in Speed Blitz (owner_review.firing_on), so the
         # form greys these out; keep the stored settings saying so too.
@@ -319,6 +328,7 @@ def new_league(
                 else injuries_enabled
             ),
             "injury_rate": injury_rate,
+            "pick_timer_sec": pick_timer_sec,
         },
     )
     # 2. GM setup
@@ -848,7 +858,7 @@ def league_page(
             "windows": {
                 k: admin_service.NUMBER_RANGES[k] for k in admin_service.WINDOW_KEYS
             },
-            "trades": is_blitz_style(league["mode"]),
+            "trades": True,
             "error": settings_error,
         }
     ctx["settings_error"] = settings_error

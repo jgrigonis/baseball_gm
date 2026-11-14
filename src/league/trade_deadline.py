@@ -12,7 +12,7 @@
 from __future__ import annotations
 
 from src.league.league_constants import TRADE_DEADLINE_AFTER_GAMES
-from src.league.league_modes import is_blitz_style, trades_allowed
+from src.league.league_modes import trades_allowed
 
 # League states trades can happen in, as long as the deadline hasn't passed.
 TRADE_STATES = ("draft", "preseason", "season")
@@ -74,14 +74,13 @@ def last_played_date(conn, season_id: str) -> str | None:
 
 def trades_enabled_for(league: dict) -> bool:
     """Whether a league trades: its Trades setting (leagues.trades_enabled,
-    picked when it's made), in a mode that trades yet. Long Form waits until
-    its 26-man is managed by hand (see plans/trades.md). A league dict
-    without the setting goes by its mode's default."""
-    mode = league.get("mode")
+    picked when it's made). Every mode trades now, Long Form included (Josh,
+    2026-11-14). A league dict without the setting goes by its mode's
+    default."""
     enabled = league.get("trades_enabled")
     if enabled is None:
-        enabled = trades_allowed(mode)
-    return bool(enabled) and is_blitz_style(mode)
+        enabled = trades_allowed(league.get("mode"))
+    return bool(enabled)
 
 
 def window(conn, league: dict, season_id: str | None) -> dict:

@@ -28,10 +28,10 @@ from src.league.league_constants import (
     MAX_SEASONS,
     UNLIMITED_SEASONS,
 )
-from src.league.league_modes import BLITZ, SPEED_BLITZ
+from src.league.league_modes import BLITZ, LONGFORM, SPEED_BLITZ, get_mode
 
 # The modes and paces a league can be set to (the others aren't built yet).
-MODES = (BLITZ.key, SPEED_BLITZ.key)
+MODES = (BLITZ.key, SPEED_BLITZ.key, LONGFORM.key)
 PACES = ("timer", "confirmed")
 
 # (min, max) for each number setting, matching the create-league form.
@@ -86,6 +86,9 @@ def settings_error(
             return f"Unknown mode '{settings['mode']}'."
     if settings["pace_control"] not in PACES:
         return f"Unknown pace '{settings['pace_control']}'."
+    fixed = get_mode(settings["mode"]).pace
+    if fixed and settings["pace_control"] != fixed:
+        return f"{get_mode(settings['mode']).label} leagues use {fixed.title()} pace."
     for key, (low, high) in NUMBER_RANGES.items():
         # A value from before the range narrowed (e.g. 100 seasons) can stay.
         if settings[key] == league.get(key):

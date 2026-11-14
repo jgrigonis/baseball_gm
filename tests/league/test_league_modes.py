@@ -17,6 +17,7 @@ from src.api.main import app
 from src.game.game import Game
 from src.league.league_modes import (
     BLITZ,
+    LONGFORM,
     SPEED_BLITZ,
     get_mode,
     injuries_allowed,
@@ -75,7 +76,7 @@ def test_unknown_mode_is_rejected():
         get_mode("turbo")
 
 
-def test_new_league_form_offers_both_blitz_modes_with_their_presets():
+def test_new_league_form_offers_every_mode_with_its_presets():
     # The form is for signed-in people (it shows real seasons to contributors).
     app.dependency_overrides[get_current_user] = lambda: {"id": "u1"}
     try:
@@ -88,7 +89,9 @@ def test_new_league_form_offers_both_blitz_modes_with_their_presets():
     assert presets == {
         "blitz": BLITZ.form_presets,
         "speed_blitz": SPEED_BLITZ.form_presets,
+        "longform": LONGFORM.form_presets,
     }
+    assert LONGFORM.form_presets["num_seasons"] == 25
 
 
 def _play(monkeypatch, injuries_enabled):
@@ -128,5 +131,5 @@ def test_new_league_form_starts_injuries_from_each_modes_default():
     found = dict(
         re.findall(r'<option value="(\w+)"[^>]*data-injuries="(on|off)"', r.text)
     )
-    assert found == {"blitz": "on", "speed_blitz": "off"}
+    assert found == {"blitz": "on", "speed_blitz": "off", "longform": "on"}
     assert 'name="injuries_enabled"' in r.text

@@ -92,9 +92,15 @@ def test_after_the_deadline_it_is_closed(db_conn, factory):
 
 def test_modes_without_trades_never_open(db_conn, factory):
     _, season = _season_with_games(db_conn, factory)
-    for mode in ("speed_blitz", "longform"):
-        w = trade_deadline.window(db_conn, {"mode": mode, "state": "season"}, season.id)
-        assert not w["enabled"] and not w["open"]
+    w = trade_deadline.window(
+        db_conn, {"mode": "speed_blitz", "state": "season"}, season.id
+    )
+    assert not w["enabled"] and not w["open"]
+    # Long Form trades (Josh, 2026-11-14).
+    w = trade_deadline.window(
+        db_conn, {"mode": "longform", "state": "season"}, season.id
+    )
+    assert w["enabled"] and w["open"]
 
 
 def test_the_leagues_setting_wins_over_its_mode(db_conn, factory):
@@ -103,8 +109,7 @@ def test_the_leagues_setting_wins_over_its_mode(db_conn, factory):
     off = {"mode": "blitz", "state": "season", "trades_enabled": False}
     assert trade_deadline.window(db_conn, on, season.id)["open"]
     assert not trade_deadline.window(db_conn, off, season.id)["enabled"]
-    # Long Form doesn't trade yet whatever the setting.
-    lf = {"mode": "longform", "state": "season", "trades_enabled": True}
+    lf = {"mode": "longform", "state": "season", "trades_enabled": False}
     assert not trade_deadline.window(db_conn, lf, season.id)["enabled"]
 
 

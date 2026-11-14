@@ -18,10 +18,11 @@
                 data-injuries="{{ 'on' if m.injuries_default else 'off' }}"
                 data-trades="{{ 'on' if m.trades_enabled else 'off' }}"
                 data-firing="{{ 'on' if m.budgets else 'off' }}"
+                data-pace="{{ m.pace or '' }}"
                 {% if default_mode == m.key %}selected{% endif %}>{{ m.label }}</option>
         {% endfor %}
-        <option value="longform" disabled style="color:var(--muted);">Long Form — Coming Soon</option>
       </select>
+      <span class="mode-note" id="longform-note">A live draft where everyone makes their own picks, a 26-man active roster (28 from September 1) and an injured list. Multiplayer is Confirmed pace only: the league moves on when everyone is ready. Picking it sets 25 seasons.</span>
       <span class="mode-note" id="speed-blitz-note">Trades and injuries default to off, and there are no team budgets (no cap, luxury tax or owner spending limits). Picking it sets 30 days per sim period, a 30 second decision window and 5 seasons.</span>
     </div>
     {% if real_seasons %}
@@ -102,6 +103,11 @@
             <option value="confirmed">Confirmed: only when everyone is ready</option>
             <option value="scheduled" disabled style="color:var(--muted);">Scheduled — Coming Soon</option>
           </select>
+        </div>
+        <div class="longform-only">
+        {% call slider("pick_timer_sec", "pick-timer", "Draft Pick Timer", 90, pick_timer_range[0], pick_timer_range[1], step=15, unit=" sec", tip="") %}
+          <span class="mode-note">How long each person has for a pick in a multiplayer live draft. When it runs out, the scouts make their default pick. A one-person league has no timer.</span>
+        {% endcall %}
         </div>
         {% call slider("decision_window_sec", "decision-window", "Decision Window", 120, 30, 600, step=10, unit=" sec", cls="timer-only", tip="") %}
           <span class="timer-only-note">Only used with Timer pace</span>
@@ -225,6 +231,21 @@
     if (!injuriesTouched) injuries.checked = opt.dataset.injuries === 'on';
     syncInjuryFields();
     speedBlitzNote.style.display = mode.value === 'speed_blitz' ? '' : 'none';
+    document.getElementById('longform-note').style.display = mode.value === 'longform' ? '' : 'none';
+    document.querySelectorAll('.longform-only').forEach(function (f) {
+      f.hidden = mode.value !== 'longform';
+      f.querySelectorAll('input').forEach(function (i) { i.disabled = mode.value !== 'longform'; });
+    });
+    // A mode with a fixed pace (Long Form: Confirmed) picks it, and the
+    // other paces can't be chosen.
+    const pace = document.getElementById('pace-control');
+    const fixedPace = opt.dataset.pace;
+    Array.from(pace.options).forEach(function (o) {
+      if (o.value === 'scheduled') return;
+      o.disabled = !!fixedPace && o.value !== fixedPace;
+    });
+    if (fixedPace) pace.value = fixedPace;
+    pace.dispatchEvent(new Event('change'));
     if (!tradesTouched) trades.checked = opt.dataset.trades === 'on';
     syncTradeFields();
     const canFire = opt.dataset.firing === 'on';

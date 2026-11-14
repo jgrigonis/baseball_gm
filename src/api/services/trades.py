@@ -17,7 +17,7 @@
 # deadline) counts as a no. With nobody to vote, it goes straight through.
 #
 # Rules checked on every offer, and again when a GM accepts one:
-#   - the league trades (Blitz; not Speed Blitz, not Long Form yet) and the
+#   - the league trades (its Trades setting: on by default except Speed Blitz) and the
 #     window is open: from the end of the playoffs, through the offseason and
 #     the draft, until deadline day's games (src/league/trade_deadline.py)
 #   - 1 to MAX_PER_SIDE players or draft picks a side, each owned by the side
