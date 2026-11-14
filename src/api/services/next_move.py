@@ -171,6 +171,29 @@ def _standings_pill(ctx: dict, page: str) -> dict | None:
     }
 
 
+def _il_pill(ctx: dict, page: str) -> dict | None:
+    """Long Form: a reminder to put hurt active players on the injured list
+    (Josh, 2026-11-14: people get a reminder, AI teams do their own) and to
+    bring back players who are ready, until it's done. Not on the Roster
+    tab, where it's done."""
+    due = ctx.get("il_due") or {}
+    if page == "roster" or not due:
+        return None
+    place, back = len(due.get("place", [])), len(due.get("activate", []))
+    parts = []
+    if place:
+        parts.append(f"{place} hurt on your active roster")
+    if back:
+        parts.append(f"{back} ready to come off the injured list")
+    return {
+        "label": f"🩹 IL ({place + back})",
+        "short": "🩹",
+        "href": f"/leagues/{ctx['league_id']}/roster",
+        "title": " and ".join(parts).capitalize()
+        + ". Open the Roster tab to move them.",
+    }
+
+
 def _trade_pill(ctx: dict, page: str) -> dict | None:
     """With several GMs the button is the ready toggle, so the after-trade
     Roster reminder rides beside it instead."""
@@ -328,6 +351,7 @@ def pick(
             or _offseason_pill(ctx, page)
             or _draft_pill(ctx, page)
             or _trade_pill(ctx, page)
+            or _il_pill(ctx, page)
             or _budget_pill(ctx, page)
             or _bids_pill(ctx, page)
             or _roster_pill(ctx, page)
@@ -433,7 +457,10 @@ def pick(
         # Leagues with injuries: a box for stopping when one hits your team.
         move["injury_stop"] = bool(ctx.get("injuries_enabled"))
         move["pill"] = (
-            _pill(ctx, page) or _strategy_pill(ctx, page) or _standings_pill(ctx, page)
+            _pill(ctx, page)
+            or _il_pill(ctx, page)
+            or _strategy_pill(ctx, page)
+            or _standings_pill(ctx, page)
         )
         return move
 
@@ -453,6 +480,7 @@ def pick(
             )
             # Sim Round and Full Playoffs play a day at a time; Stop ends them.
             move["stop"] = True
+            move["pill"] = _il_pill(ctx, page)
             return move
         return _go(
             "go-playoffs", "🥇 Go to Playoffs →", "Playoffs →", f"{base}/playoffs"

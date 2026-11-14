@@ -30,6 +30,7 @@ from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.league.league_modes import is_blitz_style
 from src.player.player_value import role_rating
 from src.player.positions import is_pitcher
+from src.team.injured_list import InjuredList, ai_kind
 
 log = logging.getLogger(__name__)
 
@@ -196,19 +197,28 @@ def enforce_active_roster(
 ) -> list[dict]:
     """A Long Form team's rosters inside the limits before it plays: the
     40-man at most 40, the active roster 25 to 26 (28 from September 1) with
-    at most 13 pitchers (14). AI teams also bench players hurt for more than
-    a few days and fill every open spot. Returns the moves made."""
+    at most 13 pitchers (14). Players on the injured list stay on the 40-man
+    but can't be called up; the 60-day list doesn't count toward the 40.
+    AI teams also put players hurt for more than a few days on the injured
+    list, take healed ones off it, and fill every open spot. Returns the
+    moves made."""
     on = str(game_date or date.today().isoformat())[:10]
     limits = active_limits(on, playoffs)
     org = _org(conn, team_id)
     if not org:
         return []
     ai = not GMRepository(conn).get_human_gm_for_team(league_id, team_id)
-    days_out = InjuryRepository(conn, league_id).get_team_injuries(team_id, as_of=on)
+    injuries = InjuryRepository(conn, league_id)
+    days_out = injuries.get_team_injuries(team_id, as_of=on)
+    il = InjuredList(conn, league_id)
+    stints = il.for_team(team_id)
+    on_il = set(stints)
+    sixty = {pid for pid, st in stints.items() if st.sixty}
 
     status = {p["id"]: p["status"] for p in org}
     pitcher = {p["id"]: is_pitcher((p["position"] or "").lower()) for p in org}
     name = {p["id"]: f"{p['first_name']} {p['last_name']}" for p in org}
+    position = {p["id"]: p["position"] for p in org}
 
     def ids(*tiers: str) -> list[str]:
         return [pid for pid, s in status.items() if s in tiers]
@@ -222,23 +232,34 @@ def enforce_active_roster(
     def long_hurt(pid: str) -> bool:
         return days_out.get(pid, 0) > AI_BENCH_AFTER_DAYS
 
+    def forty_count() -> int:
+        """The 40-man as it counts: everyone on it but the 60-day IL."""
+        return len([p for p in ids("26man", "40man") if p not in sixty])
+
+    def reserve() -> list[str]:
+        """The 40-man players who can be called up or sent down: not on the
+        injured list."""
+        return [p for p in ids("40man") if p not in on_il]
+
     # Quick exit: nothing to do for a legal roster, unless an AI team has a
-    # long-hurt player active, an open spot or a healed reserve.
+    # long-hurt player off the injured list, an open spot, a healed reserve
+    # or a player ready to come off the list.
     active = ids("26man")
-    forty = ids("26man", "40man")
     legal = (
-        len(forty) <= FORTY_MAX
+        forty_count() <= FORTY_MAX
         and limits.min_active <= len(active) <= limits.max_active
         and pitchers_active() <= limits.max_pitchers
     )
     if legal and not ai:
         return []
-    back = _recently_back(conn, league_id, ids("40man"), on) if ai else set()
+    back = _recently_back(conn, league_id, reserve(), on) if ai else set()
+    ready = il.ready(team_id, on) if ai else {}
     if (
         legal
         and len(active) == limits.max_active
-        and not any(long_hurt(pid) for pid in active)
+        and not any(long_hurt(p) for p in ids("26man", "40man") if p not in on_il)
         and not back
+        and not ready
     ):
         return []
 
@@ -262,10 +283,28 @@ def enforce_active_roster(
         worst = min(ids("26man"), key=lambda p: (not hurt(p), rating(p)))
         move(worst, "40man", "active_full")
 
-    # 3. AI teams sit players hurt for more than a few days.
+    # 3. AI teams: players ready to come off the injured list do (the
+    #    60-day list only with 40-man room), and players hurt for more than a
+    #    few days go on it, the active ones coming off the active roster.
+    to_place: list[tuple[str, int]] = []
     if ai:
-        for pid in sorted(ids("26man"), key=rating):
-            if long_hurt(pid):
+        for pid in sorted(ready, key=rating, reverse=True):
+            if ready[pid].sixty and forty_count() >= FORTY_MAX:
+                continue
+            il.activate(pid, on)
+            on_il.discard(pid)
+            sixty.discard(pid)
+            back.add(pid)
+        types = injuries.get_team_injury_types(team_id)
+        for pid in sorted(ids("26man", "40man"), key=rating):
+            if pid in on_il or not long_hurt(pid):
+                continue
+            kind = ai_kind(position[pid], types.get(pid), days_out[pid])
+            to_place.append((pid, kind))
+            on_il.add(pid)
+            if kind == 60:
+                sixty.add(pid)
+            if status[pid] == "26man":
                 move(pid, "40man", "hurt")
 
     def room_for(pid: str) -> bool:
@@ -284,15 +323,15 @@ def enforce_active_roster(
     def call_up(want_pitcher: bool | None, why: str) -> bool:
         """The best healthy reserve onto the active roster, or a minor
         leaguer if the reserve has nobody (making 40-man room if needed)."""
-        pid = best(ids("40man"), want_pitcher)
+        pid = best(reserve(), want_pitcher)
         if pid:
             move(pid, "26man", why)
             return True
         pid = best(ids("minors"), want_pitcher)
         if not pid:
             return False
-        if len(ids("26man", "40man")) >= FORTY_MAX:
-            spare = [p for p in ids("40man")]
+        if forty_count() >= FORTY_MAX:
+            spare = reserve()
             if not spare:
                 return False
             move(
@@ -306,7 +345,7 @@ def enforce_active_roster(
     # 4. AI teams: healed reserves back in for the worst active of their kind.
     if ai:
         for pid in sorted(back, key=rating, reverse=True):
-            if status.get(pid) != "40man" or hurt(pid):
+            if status.get(pid) != "40man" or hurt(pid) or pid in on_il:
                 continue
             same = [p for p in ids("26man") if pitcher[p] == pitcher[pid]]
             if len(ids("26man")) < limits.max_active and room_for(pid):
@@ -334,8 +373,8 @@ def enforce_active_roster(
             break
 
     # 6. 40-man over the limit: the lowest-rated reserves go to the minors.
-    while len(ids("26man", "40man")) > FORTY_MAX and ids("40man"):
-        worst = min(ids("40man"), key=lambda p: (not hurt(p), rating(p)))
+    while forty_count() > FORTY_MAX and reserve():
+        worst = min(reserve(), key=lambda p: (not hurt(p), rating(p)))
         move(worst, "minors", "forty_full")
 
     # Net moves only: a player moved twice keeps just where he ended up.
@@ -344,12 +383,14 @@ def enforce_active_roster(
         final[m["player_id"]] = m
     original = {p["id"]: p["status"] for p in org}
     moves = [m for pid, m in final.items() if original[pid] != m["to"]]
-    if not moves:
-        return []
     repo = PlayerStatusRepository(conn)
     for m in moves:
         repo.set_status(m["player_id"], m["to"])
         m["from"] = original[m["player_id"]]
+    for pid, kind in to_place:
+        il.place(team_id, pid, kind, on)
+    if not moves:
+        return []
     if ai:
         _reseed(conn, league_id, team_id, on, moves, pitcher)
     else:

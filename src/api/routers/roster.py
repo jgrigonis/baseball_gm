@@ -12,7 +12,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from src.api.services import arrivals
 from src.api.services import icons
 from src.api.dependencies import DB, GM, ActiveLeague, IsHTMX, User
-from src.api.schemas import RosterSaveRequest
+from src.api.schemas import InjuredListRequest, RosterSaveRequest
 from src.api.services import coach
 from src.api.view_models.player_cards import (
     attach_moods,
@@ -37,6 +37,7 @@ from src.player.contracts import format_salary, minors_salary
 from src.player.face import face_url
 from src.league.league_modes import is_blitz_style
 from src.player.positions import is_pitcher
+from src.team.injured_list import InjuredList, kinds_for, league_today
 from src.team.roster_limits import MIN_PLAYING_ROSTER, league_active_limits
 from src.web.utils import _current_league_date, _shell_ctx, tab_response
 
@@ -120,6 +121,8 @@ def roster(
     league = LeagueRepository(db).get_by_id(league_id)
     ctx["long_form"] = bool(league) and not is_blitz_style(league.get("mode"))
     if ctx["long_form"]:
+        _attach_il(db, league_id, team_id, players)
+        ctx["il_today"] = league_today(db, league_id)
         limits = league_active_limits(db, dict(league))
         ctx["active_limits"] = {
             "max": limits.max_active,
@@ -167,7 +170,11 @@ def save_roster_put(
     team_id = gm["team_id"]
     forty_man_ids = body.forty_man
 
-    if len(forty_man_ids) > 40:
+    league = LeagueRepository(db).get_by_id(league_id)
+    long_form = bool(league) and not is_blitz_style(league.get("mode"))
+    # Long Form: the 60-day injured list doesn't count toward the 40.
+    sixty = InjuredList(db, league_id).sixty_ids(team_id) if long_form else set()
+    if len(set(forty_man_ids) - sixty) > 40:
         return JSONResponse(
             {
                 "detail": f"40-man roster cannot exceed 40 players ({len(forty_man_ids)} submitted)"
@@ -196,9 +203,8 @@ def save_roster_put(
                 {"detail": f"Player {pid} not on this team"}, status_code=422
             )
 
-    league = LeagueRepository(db).get_by_id(league_id)
-    if league and not is_blitz_style(league.get("mode")):
-        problem = _active_problem(db, dict(league), forty_man_ids, body.active)
+    if long_form:
+        problem = _active_problem(db, dict(league), team_id, forty_man_ids, body.active)
         if problem:
             return JSONResponse({"detail": problem}, status_code=422)
         status_repo.set_40man_roster(team_player_ids, forty_man_ids)
@@ -212,13 +218,18 @@ def save_roster_put(
 
 
 def _active_problem(
-    db, league: dict, forty_man_ids: list[str], active: list[str] | None
+    db, league: dict, team_id: str, forty_man_ids: list[str], active: list[str] | None
 ) -> str | None:
     """Why a Long Form active roster can't be saved, or None if it can."""
     limits = league_active_limits(db, league)
     active = active or []
     if len(set(active)) != len(active):
         return "A player is on the active roster twice."
+    il = InjuredList(db, league["id"]).for_team(team_id)
+    if set(active) & set(il):
+        return "Players on the injured list can't be on the active roster."
+    if not set(il) <= set(forty_man_ids):
+        return "Players on the injured list stay on the 40-man."
     if not set(active) <= set(forty_man_ids):
         return "Only players on the 40-man can be on the active roster."
     if len(active) > limits.max_active:
@@ -314,6 +325,108 @@ def send_to_reserve(
     _leave_staff(db, league_id, team_id, player_id)
     db.commit()
     return JSONResponse({"reserve": player_id})
+
+
+# ── Long Form: the injured list (src/team/injured_list.py) ─────────────────
+
+
+def _attach_il(db, league_id: str, team_id: str, players: list[dict]) -> None:
+    """Each card's injured list: the stint he's on ({kind, eligible_on,
+    ready}), or the lists a hurt 40-man player could go on (il_kinds)."""
+    il = InjuredList(db, league_id)
+    today = league_today(db, league_id)
+    stints = il.for_team(team_id)
+    ready = il.ready(team_id, today)
+    types = InjuryRepository(db, league_id).get_team_injury_types(team_id)
+    for p in players:
+        st = stints.get(p["player_id"])
+        if st:
+            p["il"] = {
+                "kind": st.kind,
+                "eligible_on": st.eligible_on,
+                "ready": p["player_id"] in ready,
+            }
+        elif p.get("injured") and p.get("roster_status") in ("26man", "40man"):
+            p["il_kinds"] = kinds_for(p.get("position"), types.get(p["player_id"]))
+
+
+@router.post("/leagues/{league_id}/roster/{player_id}/il")
+def place_on_il(
+    league_id: str,
+    player_id: str,
+    body: InjuredListRequest,
+    db: DB,
+    gm: GM,
+    _active: ActiveLeague,
+):
+    """Long Form: put a hurt player on the injured list. He comes off the
+    active roster (and out of the rotation and bullpen); the 60-day list
+    frees his 40-man spot too."""
+    team_id = gm["team_id"]
+    league = LeagueRepository(db).get_by_id(league_id)
+    if not league or is_blitz_style(league.get("mode")):
+        return JSONResponse(
+            {"detail": "Only Long Form leagues have an injured list."}, status_code=422
+        )
+    il = InjuredList(db, league_id)
+    today = league_today(db, league_id)
+    problem = il.problem_placing(team_id, player_id, body.kind, today)
+    if problem:
+        return JSONResponse({"detail": problem}, status_code=422)
+    stint = il.place(team_id, player_id, body.kind, today)
+    _leave_staff(db, league_id, team_id, player_id)
+    db.commit()
+    return JSONResponse(
+        {
+            "kind": stint.kind,
+            "placed_on": stint.placed_on,
+            "eligible_on": stint.eligible_on,
+        }
+    )
+
+
+@router.post("/leagues/{league_id}/roster/{player_id}/activate")
+def activate_from_il(
+    league_id: str,
+    player_id: str,
+    db: DB,
+    gm: GM,
+    _active: ActiveLeague,
+):
+    """Long Form: take a healed player off the injured list once his days
+    are up. He goes back on the active roster if there's room for him,
+    otherwise to the 40-man reserve."""
+    team_id = gm["team_id"]
+    league = LeagueRepository(db).get_by_id(league_id)
+    if not league or is_blitz_style(league.get("mode")):
+        return JSONResponse(
+            {"detail": "Only Long Form leagues have an injured list."}, status_code=422
+        )
+    il = InjuredList(db, league_id)
+    today = league_today(db, league_id)
+    status_repo = PlayerStatusRepository(db)
+    forty = set(status_repo.get_by_team_and_status(team_id, "26man")) | set(
+        status_repo.get_by_team_and_status(team_id, "40man")
+    )
+    counted = len(forty - il.sixty_ids(team_id))
+    problem = il.problem_activating(team_id, player_id, today, counted < 40)
+    if problem:
+        return JSONResponse({"detail": problem}, status_code=422)
+    il.activate(player_id, today)
+    limits = league_active_limits(db, dict(league))
+    active = status_repo.get_by_team_and_status(team_id, "26man")
+    rows = db.execute(
+        "SELECT id, position FROM players WHERE id = ANY(%s)", (active + [player_id],)
+    ).fetchall()
+    pitcher = {r["id"]: is_pitcher((r["position"] or "").lower()) for r in rows}
+    pitchers = sum(1 for pid in active if pitcher.get(pid))
+    room = len(active) < limits.max_active and (
+        not pitcher.get(player_id) or pitchers < limits.max_pitchers
+    )
+    to = "26man" if room else "40man"
+    status_repo.set_status(player_id, to)
+    db.commit()
+    return JSONResponse({"to": to})
 
 
 def _leave_staff(db, league_id: str, team_id: str, player_id: str) -> None:

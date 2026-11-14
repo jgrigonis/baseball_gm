@@ -23,6 +23,7 @@ from src.api.services import firing, owner_office, owner_review, owners
 from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.games_repo import GameRepository
+from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.playoff_repo import PlayoffRepository
 from src.db.repositories.season_repo import SeasonRepository
@@ -41,6 +42,7 @@ from src.league.playoffs.play_playoffs import (
     original_seed,
 )
 from src.league.play_season import play_game
+from src.team.injured_list import InjuredList
 from src.team.roster_limits import enforce_roster_limits
 
 log = logging.getLogger(__name__)
@@ -214,6 +216,10 @@ def end_playoffs(conn, league: dict, season_id: str) -> None:
         # One and done, and every person has been fired: nobody can run a
         # team, so the league ends here.
         over = firing.nobody_left(conn, league["id"])
+    # Long Form's injured list clears once the season is over.
+    InjuredList(conn, league["id"]).clear_all(
+        InjuryRepository(conn, league["id"]).current_date().isoformat()
+    )
     lr = LeagueRepository(conn)
     if over or is_last_season(league["num_seasons"], lr.count_seasons(league["id"])):
         OffseasonPipeline(conn).run_final(season_id, league["id"])
