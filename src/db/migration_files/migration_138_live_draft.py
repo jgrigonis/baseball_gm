@@ -17,7 +17,9 @@ def upgrade(conn):
     conn.execute(
         "ALTER TABLE leagues ADD COLUMN IF NOT EXISTS pick_timer_sec INTEGER NOT NULL DEFAULT 90"
     )
-    conn.execute("ALTER TABLE drafts ADD COLUMN IF NOT EXISTS pick_deadline TIMESTAMPTZ")
+    conn.execute(
+        "ALTER TABLE drafts ADD COLUMN IF NOT EXISTS pick_deadline TIMESTAMPTZ"
+    )
     conn.execute(
         "ALTER TABLE draft_order ADD COLUMN IF NOT EXISTS auto BOOLEAN NOT NULL DEFAULT FALSE"
     )

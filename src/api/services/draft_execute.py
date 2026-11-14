@@ -310,4 +310,3 @@ def finish_draft(
     # Rookie deals for the draft class, and new deals for anyone whose last
     # one ran out with the old season (src/player/contracts.py).
     ContractRepository(conn).sign_unsigned(league_id, year)
-

@@ -101,7 +101,9 @@ def test_short_list_puts_the_default_first(db_conn, setup):
 def test_multiplayer_clock_runs_out_into_the_default_pick(db_conn, factory, setup):
     league, draft, _, me, ai2, _ = setup
     _person(db_conn, factory, factory.team(), league)  # a second person
-    db_conn.execute("UPDATE leagues SET pick_timer_sec = 45 WHERE id = %s", (league.id,))
+    db_conn.execute(
+        "UPDATE leagues SET pick_timer_sec = 45 WHERE id = %s", (league.id,)
+    )
     live = LiveDraft(db_conn, draft.id, lock=True)
     live.start()
     assert live.draft["pick_deadline"] is not None

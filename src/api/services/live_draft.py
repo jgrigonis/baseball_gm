@@ -79,7 +79,9 @@ class LiveDraft:
         self.id = draft_id
         self.league_id = self.draft["league_id"]
         self.repo = DraftRepository(conn)
-        self._order = [r["team_id"] for r in self.repo.get_team_id_draft_order(draft_id)]
+        self._order = [
+            r["team_id"] for r in self.repo.get_team_id_draft_order(draft_id)
+        ]
         year = SeasonRepository(conn).get_year(self.draft["season_id"])
         self.year = year["year"] if year else LEAGUE_START_YEAR
         self._owners = PickRightsRepository(conn).owners(self.league_id, self.year)
@@ -378,7 +380,9 @@ class LiveDraft:
         if slot and self.draft.get("pick_deadline"):
             seconds = max(
                 0,
-                round((self.draft["pick_deadline"] - datetime.now(UTC)).total_seconds()),
+                round(
+                    (self.draft["pick_deadline"] - datetime.now(UTC)).total_seconds()
+                ),
             )
         players = _player_names(self.conn, [p["player_id"] for p in made[-RECENT:]])
         on = None

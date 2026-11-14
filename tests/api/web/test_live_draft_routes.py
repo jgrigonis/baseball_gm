@@ -70,7 +70,9 @@ def test_start_pick_and_poll(client, setup):
     r = client.post(f"{base}/pick", json={"player_id": nxt["players"][1]})
     assert r.status_code == 200, r.text
     state = client.get(f"{base}/live").json()
-    assert state["pick"] == 3 and state["on_clock"]["you"] is True  # 2-team snake: back to back
+    assert (
+        state["pick"] == 3 and state["on_clock"]["you"] is True
+    )  # 2-team snake: back to back
     assert nxt["players"][1] in state["taken"]
 
     r = client.post(f"{base}/pick", json={"player_id": nxt["players"][1]})
