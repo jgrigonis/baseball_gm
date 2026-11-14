@@ -47,6 +47,7 @@ import logging
 
 from src.api.services import (
     all_star,
+    live_draft,
     offseason_fa,
     owner_office,
     sim_jobs,
@@ -133,7 +134,12 @@ def _run_period(conn, league_id: str, state: str, days: int) -> bool:
         run_offseason(league_id, conn)
     elif state == "draft":
         draft = DraftRepository(conn).get_current_for_league(league_id)
-        if draft and draft["state"] != "complete":
+        if live_draft.is_live(draft):
+            # Long Form: everyone's ready, so the live draft starts. The
+            # period ends with its last pick (sim_jobs._draft).
+            if draft["state"] == "pending":
+                live_draft.LiveDraft(conn, draft["id"], lock=True).start()
+        elif draft and draft["state"] != "complete":
             execute_blitz_draft(draft["id"], conn)
     return False
 
@@ -165,6 +171,8 @@ def advance_if_due(conn, league_id: str) -> bool:
         conn.commit()
         period = repo.period(league_id)
 
+    if period["state"] == "draft" and live_draft.is_open(conn, league_id):
+        return False  # the live draft moves on pick by pick
     if not _due(period, _gms(conn, league_id, period["state"])):
         return False
 
@@ -205,6 +213,10 @@ def run_period(conn, league_id: str, sim_period: int) -> bool:
 
         settings_votes.close_due(conn, league_id, now["sim_period"])
         at_deadline = _run_period(conn, league_id, now["state"], now["sim_period_days"])
+        if now["state"] == "draft" and live_draft.is_open(conn, league_id):
+            # The live draft is on: its last pick starts the next period.
+            conn.commit()
+            break
         repo.next_period(
             league_id,
             window_multiplier=TRADE_DEADLINE_WINDOW_MULTIPLIER if at_deadline else 1,
@@ -246,6 +258,10 @@ def status(conn, league_id: str, gm_id: str) -> dict:
         "pace": period["pace_control"],
         "league_state": period["state"],
         "active": period["state"] in READY_CHECK_STATES,
+        # Long Form's live draft is on: nothing to get ready for until it's
+        # over (the Draft tab runs it).
+        "live_draft": period["state"] == "draft"
+        and live_draft.is_open(conn, league_id),
         "paused": period["is_paused"],
         "period": period["sim_period"],
         "seconds_left": max(0, round(seconds_left))

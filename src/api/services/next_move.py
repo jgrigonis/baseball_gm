@@ -216,12 +216,20 @@ def _draft_pill(ctx: dict, page: str) -> dict | None:
     if ctx.get("league_state") != "draft":
         return None
     base = f"/leagues/{ctx['league_id']}"
+    if ctx.get("live_draft") == "open" and page != "draft":
+        return {
+            "label": "📋 Draft is live",
+            "short": "📋",
+            "href": f"{base}/draft",
+            "title": "The draft is on. Make your picks in the draft room.",
+        }
     if ctx.get("draft_tab_due") and page != "draft":
         return {
             "label": "📋 Draft",
             "short": "📋",
             "href": f"{base}/draft",
-            "title": "Set your draft board before everyone's ready and the draft runs.",
+            "title": "Set your draft board before everyone's ready and the draft "
+            + ("starts." if ctx.get("live_draft") else "runs."),
         }
     if ctx.get("fa_tab_due") and page != "free-agents":
         return {
@@ -380,6 +388,20 @@ def pick(
     if state == "draft":
         if ctx.get("draft_complete"):
             return None
+        live = ctx.get("live_draft")
+        if live == "open":
+            # The draft room has the picks; elsewhere, back to it.
+            if page == "draft":
+                return None
+            return _go("go-draft", "Back to the draft →", "Draft →", f"{base}/draft")
+        if live == "pending" and page == "draft":
+            return _act(
+                "start-draft",
+                "Start Draft ▶",
+                "Start Draft ▶",
+                "startDraft",
+                btn_id="execute-btn",
+            )
         if page == "draft":
             return _act(
                 "run-draft",

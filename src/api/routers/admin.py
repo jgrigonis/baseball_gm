@@ -265,6 +265,7 @@ def league_settings(
     sim_period_days: int = Form(...),
     num_seasons: int = Form(...),
     backstory_years: int | None = Form(None),
+    pick_timer_sec: int | None = Form(None),
     reentry_enabled: bool = Form(False),
     owner_firing: bool = Form(False),
     is_public: bool = Form(False),
@@ -289,6 +290,9 @@ def league_settings(
             "decision_window_sec": decision_window_sec,
             "draft_window_sec": draft_window_sec,
             "lineup_window_sec": lineup_window_sec,
+            "pick_timer_sec": pick_timer_sec
+            if pick_timer_sec is not None
+            else league["pick_timer_sec"],
             "sim_period_days": sim_period_days,
             "num_seasons": num_seasons,
             "backstory_years": backstory_years,

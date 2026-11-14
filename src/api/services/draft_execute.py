@@ -241,6 +241,34 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
         )
 
     dr.set_complete_current_pick(draft_id, len(picks) + 1)
+    finish_draft(conn, draft, human_team_ids, outlooks)
+
+    return {
+        "draft_id": draft_id,
+        "season_id": season_id,
+        "picks_made": len(picks),
+        "auto_picks": sum(1 for p in picks if p.team_id not in human_team_ids),
+        "rounds": ROUNDS,
+        "league_state": "preseason",
+    }
+
+
+def finish_draft(
+    conn,
+    draft: dict,
+    human_team_ids: set[str],
+    outlooks: dict[str, front_office.Outlook],
+) -> None:
+    """Everything after the last pick, for the Blitz draft and the live
+    draft alike: rotations for AI teams, the league to the preseason, the
+    post-draft offseason steps, undrafted prospects to free agency and
+    rookie deals."""
+    league_id = draft["league_id"]
+    season_id = draft["season_id"]
+    dr = DraftRepository(conn)
+    stored_order = dr.get_team_id_draft_order(draft["id"])
+    row = SeasonRepository(conn).get_year(season_id)
+    year = row["year"] if row else LEAGUE_START_YEAR
     # Offers with this draft's picks in them have nothing left to trade.
     trades.draft_run(conn, league_id, year)
 
@@ -282,12 +310,3 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
     # Rookie deals for the draft class, and new deals for anyone whose last
     # one ran out with the old season (src/player/contracts.py).
     ContractRepository(conn).sign_unsigned(league_id, year)
-
-    return {
-        "draft_id": draft_id,
-        "season_id": season_id,
-        "picks_made": len(picks),
-        "auto_picks": sum(1 for p in picks if p.team_id not in human_team_ids),
-        "rounds": ROUNDS,
-        "league_state": "preseason",
-    }

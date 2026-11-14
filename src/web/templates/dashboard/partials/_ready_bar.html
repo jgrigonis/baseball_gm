@@ -91,7 +91,12 @@ function render() {
   var present = d.gms.filter(function(g) { return !g.away; });
   var readyCount = present.filter(function(g) { return g.ready; }).length;
 
-  if (!d.active) {
+  if (d.live_draft) {
+    // Long Form's live draft: the Draft tab runs it, pick by pick.
+    text.textContent = '📋 The draft is live. Make your picks on the Draft tab.';
+    waiting.textContent = '';
+    btn.style.display = 'none';
+  } else if (!d.active) {
     text.textContent = d.league_state === 'complete'
       ? 'This league is complete.' : 'Nothing to get ready for right now.';
     waiting.textContent = '';

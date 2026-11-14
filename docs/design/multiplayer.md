@@ -78,7 +78,7 @@ depends on the league's state:
 
 | League state | One period |
 | --- | --- |
-| draft | runs the draft |
+| draft | runs the draft (Long Form: starts the live draft, and the period ends with its last pick; see `src/api/services/live_draft.py`) |
 | preseason, season | `sim_period_days` days of the regular season (default 3); the last one sets up the playoffs |
 | playoffs | one playoff day |
 | offseason | runs the offseason |

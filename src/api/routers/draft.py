@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import UTC, date, datetime
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -21,8 +21,8 @@ from src.api.dependencies import (
     Unpaused,
     User,
 )
-from src.api.schemas import DraftStrategyRequest
-from src.api.services import coach, sim_jobs, team_states
+from src.api.schemas import DraftPickRequest, DraftScoutsRequest, DraftStrategyRequest
+from src.api.services import coach, live_draft, sim_jobs, team_states
 from src.api.services.draft_needs import needs_for_draft
 from src.api.services.draft_preview import preview_picks
 from src.api.view_models.draft import draft_rounds, last_season
@@ -135,6 +135,13 @@ def draft_tab(
     ctx = _shell_ctx(request, db, gm, league_id, "draft", user)
     player_repo = PlayerRepository(db)
 
+    ctx["live"] = None
+    if live_draft.is_live(draft):
+        live = live_draft.LiveDraft(db, draft["id"])
+        ctx["live"] = {
+            "state": draft["state"],
+            "timer": live.state(gm["team_id"])["timer"],
+        }
     if draft:
         picked_ids = draft_repo.get_picked_ids(draft["id"])
         all_players = draft_repo.get_prospects(league_id)
@@ -200,6 +207,135 @@ def draft_tab(
     return tab_response(request, htmx, "dashboard/partials/draft.html", ctx)
 
 
+# ── Live draft (Long Form) ──────────────────────────────────────────────────────
+
+
+def _live_or_error(db, league_id: str, lock: bool = True):
+    live = live_draft.for_league(db, league_id, lock=lock)
+    if not live:
+        return JSONResponse({"detail": "There's no live draft on."}, status_code=409)
+    return live
+
+
+@router.post("/leagues/{league_id}/draft/start")
+def start_live_draft(
+    league_id: str,
+    db: DB,
+    gm: GM,
+    _active: ActiveLeague,
+    _: SinglePlayer,
+    _unpaused: Unpaused,
+):
+    """A one-person league starts its live draft: the AI teams pick up to
+    the person's first pick. (A multiplayer league starts it when everyone
+    is ready.)"""
+    live = _live_or_error(db, league_id)
+    if isinstance(live, JSONResponse):
+        return live
+    try:
+        live.start()
+    except ValueError as e:
+        db.rollback()
+        return JSONResponse({"detail": str(e)}, status_code=409)
+    db.commit()
+    return JSONResponse({"started": True})
+
+
+@router.get("/leagues/{league_id}/draft/live")
+def live_draft_state(league_id: str, db: DB, gm: GM):
+    """The draft room's poll: the pick on the clock, its clock and the latest
+    picks. A clock that has run out is settled first, and a draft whose
+    picks are all in is sent to the sim worker to finish, if it isn't yet."""
+    draft = DraftRepository(db).get_current_for_league(league_id)
+    if draft and draft["state"] == "complete":
+        return JSONResponse(
+            {"done": True, "redirect": f"/leagues/{league_id}/draft/results"}
+        )
+    live = live_draft.for_league(db, league_id)
+    if not live:
+        return JSONResponse({"detail": "There's no live draft on."}, status_code=409)
+    deadline = live.draft.get("pick_deadline")
+    if deadline is not None and deadline <= datetime.now(UTC):
+        live = live_draft.LiveDraft(db, live.id, lock=True)
+        live.expire()
+        db.commit()
+    if live.done and not sim_jobs.league_has_job(db, league_id):
+        live._picks_done()
+        db.commit()
+    return JSONResponse(
+        {**live.state(gm["team_id"]), "simming": sim_jobs.league_has_job(db, league_id)}
+    )
+
+
+@router.get("/leagues/{league_id}/draft/live/list")
+def live_draft_list(league_id: str, db: DB, gm: GM):
+    """The GM's next pick: the default pick and the best players likely
+    still there."""
+    live = live_draft.for_league(db, league_id)
+    if not live or not gm["team_id"] or live.draft["state"] != "open":
+        return JSONResponse({"next": None})
+    return JSONResponse({"next": live.short_list(gm["team_id"])})
+
+
+@router.post("/leagues/{league_id}/draft/pick")
+def live_draft_pick(
+    league_id: str,
+    body: DraftPickRequest,
+    db: DB,
+    gm: GM,
+    _active: ActiveLeague,
+    _unpaused: Unpaused,
+):
+    """The GM's pick, when they're on the clock. The AI picks after it are
+    made straight away."""
+    live = _live_or_error(db, league_id)
+    if isinstance(live, JSONResponse):
+        return live
+    try:
+        live.pick(gm["team_id"], body.player_id)
+    except ValueError as e:
+        db.rollback()
+        return JSONResponse({"detail": str(e)}, status_code=409)
+    db.commit()
+    return JSONResponse({"picked": True})
+
+
+@router.post("/leagues/{league_id}/draft/scouts")
+def live_draft_scouts(
+    league_id: str,
+    body: DraftScoutsRequest,
+    db: DB,
+    gm: GM,
+    _active: ActiveLeague,
+    _unpaused: Unpaused,
+):
+    """The scouts make the GM's pick (the default), or with rest every pick
+    they have left."""
+    live = _live_or_error(db, league_id)
+    if isinstance(live, JSONResponse):
+        return live
+    slot = live.current()
+    if not body.rest and (not slot or slot.team_id != gm["team_id"]):
+        db.rollback()
+        return JSONResponse({"detail": "It isn't your pick."}, status_code=409)
+    live.scouts_pick(gm["team_id"], rest=body.rest)
+    db.commit()
+    return JSONResponse({"ok": True})
+
+
+@router.post("/leagues/{league_id}/draft/take-over")
+def live_draft_take_over(
+    league_id: str, db: DB, gm: GM, _active: ActiveLeague, _unpaused: Unpaused
+):
+    """The GM takes their picks back from the scouts."""
+    live = _live_or_error(db, league_id)
+    if isinstance(live, JSONResponse):
+        return live
+    live.take_over(gm["team_id"])
+    db.commit()
+    return JSONResponse({"ok": True})
+
+
 @router.post("/leagues/{league_id}/draft/execute")
 def execute_draft(
     request: Request,
@@ -212,6 +348,11 @@ def execute_draft(
 ):
     """Queue the blitz auto-draft for the sim worker. The page polls the job,
     then goes to the results."""
+    if live_draft.is_live(DraftRepository(db).get_current_for_league(league_id)):
+        return JSONResponse(
+            {"detail": "This is a live draft: start it and make your picks."},
+            status_code=409,
+        )
     job_id = sim_jobs.submit(db, league_id, "draft", gm_id=gm["id"])
     return JSONResponse(
         {"job_id": job_id, "poll": f"/leagues/{league_id}/jobs/{job_id}"},

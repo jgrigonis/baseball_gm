@@ -376,6 +376,7 @@ class LeagueRepository:
         "decision_window_sec",
         "draft_window_sec",
         "lineup_window_sec",
+        "pick_timer_sec",
         "sim_period_days",
         "num_seasons",
         "reentry_enabled",

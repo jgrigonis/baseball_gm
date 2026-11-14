@@ -133,6 +133,12 @@
   "Visibility": ("is_public", info.is_public, "Make private" if info.is_public else "Make public"),
   "Late joiners": ("late_joins", info.late_joins, "Turn off" if info.late_joins else "Allow"),
 } if can_edit_settings and not info.is_practice and not info.single_player else {} %}
+{% if info.mode.key == "longform" %}
+{% set settings = settings + [
+  ("Draft pick timer", info.pick_timer_sec ~ "s",
+   "The live draft: how long each person has for a pick. When it runs out, the scouts make their default pick. A one-person league has no timer."),
+] %}
+{% endif %}
 {% for label, value, tip in settings %}
 {% set off = label in always_off or (label == "Injury rate" and not info.injuries_enabled) or (label in needs_humans and info.human_gms < needs_humans[label]) %}
 <tr{% if label in needs_humans and label not in always_off %} data-needs-humans="{{ needs_humans[label] }}"{% endif %}{% if off %} class="setting-off"{% endif %}>

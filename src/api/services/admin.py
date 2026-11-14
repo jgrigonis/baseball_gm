@@ -41,6 +41,8 @@ NUMBER_RANGES = {
     "decision_window_sec": (30, 600),
     "draft_window_sec": (60, 1800),
     "lineup_window_sec": (60, 3600),
+    # Each person's pick in a multiplayer live draft (Long Form).
+    "pick_timer_sec": (15, 600),
     "backstory_years": (0, MAX_BACKSTORY_YEARS),
 }
 
@@ -50,6 +52,7 @@ NUMBER_LABELS = {
     "decision_window_sec": "Decision window",
     "draft_window_sec": "Draft window",
     "lineup_window_sec": "Lineup window",
+    "pick_timer_sec": "Draft pick timer",
     "backstory_years": "Years of history",
 }
 
