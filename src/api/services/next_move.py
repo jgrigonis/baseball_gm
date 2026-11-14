@@ -293,8 +293,7 @@ def _lineup_pill(ctx: dict, page: str) -> dict | None:
         "label": "📝 Lineup",
         "short": "📝",
         "href": f"/leagues/{ctx['league_id']}/lineup",
-        "title": "Save your batting order, rotation and bullpen before "
-        "Opening Day.",
+        "title": "Save your batting order, rotation and bullpen before Opening Day.",
     }
 
 

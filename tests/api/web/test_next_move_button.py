@@ -10,9 +10,7 @@ from src.api.main import app
 from src.db.repositories.gm_repo import GMRepository
 
 
-def _get(
-    db_conn, factory, state, *paths, joined=False, traded=False, mode="blitz"
-):
+def _get(db_conn, factory, state, *paths, joined=False, traded=False, mode="blitz"):
     league = factory.league(state=state, mode=mode)
     season = factory.season(year=2025)
     factory.league_season(league, season)
