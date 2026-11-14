@@ -32,6 +32,9 @@ class LeagueMode:
     # Whether teams have a budget, with a luxury tax on payroll over it
     # (src/league/budget.py). Speed Blitz is too short for one to matter.
     budgets: bool = True
+    # A pace the mode always plays at (multiplayer), or None for the GM's
+    # pick. Long Form is Confirmed only (Josh, 2026-11-14).
+    pace: str | None = None
 
 
 BLITZ = LeagueMode(
@@ -71,7 +74,17 @@ SPEED_BLITZ = LeagueMode(
 LONGFORM = LeagueMode(
     key="longform",
     label="Long Form",
-    description=("GMs draft one pick at a time, and teams play off the 26-man roster."),
+    description=(
+        "A live draft, one pick at a time; teams play off a 26-man active "
+        "roster with an injured list. Multiplayer moves on when everyone is "
+        "ready (Confirmed pace)."
+    ),
+    form_presets={
+        "sim_period_days": 3,
+        "decision_window_sec": 120,
+        "num_seasons": 25,
+    },
+    pace="confirmed",
 )
 
 LEAGUE_MODES: dict[str, LeagueMode] = {m.key: m for m in (BLITZ, SPEED_BLITZ, LONGFORM)}

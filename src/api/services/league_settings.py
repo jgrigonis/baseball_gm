@@ -35,7 +35,7 @@ from src.league.league_constants import (
     MAX_SEASONS,
     UNLIMITED_SEASONS,
 )
-from src.league.league_modes import injuries_allowed, is_blitz_style
+from src.league.league_modes import injuries_allowed
 from src.league.trade_deadline import trades_enabled_for
 
 # The settings a solo commissioner can change, in the edit form's order.
@@ -160,10 +160,6 @@ def save_solo(conn, league_id: str, gm_id: str, settings: dict) -> str | None:
             settings["injury_rate"] = current_values(league, ["injury_rate"])[
                 "injury_rate"
             ]
-        if not is_blitz_style(league["mode"]):
-            # Long Form doesn't trade yet, so its trade settings stay put.
-            settings["trades_enabled"] = league["trades_enabled"]
-            settings["pick_trades"] = league["pick_trades"]
         error = solo_error(league, settings, league_repo.count_seasons(league_id))
         if error:
             return error
