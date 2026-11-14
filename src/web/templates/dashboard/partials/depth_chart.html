@@ -71,6 +71,6 @@
       {% if depth.bench %}<div class="dc-foot">Bench bats: {{ nexts(depth.bench) }}</div>{% endif %}
     </div>
   </div>
-  <p class="dc-note" style="margin-top:12px;">The starting 8 are the lineup the optimizer would pick. Each "next" is the best player in the organization rated C- or better at that spot, and AAA marks a minor leaguer. Group grades and places use the same team ratings as the Power Rankings.</p>
+  <p class="dc-note" style="margin-top:12px;">{% if depth.from_lineup %}The starting 8 and batting order are the saved lineup vs right-handers (else the one used in the last game), the rotation is the saved rotation and the bullpen goes by its roles, the same as the Lineup tab.{% else %}No lineup saved yet, so these are the best 8 and best 9 bats by rating.{% endif %} Each "next" is the best player in the organization rated C- or better at that spot, and AAA marks a minor leaguer. Group grades and places use the same team ratings as the Power Rankings.</p>
 </div>
 {% endif %}

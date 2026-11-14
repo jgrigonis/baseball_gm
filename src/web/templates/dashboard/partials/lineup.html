@@ -36,9 +36,6 @@
             style="margin-left:8px;">Save All Lineups</button>
   </div>
 
-  {# The depth chart's four cards (routers/depth.py), folded by default. #}
-  <div id="dc-slot" hx-get="/leagues/{{ league_id }}/depth/cards" hx-trigger="load" hx-swap="innerHTML"></div>
-
   {# Tab toggles #}
   <div style="display:flex;gap:0;border-bottom:none;">
     <button class="lu-tab active" id="tab-batting"   onclick="switchTab('batting')">
@@ -1293,7 +1290,10 @@ async function _saveHand(hand) {
 
 // `only` (from Save All) limits the save to those hands, so the toast names
 // just the lineups that changed.
+// Each Save, like Save All, only sends what differs from what's saved; a
+// press with nothing changed says "unchanged" (Josh, 2026-11-14).
 async function saveBatting(only) {
+  if (!only && !unsavedHands().length) { showFeedback('Batting unchanged', 'var(--text-dim)'); return; }
   const status = battingSaveStatus();
   const reason = status.reason;
   const hands = only ? status.hands.filter(h => only.includes(h)) : status.hands;
@@ -1913,6 +1913,8 @@ function autoAssignBullpen() {
 
 /* ── Pitching: save ──────────────────────────────────────────────────────────── */
 async function saveRotation() {
+  syncPitchingSaved();
+  if (pitchingSaved) { showFeedback('Rotation unchanged', 'var(--text-dim)'); return; }
   const btn = document.getElementById('save-rotation-btn');
   btn.disabled = true; btn.textContent = 'Saving…';
   try {
@@ -1951,6 +1953,8 @@ async function saveRotation() {
 
 /* ── Save bullpen ────────────────────────────────────────────────────────────── */
 async function saveBullpen() {
+  syncPitchingSaved();
+  if (bullpenSaved) { showFeedback('Bullpen unchanged', 'var(--text-dim)'); return; }
   const btn = document.getElementById('save-bullpen-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
   try {

@@ -3,16 +3,17 @@
 The depth chart (Josh, 2026-11-14): a team's rotation, bullpen, defense and
 best bats, each with its grade and place in the league, plus who's next.
 
-The Lineup tab shows it as four cards (_depth_cards.html) and the Depth Chart
-tab on a diamond (depth_chart.html); both come from depth_chart() here.
+The Depth Chart tab shows it on a diamond (depth_chart.html).
 
 - Group grades and places use the same team strength as the Power Rankings
   and the welcome screen's scouting report (power_rankings.team_strength), so
   the numbers agree everywhere.
-- The starting 8 are power_rankings.starting_nine, the lineup the optimizer
-  would pick; the rotation is the top ROTATION starters on the staff, the
-  bullpen its closer (bullpen role Closer, else the best) and the next
-  RELIEVERS by RP rating.
+- It follows the team's own choices so it matches the Lineup tab (Josh,
+  2026-11-14): the starting 8 and batting order are a person's saved lineup
+  vs RHP, else the lineup the team used in its last game, else
+  power_rankings.starting_nine; the rotation is the saved rotation in order;
+  the bullpen goes by its roles (Closer, Setup, Middle...). Only a team with
+  nothing set falls back to ratings.
 - Backups come from the whole organization, minor leaguers tagged: the next
   BACKUPS players at each fielding spot rated BACKUP_FLOOR or better there.
 """
@@ -42,7 +43,7 @@ GROUPS = (
     ("rotation", "Rotation", "rotation", "team_rotation"),
     ("bullpen", "Bullpen", "bullpen", "team_bullpen"),
     ("defense", "Defense", "defense", "team_defense"),
-    ("bats", "Best 9 bats", "hitting", "team_lineup"),
+    ("bats", "Batting order", "hitting", "team_lineup"),
 )
 
 
@@ -63,14 +64,50 @@ def _teams(db, league_id: str, season_id: str) -> list[dict]:
     ]
 
 
-def _closer_id(db, team_id: str, season_id: str) -> str | None:
-    row = db.execute(
-        """SELECT player_id FROM bullpen_roles
-           WHERE team_id = %s AND season_id = %s AND role = 'Closer'
-             AND end_date IS NULL LIMIT 1""",
+ROLE_ORDER = ("Closer", "Setup", "Middle", "Long", "Specialist", "Utility")
+
+
+def _roles(db, team_id: str, season_id: str) -> dict[str, str]:
+    """{player_id: role} for the team's bullpen right now."""
+    rows = db.execute(
+        """SELECT player_id, role FROM bullpen_roles
+           WHERE team_id = %s AND season_id = %s AND end_date IS NULL""",
         (team_id, season_id),
-    ).fetchone()
-    return row["player_id"] if row else None
+    ).fetchall()
+    return {r["player_id"]: r["role"] for r in rows}
+
+
+def _rotation_ids(db, team_id: str, season_id: str) -> list[str]:
+    rows = db.execute(
+        """SELECT player_id FROM team_rotations
+           WHERE team_id = %s AND season_id = %s AND end_date IS NULL
+           ORDER BY rotation_order""",
+        (team_id, season_id),
+    ).fetchall()
+    return [r["player_id"] for r in rows]
+
+
+def _lineup(db, league_id: str, team_id: str, season_id: str) -> list[tuple[str, str]]:
+    """[(player_id, position)] in batting order: a person's saved lineup vs
+    RHP (else their vs LHP one), else the lineup in the team's last game this
+    season, else []."""
+    from src.db.repositories.lineup_preference_repo import LineupPreferenceRepository
+
+    saved = LineupPreferenceRepository(db).get_preferences(team_id, league_id, "R")
+    rows = [r for r in saved or [] if r.get("batting_order")]
+    if rows:
+        return [(r["player_id"], (r["position"] or "").lower()) for r in rows]
+    rows = db.execute(
+        """SELECT s.player_id, s.position FROM game_lineup_slots s
+           WHERE s.team_id = %s AND s.batting_order IS NOT NULL
+             AND s.game_id = (
+                 SELECT g.id FROM games g JOIN game_lineup_slots x ON x.game_id = g.id
+                 WHERE g.season_id = %s AND x.team_id = %s
+                 ORDER BY g.game_date DESC, g.id DESC LIMIT 1)
+           ORDER BY s.batting_order""",
+        (team_id, season_id, team_id),
+    ).fetchall()
+    return [(r["player_id"], (r["position"] or "").lower()) for r in rows]
 
 
 def _entry(p, r, status, role, slot="") -> dict:
@@ -130,12 +167,18 @@ def depth_chart(db, league_id: str, season_id: str | None, team_id: str) -> dict
     by_id = {p.id: (p, r, s) for p, r, s in mine_rated}
     pgroups = staff_groups([(p, r) for p, r, _ in pitchers], staff)
 
-    # Rotation: the top starters on the staff, then the best arms behind them.
-    sps = sorted(
-        (x for x in pitchers if pgroups.get(x[0].id) == "sp"),
-        key=lambda x: x[1]["sp"],
-        reverse=True,
-    )[:ROTATION]
+    # Rotation: the saved rotation in order, else the top starters on the
+    # staff; then the best arms behind them.
+    on_team = {x[0].id: x for x in pitchers}
+    sps = [
+        on_team[pid] for pid in _rotation_ids(db, team_id, season_id) if pid in on_team
+    ]
+    if not sps:
+        sps = sorted(
+            (x for x in pitchers if pgroups.get(x[0].id) == "sp"),
+            key=lambda x: x[1]["sp"],
+            reverse=True,
+        )[:ROTATION]
     rotation = [_entry(p, r, s, "sp", f"SP{i}") for i, (p, r, s) in enumerate(sps, 1)]
     used = {e["id"] for e in rotation}
     org_pitchers = [x for x in mine_rated if x[0].is_pitcher()]
@@ -153,20 +196,34 @@ def depth_chart(db, league_id: str, season_id: str | None, team_id: str) -> dict
     ]
 
     # Bullpen: the closer, then the best relievers.
+    # By role when the bullpen has them (Closer, Setup, Middle...), best
+    # first within a role; else by RP rating.
+    roles = _roles(db, team_id, season_id)
+    in_rot = {x[0].id for x in sps}
     rps = sorted(
-        (x for x in pitchers if pgroups.get(x[0].id) == "rp"),
-        key=lambda x: x[1]["rp"],
-        reverse=True,
+        (
+            x
+            for x in pitchers
+            if x[0].id not in in_rot
+            and (x[0].id in roles if roles else pgroups.get(x[0].id) == "rp")
+        ),
+        key=lambda x: (
+            ROLE_ORDER.index(roles[x[0].id]) if roles.get(x[0].id) in ROLE_ORDER else 9,
+            -x[1]["rp"],
+        ),
     )
-    cid = _closer_id(db, team_id, season_id)
-    closer = next((x for x in rps if x[0].id == cid), None) or (
-        max(rps, key=lambda x: x[1]["cp"]) if rps else None
-    )
+    closer = next((x for x in rps if roles.get(x[0].id) == "Closer"), None)
+    if closer is None and not roles and rps:
+        closer = max(rps, key=lambda x: x[1]["cp"])
     bullpen = []
     if closer:
         bullpen.append(_entry(*closer, "cp", "CL"))
     rest = [x for x in rps if not closer or x[0].id != closer[0].id]
-    bullpen += [_entry(p, r, s, "rp", "RP") for p, r, s in rest[:RELIEVERS]]
+    short = {"Setup": "SU", "Middle": "MR", "Long": "LR", "Specialist": "SPC"}
+    bullpen += [
+        _entry(p, r, s, "rp", short.get(roles.get(p.id), "RP"))
+        for p, r, s in rest[:RELIEVERS]
+    ]
     if closer and rest:
         bullpen[0]["backups"] = [_entry(*rest[0], "cp")]
     shown = used | {e["id"] for e in bullpen}
@@ -180,7 +237,17 @@ def depth_chart(db, league_id: str, season_id: str | None, team_id: str) -> dict
     ]
 
     # Defense: the starting 8 and who's next at each spot.
-    nine = starting_nine([(p, r) for p, r, _ in hitters])
+    hitter_ids = {x[0].id for x in hitters}
+    order = [
+        (pid, pos)
+        for pid, pos in _lineup(db, league_id, team_id, season_id)
+        if pid in hitter_ids
+    ]
+    if len(order) >= 8:
+        nine = [(by_id[pid][0], pos) for pid, pos in order]
+    else:
+        order = []
+        nine = starting_nine([(p, r) for p, r, _ in hitters])
     starters = {pos: p.id for p, pos in nine}
     in_nine = set(starters.values())
     org_hitters = [x for x in mine_rated if not x[0].is_pitcher()]
@@ -215,17 +282,22 @@ def depth_chart(db, league_id: str, season_id: str | None, team_id: str) -> dict
         None,
     )
 
-    # Bats: the best 9 by Overall Offense, then the bench.
+    # Bats: the batting order (else the best 9 by Overall Offense), then
+    # the best of the bench.
     by_bat = sorted(hitters, key=lambda x: x[1]["overall_offense"], reverse=True)
+    lineup_ids = [pid for pid, _ in order] or [x[0].id for x in by_bat[:BEST_BATS]]
     bats = []
-    for i, (p, r, s) in enumerate(by_bat[:BEST_BATS], 1):
-        e = _entry(p, r, s, "overall_offense", str(i))
-        e["pos"] = next((pos.upper() for q, pos in nine if q.id == p.id), "")
+    for i, pid in enumerate(lineup_ids, 1):
+        e = _entry(*by_id[pid], "overall_offense", str(i))
+        e["pos"] = next((pos.upper() for q, pos in nine if q.id == pid), "")
         bats.append(e)
     bench = [
         _entry(p, r, s, "overall_offense")
-        for p, r, s in by_bat[BEST_BATS:][:BENCH_BATS]
-    ]
+        for p, r, s in by_bat
+        if p.id not in lineup_ids
+    ][:BENCH_BATS]
+    if not order:
+        groups_out["bats"]["label"] = "Best 9 bats"
 
     team = next(t for t in teams if t["id"] == team_id)
     return {
@@ -240,4 +312,5 @@ def depth_chart(db, league_id: str, season_id: str | None, team_id: str) -> dict
         "dh": dh,
         "bats": bats,
         "bench": bench,
+        "from_lineup": bool(order),
     }
