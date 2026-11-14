@@ -4,6 +4,8 @@ Long Form's Roster tab picks the active (26-man) roster from the 40-man, and
 the Lineup tab's red − takes a player off it without leaving the 40-man.
 """
 
+import uuid
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -93,8 +95,8 @@ def test_september_allows_28_and_14(client, db_conn, setup, factory):
     db_conn.execute(  # the next game day is in September
         """INSERT INTO games (id, game_date, season_id, home_team_id, away_team_id,
                               completed)
-           VALUES ('sept-game', '2025-09-02', %s, %s, %s, 0)""",
-        (season.id, team.id, factory.team().id),
+           VALUES (%s, '2025-09-02', %s, %s, %s, 0)""",
+        (str(uuid.uuid4()), season.id, team.id, factory.team().id),
     )
     r = _save(client, league, hitters + pitchers, hitters[:14] + pitchers)
     assert r.status_code == 200, r.text

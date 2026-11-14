@@ -347,6 +347,14 @@
 .r-action-btn.act-btn { color: var(--amber); }
 .r-action-btn.act-btn:hover { background: var(--amber-lo); border-color: var(--amber); }
 .r-40-btns { display: flex; gap: 6px; }
+.r-action-btn.il-btn { color: var(--red); font-size: 10px; letter-spacing: .04em; padding: 4px 6px; }
+.r-action-btn.il-btn:hover { background: var(--red-dim); border-color: var(--red); }
+.r-action-btn.back-btn { color: var(--green); font-size: 10px; letter-spacing: .04em; padding: 4px 6px; }
+.r-action-btn.back-btn:hover { background: var(--green-dim); border-color: var(--green); }
+.r-action-btn.back-btn:disabled { color: var(--muted); cursor: default; background: var(--bg-3); border-color: var(--border); }
+.r-il-tag { font-family: var(--font-mono); font-size: 10px; color: var(--red); margin-left: 6px; white-space: nowrap; }
+.r-il-tag.ready { color: var(--green); }
+@media (max-width: 700px) { .r-action-btn.il-btn, .r-action-btn.back-btn { font-size: 11px; padding: 6px 8px; } }
 
 /* ── Drag zones ─────────────────────────────────────────────────────────────── */
 .drag-zone {
@@ -444,6 +452,8 @@ window.addToRoster   = addToRoster;
 window.removeFromRoster = removeFromRoster;
 window.pickTopActive = pickTopActive;
 window.toggleActive  = toggleActive;
+window.placeOnIL     = placeOnIL;
+window.activateFromIL = activateFromIL;
 
 /* ── Data ───────────────────────────────────────────────────────────────────── */
 var  LEAGUE_ID    = "{{ league_id }}";
@@ -455,6 +465,8 @@ const ROSTER_KEY  = `roster3_${LEAGUE_ID}`;
 // the limits on the next game day (28 and 14 pitchers from September 1).
 const LONG_FORM = {{ long_form | default(false) | tojson }};
 const LIMITS    = {{ active_limits | default(none) | tojson }};
+// The league's next game day: an injured-list player comes back from it.
+const TODAY     = {{ il_today | default('') | tojson }};
 
 
 /* ── State ──────────────────────────────────────────────────────────────────── */
@@ -554,7 +566,7 @@ function isCatcher(p) {
 function pickTopForty() {
   // Injured players already on the 40-man stay (Remove Injured drops them);
   // injured players in the organization aren't brought up.
-  const keep = ALL_PLAYERS.filter(p => p.injured && fortyMan.has(p.player_id));
+  const keep = ALL_PLAYERS.filter(p => (p.injured || p.il) && fortyMan.has(p.player_id));
   const slots = Math.max(0, 40 - keep.length);
   // Best overall grade first; on a tie, whoever is already on the 40-man
   // keeps the spot so the button doesn't churn equal players.
@@ -609,7 +621,7 @@ function removeInjured() {
 
 /* ── +Add / −Remove buttons ─────────────────────────────────────────────────── */
 function addToRoster(pid) {
-  if (fortyMan.size >= 40) { showFeedback('Full (40 max)', 'var(--red)'); return; }
+  if ((LONG_FORM ? countForty() : fortyMan.size) >= 40) { showFeedback('Full (40 max)', 'var(--red)'); return; }
   fortyMan.add(pid);
   commit();
 }
@@ -623,10 +635,65 @@ function removeFromRoster(pid) {
 /* ── Long Form: the active roster ───────────────────────────────────────────── */
 function isPitcher(p) { return p.player_type === 'pitcher'; }
 function byId(id) { return ALL_PLAYERS.find(p => p.player_id === id); }
+// Long Form's injured list: on it (p.il), or could go on it (p.il_kinds).
+function onIL(id) { const p = byId(id); return !!(p && p.il); }
+// The 40-man as it counts: the 60-day injured list doesn't.
+function countForty() { return [...fortyMan].filter(id => { const p = byId(id); return !(p && p.il && p.il.kind === 60); }).length; }
+function shortDate(iso) {
+  const d = new Date(iso + 'T12:00:00');
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+// Put a hurt player on the injured list: the short list he can go on, or
+// the 60-day, which frees his 40-man spot too. The server does it at once.
+async function placeOnIL(pid) {
+  const p = byId(pid);
+  if (!p || !p.il_kinds) return;
+  const name = `${p.first_name} ${p.last_name}`;
+  const short = p.il_kinds[0];
+  const days = p.injury_days ? `He's out ${p.injury_days} more day${p.injury_days === 1 ? '' : 's'}. ` : '';
+  const ans = await gmConfirm({
+    title: `Put ${name} on the injured list?`,
+    lines: [days + `He comes off the active roster and stays on the 40-man. The ${short}-day IL holds him at least ${short} days, counted from when he got hurt (up to 3 days back).`,
+            'The 60-day IL frees his 40-man spot too.'],
+    alt: '60-day IL', ok: `${short}-day IL`, tone: 'go',
+  });
+  if (!ans) return;
+  const kind = ans === 'alt' ? 60 : short;
+  try {
+    const r = await fetch(`/leagues/${LEAGUE_ID}/roster/${pid}/il`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kind }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.detail || 'Something went wrong.');
+    active.delete(pid);
+    lastSavedActive.delete(pid);
+    saveToStorage();
+    gmToast(`${name} is on the ${kind}-day IL, back ${shortDate(d.eligible_on)} at the earliest`, 'ok');
+  } catch (e) { gmAlert(e.message); return; }
+  reloadTab();
+}
+
+async function activateFromIL(pid) {
+  const p = byId(pid);
+  const name = p ? `${p.first_name} ${p.last_name}` : 'He';
+  try {
+    const r = await fetch(`/leagues/${LEAGUE_ID}/roster/${pid}/activate`, { method: 'POST' });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.detail || 'Something went wrong.');
+    fortyMan.add(pid);
+    if (d.to === '26man') { active.add(pid); lastSavedActive.add(pid); }
+    saveToStorage();
+    gmToast(d.to === '26man' ? `${name} is back on the active roster` : `${name} is off the IL, on your reserve (the active roster is full)`, 'ok');
+  } catch (e) { gmAlert(e.message); return; }
+  reloadTab();
+}
 function activePitchers() { return [...active].filter(id => isPitcher(byId(id) || {})).length; }
 
 // Why he can't go on the active roster right now, or '' if he can.
 function activeBlock(p) {
+  if (p.il) return 'Activate him from the injured list first';
   if (active.size >= LIMITS.max) return `Active roster full (${LIMITS.max} max)`;
   if (isPitcher(p) && activePitchers() >= LIMITS.pitchers) return `${LIMITS.pitchers} pitchers max on the active roster`;
   return '';
@@ -643,7 +710,7 @@ function toggleActive(pid) {
 // Best healthy 40-man players: two catchers, a full pitching staff, then the
 // best hitters. Injured players come off.
 function pickTopActive() {
-  const pool = [...fortyMan].map(byId).filter(p => p && !p.injured).sort((a, b) =>
+  const pool = [...fortyMan].map(byId).filter(p => p && !p.injured && !p.il).sort((a, b) =>
     (gradeVal(a.overall) - gradeVal(b.overall)) ||
     ((active.has(b.player_id) ? 1 : 0) - (active.has(a.player_id) ? 1 : 0)));
   const picked = new Set();
@@ -711,7 +778,7 @@ function salaryPiece(p) {
 function makeCard(p, isIn40) {
   const el = document.createElement('div');
   el.className = 'r-card';
-  el.draggable = true;
+  el.draggable = !p.il;
   el.dataset.id = p.player_id;
   if (p.injured) el.style.borderLeft = p.returning ? '3px solid #a07800' : '3px solid var(--red)';
 
@@ -723,8 +790,17 @@ function makeCard(p, isIn40) {
   const actBtn = `<button class="r-action-btn act-btn" title="${on ? 'Take off the active roster' : 'Put on the active roster'}"
                aria-label="${on ? 'Take' : 'Put'} ${p.first_name} ${p.last_name} ${on ? 'off' : 'on'} the active roster"
                onclick="event.stopPropagation();toggleActive('${p.player_id}')">${on ? '↓' : '↑'}</button>`;
+  // Injured list: Activate for a player on it, IL for a hurt one who isn't.
+  const il = p.il;
+  const ilBtn = p.il_kinds ? `<button class="r-action-btn il-btn" title="Put him on the injured list"
+               onclick="event.stopPropagation();placeOnIL('${p.player_id}')">IL</button>` : '';
+  const backBtn = il ? `<button class="r-action-btn back-btn" ${il.ready ? '' : 'disabled'}
+               title="${il.ready ? 'Take him off the injured list' : (il.eligible_on > TODAY ? 'Not before ' + shortDate(il.eligible_on) : 'Still hurt')}"
+               onclick="event.stopPropagation();activateFromIL('${p.player_id}')">Activate</button>` : '';
   const btnHtml = isIn40
-    ? (LONG_FORM ? `<span class="r-40-btns">${actBtn}${remBtn}</span>` : remBtn)
+    ? (!LONG_FORM ? remBtn
+       : il ? `<span class="r-40-btns">${backBtn}</span>`
+       : `<span class="r-40-btns">${ilBtn}${actBtn}${remBtn}</span>`)
     : `<span class="r-org-btns"><button class="r-action-btn rel-btn" title="Release him"
                onclick="event.stopPropagation();releasePlayer('${p.player_id}', '${(p.first_name + ' ' + p.last_name).replace(/'/g, "\\'")}')">×</button><button class="r-action-btn add-btn" title="Add to 40-man"
                onclick="event.stopPropagation();addToRoster('${p.player_id}')">+</button></span>`;
@@ -737,7 +813,7 @@ function makeCard(p, isIn40) {
     <span class="${gradeClass(p.overall)} lu-grade">${p.overall}</span>
     ${faceImgHtml(p, false)}
     <div style="min-width:0;">
-      <div class="lu-name" style="color:${p.returning?'#f5c518':p.injured?'var(--red)':''};">${jerseyTag(p)}${p.first_name} ${p.last_name}${rookieTag(p.player_id)}${nameTrailHtml(p, [posLabel(p.position)||'?', `${p.bats}/${p.throws}`, `Age ${p.age}`, ...salaryPiece(p)], stats)}${ilTag(p)}${rustTag(p)}${newTag(p)}${iconTag(p)}${moodTag(p)}</div>
+      <div class="lu-name" style="color:${p.returning?'#f5c518':p.injured?'var(--red)':''};">${jerseyTag(p)}${p.first_name} ${p.last_name}${rookieTag(p.player_id)}${nameTrailHtml(p, [posLabel(p.position)||'?', `${p.bats}/${p.throws}`, `Age ${p.age}`, ...salaryPiece(p)], stats)}${ilTag(p)}${ilListTag(p)}${rustTag(p)}${newTag(p)}${iconTag(p)}${moodTag(p)}</div>
       ${isPitcher ? `<div class="lu-skills">${pitcherGradesHtml(p)}</div>` : hitterGradesHtml(p, null)}
     </div>
     ${btnHtml}`;
@@ -766,7 +842,7 @@ function makeCard(p, isIn40) {
 
   /* Drop target: cross-column drop = swap */
   el.addEventListener('dragover', e => {
-    if (!_dragging || _dragging === p.player_id) return;
+    if (!_dragging || _dragging === p.player_id || p.il) return;
     const targetIn40 = isIn40;
     const srcIn40    = _draggingFrom === '40man';
     if (targetIn40 === srcIn40) return; // same column — no visual, not a valid swap target
@@ -780,7 +856,7 @@ function makeCard(p, isIn40) {
     e.preventDefault();
     e.stopPropagation();
     el.classList.remove('drag-swap');
-    if (!_dragging || _dragging === p.player_id) return;
+    if (!_dragging || _dragging === p.player_id || p.il) return;
     const targetIn40 = isIn40;
     const srcIn40    = _draggingFrom === '40man';
     if (targetIn40 === srcIn40) return;
@@ -800,6 +876,13 @@ function makeCard(p, isIn40) {
   });
 
   return el;
+}
+
+// "10-day IL · back May 14": the list he's on and his first day back.
+function ilListTag(p) {
+  if (!p.il) return '';
+  const when = p.il.ready ? 'ready' : (p.il.eligible_on > TODAY ? 'back ' + shortDate(p.il.eligible_on) : 'still hurt');
+  return `<span class="r-il-tag${p.il.ready ? ' ready' : ''}">${p.il.kind}-day IL · ${when}</span>`;
 }
 
 /* ── Drag zones (simple add / remove) ──────────────────────────────────────── */
@@ -826,7 +909,7 @@ function zoneDrop(e, zoneName) {
   if (!_dragging) return;
   if (zoneName === 'add') {
     if (_draggingFrom !== 'org') return;
-    if (fortyMan.size >= 40) { showFeedback('Full (40 max)', 'var(--red)'); return; }
+    if ((LONG_FORM ? countForty() : fortyMan.size) >= 40) { showFeedback('Full (40 max)', 'var(--red)'); return; }
     fortyMan.add(_dragging);
   } else {
     if (_draggingFrom !== '40man') return;
@@ -877,7 +960,7 @@ function render() {
   if (LONG_FORM) {
     // Long Form: an active roster short of the minimum is the red one.
     const short = active.size < LIMITS.min;
-    fortyCount.textContent = `Active ${active.size} / ${LIMITS.max} · 40-man ${fortyMan.size} / 40`;
+    fortyCount.textContent = `Active ${active.size} / ${LIMITS.max} · 40-man ${countForty()} / 40`;
     fortyCount.style.color = short ? 'var(--red)' : '';
     fortyCount.style.fontWeight = short ? '700' : '';
   }
@@ -900,11 +983,19 @@ function renderActiveSections(col) {
        ${LIMITS.expanded ? '<span class="r-sec-note">September rosters</span>' : ''}`);
   sortedPlayers([...active].filter(id => fortyMan.has(id)), '40').filter(p => isVisible(p, '40'))
     .forEach(p => col.appendChild(makeCard(p, true)));
-  const reserve = [...fortyMan].filter(id => !active.has(id));
+  const reserve = [...fortyMan].filter(id => !active.has(id) && !onIL(id));
   sec(`<span class="r-sec-label">Reserve</span><b>${reserve.length}</b>
        <span class="r-sec-note">On the 40-man, not playing</span>`);
   sortedPlayers(reserve, '40').filter(p => isVisible(p, '40'))
     .forEach(p => col.appendChild(makeCard(p, true)));
+  const hurt = [...fortyMan].filter(onIL);
+  if (hurt.length) {
+    const sixty = hurt.filter(id => byId(id).il.kind === 60).length;
+    sec(`<span class="r-sec-label" style="color:var(--red);">Injured list</span><b>${hurt.length}</b>
+         <span class="r-sec-note">${sixty ? `${sixty} on the 60-day, off the 40-man count` : 'On the 40-man, can\'t play'}</span>`);
+    sortedPlayers(hurt, '40').filter(p => isVisible(p, '40'))
+      .forEach(p => col.appendChild(makeCard(p, true)));
+  }
 }
 
 /* ── Phones: which list shows (the other column is hidden) ─────────────────── */
@@ -1018,7 +1109,9 @@ function measureHeader() {
 const stored = loadFromStorage();
 if (stored) {
   fortyMan = new Set(stored.fortyMan);
-  if (stored.active) active = new Set(stored.active.filter(id => fortyMan.has(id)));
+  if (stored.active) active = new Set(stored.active.filter(id => fortyMan.has(id) && !onIL(id)));
+  // Players on the injured list are on the 40-man whatever the draft says.
+  ALL_PLAYERS.filter(p => p.il).forEach(p => fortyMan.add(p.player_id));
   restoreColState(stored.colState);
   if (stored.rosterSaved) {
     rosterSaved = true;

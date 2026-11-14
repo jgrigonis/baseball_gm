@@ -530,6 +530,22 @@ CREATE TABLE IF NOT EXISTS player_injuries (
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 
+-- Long Form's injured list (src/team/injured_list.py, migration 136)
+CREATE TABLE IF NOT EXISTS injured_list (
+    id            SERIAL PRIMARY KEY,
+    league_id     TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    team_id       TEXT NOT NULL,
+    player_id     TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    kind          INTEGER NOT NULL CHECK (kind IN (7, 10, 15, 60)), -- days
+    placed_on     DATE NOT NULL,                -- backdated up to 3 days
+    eligible_on   DATE NOT NULL,                -- placed_on + kind: the first day he can come off
+    activated_on  DATE                          -- NULL while he's on it
+);
+CREATE INDEX IF NOT EXISTS idx_injured_list_team
+    ON injured_list(team_id) WHERE activated_on IS NULL;
+CREATE INDEX IF NOT EXISTS idx_injured_list_league ON injured_list(league_id);
+CREATE INDEX IF NOT EXISTS idx_injured_list_player ON injured_list(player_id);
+
 CREATE TABLE IF NOT EXISTS player_injury_log (
     id              SERIAL PRIMARY KEY,
     player_id       TEXT NOT NULL,

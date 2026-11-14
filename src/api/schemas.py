@@ -273,6 +273,11 @@ class RosterSaveRequest(BaseModel):
     active: list[str] = []
 
 
+class InjuredListRequest(BaseModel):
+    # Long Form: which injured list, by its days (7, 10, 15 or 60).
+    kind: int
+
+
 class TradeOfferRequest(BaseModel):
     to_team_id: str
     give: list[str] = []  # player ids from the GM's own team

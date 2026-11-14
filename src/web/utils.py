@@ -35,7 +35,12 @@ from src.db.repositories.news_repo import NewsRepository
 from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
-from src.league.league_modes import get_mode, has_money, injuries_allowed
+from src.league.league_modes import (
+    get_mode,
+    has_money,
+    injuries_allowed,
+    is_blitz_style,
+)
 from src.league.trade_deadline import (
     OFFSEASON_STATES,
     deadline_date,
@@ -212,6 +217,15 @@ def tab_response(request: Request, htmx: bool, template_name: str, ctx: dict):
         return render(template_name, ctx)
     ctx["tab_template"] = template_name
     return render("dashboard/shell.html", ctx)
+
+
+def _il_due(db, league_id: str, team_id: str) -> dict:
+    from src.team.injured_list import InjuredList, league_today
+    from src.team.roster_limits import AI_BENCH_AFTER_DAYS
+
+    today = league_today(db, league_id)
+    due = InjuredList(db, league_id).reminders(team_id, today, AI_BENCH_AFTER_DAYS)
+    return due if due["place"] or due["activate"] else {}
 
 
 def _current_league_date(
@@ -411,6 +425,16 @@ def _shell_ctx(
                 ctx["trade_wanted"] = HappinessRepository(
                     db, league_id
                 ).team_trade_requests(gm["team_id"])
+            if (
+                not ctx["is_viewer"]
+                and gm.get("team_id")
+                and league["state"] in ("preseason", "season", "playoffs")
+                and not is_blitz_style(league["mode"])
+            ):
+                # Long Form: hurt active players who could go on the
+                # injured list, and players ready to come off it (the IL
+                # pill, next_move._il_pill).
+                ctx["il_due"] = _il_due(db, league_id, gm["team_id"])
             if not ctx["is_viewer"] and "owner" in tabs and gm.get("id"):
                 # Owner messages the GM hasn't read: the Owner tab's badge.
                 ctx["owner_unseen"] = owner_office.unseen(db, gm["id"])
