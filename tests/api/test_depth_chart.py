@@ -1,6 +1,6 @@
 # tests/api/test_depth_chart.py
-"""The depth chart (view_models/depth_chart.py): the Lineup tab's four cards
-and the Depth Chart tab (Josh, 2026-11-14)."""
+"""The Depth Chart tab (view_models/depth_chart.py, Josh 2026-11-14). It
+follows the team's saved lineup, rotation and bullpen roles."""
 
 import random
 import uuid
@@ -74,6 +74,67 @@ def test_depth_chart_groups_and_backups(db_conn, lg):
     assert not any(g["weak"] for g in d["groups"].values())
 
 
+def _ids(db, team, pitchers):
+    return [
+        r["id"]
+        for r in db.execute(
+            """SELECT p.id FROM players p JOIN team_players tp ON tp.player_id = p.id
+               WHERE tp.team_id = %s AND p.last_name LIKE %s ORDER BY p.last_name""",
+            (team.id, "Arm%" if pitchers else "Bat%"),
+        ).fetchall()
+    ]
+
+
+def test_follows_the_saved_lineup_rotation_and_roles(db_conn, lg):
+    """Josh: the depth chart should match the Lineup tab, not its own picks."""
+    mine, season = lg["mine"], lg["season"]
+    bats, arms = _ids(db_conn, mine, False), _ids(db_conn, mine, True)
+    spots = ["c", "1b", "2b", "3b", "ss", "lf", "cf", "rf", "dh"]
+    # The last nine hitters, in a made-up order a person might save.
+    order = list(reversed(bats[-9:]))
+    for i, (pid, pos) in enumerate(zip(order, spots), 1):
+        db_conn.execute(
+            """INSERT INTO gm_lineup_preferences
+               (gm_id, player_id, batting_order, position, vs_hand)
+               VALUES (%s, %s, %s, %s, 'R')""",
+            (lg["gm"].id, pid, i, pos.upper()),
+        )
+    rotation = arms[7:12]
+    for i, pid in enumerate(rotation, 1):
+        db_conn.execute(
+            """INSERT INTO team_rotations
+               (team_id, season_id, player_id, rotation_order, effective_date)
+               VALUES (%s, %s, %s, %s, '2025-03-01')""",
+            (mine.id, season.id, pid, i),
+        )
+    roles = {arms[0]: "Long", arms[1]: "Setup", arms[2]: "Closer", arms[3]: "Middle"}
+    for pid, role in roles.items():
+        db_conn.execute(
+            """INSERT INTO bullpen_roles
+               (team_id, player_id, season_id, role, effective_date)
+               VALUES (%s, %s, %s, %s, '2025-03-01')""",
+            (mine.id, pid, season.id, role),
+        )
+
+    d = depth_chart(db_conn, lg["league"].id, season.id, mine.id)
+    assert d["from_lineup"]
+    assert [e["id"] for e in d["bats"]] == order
+    assert [e["pos"] for e in d["bats"]] == [s.upper() for s in spots]
+    assert [e["id"] for e in d["defense"]] == order[:8]
+    assert d["dh"]["id"] == order[8]
+    assert d["groups"]["bats"]["label"] == "Batting order"
+    assert [e["id"] for e in d["rotation"]] == rotation
+    assert [(e["id"], e["slot"]) for e in d["bullpen"]] == [
+        (arms[2], "CL"), (arms[1], "SU"), (arms[3], "MR"), (arms[0], "LR"),
+    ]  # fmt: skip
+
+
+def test_nothing_saved_falls_back_to_ratings(db_conn, lg):
+    d = depth_chart(db_conn, lg["league"].id, lg["season"].id, lg["mine"].id)
+    assert not d["from_lineup"]
+    assert d["groups"]["bats"]["label"] == "Best 9 bats"
+
+
 def test_not_in_the_league(db_conn, lg, factory):
     other = factory.team(city="Far", mascot="Away")
     assert depth_chart(db_conn, lg["league"].id, lg["season"].id, other.id) is None
@@ -101,13 +162,6 @@ class TestPages:
         yield TestClient(app, follow_redirects=False)
         app.dependency_overrides.clear()
 
-    def test_lineup_cards(self, client, lg):
-        r = client.get(f"/leagues/{lg['league'].id}/depth/cards")
-        assert r.status_code == 200
-        assert "Depth chart" in r.text
-        assert "Best 9 bats" in r.text and " of 4" in r.text
-        assert "next:" in r.text
-
     def test_depth_tab_any_team(self, client, lg):
         url = f"/leagues/{lg['league'].id}/depth"
         r = client.get(url, headers={"HX-Request": "true"})
@@ -118,11 +172,11 @@ class TestPages:
         r = client.get(f"{url}?team_id={other.id}", headers={"HX-Request": "true"})
         assert f'value="{other.id}" selected' in r.text
 
-    def test_lineup_tab_loads_the_cards(self, client, lg):
+    def test_lineup_tab_has_no_cards(self, client, lg):
         r = client.get(
             f"/leagues/{lg['league'].id}/lineup", headers={"HX-Request": "true"}
         )
-        assert 'hx-get="/leagues/' + lg["league"].id + '/depth/cards"' in r.text
+        assert r.status_code == 200 and "/depth/cards" not in r.text
 
     def test_sidebar_has_the_tab(self, client, lg):
         r = client.get(f"/leagues/{lg['league'].id}/depth")

@@ -2107,33 +2107,9 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
   .sim-card-news { max-height: 30vh; }
 }
 
-/* ── Depth chart (Lineup tab cards + Depth Chart tab; view_models/depth_chart.py) ── */
-.dc-fold { margin: 0 0 10px; border: 1px solid var(--border); background: var(--bg-2); }
-.dc-sum {
-  list-style: none; cursor: pointer; display: flex; align-items: center; flex-wrap: wrap;
-  gap: 4px 14px; padding: 6px 12px; font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);
-}
-.dc-sum::-webkit-details-marker { display: none; }
-.dc-sum::before { content: "▸"; color: var(--text-dim); }
-.dc-fold[open] > .dc-sum::before { content: "▾"; }
-.dc-sum-title { letter-spacing: .1em; text-transform: uppercase; color: var(--text); }
-.dc-sum-item { white-space: nowrap; }
-.dc-sum-item .dc-g { margin: 0 3px 0 4px; }
-.dc-sum-rank { color: var(--text-dim); }
-.dc-sum-link { margin-left: auto; color: var(--amber); text-decoration: none; }
-.dc-sum-link:hover { text-decoration: underline; }
-.dc-tools { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 0 12px 8px; }
-.dc-seg { display: inline-flex; border: 1px solid var(--border); }
-.dc-seg-btn {
-  font-family: var(--font-mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
-  padding: 3px 10px; background: var(--bg); color: var(--text-dim); border: 0; cursor: pointer;
-}
-.dc-seg-btn + .dc-seg-btn { border-left: 1px solid var(--border); }
-.dc-seg-btn.active { background: var(--amber-dim); color: var(--amber); }
+/* ── Depth Chart tab ( view_models/depth_chart.py) ── */
 .dc-note { font-family: var(--font-sans); font-size: 12px; color: var(--text-dim); margin: 0; }
-.dc-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; padding: 0 12px 12px; }
 .dc-card { background: var(--bg); border: 1px solid var(--border); min-width: 0; }
-.dc-grid .dc-card { align-self: start; }
 .dc-card-h {
   display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
   padding: 6px 12px; border-bottom: 1px solid var(--border);
@@ -2164,9 +2140,6 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
 .dc-bk.dc-none { color: var(--red); }
 .dc-foot { padding: 5px 12px; border-top: 1px solid var(--border); font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); }
 .dc-foot .dc-g { font-size: 10px; }
-.dc-no-bk .dc-bk, .dc-no-bk .dc-bkline { display: none; }
-@media (max-width: 1100px) { .dc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 560px) { .dc-grid { grid-template-columns: minmax(0, 1fr); } }
 
 /* The Depth Chart tab: the diamond */
 .dc-page { padding: 14px 24px 40px; max-width: 1180px; }
