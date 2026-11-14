@@ -85,7 +85,9 @@ def due_emails(conn, league_id: str) -> list[tuple[str, str, str]]:
 
     league = conn.execute(
         """SELECT name, state, pace_control, is_paused,
-                  EXTRACT(EPOCH FROM period_deadline - NOW()) AS seconds_left
+                  CASE WHEN pace_control = 'timer'
+                       THEN EXTRACT(EPOCH FROM period_deadline - NOW())
+                  END AS seconds_left
            FROM leagues WHERE id = %s""",
         (league_id,),
     ).fetchone()

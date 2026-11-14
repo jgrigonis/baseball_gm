@@ -32,11 +32,14 @@ class ReadyCheckRepository:
 
     def period(self, league_id: str) -> dict | None:
         """The league's state, pace, current period and the seconds left in its
-        window (negative once it has run out; None with no window)."""
+        window (negative once it has run out; None with no window, and always
+        None off timer pace, so a deadline left from timer pace shows no clock)."""
         row = self.conn.execute(
             """SELECT state, mode, trades_enabled, pace_control, decision_window_sec, sim_period, is_paused,
                       sim_period_days, period_deadline,
-                      EXTRACT(EPOCH FROM period_deadline - NOW()) AS seconds_left
+                      CASE WHEN pace_control = 'timer'
+                           THEN EXTRACT(EPOCH FROM period_deadline - NOW())
+                      END AS seconds_left
                FROM leagues WHERE id = %s""",
             (league_id,),
         ).fetchone()
@@ -74,6 +77,12 @@ class ReadyCheckRepository:
                SET period_deadline = NOW() + ({self._WINDOW}) * INTERVAL '1 second'
                WHERE id = %s""",
             (league_id,),
+        )
+
+    def close_window(self, league_id: str) -> None:
+        """Drop the current period's window (the league left timer pace)."""
+        self.conn.execute(
+            "UPDATE leagues SET period_deadline = NULL WHERE id = %s", (league_id,)
         )
 
     def next_period(

@@ -150,10 +150,14 @@ def update_league_settings(conn, league_id: str, settings: dict) -> str | None:
 def restart_window(conn, league_id: str) -> None:
     """Give the current period a fresh window under timer pace, so a window
     that ran out while the league was paused, or under the old timing,
-    doesn't sim it at once."""
+    doesn't sim it at once. Off timer pace the window goes, so a switch to
+    Confirmed takes the clock away."""
     league = LeagueRepository(conn).get_by_id(league_id)
-    if league["pace_control"] == "timer" and league["state"] in READY_CHECK_STATES:
-        ReadyCheckRepository(conn).open_window(league_id)
+    repo = ReadyCheckRepository(conn)
+    if league["pace_control"] != "timer":
+        repo.close_window(league_id)
+    elif league["state"] in READY_CHECK_STATES:
+        repo.open_window(league_id)
 
 
 def set_paused(conn, league_id: str, paused: bool) -> None:
