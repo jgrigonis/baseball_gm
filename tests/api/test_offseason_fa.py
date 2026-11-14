@@ -628,3 +628,49 @@ def test_a_refusing_veteran_cant_be_re_signed_and_leaves(lg, monkeypatch):
     with pytest.raises(OffseasonFAError, match="refused"):
         offseason_fa.place_bid(lg.db, lg.league.id, lg.mine.id, vet, 9_000_000, 2)
     offseason_fa.place_bid(lg.db, lg.league.id, lg.other.id, vet, 9_000_000, 2)
+
+
+# ── Speed Blitz: no money (Josh, 2026-11-14) ─────────────────────────────────
+
+
+def _speed_blitz(lg):
+    lg.db.execute(
+        "UPDATE leagues SET mode = 'speed_blitz' WHERE id = %s", (lg.league.id,)
+    )
+
+
+def test_speed_blitz_re_signs_your_expiring_deals_on_their_own(lg, monkeypatch):
+    """No Expiring Deals tab there: every deal of yours re-signs, even a
+    veteran who'd go to market, one let go, or one who'd refuse."""
+    monkeypatch.setattr(offseason_fa.hp, "refuses_to_resign", lambda *a: "miserable")
+    _speed_blitz(lg)
+    vet = _expiring(lg, lg.mine, 2021, 6, level=80)
+    young = _expiring(lg, lg.mine, 2024, 3)
+    cut = _expiring(lg, lg.mine, 2024, 3)
+    lg.db.execute(
+        """INSERT INTO contract_choices (league_id, player_id, team_id, year, choice)
+           VALUES (%s, %s, %s, 2026, 'let_go')""",
+        (lg.league.id, cut, lg.mine.id),
+    )
+    rows = {r["player_id"]: r for r in offseason_fa.expiring(lg.db, lg.league.id, 2026)}
+    assert rows[vet]["refuses"] is None
+
+    offseason_fa.close_window(lg.db, lg.league.id)
+
+    for pid in (vet, young, cut):
+        assert lg.contracts.active(pid, 2027)["start_year"] == 2027
+        assert pid in _on(lg, lg.mine)
+
+
+def test_speed_blitz_never_opens_bidding(lg):
+    from src.db.repositories.league_repo import LeagueRepository
+
+    _speed_blitz(lg)
+    LeagueRepository(lg.db).set_state(lg.league.id, "draft")
+    assert _league_row(lg)["fa_bidding"] is False
+    pid = _free_agent(lg)
+    free_agents.sign(lg.db, lg.league.id, lg.mine.id, pid)
+    assert lg.status.get_status(pid) != "free_agent"
+    assert free_agents.sign_preview(lg.db, lg.league.id, lg.mine.id, _free_agent(lg))[
+        "no_money"
+    ]

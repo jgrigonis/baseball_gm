@@ -10,10 +10,10 @@
     <span class="page-subtitle" style="margin-left:8px;">
       {{ pool_size }} in the pool{% if waiver_count %} · {{ waiver_count }} on waivers{% endif %}{% if pool_size > max_shown %} · best {{ max_shown }} shown{% endif %}
     </span>
-    {% if can_sign and payroll_text %}
+    {% if can_sign and minors_count is defined %}
     <span class="page-subtitle" style="margin-left:12px;" id="fa-minors"
           title="Signed players join your minors, which hold {{ minors_limit }}">Minors {{ minors_count }}/{{ minors_limit }}</span>
-    {{ payroll_line(budget, payroll_text) }}
+    {% if payroll_text %}{{ payroll_line(budget, payroll_text) }}{% endif %}
     {% endif %}
   </div>
   {% if players %}
@@ -30,7 +30,7 @@
     <select id="fa-sort" onchange="faRender()" style="width:auto;font-size:11px;">
       <option value="overall">Best first</option>
       <option value="young">Youngest first</option>
-      <option value="cheap">Cheapest first</option>
+      {% if has_money is not defined or has_money %}<option value="cheap">Cheapest first</option>{% endif %}
     </select>
     <input id="fa-q" type="search" placeholder="Name" oninput="faRender()"
            style="width:120px;font-size:11px;">
@@ -53,12 +53,16 @@
     prospects go undrafted.
   </div>
   {% else %}
+  {% if has_money is defined and not has_money %}
+  <div class="fa-note">Sign anyone you like: he joins your minors. Speed Blitz has no salaries.</div>
+  {% else %}
   <div class="fa-note">
     C- and worse ask the minimum for one season. Anyone still unsigned after the
     offseason's bidding asks {{ market_step_pct }}% less once bidding closes and
     another {{ market_step_pct }}% each week of the season, down to {{ market_floor_pct }}% of his price.
     {% if not bidding %}Sign pays his asking price; Offer lets you try for less, or for other seasons, and he answers right away.{% endif %}
   </div>
+  {% endif %}
   <div class="fa-list card" id="fa-list"></div>
   <div class="fa-empty" id="fa-none" style="display:none;">No one matches.</div>
   {% endif %}
@@ -71,6 +75,8 @@
 const FA = {{ players | tojson }};
 const CAN_SIGN = {{ 'true' if can_sign else 'false' }};
 const BIDDING = {{ 'true' if bidding else 'false' }};
+// Speed Blitz: no prices, offers or bids, just Sign (Josh, 2026-11-14).
+const NO_MONEY = {{ 'true' if (has_money is defined and not has_money) else 'false' }};
 let faTypeVal = '';
 
 // The view (All/Hit/Pit, position, sort, name) lives in the page address,
@@ -131,8 +137,8 @@ function row(p) {
   if (p.last_team) trail.push(`<span title="His last team">ex-${p.last_team}</span>`);
   const w = p.waiver;
   const years = p.ask_years ? `${p.ask_years} yr${p.ask_years === 1 ? '' : 's'}${w ? ' left' : ''}` : '';
-  let sign = CAN_SIGN && p.salary_text
-    ? `<button class="btn btn-secondary fa-sign" title="Sign him at his asking price">Sign</button>` : '';
+  let sign = CAN_SIGN && (p.salary_text || NO_MONEY)
+    ? `<button class="btn btn-secondary fa-sign" title="${NO_MONEY ? 'Sign him: he joins your minors' : 'Sign him at his asking price'}">Sign</button>` : '';
   // Or talk him down (src/api/services/fa_offers.py): he answers right away.
   if (sign && p.can_offer && !BIDDING && !w) {
     sign = `<span class="fa-btns"><button class="btn btn-secondary fa-offer" title="Offer him a salary and seasons. He answers right away.">Offer</button>${sign}</span>`;

@@ -217,10 +217,20 @@ def _offseason_pill(ctx: dict, page: str) -> dict | None:
     the calls on those deals) runs when everyone's ready."""
     if ctx.get("league_state") != "offseason":
         return None
-    # Once the GM has been to the deals, nothing more to point at.
+    base = f"/leagues/{ctx['league_id']}"
+    # Once the GM has been to the deals, nothing more to point at. Without
+    # money (Speed Blitz) the deals re-sign on their own: just the summary.
+    if not ctx.get("has_money", True):
+        if ctx.get("summary_seen") or page == "season-summary":
+            return None
+        return {
+            "label": "📜 Summary",
+            "short": "📜",
+            "href": f"{base}/season-summary",
+            "title": "How the season went.",
+        }
     if not ctx.get("expiring_due") or page == "expiring":
         return None
-    base = f"/leagues/{ctx['league_id']}"
     if page == "season-summary" or ctx.get("summary_seen"):
         return {
             "label": "📝 Expiring Deals",
@@ -453,7 +463,12 @@ def pick(
     # 2026-11-09; its own tab since 2026-11-10), then the offseason runs. Once the GM has opened the
     # summary (summary_seen), every page points on to the next step and the
     # summary is a sidebar link.
-    if page == "expiring":
+    if page == "expiring" or (
+        not ctx.get("has_money", True)
+        and (page == "season-summary" or ctx.get("summary_seen"))
+    ):
+        # Without money (Speed Blitz) expiring deals re-sign on their own,
+        # so the summary leads straight to the offseason.
         return _act(
             "begin-offseason",
             "Begin Offseason →",

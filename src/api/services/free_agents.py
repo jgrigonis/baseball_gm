@@ -42,6 +42,7 @@ from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.league import budget as bg
 from src.league import prorate
+from src.league.league_modes import has_money
 from src.league.offseason.roster_trimmer import MINORS_LIMIT
 from src.player import contracts as ct
 from src.player.player_value import role_rating
@@ -306,6 +307,8 @@ def sign_preview(conn, league_id: str, team_id: str, player_id: str) -> dict:
     return {
         "salary_text": ct.format_salary(deal.salary),
         "years": deal.years,
+        # Speed Blitz: no salaries shown, so the confirm doesn't name one.
+        "no_money": not has_money(LeagueRepository(conn).get_by_id(league_id)),
         "warning": budget_warning(conn, league_id, team_id, year, deal.salary),
         "blocked": BudgetRepository(conn).refusal(
             league_id, team_id, year, deal.salary

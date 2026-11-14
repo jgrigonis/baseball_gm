@@ -283,10 +283,11 @@ def test_the_owner_tab_explains_the_cap_and_leash(lg, client_for):
     assert f"Your payroll now: <strong>{bg.format_salary(pay)}</strong>" in html
 
 
-def test_speed_blitz_roster_shows_just_payroll(lg, client_for):
+def test_speed_blitz_roster_shows_no_payroll(lg, client_for):
+    """Josh, 2026-11-14: no salaries on the Roster tab in Speed Blitz."""
     x = lg(mode="speed_blitz")
     html = client_for(x).get(f"/leagues/{x.league.id}/roster").text
-    assert "Payroll $" in html and "pl-dim" not in html.split("<style>")[0]
+    assert "Payroll $" not in html and "pl-dim" not in html.split("<style>")[0]
 
 
 # ── Owners set budgets (src/league/finances.py) ───────────────────────────────

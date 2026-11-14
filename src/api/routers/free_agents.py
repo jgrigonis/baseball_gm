@@ -132,6 +132,12 @@ def free_agents_tab(
                     "salary_text": format_salary(b["salary"]),
                     "years": b["years"],
                 }
+    if not ctx.get("has_money", True):
+        # Speed Blitz (Josh, 2026-11-14): no prices or offers, just Sign. A
+        # waiver claim still takes over his deal, so it keeps its button.
+        for card in players:
+            for k in ("salary", "salary_text", "ask_years", "can_offer"):
+                card.pop(k, None)
     ctx["players"] = players
     ctx["market_step_pct"] = round(free_agents.MARKET_STEP * 100)
     ctx["market_floor_pct"] = round(free_agents.MARKET_FLOOR * 100)
@@ -144,8 +150,9 @@ def free_agents_tab(
         ctx["minors_count"] = len(
             PlayerStatusRepository(db).get_by_team_and_status(team_id, "minors")
         )
-        ctx["payroll_text"] = format_salary(contracts.payroll(team_id, year))
-        ctx["budget"] = BudgetRepository(db).standing(league_id, team_id, year)
+        if ctx.get("has_money", True):
+            ctx["payroll_text"] = format_salary(contracts.payroll(team_id, year))
+            ctx["budget"] = BudgetRepository(db).standing(league_id, team_id, year)
     return tab_response(request, htmx, "dashboard/partials/free_agents.html", ctx)
 
 

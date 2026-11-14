@@ -74,6 +74,7 @@ from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_state_repo import TeamStateRepository
 from src.league.offseason.roster_trimmer import MINORS_LIMIT
 from src.league import money_state, team_pool
+from src.league.league_modes import has_money
 from src.player import contracts as ct
 from src.player import happiness as hp
 from src.player import negotiation as ng
@@ -166,6 +167,9 @@ def expiring(conn, league_id: str, year: int, team_ids=None) -> list[dict]:
     arb = contracts.arbitration_seasons(ids, year + 1)
     shifts = contracts.price_shifts(league_id, year + 1)
     repo = PlayerRepository(conn)
+    # Without money (Speed Blitz) a person's expiring deals re-sign on their
+    # own (_keeps), so nobody refuses.
+    money = has_money(LeagueRepository(conn).get_by_id(league_id))
     out = []
     for r in rows:
         p = repo.look_up(r["player_id"])
@@ -190,7 +194,7 @@ def expiring(conn, league_id: str, year: int, team_ids=None) -> list[dict]:
                 markets.get(r["team_id"], team_pool.MIN_MARKET + 2),
                 random.Random(f"refuse-resign:{p.id}:{year}").random(),
             )
-            if market == "veteran" and arb_season is None
+            if money and market == "veteran" and arb_season is None
             else None
         )
         out.append(
@@ -436,7 +440,12 @@ def resign_all(conn, league_id: str, team_id: str) -> dict:
 
 
 def _keeps(
-    conn, league_id: str, year: int, rows: list[dict], humans: set[str]
+    conn,
+    league_id: str,
+    year: int,
+    rows: list[dict],
+    humans: set[str],
+    money: bool = True,
 ) -> set[str]:
     """Who re-signs (Josh, 2026-11-07: re-signs answer to the owner). Every
     expiring deal is decided here; nothing re-signs on its own later.
@@ -449,8 +458,13 @@ def _keeps(
       (C- or worse) go rather than pay him more than the minimum.
 
     Each is judged on next season (Josh, 2026-11-09): the expiring salaries
-    drop off, and a re-sign costs his whole new salary (_next_room)."""
+    drop off, and a re-sign costs his whole new salary (_next_room).
+
+    Without money (Speed Blitz, Josh 2026-11-14) a person's expiring deals
+    all re-sign on their own: there's no Expiring Deals tab to call them."""
     keep: set[str] = set()
+    if not money:
+        keep = {r["player_id"] for r in rows if r["team_id"] in humans}
     room: dict[str, float] = {}
 
     def fits(r: dict, force: bool = False) -> bool:
@@ -495,7 +509,8 @@ def close_window(conn, league_id: str) -> dict:
     year = _year(conn, league_id)
     rows = expiring(conn, league_id, year)
     humans = set(GMRepository(conn).get_human_team_ids(league_id))
-    keep = _keeps(conn, league_id, year, rows, humans)
+    money = has_money(LeagueRepository(conn).get_by_id(league_id))
+    keep = _keeps(conn, league_id, year, rows, humans, money)
     contracts = ContractRepository(conn)
     status = PlayerStatusRepository(conn)
     teams = TeamRepository(conn)

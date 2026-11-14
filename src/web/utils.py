@@ -35,7 +35,7 @@ from src.db.repositories.news_repo import NewsRepository
 from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
-from src.league.league_modes import get_mode, injuries_allowed
+from src.league.league_modes import get_mode, has_money, injuries_allowed
 from src.league.trade_deadline import (
     OFFSEASON_STATES,
     deadline_date,
@@ -348,12 +348,20 @@ def _shell_ctx(
                     # A league that trades gets the trade stop boxes by the
                     # sim buttons.
                     "trades_enabled": trades_enabled_for(league),
+                    # Salaries count (not Speed Blitz): budgets, prices, bids
+                    # and the Expiring Deals tab.
+                    "has_money": has_money(league),
                 }
             )
             tabs = _compute_visible_tabs(league["state"], draft_complete)
             # The GM's expiring deals: from the champion's crowning until the
             # offseason runs (routers/free_agents.py expiring_tab).
-            if league["state"] == "offseason" and "free-agents" in tabs:
+            # Without money (Speed Blitz) they re-sign on their own.
+            if (
+                league["state"] == "offseason"
+                and "free-agents" in tabs
+                and has_money(league)
+            ):
                 tabs.insert(tabs.index("free-agents") + 1, "expiring")
             # Leagues that trade get a Trades tab once the draft is done, after
             # the lineup. It stays for the trade history once trades close.

@@ -96,6 +96,17 @@ def injuries_allowed(league: dict) -> bool:
     return get_mode(league.get("mode")).injuries_default
 
 
+def has_money(league: dict | None) -> bool:
+    """Whether salaries count in this league: budgets, prices, bids and
+    re-sign calls. Not in Speed Blitz (Josh, 2026-11-14: expiring deals
+    re-sign on their own, free agents just sign, no salaries on the Roster
+    tab)."""
+    return bool(league) and get_mode(league.get("mode")).budgets
+
+
+MONEY_MODES = tuple(k for k, m in LEAGUE_MODES.items() if m.budgets)
+
+
 def trades_allowed(mode: str | None) -> bool:
     return get_mode(mode).trades_enabled
 

@@ -26,6 +26,10 @@
         The offseason runs once every GM is ready.
         {% if not new_gm_experienced %}Retirements, your season preview and
         the draft follow.{% endif %}
+      {% elif has_money is defined and not has_money %}
+        Expiring deals re-sign on their own here. Begin Offseason when you're
+        ready{% if not new_gm_experienced %}; retirements, your season preview
+        and the draft follow{% endif %}.
       {% elif new_gm_experienced %}
         Expiring Deals is up next.
       {% else %}
