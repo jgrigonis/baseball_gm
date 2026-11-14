@@ -727,18 +727,45 @@ UNHAPPY = -0.4  # "unhappy" and worse
 MISERABLE = -0.65
 
 
+# Only players worth trading for ask out much (Josh, 2026-11-14): a request
+# from the bottom of the league's big leaguers is rare, and none come from
+# the minors. value is his rank among the league's hitters or pitchers on
+# a 40-man, 0 (worst) to 1 (best): below REQUEST_LOW the chance is
+# REQUEST_FLOOR of the full one, rising to all of it at REQUEST_FULL.
+REQUEST_LOW = 0.2
+REQUEST_FULL = 0.5
+REQUEST_FLOOR = 0.05
+
+
+def request_value(value: float | None, minors: bool) -> float:
+    """How much of the full chance of asking out a player has, by value."""
+    if minors:
+        return 0.0
+    if value is None or value >= REQUEST_FULL:
+        return 1.0
+    if value <= REQUEST_LOW:
+        return REQUEST_FLOOR
+    share = (value - REQUEST_LOW) / (REQUEST_FULL - REQUEST_LOW)
+    return REQUEST_FLOOR + (1 - REQUEST_FLOOR) * share
+
+
 def asks_for_trade(
-    mood: float, unhappy_weeks: int, traits: dict[str, int], roll: float
+    mood: float,
+    unhappy_weeks: int,
+    traits: dict[str, int],
+    roll: float,
+    value: float = 1.0,
 ) -> bool:
     """After a few weeks unhappy, he asks out: sooner and likelier with a
-    temper, less likely if he's loyal. roll is a uniform 0..1 draw."""
-    if mood >= UNHAPPY:
+    temper, less likely if he's loyal, and much less if he's not worth much
+    (value, from request_value). roll is a uniform 0..1 draw."""
+    if mood >= UNHAPPY or value <= 0:
         return False
     needed = 2 if traits["temper"] >= 70 else 3
     if unhappy_weeks < needed:
         return False
     chance = 0.1 + 0.25 * traits["temper"] / 100 - 0.1 * traits["loyalty"] / 100
-    return roll < chance
+    return roll < chance * value
 
 
 # A player who's been restless or better (no longer unhappy) this many

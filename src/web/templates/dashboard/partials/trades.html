@@ -276,11 +276,19 @@ function payNow(amount) {
 }
 var OWNER_ICONS = {{ owner_icons | tojson }};
 var COUNTER = null;  // the offer to you this one counters
-// A deal half built: the sim's day-by-day reload leaves the tab alone
-// (shell.html _simHold) so the picks aren't lost.
+// Something on screen the GM is working with: the sim's day-by-day reload
+// leaves the tab alone (shell.html _simHold) so it isn't wiped. A deal half
+// built, a partner team picked, a filter set, shop/dump/absorb results or
+// a verdict showing. The tab catches up once they're cleared or sent.
 var page = document.getElementById('trades-page');
 if (page) page.simHold = function() {
-  return SIDES.mine.picked.size > 0 || SIDES.theirs.picked.size > 0;
+  if (SIDES.mine.picked.size > 0 || SIDES.theirs.picked.size > 0) return true;
+  if (SIDES.theirs.team) return true;
+  if (SIDES.mine.filter !== 'all' || SIDES.theirs.filter !== 'all' || SIDES.mine.trade) return true;
+  if (SHOP || DUMP || ABSORB) return true;
+  // A verdict on an offer just sent (not the note a reload leaves behind).
+  var res = document.getElementById('tr-result');
+  return !!(res && res.style.display === 'block' && !res.dataset.afterReload);
 };
 
 function esc(s) {
@@ -610,6 +618,7 @@ function showResult(html, kind, dest) {
   var el = document.getElementById('tr-result');
   if (!el) return;
   el.className = 'tr-result tr-' + kind + (dest ? ' tr-link' : '');
+  delete el.dataset.afterReload;
   el.innerHTML = html;
   // goToTab lives in the shell, whose script can load after this tab's.
   el.onclick = dest ? function() { if (window.goToTab) window.goToTab(dest); } : null;
@@ -1151,7 +1160,12 @@ if (window._tradeWith) {
 }
 var done = window._tradeResult;
 try { done = done || JSON.parse(sessionStorage.getItem('tradeResult')); sessionStorage.removeItem('tradeResult'); } catch (e) {}
-if (done) { showResult(done.msg, done.kind, done.dest); window._tradeResult = null; }
+if (done) {
+  showResult(done.msg, done.kind, done.dest);
+  window._tradeResult = null;
+  var doneEl = document.getElementById('tr-result');
+  if (doneEl) doneEl.dataset.afterReload = '1';
+}
 })();
 </script>
 {% endif %}

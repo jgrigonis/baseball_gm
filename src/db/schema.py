@@ -315,6 +315,7 @@ CREATE TABLE IF NOT EXISTS gms (
     welcomed_at    TIMESTAMPTZ,           -- first saw the welcome screen
     welcomed_season_id TEXT,              -- season whose preview they last saw (migration 065)
     summary_seen_season_id TEXT,          -- season whose summary they last opened (migration 101)
+    strategy_seen_season_id TEXT,         -- season whose preseason they opened the Strategy tab in (migration 132)
     roster_seen_season_id TEXT,           -- season whose preseason they opened the Roster tab in (migration 112)
     lineup_seen_season_id TEXT,           -- season whose preseason they opened the Lineup tab in (migration 112)
     trade_roster_season_id TEXT,          -- season of a trade that brought them players; cleared on the Roster tab (migration 114)
@@ -740,6 +741,7 @@ CREATE TABLE IF NOT EXISTS team_players (
     team_id   TEXT NOT NULL,
     player_id TEXT NOT NULL,
     jersey_number TEXT, -- '0'..'99' or '00'; unique on the team
+    joined_on TEXT,     -- league date he came by trade/signing/claim (migration 131)
 
     PRIMARY KEY (team_id, player_id),
 
@@ -1214,6 +1216,15 @@ CREATE TABLE IF NOT EXISTS game_plays (
 );
 
 CREATE INDEX IF NOT EXISTS idx_game_plays_season_id ON game_plays(season_id);
+
+-- A starter's own Starter Leash, overriding the team's (migration 133).
+CREATE TABLE IF NOT EXISTS pitcher_leashes (
+    team_id    TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    player_id  TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    pitches    TEXT NOT NULL CHECK (pitches IN ('75', '85', '95', '105', '115')),
+    PRIMARY KEY (team_id, player_id)
+);
+CREATE INDEX IF NOT EXISTS idx_pitcher_leashes_player ON pitcher_leashes(player_id);
 
 CREATE TABLE IF NOT EXISTS game_lineup_slots (
     game_id       TEXT NOT NULL,

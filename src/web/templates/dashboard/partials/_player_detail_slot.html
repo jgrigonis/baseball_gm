@@ -137,7 +137,7 @@
 {% macro skill_grid(skills) %}
  <div class="pd-skill-grid">
    {% for skill in skills %}
-   <div class="pd-skill-row">
+   <div class="pd-skill-row{% if skill.main %} pd-pos-main{% elif skill.second %} pd-pos-second{% endif %}"{% if skill.starts %} title="{{ skill.starts }}"{% endif %}>
      <span class="pd-skill-label">{{ skill.label }}</span>
      <span class="pd-skill-grade
        {{ grade_tier(skill.grade) }}"
@@ -159,20 +159,20 @@
  </div>
 {% endmacro %}
 {% if player.grades %}
- {% set off_role = player.grades | selectattr('off_role') | list %}
- {% for section in player.grades if not section.off_role %}
-   {{ grade_section(section) }}
- {% endfor %}
- {# Ratings for what the player rarely does (hitting for a pitcher, pitching
-    for a hitter) start collapsed. Opening one opens them across a comparison. #}
- {% if off_role %}
- <details class="pd-offrole" ontoggle="ppToggleOffRole(this)">
-   <summary>{{ off_role | map(attribute='section') | join(' · ') }}</summary>
-   {% for section in off_role %}
+ {# Three toggles: Hitting, Defense, Pitching (General goes with his own
+    role). What he rarely does (hitting for a pitcher, pitching for a
+    hitter) starts collapsed. Opening one opens it across a comparison. #}
+ {% set groups = [] %}
+ {% for section in player.grades if section.group not in groups %}{% set _ = groups.append(section.group) %}{% endfor %}
+ {% for g in groups %}
+ {% set secs = player.grades | selectattr('group', 'equalto', g) | list %}
+ <details class="pd-offrole pd-group" data-group="{{ g }}" ontoggle="ppToggleOffRole(this)"{% if not secs[0].off_role %} open{% endif %}>
+   <summary>{{ secs | map(attribute='section') | join(' · ') }}</summary>
+   {% for section in secs %}
      {{ grade_section(section) }}
    {% endfor %}
  </details>
- {% endif %}
+ {% endfor %}
 {% endif %}
 
 {# ── Season Stats ──────────────────────────────────────────────────────────── #}

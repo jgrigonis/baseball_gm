@@ -88,6 +88,7 @@
                   font-family:var(--font-mono);font-size:11px;color:var(--amber);
                   align-items:center;gap:10px;">
         <span id="bat-unsaved-text">⚠ Batting order not saved</span>
+        <button type="button" class="lu-diff-btn" onclick="showChanges('bat')" title="What changed" aria-label="What changed">ⓘ</button>
         <button class="btn btn-secondary" onclick="saveBatting()"
                 style="font-size:10px;padding:3px 8px;border-color:var(--amber);color:var(--amber);">
           Save now
@@ -236,6 +237,7 @@
                   font-family:var(--font-mono);font-size:11px;color:var(--amber);
                   align-items:center;gap:10px;">
         <span>⚠ Starting rotation not saved</span>
+        <button type="button" class="lu-diff-btn" onclick="showChanges('rot')" title="What changed" aria-label="What changed">ⓘ</button>
         <button class="btn btn-secondary" onclick="saveRotation()"
                 style="font-size:10px;padding:3px 8px;border-color:var(--amber);color:var(--amber);">
           Save now
@@ -293,6 +295,7 @@
                   font-family:var(--font-mono);font-size:11px;color:var(--amber);
                   align-items:center;gap:10px;">
         <span>⚠ Bullpen assignments not saved</span>
+        <button type="button" class="lu-diff-btn" onclick="showChanges('bp')" title="What changed" aria-label="What changed">ⓘ</button>
         <button class="btn btn-secondary" onclick="saveBullpen()"
                 style="font-size:10px;padding:3px 8px;border-color:var(--amber);color:var(--amber);">
           Save now
@@ -640,6 +643,13 @@
   #bat-unsaved-banner > span, #rot-unsaved-banner > span, #bp-unsaved-banner > span { flex: 1; }
   #bat-unsaved-banner .btn, #rot-unsaved-banner .btn, #bp-unsaved-banner .btn { font-size: 11px !important; padding: 7px 12px !important; }
 }
+.lu-diff-btn { background: none; border: 1px solid var(--amber); color: var(--amber); border-radius: 50%;
+  width: 20px; height: 20px; padding: 0; font-size: 12px; line-height: 18px; cursor: pointer; flex-shrink: 0; }
+.lu-diff-btn:hover { background: var(--amber-dim); }
+.rot-leash { display: inline-flex; align-items: center; gap: 4px; margin-top: 3px;
+  font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); }
+.rot-leash select { font-family: var(--font-mono); font-size: 10px; padding: 1px 2px;
+  background: var(--bg-3); color: var(--text); border: 1px solid var(--border); }
 </style>
 
 <script>
@@ -696,6 +706,10 @@ const SAVED_LINEUP  = {{ saved_lineup  | tojson }};  // {R: [...], L: [...]}
 const SAVED_ROT     = {{ saved_rotation | tojson }};
 const SAVED_BP      = {{ saved_bullpen  | tojson }};
 const SAVED_POINTER = {{ saved_rotation_pointer | tojson }};
+// Starter Leash: the team's, and starters with their own (saved right away).
+const TEAM_LEASH = {{ (team_leash or '85') | tojson }};
+const PITCHER_LEASHES = {{ (pitcher_leashes or {}) | tojson }};
+const LEASH_STEPS = ['75', '85', '95', '105', '115'];
 const STORAGE_KEY   = `lineup3_${LEAGUE_ID}`;
 
 const POSITIONS = ['c','1b','2b','3b','ss','lf','cf','rf','dh'];
@@ -874,7 +888,7 @@ function renderBattingOrder() {
         <div style="min-width:0;">
           <div class="lu-name" style="cursor:pointer;color:${p.returning?'#f5c518':p.injured?'var(--red)':''};"
                onclick="openPlayerPanel('${p.player_id}')">${jerseyTag(p)}${p.first_name} ${p.last_name}${rookieTag(p.player_id)}${nameTrailHtml(p, [`${p.bats}/${p.throws}`, `Age ${p.age}`])}
-            ${p.injured?`<span style="font-size:10px;color:var(--red);"${p.injury_name?` title="${p.injury_name}"`:''}>IL${p.injury_days?' ('+p.injury_days+'d)':''}</span>`:''}${rustTag(p)}${iconTag(p)}${moodTag(p)}
+            ${p.injured?`<span style="font-size:10px;color:var(--red);"${p.injury_name?` title="${p.injury_name}"`:''}>IL${p.injury_days?' ('+p.injury_days+'d)':''}</span>`:''}${rustTag(p)}${newTag(p)}${iconTag(p)}${moodTag(p)}
           </div>
           {# Always show batting grades; hitter stats sit next to the name #}
           ${_battingSlotGrades(true, p, slot.position)}
@@ -1129,7 +1143,7 @@ function renderRoster() {
       <span class="${gradeClass(p.bat_overall)} lu-grade">${p.bat_overall}</span>
       <div style="min-width:0;">
         <div class="lu-name" style="color:${p.returning?'#f5c518':p.injured?'var(--red)':''};">${jerseyTag(p)}${p.first_name} ${p.last_name}${rookieTag(p.player_id)}${nameTrailHtml(p, [posLabel(p.position)||'?', `${p.bats}/${p.throws}`, `Age ${p.age}`])}
-          ${p.injured?`<span style="font-size:10px;color:var(--red);"${p.injury_name?` title="${p.injury_name}"`:''}>IL${p.injury_days?' ('+p.injury_days+'d)':''}</span>`:''}${rustTag(p)}${iconTag(p)}${moodTag(p)}
+          ${p.injured?`<span style="font-size:10px;color:var(--red);"${p.injury_name?` title="${p.injury_name}"`:''}>IL${p.injury_days?' ('+p.injury_days+'d)':''}</span>`:''}${rustTag(p)}${newTag(p)}${iconTag(p)}${moodTag(p)}
         </div>
         ${hitterGradesHtml(p, null)}
       </div>
@@ -1419,6 +1433,34 @@ function _makeInsertLine(insertIdx) {
   return line;
 }
 
+// "Leash: Team (85) ▾" under a starter: his own pitch count, or the team's.
+function leashSelectHtml(pid) {
+  const own = PITCHER_LEASHES[pid] || '';
+  const opts = [`<option value=""${own ? '' : ' selected'}>Team (${TEAM_LEASH})</option>`]
+    .concat(LEASH_STEPS.map(v => `<option value="${v}"${own === v ? ' selected' : ''}>${v} pitches</option>`));
+  return `<label class="rot-leash" title="How many pitches he usually goes. Team follows the Starter Leash on the Strategy tab." onclick="event.stopPropagation()">
+    Leash <select onchange="setPitcherLeash('${pid}', this)" draggable="false">${opts.join('')}</select></label>`;
+}
+async function setPitcherLeash(pid, sel) {
+  const pitches = sel.value || null;
+  try {
+    const res = await fetch(`/leagues/${LEAGUE_ID}/rotation/leash`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ player_id: pid, pitches }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) { showFeedback('✗ ' + (d.detail || 'Not saved'), 'var(--red)'); return; }
+    if (pitches) PITCHER_LEASHES[pid] = pitches; else delete PITCHER_LEASHES[pid];
+    const p = findPitcher(pid);
+    const who = p ? `${p.first_name} ${p.last_name}` : 'His';
+    showFeedback(pitches ? `✓ ${who}: ${pitches}-pitch leash` : `✓ ${who}: team leash (${TEAM_LEASH})`, 'var(--green)');
+  } catch (e) {
+    showFeedback('✗ Couldn\'t reach the server', 'var(--red)');
+  }
+}
+window.setPitcherLeash = setPitcherLeash;
+
 function renderRotation() {
   ensureValidPointer();
   const el = document.getElementById('rotation-list');
@@ -1447,11 +1489,12 @@ function renderRotation() {
       <div style="min-width:0;">
         <div class="lu-name" style="cursor:pointer;color:${p.returning?'#f5c518':p.injured?'var(--red)':''};"
              onclick="openPlayerPanel('${p.player_id}')">${jerseyTag(p)}${p.first_name} ${p.last_name}${rookieTag(p.player_id)}
-          ${p.injured?`<span style="font-size:10px;color:var(--red);"${p.injury_name?` title="${p.injury_name}"`:''}>IL${p.injury_days?' ('+p.injury_days+'d)':''}</span>`:''}${rustTag(p)}${iconTag(p)}${moodTag(p)}
+          ${p.injured?`<span style="font-size:10px;color:var(--red);"${p.injury_name?` title="${p.injury_name}"`:''}>IL${p.injury_days?' ('+p.injury_days+'d)':''}</span>`:''}${rustTag(p)}${newTag(p)}${iconTag(p)}${moodTag(p)}
           <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-left:5px;">${p.throws} • Age ${p.age}</span>
         </div>
         <div class="lu-skills">${pitcherGradesHtml(p)}</div>
         ${p.stat_era!=null?`<div class="lu-skills">${pitcherStatsHtml(p)}</div>`:''}
+        ${leashSelectHtml(pid)}
       </div>
       <div class="rot-arrows">
         <button class="rot-arrow" data-idx="${slotIdx}" data-dir="up" ${slotIdx===0?'disabled':''}>▲</button>
@@ -1630,7 +1673,7 @@ function renderBullpen() {
           <span class="${gradeClass(p.overall)} lu-grade">${p.overall}</span>
           <span class="lu-name" style="cursor:pointer;color:${p.returning?'#f5c518':p.injured?'var(--red)':''};"
                 onclick="openPlayerPanel('${p.player_id}')">${jerseyTag(p)}${p.first_name} ${p.last_name}${rookieTag(p.player_id)}
-            ${p.injured?`<span style="font-size:10px;color:var(--red);"${p.injury_name?` title="${p.injury_name}"`:''}>IL${p.injury_days?' ('+p.injury_days+'d)':''} </span>`:''}${rustTag(p)}${iconTag(p)}${moodTag(p)}
+            ${p.injured?`<span style="font-size:10px;color:var(--red);"${p.injury_name?` title="${p.injury_name}"`:''}>IL${p.injury_days?' ('+p.injury_days+'d)':''} </span>`:''}${rustTag(p)}${newTag(p)}${iconTag(p)}${moodTag(p)}
             <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-left:5px;">${p.throws} • Age ${p.age}</span>
           </span>
         </div>
@@ -2084,6 +2127,79 @@ function updatePitchingBanners() {
   updatePitchSeg();
   updateHeaderGlow();
 }
+
+/* ── What changed (the unsaved bars' ⓘ) ───────────────────────────────────────── */
+// The difference between what's on screen and what's saved, a line a player:
+// "Wayne Green: 3B, 4th → 1B, 4th", "Lavern Jacobs: Bench → C, 7th".
+function ordinalOf(n) {
+  const s = (n % 100 >= 11 && n % 100 <= 13) ? 'th' : ({1: 'st', 2: 'nd', 3: 'rd'}[n % 10] || 'th');
+  return n + s;
+}
+function nameOf(pid) {
+  const p = findPlayer(pid);
+  return p ? `${p.first_name} ${p.last_name}` : 'Someone';
+}
+function battingChanges(hand) {
+  const where = l => {
+    const m = {};
+    l.forEach((s, i) => { if (s) m[s.player_id] = {pos: POS_LABEL[s.position] || (s.position || '').toUpperCase(), order: i + 1}; });
+    return m;
+  };
+  const was = where(savedLineups[hand]), now = where(lineups[hand]);
+  const spot = w => w ? `${w.pos || '?'}, ${ordinalOf(w.order)}` : 'Bench';
+  const lines = [];
+  // In batting order on screen, then the ones taken out.
+  const ids = [...lineups[hand].filter(Boolean).map(s => s.player_id),
+               ...savedLineups[hand].filter(Boolean).map(s => s.player_id).filter(pid => !now[pid])];
+  ids.forEach(pid => {
+    const a = spot(was[pid]), b = spot(now[pid]);
+    if (a !== b) lines.push(`${nameOf(pid)}: ${a} → ${b}`);
+  });
+  return lines;
+}
+function rotationChanges() {
+  const lines = [];
+  const was = savedRot ? savedRot.rotation.filter(Boolean) : [];
+  const now = rotation.filter(Boolean);
+  const slot = (list, pid) => { const i = list.indexOf(pid); return i < 0 ? 'Bullpen' : `${ordinalOf(i + 1)} starter`; };
+  [...now, ...was.filter(pid => !now.includes(pid))].forEach(pid => {
+    const a = slot(was, pid), b = slot(now, pid);
+    if (a !== b) lines.push(`${nameOf(pid)}: ${a} → ${b}`);
+  });
+  const ptrWas = savedRot ? savedRot.pointerPid : null;
+  if ((ptrWas || null) !== (pointerPid || null))
+    lines.push(`Next starter: ${ptrWas ? nameOf(ptrWas) : 'none'} → ${pointerPid ? nameOf(pointerPid) : 'none'}`);
+  return lines;
+}
+function bullpenChanges() {
+  const inRot = new Set(nonNullRotation());
+  const was = savedBullpen || {};
+  const ids = new Set([...Object.keys(was), ...Object.keys(bullpen)]);
+  const lines = [];
+  ids.forEach(pid => {
+    if (inRot.has(pid) || !knownPitcherIds.has(pid)) return;
+    const a = was[pid] || 'No role', b = bullpen[pid] || 'No role';
+    if (a !== b) lines.push(`${nameOf(pid)}: ${a} → ${b}`);
+  });
+  return lines.sort();
+}
+function showChanges(kind) {
+  let lines = [];
+  if (kind === 'bat') {
+    unsavedHands().forEach(h => {
+      const ch = battingChanges(h);
+      if (ch.length) lines.push(`vs ${HAND_LABEL[h]}:`, ...ch);
+    });
+  } else if (kind === 'rot') {
+    lines = rotationChanges();
+  } else {
+    lines = bullpenChanges();
+  }
+  if (!lines.length) lines = ['Nothing but the order of the same players changed.'];
+  const title = {bat: 'Batting order changes', rot: 'Rotation changes', bp: 'Bullpen changes'}[kind];
+  gmConfirm({title, lines, ok: 'OK', cancel: null});
+}
+window.showChanges = showChanges;
 
 /* ── Feedback ────────────────────────────────────────────────────────────────── */
 // A toast at the top of the screen (gmToast in dialogs.js); the colour

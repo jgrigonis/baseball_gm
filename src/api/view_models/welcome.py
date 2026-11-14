@@ -599,6 +599,57 @@ def owner_card(
     }
 
 
+# The draft slot card's likely picks (Josh, 2026-11-14): the GM's first
+# EXPECTED_PICKS picks with the saved draft strategy, projected the way the
+# Draft tab does (src/api/services/draft_preview.py). Cached while the draft
+# board and the strategy are the same, since the projection runs the draft.
+EXPECTED_PICKS = 3
+_expected_cache: dict[tuple, list[dict]] = {}
+
+
+def expected_picks(db, league_id: str, draft_id: str, team_id: str) -> list[dict]:
+    """[{pick, round, name, position}] for the team's first picks."""
+    from src.api.services.draft_needs import draft_strategies
+    from src.api.services.draft_preview import preview_picks
+    from src.league.offseason.draft_strategy import DraftStrategy
+    from src.player.positions import display_position
+
+    strategy = draft_strategies(db, draft_id, league_id).get(team_id) or DraftStrategy()
+    board = db.execute(
+        """SELECT COUNT(*) AS n FROM draft_picks WHERE draft_id = %s""", (draft_id,)
+    ).fetchone()
+    key = (draft_id, team_id, repr(strategy), board["n"] if board else 0)
+    if key in _expected_cache:
+        return _expected_cache[key]
+    picks = preview_picks(db, league_id, draft_id, team_id, strategy)["picks"]
+    picks = picks[:EXPECTED_PICKS]
+    rows = {
+        r["id"]: r
+        for r in db.execute(
+            "SELECT id, first_name, last_name, position FROM players WHERE id = ANY(%s)",
+            ([p["player_id"] for p in picks],),
+        ).fetchall()
+    }
+    out = []
+    for p in picks:
+        r = rows.get(p["player_id"])
+        if not r:
+            continue
+        out.append(
+            {
+                "pick": p["pick"],
+                "round": p["round"],
+                "player_id": p["player_id"],
+                "name": f"{r['first_name']} {r['last_name']}".strip(),
+                "position": display_position(r["position"]) or "",
+            }
+        )
+    if len(_expected_cache) > 200:
+        _expected_cache.clear()
+    _expected_cache[key] = out
+    return out
+
+
 def welcome(db, league: dict, gm: dict) -> dict | None:
     """Everything the welcome screen shows, or None when the GM has no team
     or the league has no draft yet."""
@@ -676,6 +727,11 @@ def welcome(db, league: dict, gm: dict) -> dict | None:
             team_id, {tid: [p for p, _ in ps] for tid, ps in rated.items()}
         ),
         "pick": draft_repo.get_pick_position(draft["id"], team_id),
+        "expected": (
+            []
+            if draft["state"] == "complete"
+            else expected_picks(db, league["id"], draft["id"], team_id)
+        ),
         "num_teams": len(order),
         "blitz": draft["format"] == "preference",
         "opener": opener,

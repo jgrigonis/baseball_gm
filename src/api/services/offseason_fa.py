@@ -45,6 +45,7 @@ from __future__ import annotations
 import random
 from datetime import date
 
+from src.api.services import arrivals
 from src.api.grade_curves import GRADES
 from src.api.services import (
     ai_free_agents,
@@ -1084,6 +1085,7 @@ def settle(conn, league_id: str) -> list[dict]:
         deal = ct.Deal(b["salary"], b["years"], "standard")
         was = _last_team(conn, league_id, pid)
         team_repo.add_player(b["team_id"], pid)
+        arrivals.mark(conn, league_id, b["team_id"], pid)
         status.set_status(pid, "minors")
         minors[b["team_id"]] = minors.get(b["team_id"], 0) + 1
         contracts.sign_free_agent(pid, league_id, b["team_id"], deal, year)

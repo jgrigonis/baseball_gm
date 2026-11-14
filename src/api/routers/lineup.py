@@ -165,6 +165,37 @@ def save_rotation(
     return JSONResponse({"saved": True})
 
 
+@router.put("/leagues/{league_id}/rotation/leash")
+def save_pitcher_leash(
+    league_id: str,
+    body: dict,
+    db: DB,
+    gm: GM,
+    _active: ActiveLeague,
+):
+    """A starter's own Starter Leash, or (pitches null) back to the team's.
+    Saved right away, like a Strategy setting."""
+    from src.db.repositories.gm_repo import GMRepository
+    from src.team.manager_profile import STARTER_USAGE
+
+    team_id = gm["team_id"]
+    pid = body.get("player_id")
+    pitches = body.get("pitches")
+    if not team_id or not isinstance(pid, str):
+        return JSONResponse({"detail": "No team"}, status_code=400)
+    if pitches is not None and pitches not in STARTER_USAGE:
+        return JSONResponse({"detail": "Pick a leash."}, status_code=400)
+    on_team = db.execute(
+        "SELECT 1 FROM team_players WHERE team_id = %s AND player_id = %s",
+        (team_id, pid),
+    ).fetchone()
+    if not on_team:
+        return JSONResponse({"detail": "He isn't on your team."}, status_code=400)
+    GMRepository(db).set_pitcher_leash(team_id, pid, pitches)
+    db.commit()
+    return JSONResponse({"saved": True, "pitches": pitches})
+
+
 @router.put("/leagues/{league_id}/bullpen/save")
 def save_bullpen(
     league_id: str,

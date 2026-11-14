@@ -258,6 +258,14 @@ def ratings_to_grade_map(grades, skills: dict, ratings: dict) -> list:
         section["off_role"] = False
     for section in off_role:
         section["off_role"] = True
+    # Three toggles (Josh, 2026-11-14): Hitting, Defense and Pitching, with
+    # General in the player's own role's group. Each starts open for what
+    # he does and closed for the rest, as above.
+    own = "pit" if grades.player_type == "pitcher" else "hit"
+    hitting_section["group"] = "hit"
+    pitching_section["group"] = "pit"
+    defense_section["group"] = "def"
+    general_section["group"] = own
     return on_role + off_role
 
 

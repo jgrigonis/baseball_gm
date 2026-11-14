@@ -29,6 +29,7 @@ import logging
 import random
 from datetime import date
 
+from src.api.services import arrivals
 from src.api.services import trades, waivers
 from src.api.services.news import moves as move_news
 from src.db.locks import league_lock
@@ -393,6 +394,7 @@ def sign(
         released_by = move_news.last_released_by(conn, league_id, player_id)
         team_repo = TeamRepository(conn)
         team_repo.add_player(team_id, player_id)
+        arrivals.mark(conn, league_id, team_id, player_id)
         status_repo.set_status(player_id, "minors")
         contracts = ContractRepository(conn)
         prorate.signed_mid_season(

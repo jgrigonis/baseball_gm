@@ -93,11 +93,13 @@ def _season_item(stops: list[dict]) -> dict:
 
 
 def _play_menu(ctx: dict, stops: list[dict]) -> list[dict]:
-    menu = []
-    if ctx.get("injuries_enabled"):
-        menu.append(_item("▶ Until Injury", "schedSim", "injury", "sched-injury-btn"))
-    menu.append(_season_item(stops))
-    return menu
+    """A week, a month or the season. Stopping for injuries is a box below
+    (injury_stop), like the trade and All-Star stops (Josh, 2026-11-14)."""
+    return [
+        _item("▶ 1 Week", "schedSim", "7", "sched-week-btn"),
+        _item("▶ 1 Month", "schedSim", "30", "sched-month-btn"),
+        _season_item(stops),
+    ]
 
 
 def _pill(ctx: dict, page: str) -> dict | None:
@@ -136,6 +138,36 @@ def _budget_pill(ctx: dict, page: str) -> dict | None:
         "href": f"/leagues/{ctx['league_id']}/budget",
         "title": "Set your front office and ticket prices before Opening Day; "
         "they're locked for the season after that.",
+    }
+
+
+def _strategy_pill(ctx: dict, page: str) -> dict | None:
+    """Single player, beside Play Opening Day (Josh, 2026-11-14): a look at
+    Strategy before the first game, until the GM opens it that preseason.
+    (The budget is a step of its own before this, so it needs no pill.)"""
+    if ctx.get("league_state") != "preseason" or not ctx.get("strategy_due"):
+        return None
+    if page == "strategy":
+        return None
+    return {
+        "label": "🧠 Strategy",
+        "short": "🧠",
+        "href": f"/leagues/{ctx['league_id']}/strategy",
+        "title": "How your manager runs games: lineups, the starter leash, "
+        "the bullpen and rest. Worth a look before Opening Day.",
+    }
+
+
+def _standings_pill(ctx: dict, page: str) -> dict | None:
+    """Single player during the season (Josh, 2026-11-14): the standings a
+    click away, except on Standings and Schedule."""
+    if ctx.get("league_state") != "season" or page in ("standings", "schedule"):
+        return None
+    return {
+        "label": "📊 Standings",
+        "short": "📊",
+        "href": f"/leagues/{ctx['league_id']}/standings",
+        "title": "Where you are in the race.",
     }
 
 
@@ -388,7 +420,11 @@ def pick(
         # Multi-day sims can play straight through the All-Star break
         # (Stop for All-Star breaks unchecked).
         move["through_break"] = any(s["kind"] in ALL_STAR_STOPS for s in stops)
-        move["pill"] = _pill(ctx, page)
+        # Leagues with injuries: a box for stopping when one hits your team.
+        move["injury_stop"] = bool(ctx.get("injuries_enabled"))
+        move["pill"] = (
+            _pill(ctx, page) or _strategy_pill(ctx, page) or _standings_pill(ctx, page)
+        )
         return move
 
     if state == "playoffs":

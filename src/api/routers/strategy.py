@@ -157,7 +157,8 @@ SETTINGS: tuple[tuple[str, tuple[Setting, ...]], ...] = (
                 "The pitch count a starter is usually pulled at on a normal "
                 "day; 85 is standard. One who's getting hit can come out "
                 "sooner, and at 75 he's pulled sooner the third time through "
-                "the order.",
+                "the order. A starter can have his own on the Lineup tab's "
+                "rotation.",
             ),
             Setting(
                 "closer_usage",

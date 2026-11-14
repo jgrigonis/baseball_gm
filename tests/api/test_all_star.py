@@ -268,6 +268,9 @@ def test_each_position_opens_a_full_list_with_stats(client, lg):
     assert f'<tr data-id="{my_ss}">' in html
     assert ">OPS</th>" in html and ">WHIP</th>" in html
     assert 'data-pick="1"' in html and 'data-pick="2"' in html
+    # Advanced columns too, behind the Traditional / Advanced toggle.
+    assert 'as-adv" data-sort="num">wOBA</th>' in html and ">FIP</th>" in html
+    assert "asStatView('adv')" in html
 
 
 def test_the_full_list_stat_columns():

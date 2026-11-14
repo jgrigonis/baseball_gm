@@ -31,12 +31,13 @@ def test_season_plays_a_day_on_every_page():
         assert move["label"] == "▶ Play Day" and move["fn"] == "schedSim"
         assert move["arg"] == "1" and move["id"] == "sched-play-btn"
         assert move["stop"] and move["trade_stops"]
-    assert _menu(pick(_ctx(), "roster")) == ["▶ Until Injury", "▶▶ Full Season"]
+    assert _menu(pick(_ctx(), "roster")) == ["▶ 1 Week", "▶ 1 Month", "▶▶ Full Season"]
 
 
-def test_no_until_injury_or_trade_stops_when_the_league_has_neither():
+def test_no_injury_or_trade_stops_when_the_league_has_neither():
     move = pick(_ctx(injuries_enabled=False, trades_enabled=False), "roster")
-    assert _menu(move) == ["▶▶ Full Season"] and not move["trade_stops"]
+    assert not move["injury_stop"] and not move["trade_stops"]
+    assert pick(_ctx(), "roster")["injury_stop"]
 
 
 def test_no_trade_stops_once_the_deadline_is_behind():
@@ -64,7 +65,9 @@ def test_all_star_to_dos_are_a_pill_beside_play_day():
     assert move["pill"]["label"] == "★ Your pick"
     assert move["pill"]["href"] == "/leagues/L1/allstar"
     # Not on the All-Star tab itself, where the ballot is.
-    assert pick(_ctx(all_star_ballot_due=True), "allstar")["pill"] is None
+    assert pick(_ctx(all_star_ballot_due=True), "allstar")["pill"]["label"] == (
+        "📊 Standings"
+    )
 
 
 def test_playoffs_go_there_then_sim_there():
@@ -347,3 +350,17 @@ def test_multiplayer_offseason_pills_summary_then_expiring_deals():
     # Solo keeps its own button.
     move = pick(_ctx(league_state="offseason", summary_seen=True), "standings")
     assert move["key"] == "go-expiring" and "pill" not in move
+
+
+def test_strategy_pill_before_opening_day_and_standings_pill_in_season():
+    move = pick(_ctx(league_state="preseason", strategy_due=True), "roster")
+    assert move["label"] == "▶ Play Opening Day"
+    assert move["pill"]["label"] == "🧠 Strategy"
+    assert (
+        pick(_ctx(league_state="preseason", strategy_due=True), "strategy")["pill"]
+        is None
+    )
+    assert pick(_ctx(league_state="preseason"), "roster")["pill"] is None
+    assert pick(_ctx(), "roster")["pill"]["label"] == "📊 Standings"
+    for page in ("standings", "schedule"):
+        assert pick(_ctx(), page)["pill"] is None

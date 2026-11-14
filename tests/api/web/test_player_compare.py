@@ -86,22 +86,34 @@ def test_players_from_a_trade_are_tagged(setup):
     assert f'data-player-id="{c.id}" data-side="give"' in html
 
 
-def _off_role(html):
-    """The section titles inside each player's collapsed off-role toggle."""
+def _groups(html):
+    """Each ratings toggle: its section titles, and whether it starts open."""
     import re
 
     return [
-        re.findall(r'pd-section-title">(\w+)<', block)
-        for block in re.findall(r'<details class="pd-offrole".*?</details>', html, re.S)
+        (
+            re.findall(r'pd-section-title">(\w+)<', block),
+            " open>" in block.split("\n")[0],
+        )
+        for block in re.findall(
+            r'<details class="pd-offrole pd-group".*?</details>', html, re.S
+        )
     ]
+
+
+def _off_role(html):
+    """The section titles inside each player's collapsed toggles."""
+    return [titles for titles, opened in _groups(html) if not opened]
 
 
 def test_hitter_tucks_pitching_behind_a_toggle(setup):
     client, league, (a, *_) = setup
     html = _panel(client, league, a)
-    assert _off_role(html) == [["Pitching"]]
-    assert '<details class="pd-offrole" ontoggle' in html
-    assert " open" not in html.split('class="pd-offrole"')[1].split(">")[0]
+    assert _groups(html) == [
+        (["Hitting", "General"], True),
+        (["Defense"], True),
+        (["Pitching"], False),
+    ]
 
 
 def test_pitcher_shows_general_and_tucks_hitting_and_defense_behind_a_toggle(
@@ -116,7 +128,7 @@ def test_pitcher_shows_general_and_tucks_hitting_and_defense_behind_a_toggle(
         (p.id,),
     )
     html = _panel(client, league, p, a)
-    assert _off_role(html) == [["Defense", "Hitting"], ["Pitching"]]
+    assert _off_role(html) == [["Defense"], ["Hitting"], ["Pitching"]]
 
 
 def test_each_player_shows_a_face(setup):

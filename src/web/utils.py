@@ -586,6 +586,7 @@ def _shell_ctx(
             seen.add(page)
         ctx["roster_due"] = "roster" not in seen
         ctx["lineup_due"] = "lineup" not in seen
+        ctx["strategy_due"] = "strategy" not in seen
     # A multiplayer draft: the Draft tab, then the Free Agents tab (bids),
     # each once (Josh, 2026-11-12). The button is the ready toggle there, so
     # these ride beside it as pills; opening a tab marks it.

@@ -4,6 +4,7 @@ Play games in a season.
 """
 
 import argparse
+from dataclasses import replace
 from datetime import date, datetime, timedelta
 import logging
 import random
@@ -547,6 +548,10 @@ def _play_game(
         team.profile = ManagerProfile.from_row(
             gm_repo.get_team_profile(team.record.id, league_id)
         )
+        # Starters with their own leash (the Lineup tab's rotation rows).
+        own = gm_repo.pitcher_leashes(team.record.id)
+        if own:
+            team.profile = replace(team.profile, leashes=tuple(sorted(own.items())))
     _set_form(conn, season_id, home_team, away_team)
     _set_front_office(conn, league_id, season_id, home_team, away_team)
 

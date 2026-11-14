@@ -649,6 +649,11 @@ html.side-mini .side-account-panel { left: calc(100% + 6px); right: auto; bottom
   align-items: baseline;
   gap: 16px;
 }
+/* "← Meet your team" in a page title opened from it (shell.html welcomeBack):
+   small, inline, no extra height. */
+.welcome-back { font-family: var(--font-mono); font-size: 11px; letter-spacing: .04em; text-transform: none;
+  color: var(--text-dim); text-decoration: none; margin-right: 10px; vertical-align: middle; font-weight: 400; }
+.welcome-back:hover { color: var(--sky); }
 .page-title {
   font-family: var(--font-display);
   text-transform: uppercase;
@@ -1401,6 +1406,10 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
   font-family: var(--font-mono); font-size: 10px; color: var(--sky); margin-left: 6px;
   cursor: help; white-space: nowrap;
 }
+.lu-new {
+  font-family: var(--font-mono); font-size: 10px; color: var(--green); margin-left: 6px;
+  cursor: help; white-space: nowrap;
+}
 .pd-mood-admin table { border-collapse: collapse; margin-top: 2px; }
 .pd-mood-admin th, .pd-mood-admin td { padding: 0 6px 0 0; text-align: left; }
 .pd-overall {
@@ -1442,6 +1451,10 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
 .pd-offrole[open] > summary, .pd-history[open] > summary { margin-bottom: 8px; }
 
 .pd-skill-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; }
+/* Where he plays (player_detail._mark_positions): his main spot in bold
+   yellow, a regular second spot's grade in yellow. */
+.pd-pos-main .pd-skill-label { color: var(--amber); font-weight: 700; }
+.pd-pos-main .pd-skill-grade, .pd-pos-second .pd-skill-grade { color: var(--amber); }
 .pd-skill-row {
   display: flex; justify-content: space-between;
   padding: 4px 0;
@@ -1615,6 +1628,14 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
 .as-open .as-full { display: block; }
 .as-full-note { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 16px; }
 .as-done { margin-left: auto; }
+/* Traditional or advanced columns in the ballot's full lists (asStatView). */
+#as-ballot .as-adv { display: none; }
+#as-ballot.as-view-adv .as-adv { display: table-cell; }
+#as-ballot.as-view-adv .as-trad { display: none; }
+.as-statview { display: inline-flex; border: 1px solid var(--border-hi); }
+.as-statview button { font-family: var(--font-mono); font-size: 10px; padding: 3px 8px; background: none;
+  border: 0; color: var(--text-dim); cursor: pointer; }
+.as-statview button.on { background: var(--bg-3); color: var(--text-hi); }
 .as-full-scroll { overflow-x: auto; max-height: 460px; overflow-y: auto; }
 .as-full-table thead th { position: sticky; top: 0; background: var(--bg-2); z-index: 1; }
 .as-full-table td { white-space: nowrap; }

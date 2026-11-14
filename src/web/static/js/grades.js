@@ -156,6 +156,12 @@ function iconTag(p) {
   return `<span class="lu-icon" title="Franchise icon: ${n} seasons with ${p.icon_team ? 'the ' + p.icon_team : 'the club'} and still a top player. Owners who care about icons won't like seeing him traded or released.">ICON</span>`;
 }
 
+// "NEW" after a player who joined in the last week (src/api/services/arrivals.py).
+function newTag(p) {
+  if (!p.arrived) return '';
+  return `<span class="lu-new" title="${p.arrived}: new to the team this week">NEW</span>`;
+}
+
 // "IL (12d)" after an injured player's name; the hover names the injury.
 function ilTag(p) {
   if (!p.injured) return '';
