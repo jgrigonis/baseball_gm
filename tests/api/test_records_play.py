@@ -296,6 +296,11 @@ def test_gm_records(db_conn, lg):
     assert cards["Most titles"].holders[0]["name"] == "josh"
     assert cards["Most titles"].holders[0]["is_mine"]
     assert cards["Best season"].holders[0]["shown"] == "100-62"
+    # One row per season, not one per team in the league (Josh: the season
+    # was listed once per club, "Done 30 times").
+    assert cards["Most titles"].holders[0]["shown"] == "1"
+    assert cards["Most wins"].holders[0]["shown"] == "100"
+    assert len(cards["Best season"].holders) == 1
 
 
 def test_record_watch_and_the_badge(db_conn, factory, lg):

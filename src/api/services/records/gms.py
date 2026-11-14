@@ -20,17 +20,17 @@ def cards(conn, league_id: str, my_user_id: str | None, team_id=None) -> list[Ca
         """SELECT c.user_id, c.season_id, c.season_year, c.team_city, c.team_mascot,
                   c.wins, c.losses, c.playoff_result, c.final,
                   COALESCE(u.username, u.display_name) AS name, u.username,
-                  t.id AS team_id
+                  (SELECT t.id FROM league_season_teams lst
+                   JOIN teams t ON t.id = lst.team_id
+                   WHERE lst.league_id = c.league_id
+                     AND lst.season_id = c.season_id
+                     AND t.city = c.team_city AND t.mascot = c.team_mascot
+                   LIMIT 1) AS team_id
            FROM gm_career_seasons c
            JOIN users u ON u.id = c.user_id
-           LEFT JOIN league_season_teams lst
-             ON lst.league_id = c.league_id AND lst.season_id = c.season_id
-           LEFT JOIN teams t ON t.id = lst.team_id
-             AND t.city = c.team_city AND t.mascot = c.team_mascot
            WHERE c.league_id = %s""",
         (league_id,),
     ).fetchall()
-    rows = [r for r in rows if r["team_id"] or not team_id]
     if team_id:
         rows = [r for r in rows if r["team_id"] == team_id]
     per: dict[str, dict] = defaultdict(lambda: {"seasons": [], "w": 0, "l": 0})
