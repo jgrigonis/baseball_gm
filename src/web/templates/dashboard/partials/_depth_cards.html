@@ -1,0 +1,64 @@
+{# The depth chart as four cards, at the top of the Lineup tab (Josh,
+   2026-11-14). Folds shut; open/closed and Backups on/off are remembered. #}
+{% from "dashboard/partials/_depth_grades.html" import gr, head, row, nexts with context %}
+{% if depth %}
+<details class="dc-fold" id="dc-fold" ontoggle="dcFoldToggled(this)">
+  <summary class="dc-sum">
+    <span class="dc-sum-title">Depth chart</span>
+    {% for key in ['rotation', 'bullpen', 'defense', 'bats'] %}{% set g = depth.groups[key] %}
+    <span class="dc-sum-item">{{ g.label }} {{ gr(g.grade) }}<span class="dc-sum-rank{% if g.weak %} dc-weak{% endif %}">{{ g.rank_text.split(' of ')[0] }}</span></span>
+    {% endfor %}
+    <a class="dc-sum-link" href="/leagues/{{ league_id }}/depth" hx-get="/leagues/{{ league_id }}/depth"
+       hx-target="#tab-content" hx-push-url="true" onclick="event.stopPropagation()">On the field →</a>
+  </summary>
+  <div class="dc-tools">
+    <span class="dc-seg" role="group" aria-label="Backups">
+      <button type="button" class="dc-seg-btn" data-bk="1" onclick="dcBackups(true)">Backups</button>
+      <button type="button" class="dc-seg-btn" data-bk="0" onclick="dcBackups(false)">Starters only</button>
+    </span>
+    <span class="dc-note">Grades and places use the same team ratings as the Power Rankings. Backups come from your whole organization.</span>
+  </div>
+  <div class="dc-grid" id="dc-grid">
+    <div class="dc-card">
+      {{ head(depth.groups.rotation) }}
+      {% for e in depth.rotation %}{{ row(e) }}{% endfor %}
+      {% if depth.next_starters %}<div class="dc-foot dc-bkline">Next up: {{ nexts(depth.next_starters) }}</div>{% endif %}
+    </div>
+    <div class="dc-card">
+      {{ head(depth.groups.bullpen) }}
+      {% for e in depth.bullpen %}{{ row(e) }}{% endfor %}
+      {% if depth.next_relievers %}<div class="dc-foot dc-bkline">Next up: {{ nexts(depth.next_relievers) }}</div>{% endif %}
+    </div>
+    <div class="dc-card">
+      {{ head(depth.groups.defense) }}
+      {% for e in depth.defense %}{{ row(e) }}{% endfor %}
+    </div>
+    <div class="dc-card">
+      {{ head(depth.groups.bats) }}
+      {% for e in depth.bats %}{{ row(e) }}{% endfor %}
+      {% if depth.bench %}<div class="dc-foot dc-bkline">Bench bats: {{ nexts(depth.bench) }}</div>{% endif %}
+    </div>
+  </div>
+</details>
+<script>
+(function () {
+  const fold = document.getElementById('dc-fold');
+  let open = false, bk = true;
+  try { open = localStorage.getItem('depthFoldOpen') === '1'; bk = localStorage.getItem('depthBackups') !== '0'; } catch (e) {}
+  window.dcBackups = function (on) {
+    const grid = document.getElementById('dc-grid');
+    if (grid) grid.classList.toggle('dc-no-bk', !on);
+    document.querySelectorAll('.dc-seg-btn').forEach(b => b.classList.toggle('active', (b.dataset.bk === '1') === on));
+    try { localStorage.setItem('depthBackups', on ? '1' : '0'); } catch (e) {}
+    if (window.measureHeader) measureHeader();
+  };
+  window.dcFoldToggled = function (el) {
+    try { localStorage.setItem('depthFoldOpen', el.open ? '1' : '0'); } catch (e) {}
+    if (window.measureHeader) measureHeader();
+  };
+  dcBackups(bk);
+  if (fold) fold.open = open;
+  if (window.measureHeader) measureHeader();
+})();
+</script>
+{% endif %}

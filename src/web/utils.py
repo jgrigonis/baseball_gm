@@ -142,6 +142,7 @@ def _compute_visible_tabs(state: str, draft_complete: bool = False) -> list[str]
         return [
             "roster",
             "lineup",
+            "depth",
             "standings",
             "power",
             "leaders",
@@ -157,6 +158,7 @@ def _compute_visible_tabs(state: str, draft_complete: bool = False) -> list[str]
     post = [
         "roster",
         "lineup",
+        "depth",
         "schedule",
         "standings",
         "power",
