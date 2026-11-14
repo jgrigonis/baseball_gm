@@ -2159,8 +2159,14 @@ function battingChanges(hand) {
   const ids = [...lineups[hand].filter(Boolean).map(s => s.player_id),
                ...savedLineups[hand].filter(Boolean).map(s => s.player_id).filter(pid => !now[pid])];
   ids.forEach(pid => {
-    const a = spot(was[pid]), b = spot(now[pid]);
-    if (a !== b) lines.push(`${nameOf(pid)}: ${a} → ${b}`);
+    const w = was[pid], n = now[pid];
+    const a = spot(w), b = spot(n);
+    if (a === b) return;
+    // Same position, new spot: the position goes after the name once,
+    // "Charles McManus (CF): 3rd → 2nd" (Josh, 2026-11-14).
+    if (w && n && w.pos && w.pos === n.pos)
+      lines.push(`${nameOf(pid)} (${w.pos}): ${ordinalOf(w.order)} → ${ordinalOf(n.order)}`);
+    else lines.push(`${nameOf(pid)}: ${a} → ${b}`);
   });
   return lines;
 }
