@@ -1,0 +1,7 @@
+{# Macros for the depth chart (view_models/depth_chart.py). #}
+{% macro gr(g, cls='') %}<span class="grade grade-{{ (g or '?').replace('-', '-minus').replace('+', '-plus') }} dc-g {{ cls }}">{{ g }}</span>{% endmacro %}
+{% macro who(e) %}<a href="#" class="dc-name" onclick="event.preventDefault(); openPlayerPanel('{{ e.id }}')">{{ e.name }}</a>{% endmacro %}
+{% macro aaa(e) %}{% if e.minors %}<span class="dc-aaa" title="In the minors">AAA</span>{% endif %}{% endmacro %}
+{% macro nexts(list) %}{% for b in list %}{% if not loop.first %} · {% endif %}<a href="#" class="dc-bk-name" onclick="event.preventDefault(); openPlayerPanel('{{ b.id }}')">{{ b.last }}</a> {{ gr(b.grade) }}{{ aaa(b) }}{% endfor %}{% endmacro %}
+{% macro head(g) %}<div class="dc-card-h"><b>{{ g.label }}</b><span>{{ gr(g.grade, 'dc-big') }} <span class="dc-rank{% if g.weak %} dc-weak{% endif %}">{{ g.rank_text }}</span></span></div>{% endmacro %}
+{% macro row(e) %}<div class="dc-row{% if e.weak %} dc-flag{% endif %}"><span class="dc-slot">{{ e.slot }}</span><span class="dc-nm">{% if e.name %}{{ who(e) }}{% if e.pos %} <span class="dc-poslbl">{{ e.pos }}</span>{% endif %}{{ aaa(e) }}{% else %}<span class="dc-weak">Nobody</span>{% endif %}</span>{% if e.name %}{{ gr(e.grade) }}{% endif %}{% if e.backups is defined %}<span class="dc-bk{% if not e.backups %} dc-none{% endif %}">{% if e.backups %}next: {{ nexts(e.backups) }}{% else %}no backup rated C- or better{% endif %}</span>{% endif %}</div>{% endmacro %}

@@ -1,0 +1,76 @@
+{# templates/dashboard/partials/depth_chart.html
+   The Depth Chart tab (Josh, 2026-11-14): the starting 8 on a diamond with
+   who's next at each spot, and the staff and bats beside it. Any team in the
+   league can be picked. Data: view_models/depth_chart.py. #}
+{% from "dashboard/partials/_depth_grades.html" import gr, head, row, nexts, who, aaa with context %}
+<div class="tab-head">
+  <div class="page-header" style="margin-bottom:0;gap:12px;flex-wrap:wrap;">
+    <h1 class="page-title">Depth Chart</h1>
+    <div class="spacer"></div>
+    {% if depth %}
+    <select class="news-season" aria-label="Team"
+            onchange="htmx.ajax('GET', '/leagues/{{ league_id }}/depth?team_id=' + this.value, {target: '#tab-content', swap: 'innerHTML'}); history.pushState({}, '', '/leagues/{{ league_id }}/depth?team_id=' + this.value);">
+      {% for t in depth.teams %}
+      <option value="{{ t.id }}" {% if t.id == depth.team.id %}selected{% endif %}>{{ t.city }} {{ t.mascot }}{% if t.id == team_id %} (you){% endif %}</option>
+      {% endfor %}
+    </select>
+    {% endif %}
+  </div>
+</div>
+
+{% if not depth %}
+<div style="padding:48px 24px;text-align:center;font-family:var(--font-mono);font-size:13px;color:var(--text-dim);">No depth chart yet: teams fill out once the league starts.</div>
+{% else %}
+<div class="dc-page">
+  <div class="dc-b-grid">
+    <div class="dc-field" role="img" aria-label="{{ depth.team.city }} {{ depth.team.mascot }} defense on the field">
+      <svg viewBox="0 0 500 400" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M250 372 L412 214 L250 62 L88 214 Z" class="dc-dirt"/>
+        <path d="M250 332 L352 232 L250 136 L148 232 Z" class="dc-infield"/>
+        <path d="M250 372 L0 122 M250 372 L500 122" class="dc-line"/>
+      </svg>
+      {% set spots = {'c': (50, 89), '1b': (74, 55), '2b': (62, 33), '3b': (26, 55), 'ss': (38, 33), 'lf': (16, 17), 'cf': (50, 10), 'rf': (84, 17)} %}
+      {% for e in depth.defense %}{% set xy = spots[e.spot] %}
+      <div class="dc-pos{% if e.weak %} dc-pos-flag{% endif %}" style="left:{{ xy[0] }}%;top:{{ xy[1] }}%">
+        <div class="dc-code">{{ e.slot }}</div>
+        {% if e.name %}
+        <div class="dc-who"><a href="#" class="dc-name" onclick="event.preventDefault(); openPlayerPanel('{{ e.id }}')">{{ e.last }}</a> {{ gr(e.grade) }}{{ aaa(e) }}</div>
+        {% else %}<div class="dc-who dc-weak">Nobody</div>{% endif %}
+        <div class="dc-bk-mini{% if not e.backups %} dc-weak{% endif %}">{% if e.backups %}{{ nexts(e.backups[:1]) }}{% else %}No backup{% endif %}</div>
+      </div>
+      {% endfor %}
+      {% if depth.dh %}
+      <div class="dc-pos" style="left:50%;top:62%">
+        <div class="dc-code">DH</div>
+        <div class="dc-who"><a href="#" class="dc-name" onclick="event.preventDefault(); openPlayerPanel('{{ depth.dh.id }}')">{{ depth.dh.last }}</a> {{ gr(depth.dh.grade) }}</div>
+        <div class="dc-bk-mini">bat grade</div>
+      </div>
+      {% endif %}
+    </div>
+    <div class="dc-side">
+      <div class="dc-card">
+        {{ head(depth.groups.rotation) }}
+        {% for e in depth.rotation %}{{ row(e) }}{% endfor %}
+        {% if depth.next_starters %}<div class="dc-foot">Next up: {{ nexts(depth.next_starters) }}</div>{% endif %}
+      </div>
+      <div class="dc-card">
+        {{ head(depth.groups.bullpen) }}
+        {% for e in depth.bullpen %}{{ row(e) }}{% endfor %}
+        {% if depth.next_relievers %}<div class="dc-foot">Next up: {{ nexts(depth.next_relievers) }}</div>{% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="dc-b-lower">
+    <div class="dc-card">
+      {{ head(depth.groups.defense) }}
+      {% for e in depth.defense %}{{ row(e) }}{% endfor %}
+    </div>
+    <div class="dc-card">
+      {{ head(depth.groups.bats) }}
+      {% for e in depth.bats %}{{ row(e) }}{% endfor %}
+      {% if depth.bench %}<div class="dc-foot">Bench bats: {{ nexts(depth.bench) }}</div>{% endif %}
+    </div>
+  </div>
+  <p class="dc-note" style="margin-top:12px;">The starting 8 are the lineup the optimizer would pick. Each "next" is the best player in the organization rated C- or better at that spot, and AAA marks a minor leaguer. Group grades and places use the same team ratings as the Power Rankings.</p>
+</div>
+{% endif %}

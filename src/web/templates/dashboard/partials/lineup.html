@@ -36,6 +36,9 @@
             style="margin-left:8px;">Save All Lineups</button>
   </div>
 
+  {# The depth chart's four cards (routers/depth.py), folded by default. #}
+  <div id="dc-slot" hx-get="/leagues/{{ league_id }}/depth/cards" hx-trigger="load" hx-swap="innerHTML"></div>
+
   {# Tab toggles #}
   <div style="display:flex;gap:0;border-bottom:none;">
     <button class="lu-tab active" id="tab-batting"   onclick="switchTab('batting')">
