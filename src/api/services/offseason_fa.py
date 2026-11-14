@@ -72,7 +72,7 @@ from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_state_repo import TeamStateRepository
 from src.league.offseason.roster_trimmer import MINORS_LIMIT
-from src.league import money_state
+from src.league import money_state, team_pool
 from src.player import contracts as ct
 from src.player import happiness as hp
 from src.player import negotiation as ng
@@ -159,6 +159,8 @@ def expiring(conn, league_id: str, year: int, team_ids=None) -> list[dict]:
     happy = HappinessRepository(conn, league_id)
     happy.prepare_resign(ids, seasons)
     moods = happy.latest_moods(ids)
+    pers = happy.personalities(ids)
+    markets = _markets(conn, {r["team_id"] for r in rows})
     scale = BudgetRepository(conn).salary_scale(league_id, year + 1)
     arb = contracts.arbitration_seasons(ids, year + 1)
     shifts = contracts.price_shifts(league_id, year + 1)
@@ -179,6 +181,17 @@ def expiring(conn, league_id: str, year: int, team_ids=None) -> list[dict]:
             market = "unhappy"
         else:
             market = None
+        # A veteran may refuse to re-sign at any price (Josh, 2026-11-13).
+        refuses = (
+            hp.refuses_to_resign(
+                mood,
+                pers.get(p.id),
+                markets.get(r["team_id"], team_pool.MIN_MARKET + 2),
+                random.Random(f"refuse-resign:{p.id}:{year}").random(),
+            )
+            if market == "veteran" and arb_season is None
+            else None
+        )
         out.append(
             {
                 "player_id": p.id,
@@ -189,6 +202,7 @@ def expiring(conn, league_id: str, year: int, team_ids=None) -> list[dict]:
                 "deal": deal,
                 "wants_out": wants_out,
                 "market": market,
+                "refuses": refuses,
                 "seasons": seasons.get(p.id, 0),
                 "arb_season": arb_season,
                 "market_salary": (
@@ -201,6 +215,19 @@ def expiring(conn, league_id: str, year: int, team_ids=None) -> list[dict]:
                 "shifts": shifts,
             }
         )
+    return out
+
+
+def _markets(conn, team_ids) -> dict[str, int]:
+    """Each team's market size (team_pool, 1 to 5)."""
+    rows = conn.execute(
+        "SELECT id, city, mascot FROM teams WHERE id = ANY(%s)", (list(team_ids),)
+    ).fetchall()
+    out = {}
+    for r in rows:
+        pool = team_pool.get(r["city"], r["mascot"]) or team_pool.by_city(r["city"])
+        if pool:
+            out[r["id"]] = pool.market
     return out
 
 
@@ -225,6 +252,8 @@ def choose(
                 (player_id, year),
             )
         else:
+            if choice == "resign" and row["refuses"]:
+                raise OffseasonFAError(hp.REFUSE_LINES[row["refuses"]])
             if choice == "resign":
                 refusal = _resign_refusal(conn, league_id, team_id, year, mine, row)
                 if refusal:
@@ -335,6 +364,7 @@ def _all_plan(
     costs next season, whether it fits under the owner's hard limit plus their
     bank, and how much of the bank it takes. None when every deal is already
     re-signed or nothing is expiring."""
+    rows = [r for r in rows if not r["refuses"]]
     if not rows or all(r["choice"] == "resign" for r in rows):
         return None
     cost = sum(r["deal"].salary for r in rows)
@@ -391,6 +421,8 @@ def resign_all(conn, league_id: str, team_id: str) -> dict:
                 "season can't cover all of them. Re-sign them one at a time."
             )
         for r in mine:
+            if r["refuses"]:
+                continue
             conn.execute(
                 """INSERT INTO contract_choices (league_id, player_id, team_id, year, choice)
                    VALUES (%s, %s, %s, %s, 'resign')
@@ -430,6 +462,8 @@ def _keeps(
         room[t] -= cost
         return True
 
+    # A veteran who refuses to re-sign goes to market whatever anyone says.
+    rows = [r for r in rows if not r.get("refuses")]
     by_value = sorted(rows, key=lambda r: -role_rating(r["player"]))
     # A person's own re-sign calls stand, and come off the room first.
     for r in by_value:
@@ -482,6 +516,14 @@ def close_window(conn, league_id: str) -> dict:
                 unhappy_out.append((pid, team))
             resigned += 1
         elif action == "go":
+            if r["refuses"]:
+                conn.execute(
+                    """INSERT INTO resign_refusals
+                           (league_id, player_id, team_id, year, reason)
+                       VALUES (%s, %s, %s, %s, %s)
+                       ON CONFLICT (player_id, year) DO NOTHING""",
+                    (league_id, pid, team, year, r["refuses"]),
+                )
             teams.remove_player(team, pid)
             status.set_status(pid, "free_agent")
             gone.append((pid, team))
@@ -536,6 +578,10 @@ DEPARTURE_STORY_GRADE = "B-"
 
 def _why_gone(r: dict, human: bool) -> str:
     """Why an expiring player didn't re-sign, as the story tells it."""
+    if r.get("refuses") == "miserable":
+        return "couldn't keep him; he's miserable there and refused to re-sign"
+    if r.get("refuses") == "fame":
+        return "couldn't keep him; he wants a bigger stage and refused to re-sign"
     if r["choice"] == "let_go":
         return "let him go" if human else "declined to re-sign him"
     if r["market"] == "veteran":
@@ -620,7 +666,9 @@ def expiring_view(conn, league_id: str, team_id: str) -> list[dict]:
     keep = _keeps(conn, league_id, year, rows, {team_id})
     for r in rows:
         d = r["deal"]
-        if r["choice"] == "resign":
+        if r["refuses"]:
+            fate = "go"
+        elif r["choice"] == "resign":
             fate = "resign"
         elif r["choice"] == "let_go" or r["market"]:
             fate = "go"
@@ -655,6 +703,8 @@ def expiring_view(conn, league_id: str, team_id: str) -> list[dict]:
                 "choice": r["choice"],
                 "fate": fate,
                 "wants_out": r["wants_out"],
+                "refuses": r["refuses"],
+                "refuses_text": hp.REFUSE_LINES.get(r["refuses"] or ""),
             }
         )
     return out
@@ -738,6 +788,8 @@ def place_bid(
             raise OffseasonFAError(CLOSED)
         year = _year(conn, league_id)
         _biddable(conn, league_id, player_id)
+        if free_agents.refused(conn, league_id, team_id, player_id, year):
+            raise OffseasonFAError(free_agents.REFUSED)
         try:
             salary, years = int(salary), int(years)
         except (TypeError, ValueError) as e:
@@ -805,6 +857,14 @@ def _ai_bids(conn, league_id: str, season_id: str, year: int, rng) -> int:
         return 0
     asks = {}
     made = 0
+    left = {
+        (r["team_id"], r["player_id"])
+        for r in conn.execute(
+            """SELECT team_id, player_id FROM resign_refusals
+               WHERE league_id = %s AND year = %s""",
+            (league_id, year - 1),
+        ).fetchall()
+    }
     money = owners.money_states(conn, league_id, year)
     scale = free_agents.price_scale(conn, league_id, year)
     minimum = ct.round_salary(ct.MIN_SALARY * scale, scale)
@@ -820,6 +880,8 @@ def _ai_bids(conn, league_id: str, season_id: str, year: int, rng) -> int:
         bids = 1 if mstate == "capped-out" else AI_BIDS
         picks = []
         for rec, r in pool:
+            if (team_id, rec.id) in left:
+                continue
             role, gain = ai_free_agents.best_fit(team, r, margin)
             if role:
                 picks.append((gain, rec, role))
@@ -1004,6 +1066,8 @@ def settle(conn, league_id: str) -> list[dict]:
         best = None
         for b in by_player[pid]:
             if b["salary"] < MIN_BID_SHARE * ask.salary:
+                continue
+            if free_agents.refused(conn, league_id, b["team_id"], pid, year):
                 continue
             if budgets.refusal(league_id, b["team_id"], year, b["salary"]):
                 continue

@@ -152,12 +152,12 @@ SETTINGS: tuple[tuple[str, tuple[Setting, ...]], ...] = (
                 "starter_usage",
                 "Starter Leash",
                 mp.STARTER_USAGE,
-                ("Long", "Standard", "Quick hook"),
+                ("115", "105", "95", "85", "75"),
                 ("Long leash", "Short leash"),
-                "How far a starter goes on a normal day. Long lets him go to "
-                "about 100 pitches, Standard about 88. Quick hook goes to the "
-                "pen around 78 and pulls him sooner the third time through "
-                "the order.",
+                "The pitch count a starter is usually pulled at on a normal "
+                "day; 95 is standard. One who's getting hit can come out "
+                "sooner, and at 85 or 75 he's pulled sooner the third time "
+                "through the order.",
             ),
             Setting(
                 "closer_usage",

@@ -24,7 +24,10 @@ BASERUNNING = (
     "very-aggressive",
 )
 SAC_BUNT = ("never", "situational", "frequent")
-STARTER_USAGE = ("long", "standard", "quick-hook")
+# Starter Leash: the pitch count a starter is usually pulled at, longest
+# first (Josh, 2026-11-13: 75 to 115 in steps of 10, 95 the default).
+STARTER_USAGE = ("115", "105", "95", "85", "75")
+DEFAULT_LEASH = "95"
 CLOSER_USAGE = ("saves-only", "high-leverage", "best-available")
 BULLPEN_PREF = ("starter-heavy", "balanced", "deep-pen")
 PLATOON_USAGE = ("none", "vs-handedness", "aggressive")
@@ -56,11 +59,9 @@ EXTRA_BASE_FACTOR = dict(zip(BASERUNNING, (0.8, 0.9, 1.0, 1.1, 1.2)))
 
 BUNT_FACTOR = {"never": 0.0, "situational": 1.0, "frequent": 2.0}
 
-# Starter leash: how far a starter goes on a normal day. Each leash moves
-# the pitch count a starter is usually pulled at (PITCH_COUNT_THRESHOLD,
-# src/game/probabilities.py) by this much.
-PITCH_COUNT_OFFSET = {"long": 15, "standard": 0, "quick-hook": -8}
-# A quick hook also pulls a starter sooner the third time through the order.
+# A short leash (85 or 75) also pulls a starter sooner the third time
+# through the order.
+SHORT_LEASHES = ("85", "75")
 THIRD_TIME_BATTERS = 18
 THIRD_TIME_HOOK = 1.5
 
@@ -88,7 +89,7 @@ class ManagerProfile:
     lineup_style: str = "analytics"
     baserunning: str = "standard"
     sac_bunt: str = "situational"
-    starter_usage: str = "standard"
+    starter_usage: str = DEFAULT_LEASH
     closer_usage: str = "saves-only"
     bullpen_pref: str = "balanced"
     platoon_usage: str = "vs-handedness"
@@ -167,13 +168,14 @@ class ManagerProfile:
         return BUNT_FACTOR[self.sac_bunt]
 
     @property
-    def pitch_count_offset(self) -> int:
-        return PITCH_COUNT_OFFSET[self.starter_usage]
+    def leash_pitches(self) -> int:
+        """The pitch count his starters are usually pulled at."""
+        return int(self.starter_usage)
 
     def starter_hook(self, batters_faced: int) -> float:
-        """Multiplier on the chance of pulling a starter: a quick hook pulls
+        """Multiplier on the chance of pulling a starter: a short leash pulls
         him sooner the third time through the order."""
-        if self.starter_usage == "quick-hook" and batters_faced >= THIRD_TIME_BATTERS:
+        if self.starter_usage in SHORT_LEASHES and batters_faced >= THIRD_TIME_BATTERS:
             return THIRD_TIME_HOOK
         return 1.0
 

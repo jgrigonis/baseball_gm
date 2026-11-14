@@ -122,7 +122,9 @@ function expiringRow(p) {
       : 'Arbitration: one season at part of his market price, more each season until he reaches free agency';
     trail.push(`<span class="fa-waiver" title="${tip}">Arbitration${n}</span>`);
   }
-  if (p.market === 'veteran') trail.push(`<span class="fa-waiver" title="${p.seasons} seasons under contract: he can test free agency">Free agent if not re-signed</span>`);
+  // A veteran who won't re-sign at any price (Josh, 2026-11-13).
+  if (p.refuses) trail.push(`<span class="fa-waiver" style="color:var(--red);" title="${p.refuses_text}">Refuses to re-sign · testing the market</span>`);
+  else if (p.market === 'veteran') trail.push(`<span class="fa-waiver" title="${p.seasons} seasons under contract: he can test free agency">Free agent if not re-signed</span>`);
   if (p.market === 'unhappy') trail.push(`<span class="fa-waiver" title="He's unhappy here and will test free agency">Unhappy · free agent if not re-signed</span>`);
   // Lit: what happens if you do nothing more (no room goes to free agency too).
   const on = c => (p.fate === c || (c === 'go' && p.fate === 'no_room') ? ` on ${c}` : '');
@@ -138,7 +140,7 @@ function expiringRow(p) {
       <div class="fa-ask" title="His new deal from next season (now ${p.old_salary_text})">${p.salary_text}<small>${p.years} yr${p.years === 1 ? '' : 's'}${p.arb_share ? ` · ${p.arb_share}% of ${p.market_salary_text}` : ''}</small>
         <div class="fa-fate ${p.fate}">${FATE[p.fate]}</div></div>
       <div class="fa-choice">
-        <button class="resign${on('resign')}" data-c="resign" title="Re-sign him now at this price">Re-sign</button>
+        <button class="resign${on('resign')}" data-c="resign" ${p.refuses ? `disabled title="${p.refuses_text}"` : 'title="Re-sign him now at this price"'}>Re-sign</button>
         <button class="go${on('go')}" data-c="let_go" title="Let him go to free agency">Let go</button>
       </div>
     </div>`;

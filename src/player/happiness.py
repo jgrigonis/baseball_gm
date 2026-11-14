@@ -772,6 +772,43 @@ def refuses_to_play(mood: float, traits: dict[str, int], roll: float) -> int:
     return 3 + int(roll / chance * 3)  # 3 to 5 days
 
 
+# Veterans at free agency who won't re-sign at any price, "testing the
+# market" (Josh, 2026-11-13: about 1 in 20 expiring veterans). Only a
+# player past team control (offseason_fa.MARKET_SEASONS): a miserable one,
+# or one who craves fame (the fame drive at FAME_DRIVEN or more) on a club
+# outside the big markets who isn't happy there. Tuned on a 30-team league's
+# expiring deals: about 9% are Fame-driven, off a big market and not happy,
+# and well under 1% are miserable, so this comes to about 5%.
+FAME_DRIVEN = 60
+BIG_MARKET = 4  # team_pool markets run 1 to 5
+REFUSE_MISERABLE = 0.75
+REFUSE_FAME = 0.5
+
+
+def refuses_to_resign(
+    mood: float | None, personality: Personality | None, market: int, roll: float
+) -> str | None:
+    """Why a veteran whose deal is up won't re-sign with his team
+    ("miserable" or "fame"), or None. roll is a uniform 0..1 draw."""
+    if mood is not None and mood < MISERABLE:
+        return "miserable" if roll < REFUSE_MISERABLE else None
+    if (
+        personality is not None
+        and personality.drives["fame"] >= FAME_DRIVEN
+        and market < BIG_MARKET
+        and (mood is None or mood < MOODS[1][0])
+    ):
+        return "fame" if roll < REFUSE_FAME else None
+    return None
+
+
+# Why he won't re-sign, as the Expiring Deals tab and the news tell it.
+REFUSE_LINES = {
+    "miserable": "He's miserable here and won't re-sign at any price.",
+    "fame": "He wants a bigger stage and won't re-sign at any price.",
+}
+
+
 # A happy player's hometown discount at full loyalty: HOMETOWN_DISCOUNT, and
 # HOMETOWN_PER_SEASON more for each season in the league up to
 # HOMETOWN_SEASONS (Josh, 2026-11-09: long-time stars should be easier to

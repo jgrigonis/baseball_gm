@@ -73,7 +73,7 @@ def test_no_row_is_the_default():
 def test_default_changes_nothing():
     p = DEFAULT_PROFILE
     assert p.steal_factor == p.extra_base_factor == p.bunt_factor == 1.0
-    assert p.pitch_count_offset == 0
+    assert p.leash_pitches == 95
     assert p.starter_hook(batters_faced=30) == 1.0
     assert p.trouble_hook == 1.0
     assert p.playoff_rotation_size is None
@@ -93,10 +93,16 @@ def test_baserunning_steps_rise():
     assert factors == sorted(factors) and len(set(factors)) == 5
 
 
-def test_quick_hook_pulls_sooner_third_time_through():
-    p = ManagerProfile(starter_usage="quick-hook")
-    assert p.starter_hook(batters_faced=10) == 1.0
-    assert p.starter_hook(batters_faced=19) > 1.0
+def test_a_short_leash_pulls_sooner_third_time_through():
+    for u in ("85", "75"):
+        p = ManagerProfile(starter_usage=u)
+        assert p.starter_hook(batters_faced=10) == 1.0
+        assert p.starter_hook(batters_faced=19) > 1.0
+    assert ManagerProfile(starter_usage="95").starter_hook(batters_faced=19) == 1.0
+
+
+def test_old_leash_values_fall_back_to_the_default():
+    assert ManagerProfile.from_row({"starter_usage": "long"}).starter_usage == "95"
 
 
 def test_catchers_rest_sooner_but_iron_men_never_rest():
@@ -166,11 +172,11 @@ def starter(pitch_count, outs=0, hits=0, runs=0):
 
 
 def test_leash_sets_the_pitch_target():
-    offsets = [
-        ManagerProfile(starter_usage=u).pitch_count_offset
-        for u in ("quick-hook", "standard", "long")
+    counts = [
+        ManagerProfile(starter_usage=u).leash_pitches
+        for u in ("75", "85", "95", "105", "115")
     ]
-    assert offsets == sorted(offsets) and len(set(offsets)) == 3
+    assert counts == [75, 85, 95, 105, 115]
 
 
 def test_long_leash_lets_him_work_past_the_standard_target():
@@ -178,7 +184,7 @@ def test_long_leash_lets_him_work_past_the_standard_target():
     tired = starter(pitch_count=95, outs=18, hits=5, runs=3)
     standard = GameStrategy.should_consider_pitching_change(tired, inning, 0)
     patient = GameStrategy.should_consider_pitching_change(
-        tired, inning, 0, ManagerProfile(starter_usage="long")
+        tired, inning, 0, ManagerProfile(starter_usage="105")
     )
     assert standard >= 0.72
     assert patient < standard

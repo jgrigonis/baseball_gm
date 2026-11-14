@@ -41,7 +41,6 @@ from src.game.probabilities import (
     HNR_SLOW_SPEED,
     HNR_SLOW_MOD,
     HNR_FAVORABLE_COUNT_MOD,
-    PITCH_COUNT_THRESHOLD,
     STARTER_LEAD_HOOK,
     STARTER_LEAD_OUTS,
     CLOSER_ENTRANCE_PROB,
@@ -689,7 +688,7 @@ class GameStrategy:
         stats = pitcher.game_stats.pitching
 
         if pitcher.is_starter:
-            threshold = PITCH_COUNT_THRESHOLD + profile.pitch_count_offset
+            threshold = profile.leash_pitches
             if stats.runs == 0:
                 prob *= PITCHER_CHANGE_MULTIPLIERS.get("runs_0", 0.21)
             elif stats.runs == 1:

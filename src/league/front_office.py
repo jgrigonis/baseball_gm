@@ -27,6 +27,7 @@ from src.league.offseason.draft_strategy import (
     DraftStrategy,
 )
 from src.league.personas import Leanings
+from src.team import manager_profile as mp
 from src.team.manager_profile import ManagerProfile
 
 # How each state leans, -1 (veterans) to 1 (kids).
@@ -124,5 +125,5 @@ def defense_weight(lean: Leanings) -> float:
 def protect_arms(profile: ManagerProfile) -> ManagerProfile:
     """A shorter leash: tired starters skip a turn, and a starter who'd be
     left in to work goes by the pitch count instead."""
-    usage = "standard" if profile.starter_usage == "long" else profile.starter_usage
+    usage = min(profile.starter_usage, mp.DEFAULT_LEASH, key=int)
     return replace(profile, tired_starters="protect", starter_usage=usage)
