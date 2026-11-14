@@ -41,6 +41,7 @@ from src.league.playoffs.play_playoffs import (
     original_seed,
 )
 from src.league.play_season import play_game
+from src.team.roster_limits import enforce_roster_limits
 
 log = logging.getLogger(__name__)
 
@@ -340,6 +341,18 @@ def sim_playoff(
         _ensure_later_rounds()
         day_games = _get_next_day_games()
         count = 0
+        # Long Form rosters go back to 26 for the playoffs.
+        for team_id in {
+            t for g in day_games for t in (g["home_team_id"], g["away_team_id"])
+        }:
+            enforce_roster_limits(
+                conn,
+                league_id,
+                team_id,
+                league_mode,
+                str(day_games[0]["game_date"]),
+                playoffs=True,
+            )
         for g in day_games:
             best_of = SERIES_BEST_OF.get(g["series_name"], 7)
             # Skip if series already decided (early exit)

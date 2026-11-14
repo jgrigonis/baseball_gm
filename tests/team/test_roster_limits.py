@@ -1,5 +1,6 @@
 # tests/team/test_roster_limits.py
-"""A Blitz team's 40-man is kept between 25 and 40 before it plays."""
+"""A Blitz team's 40-man is kept between 25 and 40 before it plays (Long
+Form's 26-man: tests/team/test_active_roster.py)."""
 
 from src.api.services.injury_news import take_injury_news
 from src.db.repositories.player_status_repo import PlayerStatusRepository
@@ -49,11 +50,6 @@ def test_an_overfull_roster_sends_the_lowest_rated_down(db_conn, factory):
 def test_a_legal_roster_is_left_alone(db_conn, factory):
     league, team, _, _, _ = _team(factory, on_forty=30, in_org=3)
     assert enforce_roster_limits(db_conn, league.id, team.id, "blitz") == []
-
-
-def test_long_form_isnt_enforced_yet(db_conn, factory):
-    league, team, _, _, _ = _team(factory, on_forty=10, in_org=20, mode="longform")
-    assert enforce_roster_limits(db_conn, league.id, team.id, "longform") == []
 
 
 def test_the_gm_hears_about_each_move(db_conn, factory):

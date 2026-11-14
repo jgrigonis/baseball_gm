@@ -35,7 +35,9 @@ from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.player.contracts import format_salary, minors_salary
 from src.player.face import face_url
-from src.team.roster_limits import MIN_PLAYING_ROSTER
+from src.league.league_modes import is_blitz_style
+from src.player.positions import is_pitcher
+from src.team.roster_limits import MIN_PLAYING_ROSTER, league_active_limits
 from src.web.utils import _current_league_date, _shell_ctx, tab_response
 
 router = APIRouter(tags=["web"])
@@ -113,6 +115,18 @@ def roster(
         ctx["dead_money_text"] = format_salary(dead) if dead else None
         ctx["budget"] = BudgetRepository(db).standing(league_id, team_id, year)
     ctx["players"] = players
+    # Long Form: the active (26-man) roster is picked here too, inside the
+    # limits on the next game day (28 and 14 pitchers from September 1).
+    league = LeagueRepository(db).get_by_id(league_id)
+    ctx["long_form"] = bool(league) and not is_blitz_style(league.get("mode"))
+    if ctx["long_form"]:
+        limits = league_active_limits(db, dict(league))
+        ctx["active_limits"] = {
+            "max": limits.max_active,
+            "min": limits.min_active,
+            "pitchers": limits.max_pitchers,
+            "expanded": limits.expanded,
+        }
     return tab_response(request, htmx, "dashboard/partials/roster.html", ctx)
 
 
@@ -182,11 +196,48 @@ def save_roster_put(
                 {"detail": f"Player {pid} not on this team"}, status_code=422
             )
 
-    status_repo.set_40man_roster(team_player_ids, forty_man_ids)
+    league = LeagueRepository(db).get_by_id(league_id)
+    if league and not is_blitz_style(league.get("mode")):
+        problem = _active_problem(db, dict(league), forty_man_ids, body.active)
+        if problem:
+            return JSONResponse({"detail": problem}, status_code=422)
+        status_repo.set_40man_roster(team_player_ids, forty_man_ids)
+        status_repo.bulk_set({pid: "26man" for pid in body.active})
+    else:
+        status_repo.set_40man_roster(team_player_ids, forty_man_ids)
     GMRepository(db).mark_roster_saved(gm["id"])
     coach.mark(db, league_id, "roster")
     db.commit()
     return JSONResponse({"saved": len(forty_man_ids)})
+
+
+def _active_problem(
+    db, league: dict, forty_man_ids: list[str], active: list[str] | None
+) -> str | None:
+    """Why a Long Form active roster can't be saved, or None if it can."""
+    limits = league_active_limits(db, league)
+    active = active or []
+    if len(set(active)) != len(active):
+        return "A player is on the active roster twice."
+    if not set(active) <= set(forty_man_ids):
+        return "Only players on the 40-man can be on the active roster."
+    if len(active) > limits.max_active:
+        return f"The active roster holds at most {limits.max_active} ({len(active)} picked)."
+    if len(active) < min(limits.min_active, len(forty_man_ids)):
+        return (
+            f"The active roster needs at least {limits.min_active} players "
+            f"({len(active)} picked)."
+        )
+    rows = db.execute(
+        "SELECT position FROM players WHERE id = ANY(%s)", (list(active),)
+    ).fetchall()
+    pitchers = sum(1 for r in rows if is_pitcher((r["position"] or "").lower()))
+    if pitchers > limits.max_pitchers:
+        return (
+            f"The active roster holds at most {limits.max_pitchers} pitchers "
+            f"({pitchers} picked)."
+        )
+    return None
 
 
 @router.post("/leagues/{league_id}/roster/{player_id}/minors")
@@ -226,21 +277,61 @@ def send_to_minors(
         )
 
     status_repo.set_status(player_id, "minors")
-
-    season_id = SeasonRepository(db).get_most_recent_season_from_league(league_id)
-    if season_id:
-        league = LeagueRepository(db).get_by_id(league_id)
-        effective_date = _current_league_date(
-            db,
-            season_id,
-            league["state"] if league else "preseason",
-            all_star_game=False,
-        )
-        TeamRotationsRepository(db, league_id).end_player(
-            team_id, season_id, player_id, effective_date
-        )
-        BullpenRepository(db).close_active_role(
-            team_id, player_id, season_id, effective_date or date.today().isoformat()
-        )
+    _leave_staff(db, league_id, team_id, player_id)
     db.commit()
     return JSONResponse({"sent_down": player_id})
+
+
+@router.post("/leagues/{league_id}/roster/{player_id}/reserve")
+def send_to_reserve(
+    league_id: str,
+    player_id: str,
+    db: DB,
+    gm: GM,
+    _active: ActiveLeague,
+):
+    """Long Form: take one player off the active roster; he stays on the
+    40-man (the Lineup tab's red −). The active roster keeps its minimum,
+    and he leaves the rotation and bullpen like a player sent down."""
+    team_id = gm["team_id"]
+    status_repo = PlayerStatusRepository(db)
+    active = status_repo.get_by_team_and_status(team_id, "26man")
+    if player_id not in active:
+        return JSONResponse(
+            {"detail": "He isn't on your active roster."}, status_code=422
+        )
+    league = LeagueRepository(db).get_by_id(league_id)
+    limits = league_active_limits(db, dict(league))
+    if len(active) - 1 < limits.min_active:
+        return JSONResponse(
+            {
+                "detail": f"Your active roster needs at least {limits.min_active} "
+                "players. Call someone up on the Roster tab first."
+            },
+            status_code=422,
+        )
+    status_repo.set_status(player_id, "40man")
+    _leave_staff(db, league_id, team_id, player_id)
+    db.commit()
+    return JSONResponse({"reserve": player_id})
+
+
+def _leave_staff(db, league_id: str, team_id: str, player_id: str) -> None:
+    """A player who can't play leaves the rotation and his bullpen role, so
+    the sim never hands him the ball."""
+    season_id = SeasonRepository(db).get_most_recent_season_from_league(league_id)
+    if not season_id:
+        return
+    league = LeagueRepository(db).get_by_id(league_id)
+    effective_date = _current_league_date(
+        db,
+        season_id,
+        league["state"] if league else "preseason",
+        all_star_game=False,
+    )
+    TeamRotationsRepository(db, league_id).end_player(
+        team_id, season_id, player_id, effective_date
+    )
+    BullpenRepository(db).close_active_role(
+        team_id, player_id, season_id, effective_date or date.today().isoformat()
+    )

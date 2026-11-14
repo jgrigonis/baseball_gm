@@ -19,6 +19,7 @@
       <a href="/leagues/{{ league_id }}/welcome" class="btn btn-secondary"
          title="Your team's uniforms, stars, weak spots and how it stacks up">{{ team_page_label or "Meet your team" }}</a>
       <button class="btn btn-secondary" onclick="removeInjured()"
+              {% if long_form %}title="Take injured players off the active roster. They stay on the 40-man."{% endif %}
               style="border-color:var(--red);color:var(--red);">
         Remove Injured
       </button>
@@ -26,6 +27,12 @@
               title="Fill the 40-man with your best healthy players, swapping out lower-rated ones. Injured players already on it stay.">
         Pick Top 40
       </button>
+      {% if long_form %}
+      <button class="btn btn-secondary" onclick="pickTopActive()"
+              title="Fill the active roster with the best healthy players on your 40-man: two catchers, {{ active_limits.pitchers }} pitchers and the best hitters.">
+        Pick Top {{ active_limits.max }}
+      </button>
+      {% endif %}
       <button class="btn btn-primary" onclick="saveRoster()" id="save-btn">
         Save Roster
       </button>
@@ -325,6 +332,22 @@
 .r-rev-btn:hover { color: var(--text); }
 .r-rev-btn.reversed { color: var(--amber); border-color: var(--amber); }
 
+/* ── Long Form: active and reserve sections of the 40-man ─────────────────── */
+.r-sec {
+  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+  padding: 7px 10px 5px; border-bottom: 1px solid var(--border);
+  background: var(--bg-3);
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--text-dim);
+}
+.r-sec b { color: var(--text-hi); font-weight: 600; letter-spacing: 0; }
+.r-sec .r-sec-label { color: var(--amber); font-weight: 600; }
+.r-sec .r-sec-note { text-transform: none; letter-spacing: 0; }
+.r-sec .over { color: var(--red); }
+.r-action-btn.act-btn { color: var(--amber); }
+.r-action-btn.act-btn:hover { background: var(--amber-lo); border-color: var(--amber); }
+.r-40-btns { display: flex; gap: 6px; }
+
 /* ── Drag zones ─────────────────────────────────────────────────────────────── */
 .drag-zone {
   margin: 8px; padding: 9px 14px;
@@ -419,6 +442,8 @@ window.zoneLeave     = zoneLeave;
 window.zoneDrop      = zoneDrop;
 window.addToRoster   = addToRoster;
 window.removeFromRoster = removeFromRoster;
+window.pickTopActive = pickTopActive;
+window.toggleActive  = toggleActive;
 
 /* ── Data ───────────────────────────────────────────────────────────────────── */
 var  LEAGUE_ID    = "{{ league_id }}";
@@ -426,14 +451,24 @@ const ALL_PLAYERS = {{ players | tojson }};
 // The rows are fresh: so is the count of players who want a trade.
 if (window.setRosterBadge) window.setRosterBadge(ALL_PLAYERS.filter(p => p.mood_badge && p.mood_badge.wants_trade).length);
 const ROSTER_KEY  = `roster3_${LEAGUE_ID}`;
+// Long Form: the active (26-man) roster is picked from the 40-man, inside
+// the limits on the next game day (28 and 14 pitchers from September 1).
+const LONG_FORM = {{ long_form | default(false) | tojson }};
+const LIMITS    = {{ active_limits | default(none) | tojson }};
 
 
 /* ── State ──────────────────────────────────────────────────────────────────── */
 const SERVER_FORTY = new Set(
-  ALL_PLAYERS.filter(p => p.roster_status === '40man').map(p => p.player_id)
+  ALL_PLAYERS.filter(p => p.roster_status === '40man' || (LONG_FORM && p.roster_status === '26man'))
+             .map(p => p.player_id)
+);
+const SERVER_ACTIVE = new Set(
+  LONG_FORM ? ALL_PLAYERS.filter(p => p.roster_status === '26man').map(p => p.player_id) : []
 );
 let lastSavedIds = new Set([...SERVER_FORTY]);
+let lastSavedActive = new Set([...SERVER_ACTIVE]);
 let fortyMan;
+let active = new Set([...SERVER_ACTIVE]);
 let rosterSaved = false;
 
 let colState = {
@@ -546,6 +581,7 @@ function pickTopForty() {
   const removed = [...fortyMan].filter(id => !next.has(id)).length;
   if (!added && !removed) { showFeedback('Already your top 40', 'var(--text-dim)'); return; }
   fortyMan = next;
+  active = new Set([...active].filter(id => fortyMan.has(id)));
   commit();
   const parts = [];
   if (added)   parts.push(`${added} in`);
@@ -554,6 +590,15 @@ function pickTopForty() {
 }
 
 function removeInjured() {
+  if (LONG_FORM) {
+    // Long Form: off the active roster, still on the 40-man.
+    const hurt = ALL_PLAYERS.filter(p => p.injured && active.has(p.player_id));
+    hurt.forEach(p => active.delete(p.player_id));
+    commit();
+    if (hurt.length) showFeedback(`${hurt.length} injured off the active roster`, 'var(--amber)');
+    else showFeedback('No injured on the active roster', 'var(--text-dim)');
+    return;
+  }
   const before = fortyMan.size;
   ALL_PLAYERS.filter(p => p.injured).forEach(p => fortyMan.delete(p.player_id));
   const removed = before - fortyMan.size;
@@ -571,12 +616,66 @@ function addToRoster(pid) {
 
 function removeFromRoster(pid) {
   fortyMan.delete(pid);
+  active.delete(pid);
   commit();
+}
+
+/* ── Long Form: the active roster ───────────────────────────────────────────── */
+function isPitcher(p) { return p.player_type === 'pitcher'; }
+function byId(id) { return ALL_PLAYERS.find(p => p.player_id === id); }
+function activePitchers() { return [...active].filter(id => isPitcher(byId(id) || {})).length; }
+
+// Why he can't go on the active roster right now, or '' if he can.
+function activeBlock(p) {
+  if (active.size >= LIMITS.max) return `Active roster full (${LIMITS.max} max)`;
+  if (isPitcher(p) && activePitchers() >= LIMITS.pitchers) return `${LIMITS.pitchers} pitchers max on the active roster`;
+  return '';
+}
+
+function toggleActive(pid) {
+  if (active.has(pid)) { active.delete(pid); commit(); return; }
+  const why = activeBlock(byId(pid));
+  if (why) { showFeedback(why, 'var(--red)'); return; }
+  active.add(pid);
+  commit();
+}
+
+// Best healthy 40-man players: two catchers, a full pitching staff, then the
+// best hitters. Injured players come off.
+function pickTopActive() {
+  const pool = [...fortyMan].map(byId).filter(p => p && !p.injured).sort((a, b) =>
+    (gradeVal(a.overall) - gradeVal(b.overall)) ||
+    ((active.has(b.player_id) ? 1 : 0) - (active.has(a.player_id) ? 1 : 0)));
+  const picked = new Set();
+  let pitchers = 0;
+  const take = (test, n) => {
+    for (const p of pool) {
+      if (n <= 0 || picked.size >= LIMITS.max) break;
+      if (picked.has(p.player_id) || !test(p)) continue;
+      if (isPitcher(p)) { if (pitchers >= LIMITS.pitchers) continue; pitchers++; }
+      picked.add(p.player_id);
+      n--;
+    }
+  };
+  take(isCatcher, 2);
+  take(isPitcher, LIMITS.pitchers);
+  take(p => !isPitcher(p), LIMITS.max);
+  take(() => true, LIMITS.max);
+  const added   = [...picked].filter(id => !active.has(id)).length;
+  const removed = [...active].filter(id => !picked.has(id)).length;
+  if (!added && !removed) { showFeedback(`Already your top ${LIMITS.max}`, 'var(--text-dim)'); return; }
+  active = picked;
+  commit();
+  const parts = [];
+  if (added)   parts.push(`${added} on`);
+  if (removed) parts.push(`${removed} off`);
+  showFeedback(`Top ${LIMITS.max}: ${parts.join(', ')}`, 'var(--green)');
 }
 
 /* ── Revert ─────────────────────────────────────────────────────────────────── */
 function revertToSaved() {
   fortyMan = new Set([...lastSavedIds]);
+  active = new Set([...lastSavedActive]);
   commit();
   showFeedback('Reverted to saved', 'var(--text-dim)');
 }
@@ -585,6 +684,8 @@ function revertToSaved() {
 function hasUnsavedChanges() {
   if (fortyMan.size !== lastSavedIds.size) return true;
   for (const id of fortyMan) { if (!lastSavedIds.has(id)) return true; }
+  if (active.size !== lastSavedActive.size) return true;
+  for (const id of active) { if (!lastSavedActive.has(id)) return true; }
   return false;
 }
 
@@ -614,10 +715,16 @@ function makeCard(p, isIn40) {
   el.dataset.id = p.player_id;
   if (p.injured) el.style.borderLeft = p.returning ? '3px solid #a07800' : '3px solid var(--red)';
 
-  const btnHtml = isIn40
-    ? `<button class="r-action-btn rem-btn" title="Move to Organization"
+  const remBtn = `<button class="r-action-btn rem-btn" title="Move to Organization"
                aria-label="Move ${p.first_name} ${p.last_name} to the Organization"
-               onclick="event.stopPropagation();removeFromRoster('${p.player_id}')"><span class="phone-hide rem-arrow">→</span><span class="phone-only">−</span></button>`
+               onclick="event.stopPropagation();removeFromRoster('${p.player_id}')"><span class="phone-hide rem-arrow">→</span><span class="phone-only">−</span></button>`;
+  // Long Form: ↑ onto the active roster, ↓ off it (he stays on the 40-man).
+  const on = active.has(p.player_id);
+  const actBtn = `<button class="r-action-btn act-btn" title="${on ? 'Take off the active roster' : 'Put on the active roster'}"
+               aria-label="${on ? 'Take' : 'Put'} ${p.first_name} ${p.last_name} ${on ? 'off' : 'on'} the active roster"
+               onclick="event.stopPropagation();toggleActive('${p.player_id}')">${on ? '↓' : '↑'}</button>`;
+  const btnHtml = isIn40
+    ? (LONG_FORM ? `<span class="r-40-btns">${actBtn}${remBtn}</span>` : remBtn)
     : `<span class="r-org-btns"><button class="r-action-btn rel-btn" title="Release him"
                onclick="event.stopPropagation();releasePlayer('${p.player_id}', '${(p.first_name + ' ' + p.last_name).replace(/'/g, "\\'")}')">×</button><button class="r-action-btn add-btn" title="Add to 40-man"
                onclick="event.stopPropagation();addToRoster('${p.player_id}')">+</button></span>`;
@@ -682,10 +789,12 @@ function makeCard(p, isIn40) {
       // dragging from org onto a 40-man card
       fortyMan.delete(p.player_id);  // 40-man player leaves
       fortyMan.add(_dragging);        // org player joins
+      active.delete(p.player_id);
     } else {
       // dragging from 40-man onto an org card
       fortyMan.delete(_dragging);     // 40-man player leaves
       fortyMan.add(p.player_id);      // org player joins
+      active.delete(_dragging);
     }
     commit();
   });
@@ -722,6 +831,7 @@ function zoneDrop(e, zoneName) {
   } else {
     if (_draggingFrom !== '40man') return;
     fortyMan.delete(_dragging);
+    active.delete(_dragging);
   }
   commit();
 }
@@ -736,15 +846,19 @@ function render() {
 
   const col40  = document.getElementById('col-40man');
   const colOrg = document.getElementById('col-org');
-  col40.querySelectorAll('.r-card').forEach(c => c.remove());
+  col40.querySelectorAll('.r-card, .r-sec').forEach(c => c.remove());
   colOrg.querySelectorAll('.r-card').forEach(c => c.remove());
 
   const orgIds = ALL_PLAYERS.map(p => p.player_id).filter(id => !fortyMan.has(id));
   const add40 = document.getElementById('zone-add');
   const addOrg = document.getElementById('empty-org');
 
-  sortedPlayers([...fortyMan], '40').filter(p => isVisible(p,'40'))
-    .forEach(p => col40.appendChild(makeCard(p, true)));
+  if (LONG_FORM) {
+    renderActiveSections(col40);
+  } else {
+    sortedPlayers([...fortyMan], '40').filter(p => isVisible(p,'40'))
+      .forEach(p => col40.appendChild(makeCard(p, true)));
+  }
   sortedPlayers(orgIds, 'org').filter(p => isVisible(p,'org'))
     .forEach(p => colOrg.appendChild(makeCard(p, false)));
 
@@ -760,6 +874,37 @@ function render() {
   const notFull = fortyMan.size < 40;
   fortyCount.style.color = notFull ? 'var(--red)' : '';
   fortyCount.style.fontWeight = notFull ? '700' : '';
+  if (LONG_FORM) {
+    // Long Form: an active roster short of the minimum is the red one.
+    const short = active.size < LIMITS.min;
+    fortyCount.textContent = `Active ${active.size} / ${LIMITS.max} · 40-man ${fortyMan.size} / 40`;
+    fortyCount.style.color = short ? 'var(--red)' : '';
+    fortyCount.style.fontWeight = short ? '700' : '';
+  }
+}
+
+// Long Form: the 40-man column in two parts, the active roster (with its
+// pitcher count) and the reserve, each sorted and filtered like the column.
+function renderActiveSections(col) {
+  const pitchers = activePitchers();
+  const sec = (html) => {
+    const el = document.createElement('div');
+    el.className = 'r-sec';
+    el.innerHTML = html;
+    col.appendChild(el);
+  };
+  const cls = (n, max) => n > max ? ' class="over"' : '';
+  sec(`<span class="r-sec-label">Active</span>
+       <b${cls(active.size, LIMITS.max)}>${active.size} / ${LIMITS.max}</b>
+       <span>Pitchers <b${cls(pitchers, LIMITS.pitchers)}>${pitchers} / ${LIMITS.pitchers}</b></span>
+       ${LIMITS.expanded ? '<span class="r-sec-note">September rosters</span>' : ''}`);
+  sortedPlayers([...active].filter(id => fortyMan.has(id)), '40').filter(p => isVisible(p, '40'))
+    .forEach(p => col.appendChild(makeCard(p, true)));
+  const reserve = [...fortyMan].filter(id => !active.has(id));
+  sec(`<span class="r-sec-label">Reserve</span><b>${reserve.length}</b>
+       <span class="r-sec-note">On the 40-man, not playing</span>`);
+  sortedPlayers(reserve, '40').filter(p => isVisible(p, '40'))
+    .forEach(p => col.appendChild(makeCard(p, true)));
 }
 
 /* ── Phones: which list shows (the other column is hidden) ─────────────────── */
@@ -793,10 +938,11 @@ async function saveRoster() {
     const res = await fetch(`/leagues/${LEAGUE_ID}/roster/save`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ forty_man: [...fortyMan] }),
+      body: JSON.stringify({ forty_man: [...fortyMan], active: [...active] }),
     });
     if (res.ok) {
       lastSavedIds = new Set([...fortyMan]);
+      lastSavedActive = new Set([...active]);
       rosterSaved = true;
       if (changed) showFeedback('✓ Roster saved', 'var(--green)');
       else showFeedback('Roster unchanged', 'var(--text-dim)');
@@ -822,7 +968,7 @@ function showFeedback(msg, color) {
 /* ── Storage ─────────────────────────────────────────────────────────────────── */
 function saveToStorage() {
   try {
-    sessionStorage.setItem(ROSTER_KEY, JSON.stringify({ fortyMan: [...fortyMan], colState, rosterSaved }));
+    sessionStorage.setItem(ROSTER_KEY, JSON.stringify({ fortyMan: [...fortyMan], active: [...active], colState, rosterSaved }));
   } catch(e) {}
 }
 
@@ -833,7 +979,9 @@ function loadFromStorage() {
     const data = JSON.parse(raw);
     if (!Array.isArray(data.fortyMan)) return null;
     const known = new Set(ALL_PLAYERS.map(p => p.player_id));
-    return { fortyMan: data.fortyMan.filter(id => known.has(id)), colState: data.colState || null, rosterSaved: !!data.rosterSaved };
+    return { fortyMan: data.fortyMan.filter(id => known.has(id)),
+             active: Array.isArray(data.active) ? data.active.filter(id => known.has(id)) : null,
+             colState: data.colState || null, rosterSaved: !!data.rosterSaved };
   } catch(e) { return null; }
 }
 
@@ -870,6 +1018,7 @@ function measureHeader() {
 const stored = loadFromStorage();
 if (stored) {
   fortyMan = new Set(stored.fortyMan);
+  if (stored.active) active = new Set(stored.active.filter(id => fortyMan.has(id)));
   restoreColState(stored.colState);
   if (stored.rosterSaved) {
     rosterSaved = true;

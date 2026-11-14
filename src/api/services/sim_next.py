@@ -188,9 +188,9 @@ def sim_next_day(league_id: str, conn) -> dict:
     errors = []
 
     # Rosters below the minimum or over the limit, e.g. after a trade, are
-    # fixed before anyone plays.
+    # fixed before anyone plays (Long Form: the 26-man, 28 from September 1).
     for team_id in team_ids:
-        enforce_roster_limits(conn, league_id, team_id, league_mode)
+        enforce_roster_limits(conn, league_id, team_id, league_mode, game_date)
 
     # Snapshot the human teams' injuries so each GM hears about changes
     injury_news = InjuryNews(conn, league_id)

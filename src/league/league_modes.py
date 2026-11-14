@@ -113,3 +113,9 @@ def trades_allowed(mode: str | None) -> bool:
 
 def is_blitz_style(mode: str | None) -> bool:
     return get_mode(mode).blitz_style
+
+
+def playing_statuses(mode: str | None) -> list[str]:
+    """The roster tiers that play: the whole 40-man in Blitz-style leagues,
+    only the 26-man in Long Form."""
+    return ["26man", "40man"] if is_blitz_style(mode) else ["26man"]

@@ -269,6 +269,8 @@ class RotationSaveRequest(BaseModel):
 
 class RosterSaveRequest(BaseModel):
     forty_man: list[str] = []
+    # Long Form: who of the 40-man is on the active (26-man) roster.
+    active: list[str] = []
 
 
 class TradeOfferRequest(BaseModel):

@@ -87,4 +87,7 @@ def test_lineup_rows_have_the_button(client, setup):
     league = setup[0]
     html = client.get(f"/leagues/{league.id}/lineup").text
     assert "minors-btn" in html
-    assert 'title="Send him to the minors"' in html
+    assert 'title="${DOWN_TITLE}"' in html
+    # Blitz: off the 40-man (Long Form takes him off the active roster).
+    assert "const LONG_FORM       = false" in html
+    assert "'Send him to the minors'" in html
