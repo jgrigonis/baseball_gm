@@ -946,6 +946,8 @@ async function saveRoster() {
       rosterSaved = true;
       if (changed) showFeedback('✓ Roster saved', 'var(--green)');
       else showFeedback('Roster unchanged', 'var(--text-dim)');
+      // A multiplayer preseason's Roster pill goes with the save.
+      if (window.refreshNextMove) window.refreshNextMove();
       document.getElementById('setup-bar')?.remove();  // set up: the bar's done
       document.getElementById('unsaved-banner').style.display = 'none';
       document.getElementById('lineup-btn').style.display = 'inline-flex';

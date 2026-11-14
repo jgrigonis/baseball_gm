@@ -353,6 +353,42 @@ class GMRepository:
             f"UPDATE gms SET {col} = %s WHERE id = %s", (season_id, gm_id)
         )
 
+    # A multiplayer preseason's Roster and Lineup pills go once the GM saves
+    # each (Josh, 2026-11-14), not just opens it.
+    PRESEASON_SAVES = {
+        "roster": "roster_saved_season_id",
+        "lineup": "lineup_saved_season_id",
+    }
+
+    def preseason_saved(self, gm_id: str, season_id: str) -> set[str]:
+        """The preseason tabs (roster, lineup) the GM has saved this
+        preseason."""
+        row = self.conn.execute(
+            "SELECT roster_saved_season_id, lineup_saved_season_id FROM gms"
+            " WHERE id = %s",
+            (gm_id,),
+        ).fetchone()
+        if not row:
+            return set()
+        return {
+            tab for tab, col in self.PRESEASON_SAVES.items() if row[col] == season_id
+        }
+
+    def mark_preseason_saved(self, league_id: str, gm_id: str, tab: str) -> None:
+        """The GM saved the Roster or Lineup. Counts only in the preseason,
+        for the league's newest season (the one about to start)."""
+        col = self.PRESEASON_SAVES[tab]
+        self.conn.execute(
+            f"""UPDATE gms SET {col} = (
+                    SELECT s.id FROM seasons s
+                    JOIN league_seasons ls ON ls.season_id = s.id
+                    WHERE ls.league_id = %s ORDER BY s.year DESC LIMIT 1)
+                WHERE id = %s
+                  AND EXISTS (SELECT 1 FROM leagues
+                              WHERE id = %s AND state = 'preseason')""",
+            (league_id, gm_id, league_id),
+        )
+
     # The draft's tabs (a multiplayer draft's pills, web/utils.py): the
     # column holding the season whose draft the GM opened each in.
     DRAFT_TABS = {

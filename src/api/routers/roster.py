@@ -205,7 +205,9 @@ def save_roster_put(
         status_repo.bulk_set({pid: "26man" for pid in body.active})
     else:
         status_repo.set_40man_roster(team_player_ids, forty_man_ids)
-    GMRepository(db).mark_roster_saved(gm["id"])
+    gms = GMRepository(db)
+    gms.mark_roster_saved(gm["id"])
+    gms.mark_preseason_saved(league_id, gm["id"], "roster")
     coach.mark(db, league_id, "roster")
     db.commit()
     return JSONResponse({"saved": len(forty_man_ids)})

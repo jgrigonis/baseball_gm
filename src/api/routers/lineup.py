@@ -18,6 +18,7 @@ from src.api.services import coach
 from src.api.services.lineup_autofill import autofill
 from src.api.view_models.lineup import lineup_context
 from src.db.repositories.bullpen_roles_repo import BullpenRepository
+from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.lineup_preference_repo import LineupPreferenceRepository
 from src.db.repositories.season_repo import SeasonRepository
@@ -81,7 +82,19 @@ def save_lineup_prefs(
     lpr = LineupPreferenceRepository(db)
     lpr.save_preferences(gm["id"], lineup, body.vs_hand)
     coach.mark(db, league_id, "batting")
+    GMRepository(db).mark_preseason_saved(league_id, gm["id"], "lineup")
 
+    db.commit()
+    return JSONResponse({"saved": True})
+
+
+@router.put("/leagues/{league_id}/lineup/saved")
+def lineup_saved(league_id: str, db: DB, gm: GM, _active: ActiveLeague):
+    """A Save press with nothing changed sends nothing, but it still counts
+    as saving the Lineup for a multiplayer preseason's Lineup pill."""
+    if not gm or not gm["team_id"]:
+        return JSONResponse({"detail": "No team"}, status_code=400)
+    GMRepository(db).mark_preseason_saved(league_id, gm["id"], "lineup")
     db.commit()
     return JSONResponse({"saved": True})
 
@@ -160,6 +173,7 @@ def save_rotation(
         next_order=next_order,
     )
     coach.mark(db, league_id, "rotation")
+    GMRepository(db).mark_preseason_saved(league_id, gm["id"], "lineup")
 
     db.commit()
     return JSONResponse({"saved": True})
@@ -175,7 +189,6 @@ def save_pitcher_leash(
 ):
     """A starter's own Starter Leash, or (pitches null) back to the team's.
     Saved right away, like a Strategy setting."""
-    from src.db.repositories.gm_repo import GMRepository
     from src.team.manager_profile import STARTER_USAGE
 
     team_id = gm["team_id"]
@@ -244,6 +257,7 @@ def save_bullpen(
             effective_date=effective_date,
         )
         coach.mark(db, league_id, "bullpen")
+        GMRepository(db).mark_preseason_saved(league_id, gm["id"], "lineup")
         db.commit()
     except ValueError as e:
         db.rollback()
