@@ -242,7 +242,10 @@ def new_league(
     backstory_years: int = Form(DEFAULT_BACKSTORY_YEARS),
     real_season: str = Form(""),
 ):
-    get_mode(mode)  # rejects an unknown mode
+    if not get_mode(mode).budgets:  # also rejects an unknown mode
+        # Owners never fire in Speed Blitz (owner_review.firing_on), so the
+        # form greys these out; keep the stored settings saying so too.
+        owner_firing = reentry_enabled = False
     season = int(real_season) if real_season else None
     if season is not None:
         if season not in real_seasons.available():

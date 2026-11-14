@@ -17,6 +17,7 @@
         <option value="{{ m.key }}" data-presets='{{ m.form_presets | tojson }}'
                 data-injuries="{{ 'on' if m.injuries_default else 'off' }}"
                 data-trades="{{ 'on' if m.trades_enabled else 'off' }}"
+                data-firing="{{ 'on' if m.budgets else 'off' }}"
                 {% if default_mode == m.key %}selected{% endif %}>{{ m.label }}</option>
         {% endfor %}
         <option value="longform" disabled style="color:var(--muted);">Long Form — Coming Soon</option>
@@ -61,17 +62,16 @@
           </label>
           <span class="mode-note">You can change this later on the League page.</span>
         </div>
-        <div class="field">
+        <div class="field" id="owner-firing-field">
           <label for="owner-firing">Owner Firing</label>
           <input type="hidden" name="owner_firing" value="false">
           <label class="toggle-row">
-            <input type="checkbox" name="owner_firing" id="owner-firing" value="true" checked
-                   onchange="document.getElementById('reentry-field').hidden = !this.checked;">
+            <input type="checkbox" name="owner_firing" id="owner-firing" value="true" checked>
             <span>Owners can fire GMs who let them down, people and AI alike</span>
           </label>
           <span class="mode-note">Off: owners still judge, warn and grade every season, but nobody is fired. Never in Speed Blitz. Set once, when the league is created.</span>
         </div>
-        <div class="field" id="reentry-field">
+        <div class="field firing-only" id="reentry-field">
           <label for="reentry">Re-entry</label>
           <input type="hidden" name="reentry_enabled" value="false">
           <label class="toggle-row">
@@ -203,6 +203,18 @@
       f.querySelectorAll('input').forEach(function (i) { i.disabled = !trades.checked; });
     });
   }
+  // Owners never fire in Speed Blitz (owner_review.firing_on), so the box is
+  // off and greyed there. Re-entry only means something when owners fire.
+  const firing = document.getElementById('owner-firing');
+  const firingField = document.getElementById('owner-firing-field');
+  let firingTouched = false;
+  firing.addEventListener('change', function () { firingTouched = true; syncFiringFields(); });
+  function syncFiringFields() {
+    document.querySelectorAll('.firing-only').forEach(function (f) {
+      f.classList.toggle('field-disabled', !firing.checked);
+      f.querySelectorAll('input').forEach(function (i) { i.disabled = !firing.checked; });
+    });
+  }
   function applyModePresets() {
     const opt = mode.options[mode.selectedIndex];
     const presets = JSON.parse(opt.dataset.presets || '{}');
@@ -215,6 +227,12 @@
     speedBlitzNote.style.display = mode.value === 'speed_blitz' ? '' : 'none';
     if (!tradesTouched) trades.checked = opt.dataset.trades === 'on';
     syncTradeFields();
+    const canFire = opt.dataset.firing === 'on';
+    if (!canFire) firing.checked = false;
+    else if (!firingTouched) firing.checked = true;
+    firing.disabled = !canFire;
+    firingField.classList.toggle('field-disabled', !canFire);
+    syncFiringFields();
     syncSliders();
   }
   mode.addEventListener('change', applyModePresets);

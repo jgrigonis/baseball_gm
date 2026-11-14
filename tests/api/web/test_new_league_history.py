@@ -139,3 +139,31 @@ def test_injury_rate_slider_under_advanced(client):
     advanced = html[html.index('class="advanced-settings"') :]
     assert 'name="injury_rate" value="100"' in advanced
     assert 'class="injuries-only"' in advanced
+
+
+# ── Owner firing (Josh 2026-11-14) ───────────────────────────────────────────
+
+
+def _league(client, db_conn, **form):
+    r = client.post("/leagues/new", data={"name": "Fire", **form})
+    return LeagueRepository(db_conn).get_by_id(r.headers["location"].split("/")[2])
+
+
+def test_speed_blitz_never_stores_owner_firing(client, db_conn):
+    """Owners never fire in Speed Blitz, so the form greys it out and the
+    league keeps it off even if the box came through ticked."""
+    lg = _league(
+        client, db_conn, mode="speed_blitz", owner_firing="true", reentry_enabled="true"
+    )
+    assert not lg["owner_firing"] and not lg["reentry_enabled"]
+    lg = _league(
+        client, db_conn, mode="blitz", owner_firing="true", reentry_enabled="true"
+    )
+    assert lg["owner_firing"] and lg["reentry_enabled"]
+
+
+def test_the_form_greys_re_entry_with_owner_firing(client):
+    html = client.get("/leagues/new").text
+    assert 'data-firing="off"' in html  # Speed Blitz
+    assert 'class="field firing-only" id="reentry-field"' in html
+    assert "syncFiringFields" in html
