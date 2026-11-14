@@ -403,7 +403,7 @@
       </select>
     </form>
     <div class="bud-line">
-      Steady pays {{ sponsor.steady_text }} however the season goes. Incentive pays {{ sponsor.base_text }} up front, then {{ sponsor.per_10_text }} for every .100 of win % over .500, {{ sponsor.playoffs_text }} for making the playoffs and {{ sponsor.round_text }} for each series won, so it pays off for a contender and costs a team that falls short. Bigger markets get bigger offers. Pick between seasons, from the draft to Opening Day; if you don't, you get Incentive after a season over {{ sponsor.ai_from_text }}, Steady otherwise.
+      The Steady option pays {{ sponsor.steady_text }} guaranteed. The Incentive option pays {{ sponsor.base_text }} up front, a win bonus that grows faster the more you win ({% for pct, amt in sponsor.wins_texts %}{{ amt }} at {{ pct }}, {% endfor %}up to {{ sponsor.wins_cap_text }} for a 110-win pace), {{ sponsor.playoffs_text }} for making the playoffs and {{ sponsor.round_text }} for each series won. Bigger market teams see bigger offers. Make your selection between seasons, from the draft to Opening Day. If you don't pick, teams over {{ sponsor.ai_from_text }} default to Incentive and the rest to Steady.
     </div>
   </div>
 </div>
@@ -462,56 +462,7 @@
 </div>
 {% endif %}
 
-{% if league_pay %}
-<div class="card" style="margin-bottom:16px;" id="league-payrolls">
-  <div class="card-header"><span class="card-title">League payrolls</span>
-    {% if league_pay|length > 1 %}
-    <select style="margin-left:auto;width:auto;font-size:12px;" aria-label="Season"
-            onchange="document.querySelectorAll('.bud-pay-year').forEach(function(el){el.hidden = el.dataset.year !== this.value;}, this)">
-      {% for s in league_pay %}<option value="{{ s.year }}">{{ s.year }}{% if s.projected %} (projected){% endif %}</option>{% endfor %}
-    </select>
-    {% elif league_pay[0].projected %}<span class="admin-dim" style="margin-left:auto;font-size:11px;">{{ league_pay[0].year }} projected</span>{% endif %}
-  </div>
-  <div class="card-body">
-    {% for s in league_pay %}
-    <div class="bud-pay-year" data-year="{{ s.year }}" {% if not loop.first %}hidden{% endif %}>
-      <div class="bud-note" style="margin-top:0;margin-bottom:8px;">
-        Cap {{ s.cap_text }} · {{ s.over_count }} team{{ '' if s.over_count == 1 else 's' }} over{% if s.over_count %} · {{ s.pool_text }} tax{% if s.projected %} so far{% endif %}, split among the teams under{% endif %}
-      </div>
-      <div style="overflow-x:auto;">
-        <table class="data-table bud-table bud-pay" data-sortable>
-          <thead><tr>
-            <th data-sort="text">Team</th>
-            <th class="num" data-sort="num" data-sort-first="desc">Payroll</th>
-            <th class="num phone-hide" data-sort="num" data-sort-first="desc">Vs cap</th>
-            <th class="num" data-sort="num" data-sort-first="desc">Tax</th>
-            <th class="num" data-sort="num" data-sort-first="desc">Tax share</th>
-          </tr></thead>
-          <tbody>
-            {% for r in s.rows %}
-            <tr class="{% if r.mine %}my-team{% endif %}">
-              <td data-sort-value="{{ r.city }} {{ r.mascot }}" style="white-space:nowrap;{% if r.mine %}color:var(--green);font-weight:600;{% endif %}">
-                <span class="tb">{{ team_badge(r.city, r.mascot) }}</span><span class="phone-hide">{{ r.city }} </span>{{ r.mascot }}
-              </td>
-              <td class="num" data-sort-value="{{ r.payroll }}">{{ r.payroll_text }}</td>
-              <td class="num phone-hide {% if r.over %}bud-bad{% endif %}" data-sort-value="{{ r.gap }}">{{ r.gap_text }}</td>
-              <td class="num {% if r.tax %}bud-bad{% endif %}" data-sort-value="{{ r.tax }}">{{ r.tax_text or '—' }}</td>
-              <td class="num {% if r.share %}bud-good{% endif %}" data-sort-value="{{ r.share }}">{{ r.share_text or '—' }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      {% if s.projected %}
-      <div class="bud-line">On today's payrolls. The tax and the shares are settled on final payrolls when the playoffs end. Click a column to sort.</div>
-      {% endif %}
-    </div>
-    {% endfor %}
-  </div>
-</div>
-{% endif %}
-
-<div class="card">
+<div class="card" style="margin-bottom:16px;">
   <div class="card-header"><span class="card-title">Past seasons</span></div>
   <div class="card-body" style="overflow-x:auto;">
     {% if history %}
@@ -565,6 +516,82 @@
     {% endif %}
   </div>
 </div>
+
+{% if league_pay %}
+<div class="card" style="margin-bottom:16px;" id="league-payrolls">
+  <div class="card-header"><span class="card-title">League payrolls</span>
+    {# Folded by default; the choice is remembered per browser (Josh, 2026-11-13). #}
+    <button type="button" class="btn btn-secondary bud-fold-btn" aria-expanded="false" aria-controls="league-payrolls-body"
+            style="margin-left:auto;font-size:11px;padding:2px 10px;">Show</button>
+    {% if league_pay|length > 1 %}
+    <select class="bud-fold-extra" hidden style="margin-left:8px;width:auto;font-size:12px;" aria-label="Season"
+            onchange="document.querySelectorAll('.bud-pay-year').forEach(function(el){el.hidden = el.dataset.year !== this.value;}, this)">
+      {% for s in league_pay %}<option value="{{ s.year }}">{{ s.year }}{% if s.projected %} (projected){% endif %}</option>{% endfor %}
+    </select>
+    {% elif league_pay[0].projected %}<span class="admin-dim bud-fold-extra" hidden style="margin-left:8px;font-size:11px;">{{ league_pay[0].year }} projected</span>{% endif %}
+  </div>
+  <div class="card-body" id="league-payrolls-body" hidden>
+    {% for s in league_pay %}
+    <div class="bud-pay-year" data-year="{{ s.year }}" {% if not loop.first %}hidden{% endif %}>
+      <div class="bud-note" style="margin-top:0;margin-bottom:8px;">
+        Cap {{ s.cap_text }} · {{ s.over_count }} team{{ '' if s.over_count == 1 else 's' }} over{% if s.over_count %} · {{ s.pool_text }} tax{% if s.projected %} so far{% endif %}, split among the teams under{% endif %}
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="data-table bud-table bud-pay" data-sortable>
+          <thead><tr>
+            <th data-sort="text">Team</th>
+            <th class="num" data-sort="num" data-sort-first="desc">Payroll</th>
+            <th class="num phone-hide" data-sort="num" data-sort-first="desc">Vs cap</th>
+            <th class="num" data-sort="num" data-sort-first="desc">Tax</th>
+            <th class="num" data-sort="num" data-sort-first="desc">Tax share</th>
+          </tr></thead>
+          <tbody>
+            {% for r in s.rows %}
+            <tr class="{% if r.mine %}my-team{% endif %}">
+              <td data-sort-value="{{ r.city }} {{ r.mascot }}" style="white-space:nowrap;{% if r.mine %}color:var(--green);font-weight:600;{% endif %}">
+                <span class="tb">{{ team_badge(r.city, r.mascot) }}</span><span class="phone-hide">{{ r.city }} </span>{{ r.mascot }}
+              </td>
+              <td class="num" data-sort-value="{{ r.payroll }}">{{ r.payroll_text }}</td>
+              <td class="num phone-hide {% if r.over %}bud-bad{% endif %}" data-sort-value="{{ r.gap }}">{{ r.gap_text }}</td>
+              <td class="num {% if r.tax %}bud-bad{% endif %}" data-sort-value="{{ r.tax }}">{{ r.tax_text or '—' }}</td>
+              <td class="num {% if r.share %}bud-good{% endif %}" data-sort-value="{{ r.share }}">{{ r.share_text or '—' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if s.projected %}
+      <div class="bud-line">On today's payrolls. The tax and the shares are settled on final payrolls when the playoffs end. Click a column to sort.</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+<script>
+  (function () {
+    var KEY = 'leaguePayrollsOpen';
+    var card = document.getElementById('league-payrolls');
+    if (!card) return;
+    var btn = card.querySelector('.bud-fold-btn');
+    var body = document.getElementById('league-payrolls-body');
+    function show(open) {
+      body.hidden = !open;
+      card.querySelectorAll('.bud-fold-extra').forEach(function (el) { el.hidden = !open; });
+      btn.textContent = open ? 'Hide' : 'Show';
+      btn.setAttribute('aria-expanded', String(open));
+    }
+    var open = false;
+    try { open = localStorage.getItem(KEY) === '1'; } catch (e) {}
+    show(open);
+    btn.addEventListener('click', function () {
+      open = body.hidden;
+      show(open);
+      try { localStorage.setItem(KEY, open ? '1' : '0'); } catch (e) {}
+    });
+  })();
+</script>
+{% endif %}
+
 {% else %}
 <div class="card"><div class="card-body admin-dim">This league has no budgets.</div></div>
 {% endif %}

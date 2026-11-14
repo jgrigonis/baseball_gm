@@ -127,11 +127,11 @@ def test_tactical_dials_move_the_settings():
     assert quick["bullpen_pref"] == "deep-pen"
 
     middle = personas.profile({"bullpen_hook": 50})
-    assert middle["starter_usage"] == "95"
+    assert middle["starter_usage"] == "85"
     assert middle["bullpen_pref"] == "balanced"
 
     leash = personas.profile({"bullpen_hook": 10})
-    assert leash["starter_usage"] == "115"
+    assert leash["starter_usage"] == "105"
     assert leash["bullpen_pref"] == "starter-heavy"
     assert leash["tired_starters"] == "push"
 

@@ -25,9 +25,10 @@ BASERUNNING = (
 )
 SAC_BUNT = ("never", "situational", "frequent")
 # Starter Leash: the pitch count a starter is usually pulled at, longest
-# first (Josh, 2026-11-13: 75 to 115 in steps of 10, 95 the default).
+# first (Josh, 2026-11-13: 75 to 115 in steps of 10; 2026-11-14: 85 the
+# default, close to the old standard target of 88).
 STARTER_USAGE = ("115", "105", "95", "85", "75")
-DEFAULT_LEASH = "95"
+DEFAULT_LEASH = "85"
 CLOSER_USAGE = ("saves-only", "high-leverage", "best-available")
 BULLPEN_PREF = ("starter-heavy", "balanced", "deep-pen")
 PLATOON_USAGE = ("none", "vs-handedness", "aggressive")
@@ -59,9 +60,9 @@ EXTRA_BASE_FACTOR = dict(zip(BASERUNNING, (0.8, 0.9, 1.0, 1.1, 1.2)))
 
 BUNT_FACTOR = {"never": 0.0, "situational": 1.0, "frequent": 2.0}
 
-# A short leash (85 or 75) also pulls a starter sooner the third time
-# through the order.
-SHORT_LEASHES = ("85", "75")
+# The short leash (75) also pulls a starter sooner the third time through
+# the order.
+SHORT_LEASHES = ("75",)
 THIRD_TIME_BATTERS = 18
 THIRD_TIME_HOOK = 1.5
 

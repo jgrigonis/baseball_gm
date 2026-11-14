@@ -57,7 +57,7 @@
       <div class="tr-offer" id="offer-{{ o.id }}">
         <div class="tr-offer-text">
           <div>{% if o.parent_id %}<span class="tr-tag">counter</span>{% endif %}
-            The <strong>{{ o.from_name }}</strong>{{ ai_gm(o.from_team_id) }} give {{ plist(o.sent) }}</div>
+            The <strong>{{ o.from_name }}</strong>{{ ai_gm(o.from_team_id) }}{% if o.state_label %} <span class="tr-tag tr-tag-far" title="Where their front office thinks the team stands">{{ o.state_label }}</span>{% endif %} give {{ plist(o.sent) }}</div>
           <div>You give {{ plist(o.received) }}</div>
           {% if o.expires_on %}<div class="tr-reason">Expires after the games on {{ o.expires_on }}</div>{% endif %}
           {% if o.caps %}
@@ -580,6 +580,9 @@ function arrivedMsg(arrived, count) {
 }
 
 window.trAnswer = function(offerId, action) {
+  // Turning down the last offer to you: point at Play once the tab reloads.
+  var last = action === 'reject' &&
+    document.querySelectorAll('[data-offer-act="reject"]').length === 1;
   post('/' + encodeURIComponent(offerId) + '/' + action).then(function(res) {
     var ok = res[0], d = res[1];
     // The offer or vote has usually just been settled: show it as it is now.
@@ -589,6 +592,7 @@ window.trAnswer = function(offerId, action) {
       return reloadWith('✓ Accepted. The trade goes to a vote of the league\'s other ' +
         (d.voters > 1 ? d.voters + ' GMs' : 'GM') + ' before the next sim.');
     reloadWith(d.status === 'withdrawn' ? 'Offer withdrawn.' : 'Offer turned down.');
+    if (last && d.status !== 'withdrawn' && window.pulseNextMove) window.pulseNextMove();
   }).catch(function() { showResult('✗ Couldn\'t reach the server.', 'bad'); });
 };
 

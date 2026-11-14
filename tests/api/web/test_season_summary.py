@@ -347,9 +347,9 @@ def test_injury_table_has_sortable_headers(client, db_conn, league):
             "</table>", r.text.index('id="injury-table"')
         )
     ]
-    for label in ("Date", "Player", "Injury", "Days"):
+    for label in ("Date", "Player", "Injury", "Lingering", "Days"):
         assert f">{label}<span" in table
-    assert table.count('onclick="sortInjuries(this)"') == 4
+    assert table.count('onclick="sortInjuries(this)"') == 5
     # Each column carries a value to sort by; severity sorts by its longest layoff
     assert 'data-sort="2025-05-01"' in table
     assert 'data-sort="Wilson Will"' in table  # last name first

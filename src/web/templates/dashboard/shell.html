@@ -110,6 +110,15 @@ window.shopPlayer = function(pid) {
   window.goToTab('trades');
 };
 
+// Trade for another team's player: the Trades builder opens with his team
+// and him ticked in You get.
+window.tradeForPlayer = function(teamId, pid) {
+  closePlayerPanel();
+  if (document.getElementById('trades-page') && window.trTradeFor) { window.trTradeFor(teamId, pid); return; }
+  window._tradeWith = {team: teamId, pid: pid};
+  window.goToTab('trades');
+};
+
 window.releasePlayer = async function(pid, name) {
   const base = `/leagues/{{ league_id }}/players/${pid}/release`;
   let cost;
@@ -698,6 +707,23 @@ document.body.addEventListener('htmx:historyRestore', function(e) {
 // failed, the error is brought into view.
 // A live refresh after a sim day (liveRefreshTab) is quiet too, and also
 // keeps the scroll of the tab's own scrolling table (#stats-scroll).
+// Several drop-downs on one tab (the Budget tab's front office) each save
+// and reload the tab. An answer that lands while another pick is still
+// saving would put that pick's old value back, so only the last answer
+// out is swapped in (Josh, 2026-11-13).
+var _quietPending = 0;
+function _isQuietForm(elt) { return !!(elt && elt.closest && elt.closest('[data-quiet-swap]')); }
+document.body.addEventListener('htmx:beforeRequest', function(e) {
+  if (_isQuietForm(e.detail.elt)) _quietPending++;
+});
+document.body.addEventListener('htmx:afterRequest', function(e) {
+  if (_isQuietForm(e.detail.elt)) _quietPending = Math.max(0, _quietPending - 1);
+});
+document.body.addEventListener('htmx:beforeSwap', function(e) {
+  if (e.detail.target.id !== 'tab-content') return;
+  var elt = e.detail.requestConfig && e.detail.requestConfig.elt;
+  if (_isQuietForm(elt) && _quietPending > 1 && e.detail.shouldSwap) e.detail.shouldSwap = false;
+});
 var _quietScroll = null;
 var _quietInner = null;
 var _quietHeight = 0;
@@ -1076,6 +1102,16 @@ window.nextMoveStatus = function(msg, color) { window.simCardStatus(msg, color);
 // Reload the button for the page now showing: the league may have moved on
 // (the champion is crowned), or a tab swap changed go-to into do-it. Not
 // while a sim runs, which owns the button (Stop).
+// Point at the next-move button (Play...) for a few seconds: after the last
+// trade offer on the board is turned down, the next thing is to play on.
+window.pulseNextMove = function() {
+  window._nmPulseUntil = Date.now() + 5000;
+  var nm = document.getElementById('next-move');
+  if (!nm) return;
+  nm.classList.remove('nm-pulse');
+  void nm.offsetWidth;
+  nm.classList.add('nm-pulse');
+};
 window.refreshNextMove = function(path) {
   if (window._nmBusy || !document.getElementById('next-move')) return;
   var page = (path || location.pathname).split('?')[0].replace(/\/$/, '').split('/').pop();
@@ -1093,6 +1129,7 @@ window.refreshNextMove = function(path) {
       if (fresh.dataset.mp !== cur.dataset.mp) { window.location.reload(); return; }
       if (fresh.dataset.sig === cur.dataset.sig) return;
       cur.replaceWith(fresh);
+      if (window._nmPulseUntil > Date.now()) fresh.classList.add('nm-pulse');
       if (window.schedSyncBoxes) window.schedSyncBoxes();
     })
     .catch(function() {});

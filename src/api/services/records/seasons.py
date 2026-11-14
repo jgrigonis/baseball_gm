@@ -356,6 +356,13 @@ def career_cards(
     }
 
 
+# Only stats whose name doesn't say what they are get a hover (Josh,
+# 2026-11-13): "Home runs" needs no tip saying "Home runs".
+TIPPED = {"RBI", "OBP", "SLG", "OPS", "IP", "ERA", "WHIP"}
+
+
 def _tip(key: str, col: str) -> str:
+    if key not in TIPPED:
+        return ""
     book = glossary.PIT if col.startswith("pitch") else glossary.BAT
     return book.get(key, "")

@@ -155,9 +155,9 @@ SETTINGS: tuple[tuple[str, tuple[Setting, ...]], ...] = (
                 ("115", "105", "95", "85", "75"),
                 ("Long leash", "Short leash"),
                 "The pitch count a starter is usually pulled at on a normal "
-                "day; 95 is standard. One who's getting hit can come out "
-                "sooner, and at 85 or 75 he's pulled sooner the third time "
-                "through the order.",
+                "day; 85 is standard. One who's getting hit can come out "
+                "sooner, and at 75 he's pulled sooner the third time through "
+                "the order.",
             ),
             Setting(
                 "closer_usage",

@@ -41,6 +41,12 @@
                title="Let him go to free agency">
          Release
        </button>
+       {% elif can_trade_for %}
+       <button class="btn btn-secondary pp-action"
+               onclick="tradeForPlayer('{{ player.team_id }}', '{{ player.player_id }}')"
+               title="Open Trades with his team and him picked">
+         Trade for him
+       </button>
        {% elif my_team_id and player.waiver %}
        {% if player.waiver.from_team_id == my_team_id %}
        {% elif my_team_id in player.waiver.claimants %}

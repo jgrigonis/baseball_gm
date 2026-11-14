@@ -80,6 +80,6 @@ def test_defense_weight():
 def test_protect_arms():
     p = fo.protect_arms(ManagerProfile(starter_usage="115"))
     assert p.tired_starters == "protect"
-    assert p.starter_usage == "95"
-    p = fo.protect_arms(ManagerProfile(starter_usage="85"))
     assert p.starter_usage == "85"
+    p = fo.protect_arms(ManagerProfile(starter_usage="75"))
+    assert p.starter_usage == "75"

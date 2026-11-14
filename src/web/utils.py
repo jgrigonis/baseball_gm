@@ -1,6 +1,7 @@
 # src/web/utils.py
 import hashlib
 from functools import lru_cache
+from datetime import date
 from pathlib import Path
 
 from fastapi import Request
@@ -55,6 +56,18 @@ templates.env.globals["team_badge"] = team_badge
 templates.env.globals["player_face"] = player_face
 # "P" for any pitcher, so a generated sp/rp lean never shows ("2B" otherwise)
 templates.env.filters["pos_label"] = display_position
+
+
+def long_date(value) -> str:
+    """'2028-07-06' (or a date) -> 'July 6, 2028'; anything else as is."""
+    try:
+        d = value if hasattr(value, "strftime") else date.fromisoformat(str(value)[:10])
+    except ValueError:
+        return str(value)
+    return f"{d.strftime('%B')} {d.day}, {d.year}"
+
+
+templates.env.filters["long_date"] = long_date
 
 
 def grade_class(grade: str | None) -> str:

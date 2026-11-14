@@ -399,7 +399,7 @@ def test_power_rankings_lean_on_paper_early(client, db_conn, factory, league):
     assert html.count('onclick="prSort(this)"') >= 6
 
 
-def test_the_sidebar_links_to_it_until_the_draft_is_done(client, db_conn, league):
+def test_the_sidebar_links_to_it_until_opening_day(client, db_conn, league):
     lg, _, _ = league
     # The top bar's team chip links there with an href too.
     link = f'hx-get="/leagues/{lg.id}/welcome"'
@@ -410,6 +410,9 @@ def test_the_sidebar_links_to_it_until_the_draft_is_done(client, db_conn, league
     db_conn.execute(
         "UPDATE drafts SET state = 'complete' WHERE league_id = %s", (lg.id,)
     )
+    db_conn.execute("UPDATE leagues SET state = 'preseason' WHERE id = %s", (lg.id,))
+    assert link in client.get(f"/leagues/{lg.id}/league").text
+    db_conn.execute("UPDATE leagues SET state = 'season' WHERE id = %s", (lg.id,))
     assert link not in client.get(f"/leagues/{lg.id}/league").text
 
 

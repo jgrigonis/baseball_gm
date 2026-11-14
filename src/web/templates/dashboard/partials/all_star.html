@@ -29,10 +29,14 @@
       <span class="as-warn">Your ballot isn't saved yet.</span> It starts out with the stat leaders at each
       position. Change any pick you like and save. If you don't, these picks count for you.
       {% endif %}
-      <br>A 1st choice at a position is worth 2 points, every other vote 1. Vote for your own players as much
-      as you like. The top {{ quota['c'] }} at each position, the top {{ quota['dh'] }} DHs and the top
-      {{ quota['p'] }} pitchers make it, and the next best vote-getters fill the rest of the 64 spots.
-      <span class="as-dim">{{ voted }} of {{ teams }} teams have voted. AI GMs vote when the ballot closes.</span>
+      <span class="as-dim">{{ voted }} of {{ teams }} teams have voted.</span>
+      <details class="as-how">
+        <summary>How it works</summary>
+        A 1st choice at a position is worth 2 points, every other vote 1. Vote for your own players as much
+        as you like. The top {{ quota['c'] }} at each position, the top {{ quota['dh'] }} DHs and the top
+        {{ quota['p'] }} pitchers make it, and the next best vote-getters fill the rest of the 64 spots.
+        AI GMs vote when the ballot closes.
+      </details>
     </div>
   </div>
 
@@ -215,6 +219,7 @@
     var card = asCard(slot);
     if (card.classList.contains('as-open')) { asClose(slot); return; }
     asTouched[slot] = {};
+    card.classList.remove('as-just-done');
     card.querySelector('.as-full-msg').textContent = '';
     asMark(slot);
     card.classList.add('as-open');
@@ -222,6 +227,9 @@
   window.asClose = function(slot) {
     var card = asCard(slot);
     card.classList.remove('as-open');
+    // A faint gold outline on the position just finished (Josh, 2026-11-13).
+    document.querySelectorAll('#as-ballot .as-slot.as-just-done').forEach(function(c) { c.classList.remove('as-just-done'); });
+    card.classList.add('as-just-done');
     card.scrollIntoView({block: 'nearest', behavior: 'smooth'});
   };
   window.asChoose = function(btn) {

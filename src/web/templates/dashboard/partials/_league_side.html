@@ -36,8 +36,8 @@
     {% if shown or gname == 'League' %}
     <div class="side-group">
       <div class="side-head">{{ gname }}</div>
-      {% if gname == 'My team' and team_page_label and not draft_complete and not is_viewer %}
-        {# Meet your team / Season preview: until the draft is done. #}
+      {% if gname == 'My team' and team_page_label and (not draft_complete or league_state in ('draft', 'preseason')) and not is_viewer %}
+        {# Meet your team / Season preview: until Opening Day (Josh, 2026-11-13). #}
         <a href="/leagues/{{ league_id }}/welcome" title="{{ team_page_label }}"
            class="tab-link{% if path.endswith('/welcome') %} active{% endif %}"
            hx-get="/leagues/{{ league_id }}/welcome"

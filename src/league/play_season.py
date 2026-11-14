@@ -47,6 +47,8 @@ from src.league.statistics.print_standings import print_standings
 from src.team.team_in_game import TeamInGame
 from src.util.logger import setup_logger
 
+log = logging.getLogger(__name__)
+
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -671,11 +673,11 @@ def _play_game(
     if not home_starter_id:
         home_starter_id = _best_pitcher_id(home_team)
         if home_starter_id:
-            print(f"  ⚠ No rotation for {home_team.record.mascot} — using best pitcher")
+            log.debug("No rotation for %s, using best pitcher", home_team.record.mascot)
     if not away_starter_id:
         away_starter_id = _best_pitcher_id(away_team)
         if away_starter_id:
-            print(f"  ⚠ No rotation for {away_team.record.mascot} — using best pitcher")
+            log.debug("No rotation for %s, using best pitcher", away_team.record.mascot)
 
     # Bullpen roles
     bpr = BullpenRepository(conn)
@@ -798,7 +800,8 @@ def _play_game(
         if away_starter and away_starter.pitcher_fatigue
         else "N/A"
     )
-    print(
+    # Not printed: the server's console isn't a game log (Josh, 2026-11-13).
+    log.debug(
         f"  ⚾ {away_team.record.mascot}"
         f" ({away_starter.record.last_name if away_starter else '?'}, energy={away_energy})"
         f" @ {home_team.record.mascot}"

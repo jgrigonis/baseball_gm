@@ -285,9 +285,14 @@ def test_the_first_memo_to_a_gm_welcomes_them(lg):
     for seed in range(10):
         later = om.preseason({}, fields, random.Random(seed))
         assert not any(later.startswith(w) for w in welcomes)
-    assert owner_office.preseason_memo(
+    memo = owner_office.preseason_memo(
         x.db, x.league.id, x.teams[0].id, x.gm.id, x.season.id
-    ) == {"body": body, "mood": "content"}
+    )
+    assert (memo["body"], memo["mood"]) == (body, "content")
+    # Meet your team shows it whole: the only unread message is marked read.
+    assert not memo["seen"] and owner_office.unseen(x.db, x.gm.id) == 1
+    owner_office.mark_seen_if_only(x.db, x.gm.id, memo["id"])
+    assert owner_office.unseen(x.db, x.gm.id) == 0
 
 
 def test_the_season_review_message(lg, factory):

@@ -54,6 +54,9 @@ def player_panel(
     # Your own players can be released, and free agents signed.
     ctx["my_team_id"] = gm.get("team_id") if gm and not ctx.get("is_viewer") else None
     ctx["can_shop"] = _can_shop(db, league_id, ctx["player"], ctx["my_team_id"])
+    ctx["can_trade_for"] = _can_trade_for(
+        db, league_id, ctx["player"], ctx["my_team_id"]
+    )
     return templates.TemplateResponse(
         request, "dashboard/partials/player_panel.html", ctx
     )
@@ -64,6 +67,20 @@ def _can_shop(db, league_id: str, player: dict | None, my_team_id) -> bool:
     to the AI teams (src/api/services/trade_shop.py)."""
     if not player or not my_team_id or player["team_id"] != my_team_id:
         return False
+    return _tradeable_now(db, league_id, player)
+
+
+def _can_trade_for(db, league_id: str, player: dict | None, my_team_id) -> bool:
+    """Another team's player, while the trade window is open: Trade for him
+    opens the Trades builder with his team and him picked."""
+    if not player or not my_team_id or not player.get("team_id"):
+        return False
+    if player["team_id"] == my_team_id or player.get("waiver"):
+        return False
+    return _tradeable_now(db, league_id, player)
+
+
+def _tradeable_now(db, league_id: str, player: dict) -> bool:
     if player.get("roster_status") not in trades.TRADEABLE:
         return False
     league = LeagueRepository(db).get_by_id(league_id)

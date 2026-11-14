@@ -330,6 +330,10 @@ a.topbar-team:hover strong { text-decoration: underline; text-underline-offset: 
 .nm-ready .btn { background: var(--green-dim); border-color: var(--green); color: var(--green); }
 .nm-quiet .btn { background: var(--bg-3); border-color: var(--border-hi); color: var(--text-dim); }
 .next-move .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+/* window.pulseNextMove(): three slow glows on the main button. */
+.next-move.nm-pulse .nm-main { animation: nmPulse 1.2s ease-in-out 3; }
+@keyframes nmPulse { 50% { box-shadow: 0 0 0 2px var(--amber), 0 0 14px var(--amber-dim); } }
+@media (prefers-reduced-motion: reduce) { .next-move.nm-pulse .nm-main { animation: none; box-shadow: 0 0 0 2px var(--amber); } }
 .next-move .nm-stop { display: none; background: var(--red-dim); border-color: var(--red); color: var(--red); }
 /* While a sim runs, the button is Stop. */
 .nm-simming .nm-stop { display: inline-flex; }
@@ -1583,6 +1587,9 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
 /* ── All-Stars tab ──────────────────────────────────────────────────────────── */
 .as-intro { margin-bottom: 16px; }
 .as-note { font-family: var(--font-mono); font-size: 12px; line-height: 1.8; color: var(--text-dim); }
+.as-how { margin-top: 2px; }
+.as-how > summary { cursor: pointer; color: var(--sky); width: fit-content; }
+.as-how[open] > summary { margin-bottom: 2px; }
 .as-ok { color: var(--green); }
 .as-warn { color: var(--amber); }
 .as-dim { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); }
@@ -1603,6 +1610,7 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
 .as-open .as-caret { display: inline-block; transform: rotate(180deg); }
 .as-slot { min-width: 0; }
 .as-slot.as-open { grid-column: 1 / -1; }
+.as-slot.as-just-done { box-shadow: 0 0 0 1px color-mix(in srgb, var(--amber) 55%, transparent); }
 .as-full { display: none; border-top: 1px solid var(--border); }
 .as-open .as-full { display: block; }
 .as-full-note { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 16px; }

@@ -589,6 +589,8 @@ def owner_card(
     memo = owner_office.preseason_memo(db, league_id, team_id, gm_id, season_id)
     if not memo:
         return None
+    if not memo["seen"]:
+        owner_office.mark_seen_if_only(db, gm_id, memo["id"])
     return {
         "name": card["name"],
         "archetype": card["archetype"],

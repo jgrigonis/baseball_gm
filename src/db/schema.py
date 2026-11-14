@@ -1019,7 +1019,7 @@ CREATE TABLE IF NOT EXISTS gm_profiles (
                          CHECK (sac_bunt         IN ('never', 'situational', 'frequent')),
 
     -- Pitching tendencies
-    starter_usage TEXT NOT NULL DEFAULT '95'   -- pitches (migration 129)
+    starter_usage TEXT NOT NULL DEFAULT '85'   -- pitches (migrations 129, 130)
                       CHECK (starter_usage IN ('75', '85', '95', '105', '115')),
     closer_usage  TEXT NOT NULL DEFAULT 'saves-only'
                       CHECK (closer_usage  IN ('saves-only', 'high-leverage', 'best-available')),
