@@ -293,6 +293,19 @@ class TradeVoteRequest(BaseModel):
     yes: bool
 
 
+class DraftPickRequest(BaseModel):
+    """A person's pick in the live draft (Long Form)."""
+
+    player_id: str
+
+
+class DraftScoutsRequest(BaseModel):
+    """Leave this pick to the scouts' default, or with rest, every pick
+    left."""
+
+    rest: bool = False
+
+
 class DraftStrategyRequest(BaseModel):
     """Need chips (chip key → level 0-2: Low, Med, High), age preference
     (-1 upside … 1 ready sooner) and pinned player ids. Checked by

@@ -72,7 +72,8 @@
       {% for key, label in [
            ('decision_window_sec', 'Decision Window'),
            ('draft_window_sec', 'Draft Window'),
-           ('lineup_window_sec', 'Lineup Window')] %}
+           ('lineup_window_sec', 'Lineup Window'),
+           ('pick_timer_sec', 'Draft Pick Timer')] %}
       <div class="field">
         <label for="{{ key | replace('_', '-') }}">{{ label }} (sec)</label>
         <input type="number" name="{{ key }}" id="{{ key | replace('_', '-') }}" value="{{ league[key] }}"

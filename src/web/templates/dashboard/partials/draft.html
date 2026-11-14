@@ -42,8 +42,9 @@
   <div class="page-header" style="margin-bottom:0;">
     <h1 class="page-title">Draft</h1>
     {% if draft_id %}
-      <span class="page-subtitle" style="margin-left:10px;">{{ board|length }} prospects</span>
-      {% if pick_position %}<span class="page-subtitle" style="color:var(--amber);margin-left:8px;">Pick #{{ pick_position }}</span>{% endif %}
+      <span class="page-subtitle" style="margin-left:10px;"><span id="prospect-count">{{ board|length }}</span> prospects</span>
+      {% if pick_position and not (live and live.state == "open") %}<span class="page-subtitle" style="color:var(--amber);margin-left:8px;">Pick #{{ pick_position }}</span>{% endif %}
+      {% if live %}<span class="page-subtitle live-tag" title="{% if live.timer %}Each pick has {{ live.timer }} seconds. When the clock runs out, the scouts make your default pick.{% else %}You make each of your picks. The AI teams pick the moment they're up.{% endif %}">{{ "● Live draft" if live.state == "open" else "Live draft" }}{% if live.timer %} · {{ live.timer }}s a pick{% endif %}</span>{% endif %}
 
       <div class="spacer"></div>
       {% if team_id and not is_viewer %}
@@ -95,8 +96,8 @@
 {# Phones show one column at a time, picked here (showDraftCol). #}
 <div class="draft-seg" role="tablist" aria-label="Draft board">
   <button type="button" data-col="strategy" onclick="showDraftCol('strategy')">Strategy <b id="seg-pin-count"></b></button>
-  <button type="button" data-col="players" onclick="showDraftCol('players')">Players <b>{{ board|length }}</b></button>
-  <button type="button" data-col="picks" onclick="showDraftCol('picks')">My picks</button>
+  <button type="button" data-col="players" onclick="showDraftCol('players')">Players <b id="seg-player-count">{{ board|length }}</b></button>
+  <button type="button" data-col="picks" onclick="showDraftCol('picks')">{{ "Live" if live and live.state == "open" else "My picks" }}</button>
 </div>
 
 {# ── Three-column layout ───────────────────────────────────────────────────── #}
@@ -198,6 +199,27 @@
 
   {# ── Right: Projected picks ───────────────────────────────────────────────── #}
   <div class="draft-col" data-col="picks">
+    {% if live and live.state == "open" %}
+    <div id="live-section" class="draft-col-body">
+      <div class="draft-col-hdr"><span class="col-label" style="color:var(--amber);">On the clock</span></div>
+      <div id="live-clock" class="live-clock"></div>
+      <div class="draft-col-hdr">
+        <span class="col-label" style="color:var(--amber);" id="live-next-label">Your next pick</span>
+        <div id="live-next-sub" class="live-sub"></div>
+      </div>
+      <div id="live-next"></div>
+      <div id="live-actions" class="live-actions"></div>
+      <div class="draft-col-hdr"><span class="col-label" style="color:var(--amber);">Latest picks</span></div>
+      <div id="live-recent"></div>
+    </div>
+    {% else %}
+    {% if live %}
+    <div class="live-note">
+      <b>Live draft.</b> You make each of your picks{% if live.timer %}, with {{ live.timer }} seconds for each one. When the clock runs out, the scouts make your default pick{% endif %}.
+      The AI teams pick the moment they're up. Your strategy sets your default pick.
+      {% if multiplayer %}It starts when everyone is ready.{% else %}Start it with Start Draft.{% endif %}
+    </div>
+    {% endif %}
     <div id="preview-section">
       <div class="draft-col-hdr">
         <span class="col-label" style="color:var(--amber);">Your first 5 picks · projected</span>
@@ -207,6 +229,7 @@
       </div>
       <div id="preview-list"></div>
     </div>
+    {% endif %}
   </div>
 
 </div>
@@ -348,6 +371,42 @@
 .prev-empty { padding: 10px 12px; font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); }
 #preview-section { flex-shrink: 0; }
 .draft-actions { display: contents; }
+/* ── Live draft (Long Form) ─────────────────────────────────────────────── */
+.live-tag { color: var(--green) !important; margin-left: 8px; }
+.live-note {
+  padding: 10px 12px; border-bottom: 1px solid var(--border);
+  font-size: 12px; color: var(--text-dim); line-height: 1.5;
+}
+.live-note b { color: var(--text-hi); }
+#live-section .draft-col-hdr { position: static; }
+.live-clock { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.live-clock .lc-pick { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); }
+.live-clock .lc-team { font-weight: 600; font-size: 15px; color: var(--text-hi); margin-top: 2px; }
+.live-clock .lc-time { font-family: var(--font-mono); font-size: 20px; font-weight: 600; color: var(--text-hi); margin-top: 4px; }
+.live-clock .lc-time.soon { color: var(--amber); }
+.live-clock.you { background: var(--amber-lo); }
+.live-clock.you .lc-team { color: var(--amber); }
+.live-sub { font-family: var(--font-mono); font-size: 10px; color: var(--muted); margin-top: 4px; }
+.live-row {
+  display: grid; grid-template-columns: 30px 1fr auto; gap: 0 8px; align-items: center;
+  padding: 7px 12px; border-bottom: 1px solid var(--border);
+}
+.live-row .d-name { cursor: pointer; }
+.live-default {
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--bg); background: var(--amber); padding: 1px 5px; margin-left: 6px; vertical-align: 1px;
+}
+.live-actions { display: flex; gap: 6px; flex-wrap: wrap; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+.live-actions .btn { font-size: 11px; padding: 5px 10px; }
+.live-actions .live-auto-note { font-size: 12px; color: var(--text-dim); flex-basis: 100%; }
+.draft-btn { font-size: 11px; padding: 4px 10px; margin-left: 6px; }
+.recent-row {
+  display: grid; grid-template-columns: 42px 1fr; gap: 0 8px; padding: 6px 12px;
+  border-bottom: 1px solid var(--border); font-size: 12px;
+}
+.recent-row .rp { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); line-height: 1.4; }
+.recent-row.mine { background: var(--amber-lo); }
+.recent-row .rt { color: var(--text-dim); font-size: 11px; }
 .draft-seg, .draft-dock { display: none; }
 
 /* ── Phones: one column at a time, actions pinned at the bottom ───────────── */
@@ -422,6 +481,9 @@ const SUGGESTED   = {{ suggested   | tojson }};  // {chips, reasons} from the ro
 const MAX_PINS    = 10;
 const LEVELS      = ['Low', 'Med', 'High'];
 const STORAGE_KEY = `draft3col_${DRAFT_ID}`;
+const LIVE        = {{ live | tojson }};  // Long Form's live draft: {state, timer}, or null
+const LIVE_OPEN   = !!(LIVE && LIVE.state === 'open');
+const TAKEN       = new Set();  // picked since the page loaded (live draft)
 
 
 /* ── State ──────────────────────────────────────────────────────────────────── */
@@ -450,7 +512,8 @@ function playerMetaHtml(p) {
 /* ── Explore sort ───────────────────────────────────────────────────────────── */
 function computeExploreOrder() {
   const { s1, s2, s3 } = exploreSort;
-  let players = ALL_PLAYERS.filter(p => !exploreFilter || p.player_type === exploreFilter);
+  let players = ALL_PLAYERS.filter(p => !TAKEN.has(p.player_id)
+    && (!exploreFilter || p.player_type === exploreFilter));
   players.sort((a, b) => {
     const d1 = skillVal(a, s1) - skillVal(b, s1);
     if (d1 !== 0) return d1;
@@ -465,9 +528,10 @@ function computeExploreOrder() {
 /* ── Render: Explore (middle) ─────────────────────────────────────────────────  */
 function renderExplore() {
   const players = computeExploreOrder();
+  const left    = ALL_PLAYERS.filter(p => !TAKEN.has(p.player_id));
   const total   = exploreFilter
-    ? ALL_PLAYERS.filter(p => p.player_type === exploreFilter).length
-    : ALL_PLAYERS.length;
+    ? left.filter(p => p.player_type === exploreFilter).length
+    : left.length;
 
   document.getElementById('explore-count').textContent =
     players.length !== total ? `${players.length} / ${total}` : `${players.length} players`;
@@ -484,7 +548,8 @@ function renderExplore() {
     const pinBtn = `
       <button class="pin-btn ${pinned ? 'on' : ''}" data-pin="${p.player_id}"
               title="${pinned ? 'Unpin' : 'Pin'}"
-              ${!pinned && strategy.pins.length >= MAX_PINS ? 'disabled' : ''}>${pinned ? '★' : '☆'}</button>`;
+              ${!pinned && strategy.pins.length >= MAX_PINS ? 'disabled' : ''}>${pinned ? '★' : '☆'}</button>`
+      + (myTurn() ? `<button class="btn btn-secondary draft-btn" data-draft="${p.player_id}">Draft</button>` : '');
 
     row.innerHTML = `
       <span class="${gradeClass(p.overall)} d-grade">${p.overall}</span>
@@ -492,11 +557,16 @@ function renderExplore() {
         <div class="d-name">${p.first_name} ${p.last_name}</div>
         <div class="d-meta">${playerMetaHtml(p)}</div>
         <div class="d-skills">${playerGradesHtml(p)}</div>
-      </div>${pinBtn}`;
+      </div><div style="display:flex;align-items:center;">${pinBtn}</div>`;
 
     row.querySelector('.pin-btn').addEventListener('click', e => {
       e.stopPropagation();
       togglePin(p.player_id);
+    });
+    const draftBtn = row.querySelector('[data-draft]');
+    if (draftBtn) draftBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      draftPlayer(p.player_id);
     });
     row.addEventListener('click', () => openPlayerPanel(p.player_id));
 
@@ -721,6 +791,7 @@ async function saveStrategy() {
       renderStrategy();
       updateCheckmark();
       gmToast('✓ Strategy saved', 'ok');
+      if (LIVE_OPEN) loadShortList();
     } else {
       gmToast('✗ Strategy not saved. Try again.', 'err');
     }
@@ -816,6 +887,223 @@ window.runDraft = function() {
   saveStrategy().then(ok => { if (ok) run(); else reset(); });
 };
 
+/* ── Live draft (Long Form) ──────────────────────────────────────────────────── */
+// A one-person league starts it with the top bar's Start Draft.
+window.startDraft = function() {
+  window.nextMoveBusy('execute-btn', 'Starting…');
+  const go = () => fetch(`/leagues/${LEAGUE_ID}/draft/start`, {method: 'POST'})
+    .then(r => r.json().then(d => ({ok: r.ok, d})))
+    .then(({ok, d}) => {
+      if (!ok) {
+        window.nextMoveIdle('execute-btn');
+        gmToast('✗ ' + (d.detail || 'The draft didn\'t start.'), 'err');
+        return;
+      }
+      window.location.reload();
+    })
+    .catch(() => { window.nextMoveIdle('execute-btn'); gmToast('✗ Network error.', 'err'); });
+  if (!unsavedStrategy()) { go(); return; }
+  saveStrategy().then(ok => { if (ok) go(); else window.nextMoveIdle('execute-btn'); });
+};
+
+let liveState = null;
+let liveDeadline = null;   // Date.now() ms when the clock runs out
+let liveNext = null;       // the short list for my next pick
+let livePick = null;       // the pick the board was last drawn for
+let livePolling = false;
+let liveBusy = false;
+
+function myTurn() { return !!(liveState && liveState.on_clock && liveState.on_clock.you); }
+function player(pid) { return ALL_PLAYERS.find(p => p.player_id === pid); }
+function fmtClock(sec) {
+  const m = Math.floor(sec / 60), x = sec % 60;
+  return `${m}:${x < 10 ? '0' : ''}${x}`;
+}
+
+async function pollLive() {
+  if (!document.getElementById('live-section')) { clearInterval(livePollTimer); return; }
+  if (livePolling) return;
+  livePolling = true;
+  try {
+    const res = await fetch(`/leagues/${LEAGUE_ID}/draft/live`);
+    if (!res.ok) return;
+    const d = await res.json();
+    if (d.redirect) { window.location.href = d.redirect; return; }
+    const wasMine = myTurn();
+    liveState = d;
+    liveDeadline = d.seconds_left === null ? null : Date.now() + d.seconds_left * 1000;
+    if (d.pick !== livePick) {
+      livePick = d.pick;
+      (d.taken || []).forEach(pid => TAKEN.add(pid));
+      const left = String(ALL_PLAYERS.filter(p => !TAKEN.has(p.player_id)).length);
+      ['prospect-count', 'seg-player-count'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = left;
+      });
+      renderExplore();
+      loadShortList();
+      if (myTurn() && !wasMine) gmToast("You're on the clock", 'ok');
+    }
+    renderLive();
+  } catch (e) {
+  } finally { livePolling = false; }
+}
+
+async function loadShortList() {
+  try {
+    const res = await fetch(`/leagues/${LEAGUE_ID}/draft/live/list`);
+    liveNext = res.ok ? (await res.json()).next : null;
+  } catch (e) { liveNext = null; }
+  renderLive();
+}
+
+function renderClock() {
+  const el = document.getElementById('live-clock');
+  const d = liveState;
+  if (!el || !d) return;
+  const on = d.on_clock;
+  el.classList.toggle('you', myTurn());
+  if (!on) {
+    el.innerHTML = `<div class="lc-team">${d.done ? 'Every pick is in.' : 'Waiting…'}</div>
+      <div class="lc-pick">${d.done ? 'Finishing the draft…' : ''}</div>`;
+    return;
+  }
+  let time = '';
+  if (liveDeadline !== null) {
+    const left = Math.max(0, Math.round((liveDeadline - Date.now()) / 1000));
+    time = `<div class="lc-time ${left <= 15 ? 'soon' : ''}" title="When the clock runs out, the scouts make the default pick">⏱ ${fmtClock(left)}</div>`;
+  }
+  el.innerHTML = `
+    <div class="lc-pick">Pick ${on.pick} of ${d.total} · Round ${on.round}</div>
+    <div class="lc-team">${on.you ? "You're up" : on.team}</div>
+    ${on.you ? '' : `<div class="lc-pick">${on.gm ? on.gm : 'AI GM'}</div>`}
+    ${time}`;
+}
+
+function renderLive() {
+  if (!document.getElementById('live-section') || !liveState) return;
+  renderClock();
+  const d = liveState;
+
+  const label = document.getElementById('live-next-label');
+  const sub = document.getElementById('live-next-sub');
+  const list = document.getElementById('live-next');
+  const n = liveNext;
+  if (!n) {
+    label.textContent = 'Your picks';
+    sub.textContent = '';
+    list.innerHTML = '<div class="prev-empty">You have no picks left in this draft.</div>';
+  } else {
+    label.textContent = myTurn() ? `Your pick · #${n.pick}` : `Your next pick · #${n.pick}`;
+    sub.textContent = myTurn()
+      ? 'The default pick follows your saved strategy.'
+      : `${n.away} pick${n.away === 1 ? '' : 's'} away. Likely still there then, if the other teams take their own default picks.`;
+    list.innerHTML = n.players.map((pid, i) => {
+      const p = player(pid);
+      if (!p) return '';
+      const dflt = pid === n.default ? '<span class="live-default">Default</span>' : '';
+      const btn = myTurn() ? `<button class="btn ${pid === n.default ? 'btn-primary' : 'btn-secondary'} draft-btn" data-draft="${pid}">Draft</button>` : '';
+      return `
+        <div class="live-row">
+          <span class="${gradeClass(p.overall)} d-grade">${p.overall}</span>
+          <div style="min-width:0;">
+            <div class="d-name" data-open="${pid}">${p.first_name} ${p.last_name}${dflt}</div>
+            <div class="d-meta">${playerMetaHtml(p)}</div>
+          </div>
+          <div>${btn}</div>
+        </div>`;
+    }).join('') || '<div class="prev-empty">Nobody left to pick.</div>';
+  }
+  list.onclick = e => {
+    const b = e.target.closest('[data-draft]');
+    if (b) return draftPlayer(b.dataset.draft);
+    const o = e.target.closest('[data-open]');
+    if (o) openPlayerPanel(o.dataset.open);
+  };
+
+  const acts = document.getElementById('live-actions');
+  if (d.auto) {
+    acts.innerHTML = `<span class="live-auto-note">The scouts are making the rest of your picks.</span>
+      <button class="btn btn-secondary" onclick="takeOverDraft()">Pick for myself</button>`;
+  } else if (n) {
+    acts.innerHTML = (myTurn() ? `<button class="btn btn-secondary" onclick="scoutsPick(false)"
+        title="Take the default pick">Take the default</button>` : '')
+      + `<button class="btn btn-secondary" onclick="scoutsPick(true)"
+        title="The scouts take your default pick every time you're up, for the rest of the draft">Auto-draft the rest</button>`;
+  } else {
+    acts.innerHTML = '';
+  }
+
+  document.getElementById('live-recent').innerHTML = (d.recent || []).map(r => `
+    <div class="recent-row ${r.mine ? 'mine' : ''}">
+      <div class="rp">#${r.pick}<br>Rd ${r.round}</div>
+      <div style="min-width:0;">
+        <div><b style="color:var(--text-hi);cursor:pointer;" onclick="openPlayerPanel('${r.player_id}')">${r.name || ''}</b>
+          <span class="rt">${posLabel(r.position) || ''}</span></div>
+        <div class="rt">${r.team}${r.auto && r.mine ? ' · scouts' : ''}</div>
+      </div>
+    </div>`).join('') || '<div class="prev-empty">No picks yet.</div>';
+}
+
+async function livePost(path, body) {
+  if (liveBusy) return false;
+  liveBusy = true;
+  try {
+    const res = await fetch(`/leagues/${LEAGUE_ID}/draft/${path}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body || {}),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) { gmToast('✗ ' + (d.detail || 'That didn\'t go through.'), 'err'); return false; }
+    return true;
+  } catch (e) {
+    gmToast('✗ Network error. Try again.', 'err');
+    return false;
+  } finally {
+    liveBusy = false;
+    livePick = null;  // redraw the board
+    pollLive();
+  }
+}
+
+window.draftPlayer = async function(pid) {
+  const p = player(pid);
+  if (!p || !myTurn()) return;
+  const ok = await gmConfirm({
+    title: `Draft ${p.first_name} ${p.last_name}?`,
+    lines: [`${posLabel(p.position) || ''} · Age ${p.age} · with pick #${liveState.on_clock.pick}`],
+    ok: 'Draft him', tone: 'go',
+  });
+  if (!ok) return;
+  if (await livePost('pick', {player_id: pid})) gmToast(`✓ You drafted ${p.first_name} ${p.last_name}`, 'ok');
+};
+
+window.scoutsPick = async function(rest) {
+  if (rest) {
+    const ok = await gmConfirm({
+      title: 'Auto-draft the rest?',
+      lines: ["The scouts take your default pick every time you're up, for the rest of the draft. You can take over again."],
+      ok: 'Auto-draft the rest',
+    });
+    if (!ok) return;
+  }
+  livePost('scouts', {rest});
+};
+
+window.takeOverDraft = function() { livePost('take-over'); };
+
+let livePollTimer = null;
+if (LIVE_OPEN) {
+  pollLive();
+  livePollTimer = setInterval(pollLive, 2000);
+  // The clock counts down between polls.
+  const tick = setInterval(() => {
+    if (!document.getElementById('live-section')) { clearInterval(tick); return; }
+    renderClock();
+  }, 1000);
+}
+
 /* ── Storage ─────────────────────────────────────────────────────────────────── */
 function saveToStorage() {
   try {
@@ -904,7 +1192,7 @@ renderStrategy();
 updateSortConstraints();
 renderExplore();
 updateCheckmark();
-schedulePreview();
+if (!LIVE_OPEN) schedulePreview();
 requestAnimationFrame(measureHeader);
 window.addEventListener('resize', measureHeader);
 

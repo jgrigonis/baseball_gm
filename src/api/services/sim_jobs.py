@@ -20,7 +20,15 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 
-from src.api.services import awards, badges, career, coach, hall_of_fame, news
+from src.api.services import (
+    awards,
+    badges,
+    career,
+    coach,
+    hall_of_fame,
+    live_draft,
+    news,
+)
 from src.api.services.records import play as records_play
 from src.api.services.draft_execute import execute_blitz_draft
 from src.api.services.league_start import start_league
@@ -74,9 +82,27 @@ def _draft(conn, league_id: str, params: dict, report: Report) -> dict:
     draft = DraftRepository(conn).get_current_for_league(league_id)
     if not draft:
         return {"redirect": f"/leagues/{league_id}/draft"}
-    if draft["state"] != "complete":
+    if live_draft.is_live(draft):
+        # The live draft's last pick is in (src/api/services/live_draft.py).
+        if draft["state"] == "open" and live_draft.LiveDraft(conn, draft["id"]).done:
+            live_draft.finish(conn, draft["id"])
+            _after_live_draft(conn, league_id)
+    elif draft["state"] != "complete":
         execute_blitz_draft(draft["id"], conn)
     return {"redirect": f"/leagues/{league_id}/draft/results"}
+
+
+def _after_live_draft(conn, league_id: str) -> None:
+    """A multiplayer league's draft period ends with the live draft: on to
+    the preseason's first period."""
+    from src.api.services import ready_check, turn_alerts
+    from src.db.repositories.ready_check_repo import ReadyCheckRepository
+
+    if not ready_check.is_multiplayer(conn, league_id):
+        return
+    ReadyCheckRepository(conn).next_period(league_id)
+    conn.commit()
+    turn_alerts.after_period(conn, league_id)
 
 
 def _start(conn, league_id: str, params: dict, report: Report) -> dict:

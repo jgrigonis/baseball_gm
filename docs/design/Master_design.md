@@ -150,6 +150,8 @@ Different formats per mode, reflecting the time available:
 - If a GM doesn't pick in time, auto-selects from their submitted preference list
 - Preference list acts as a fallback, not the primary mechanism
 - No one can pause the draft, the Commissioner included (see [multiplayer.md](multiplayer.md))
+- A one-person league has no timer. Everyone sees a short list for their next pick: the best players likely still there, with the default pick first (Josh, 2026-11-14)
+- Built in `src/api/services/live_draft.py`; the timer is `leagues.pick_timer_sec`
 
 ---
 

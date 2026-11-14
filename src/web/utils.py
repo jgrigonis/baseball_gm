@@ -297,6 +297,15 @@ def _games_remaining(db, season_id: str | None) -> int:
     return num if num else 0
 
 
+def _live_draft_state(db, league_id: str) -> str | None:
+    from src.db.repositories.draft_repo import DraftRepository
+
+    draft = DraftRepository(db).get_current_for_league(league_id)
+    if not draft or draft["format"] != "interactive" or draft["state"] == "complete":
+        return None
+    return draft["state"]
+
+
 def _shell_ctx(
     request: Request,
     db,
@@ -350,6 +359,11 @@ def _shell_ctx(
                     "is_commissioner": gm.get("id") is not None
                     and league["commissioner_gm_id"] == gm["id"],
                     "draft_complete": draft_complete,
+                    # Long Form's live draft: "pending" until it starts,
+                    # "open" while picks are made (src/api/services/live_draft.py).
+                    "live_draft": _live_draft_state(db, league_id)
+                    if league["state"] == "draft"
+                    else None,
                     # Free agent bids open, from the draft into the
                     # preseason (src/api/services/offseason_fa.py).
                     "fa_bidding": bool(league.get("fa_bidding"))

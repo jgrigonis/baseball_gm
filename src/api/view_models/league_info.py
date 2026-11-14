@@ -25,6 +25,7 @@ def league_info(db, league: dict) -> dict:
         "decision_window_sec": league["decision_window_sec"],
         "draft_window_sec": league["draft_window_sec"],
         "lineup_window_sec": league["lineup_window_sec"],
+        "pick_timer_sec": league.get("pick_timer_sec") or 90,
         "reentry_enabled": bool(league["reentry_enabled"]),
         # Owners can fire GMs (src/api/services/owner_review.firing_on).
         "owner_firing": owner_review.firing_on(league),

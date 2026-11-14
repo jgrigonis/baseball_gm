@@ -24,7 +24,7 @@ import sys
 import threading
 import time
 
-from src.api.services import sim_jobs, turn_alerts
+from src.api.services import live_draft, sim_jobs, turn_alerts
 from src.db.connection import get_connection, rollback_quietly
 from src.db.repositories.sim_job_repo import SimJobRepository
 from src.util.logger import configure_app_logging
@@ -148,6 +148,15 @@ class Worker:
             return
         if queued:
             log.info("League clock: queued %d period(s)", queued)
+        # Live drafts (Long Form): picks whose clock ran out.
+        try:
+            made = live_draft.expire_due(self.sim_conn)
+        except Exception:
+            log.exception("The draft clock failed")
+            rollback_quietly(self.sim_conn)
+            return
+        if made:
+            log.info("Draft clock: the scouts made %d pick(s)", made)
 
     def close(self) -> None:
         self.sim_conn.close()

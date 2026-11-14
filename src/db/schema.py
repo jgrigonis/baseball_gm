@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS leagues (
                              )),
     commissioner_gm_id   TEXT,
     draft_window_sec     INTEGER NOT NULL DEFAULT 300,
+    pick_timer_sec       INTEGER NOT NULL DEFAULT 90,   -- each person's pick in a multiplayer live draft (Long Form)
     lineup_window_sec    INTEGER NOT NULL DEFAULT 600,  -- the first period after the draft
 
     -- Ready-check (multiplayer). A GM is ready when gms.ready_period equals
@@ -201,6 +202,7 @@ CREATE TABLE IF NOT EXISTS drafts (
                        CHECK (state IN ('pending', 'open', 'complete')),
     current_pick   INTEGER NOT NULL DEFAULT 1,
     pick_timer_sec INTEGER NOT NULL DEFAULT 90,  -- interactive drafts only
+    pick_deadline  TIMESTAMPTZ,  -- when the pick on the clock runs out (live draft, multiplayer)
 
     created_at TEXT NOT NULL DEFAULT (NOW()),
 
@@ -799,6 +801,7 @@ CREATE TABLE IF NOT EXISTS draft_order (
     draft_id      TEXT    NOT NULL,
     team_id       TEXT    NOT NULL,
     pick_position INTEGER NOT NULL,   -- 1-based; 1 = picks first in round 1
+    auto          BOOLEAN NOT NULL DEFAULT FALSE,  -- live draft: the scouts make the rest of its picks
 
     PRIMARY KEY (draft_id, team_id),
     FOREIGN KEY (draft_id) REFERENCES drafts(id) ON DELETE CASCADE,

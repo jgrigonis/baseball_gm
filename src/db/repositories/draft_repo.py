@@ -59,11 +59,30 @@ class DraftRepository:
         ).fetchall()
         return [_record(r) for r in rows]
 
+    def get_pool_records(self, league_id: str, draft_id: str) -> list[PlayerRecord]:
+        """The whole draft class: prospects still there and those picked in
+        this draft so far, in the same name order as get_prospect_records."""
+        rows = self.conn.execute(
+            """SELECT p.id, p.first_name, p.last_name, p.bats, p.throws,
+                      p.position, sk.*
+               FROM players p
+               JOIN player_status ps ON ps.player_id = p.id
+               JOIN player_skills sk ON sk.player_id = p.id
+               WHERE p.league_id = %s
+                 AND (ps.status = 'prospect'
+                      OR p.id IN (SELECT player_id FROM draft_picks
+                                  WHERE draft_id = %s))
+               ORDER BY p.last_name, p.first_name""",
+            (league_id, draft_id),
+        ).fetchall()
+        return [_record(r) for r in rows]
+
     def get_roster_records(
-        self, team_ids: list[str]
+        self, team_ids: list[str], draft_id: str | None = None
     ) -> dict[str, list[tuple[PlayerRecord, str]]]:
         """{team_id: [(player, status)]} for every player the teams own, in
-        one query."""
+        one query. With draft_id, players picked in that draft are left out,
+        so a live draft's needs stay what they were before it began."""
         rows = self.conn.execute(
             """SELECT tp.team_id, ps.status, p.id, p.first_name, p.last_name,
                       p.bats, p.throws, p.position, sk.*
@@ -72,8 +91,10 @@ class DraftRepository:
                JOIN player_status ps ON ps.player_id = p.id
                JOIN player_skills sk ON sk.player_id = p.id
                WHERE tp.team_id = ANY(%s)
+                 AND NOT EXISTS (SELECT 1 FROM draft_picks dp
+                                 WHERE dp.draft_id = %s AND dp.player_id = p.id)
                ORDER BY tp.team_id, p.last_name, p.first_name""",
-            (team_ids,),
+            (team_ids, draft_id),
         ).fetchall()
         rosters: dict[str, list[tuple[PlayerRecord, str]]] = {t: [] for t in team_ids}
         for r in rows:
