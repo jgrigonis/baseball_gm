@@ -55,8 +55,12 @@ def standings(
     )
     ctx["past_season"] = past
     if not past:
+        viewer = ctx["is_viewer"]
         ctx["headlines"] = headlines(
-            db, league_id, None if ctx["is_viewer"] else my_team_id
+            db,
+            league_id,
+            None if viewer else my_team_id,
+            None if viewer or not gm else gm.get("id"),
         )
     chosen = view if view in STANDINGS_VIEWS else None
     wanted = chosen or request.cookies.get(_view_cookie(league_id))

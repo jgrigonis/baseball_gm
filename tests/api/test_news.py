@@ -639,3 +639,83 @@ class TestRookieGame:
             sum("Rookie" in s["headline"] for s in _stories(db_conn, lg, "all_star"))
             == 1
         )
+
+
+class TestHidingNews:
+    """The x on a story hides it for the GM, Hidden brings it back, and the
+    filter turns whole kinds of story off (Josh, 2026-11-14)."""
+
+    client = TestNewsTab.client
+
+    def _stories(self, db_conn, lg):
+        repo = NewsRepository(db_conn)
+        for key, kind, head in (
+            ("h1", "trade", "Captains make a trade"),
+            ("h2", "streak", "Samurai win 7 straight"),
+        ):
+            repo.add(
+                lg["league"].id, lg["season"].id, "2025-04-01", kind, key, head,
+                weight=2, team_ids=[lg["mine"].id],
+            )  # fmt: skip
+        return {
+            r["key"]: r["id"]
+            for r in db_conn.execute(
+                "SELECT id, key FROM league_news WHERE league_id = %s",
+                (lg["league"].id,),
+            ).fetchall()
+        }
+
+    def test_hide_and_bring_back(self, client, db_conn, lg):
+        ids = self._stories(db_conn, lg)
+        url = f"/leagues/{lg['league'].id}/headlines"
+        assert 'class="news-hide"' in client.get(url).text
+
+        r = client.post(f"{url}/{ids['h1']}/hide", json={"hidden": True})
+        assert r.json() == {"hidden_count": 1}
+        page = client.get(url).text
+        assert "Captains make a trade" not in page
+        assert "Samurai win 7 straight" in page
+        assert 'Hidden (<span id="news-hidden-n">1</span>)' in page
+
+        hidden = client.get(f"{url}?hidden=1").text
+        assert "Hidden Stories" in hidden
+        assert "Captains make a trade" in hidden
+        assert "Samurai win 7 straight" not in hidden
+        assert "Show again" in hidden
+
+        client.post(f"{url}/{ids['h1']}/hide", json={"hidden": False})
+        assert "Captains make a trade" in client.get(url).text
+
+    def test_cant_hide_another_leagues_story(self, client, db_conn, lg):
+        other = lg["factory"].league(state="season")
+        NewsRepository(db_conn).add(other.id, None, "2025-04-01", "trade", "x", "Far")
+        nid = db_conn.execute(
+            "SELECT id FROM league_news WHERE league_id = %s", (other.id,)
+        ).fetchone()["id"]
+        r = client.post(f"/leagues/{lg['league'].id}/headlines/{nid}/hide", json={})
+        assert r.status_code == 404
+
+    def test_filter_turns_kinds_off(self, client, db_conn, lg):
+        self._stories(db_conn, lg)
+        url = f"/leagues/{lg['league'].id}/headlines"
+        r = client.put(f"{url}/filter", json={"kinds_off": ["streak", "nonsense"]})
+        assert r.json() == {"kinds_off": ["streak"]}
+        page = client.get(url).text
+        assert "Samurai win 7 straight" not in page
+        assert "Captains make a trade" in page
+        assert "Filter (1 off)" in page
+        # Filtered-out kinds don't count toward the badge either.
+        repo = NewsRepository(db_conn)
+        db_conn.execute("UPDATE gms SET news_seen_id = 0 WHERE id = %s", (lg["gm"].id,))
+        assert repo.count_unseen(lg["league"].id, lg["gm"].id) == 1
+        # Nor show in the Standings headlines.
+        ctx = news_context(db_conn, lg["league"].id, None, gm_id=lg["gm"].id)
+        heads = [s["headline"] for d in ctx["news_days"] for s in d["stories"]]
+        assert heads == ["Captains make a trade"]
+        from src.api.view_models.news import headlines
+
+        heads = [
+            s["headline"]
+            for s in headlines(db_conn, lg["league"].id, None, lg["gm"].id)
+        ]
+        assert heads == ["Captains make a trade"]

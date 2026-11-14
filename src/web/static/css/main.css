@@ -1867,6 +1867,48 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
 .news-box-link { display: inline-block; margin-top: 4px; font-family: var(--font-mono); font-size: 11px; color: var(--amber); text-decoration: none; }
 .news-box-link:hover { text-decoration: underline; }
 .news-more { text-align: center; padding: 8px 0; }
+/* Hiding stories and the kind filter (migration 134). */
+.news-story { position: relative; }
+.news-hide {
+  position: absolute; top: 4px; right: 6px; width: 24px; height: 24px; padding: 0;
+  background: none; border: 0; color: var(--text-dim); font-size: 16px; line-height: 1;
+  cursor: pointer; opacity: .45;
+}
+.news-story:hover .news-hide, .news-hide:focus-visible { opacity: 1; }
+.news-hide:hover { color: var(--amber); }
+@media (hover: none) { .news-hide { opacity: .8; } }
+.news-story:has(.news-hide) .news-kicker { padding-right: 24px; }
+.news-unhide {
+  float: right; margin-left: 10px; font-family: var(--font-mono); font-size: 11px;
+  background: var(--bg-2); color: var(--amber); border: 1px solid var(--border-hi);
+  padding: 3px 8px; cursor: pointer;
+}
+.news-unhide:hover { border-color: var(--amber); }
+.news-hidden-link, .news-back, .news-filter > summary { border: 1px solid var(--border); }
+.news-hidden-link[hidden] { display: none; }
+.news-filter { position: relative; }
+.news-filter > summary { list-style: none; cursor: pointer; display: inline-block; }
+.news-filter > summary::-webkit-details-marker { display: none; }
+.news-filter-panel {
+  position: absolute; right: 0; top: calc(100% + 4px); z-index: 20;
+  width: min(420px, calc(100vw - 32px)); padding: 10px 12px;
+  background: var(--bg-2); border: 1px solid var(--border-hi);
+  display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px;
+  box-shadow: 0 6px 18px rgba(0,0,0,.35);
+}
+.news-filter-actions { grid-column: 1 / -1; display: flex; gap: 6px; margin-bottom: 4px; }
+.news-filter-btn { border: 1px solid var(--border); cursor: pointer; }
+.news-filter-row {
+  display: flex; align-items: center; gap: 6px; font-family: var(--font-sans);
+  font-size: 13px; color: var(--text); cursor: pointer;
+}
+.news-filter-row input { width: auto; margin: 0; }
+@media (max-width: 560px) {
+  /* Under the sticky header, full width, wherever the button wrapped to. */
+  .news-filter { position: static; }
+  .news-filter-panel { left: 16px; right: 16px; width: auto; max-height: 60vh; overflow-y: auto; }
+}
+@media (max-width: 400px) { .news-filter-panel { grid-template-columns: 1fr; } }
 
 .news-strip-list { list-style: none; margin: 0; padding: 0; }
 .news-strip-list li {
