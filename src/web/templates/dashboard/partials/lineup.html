@@ -695,6 +695,9 @@ const ALL_HITTERS     = {{ hitters          | tojson }};
 const ALL_PITCHERS    = {{ pitchers         | tojson }};
 const ROTATION_SIZE   = {{ rotation_size | default(5) | tojson }};  // Strategy tab
 const REST_RUSTY      = {{ rest_rusty | default(false) | tojson }};  // Strategy tab
+// Long Form: the red − takes him off the active roster (he stays on the 40-man).
+const LONG_FORM       = {{ long_form | default(false) | tojson }};
+const DOWN_TITLE      = LONG_FORM ? 'Take him off the active roster' : 'Send him to the minors';
 // Who the auto builds (Auto-fill, Rebuild, bullpen roles) leave out: the
 // injured, and with Rest rusty players on, anyone still rusty.
 const sitsOut = p => !!(p.injured || (REST_RUSTY && p.rust));
@@ -1147,8 +1150,8 @@ function renderRoster() {
         </div>
         ${hitterGradesHtml(p, null)}
       </div>
-      <span class="lu-roster-btns"><button type="button" class="minors-btn" title="Send him to the minors"
-              aria-label="Send ${p.first_name} ${p.last_name} to the minors">−</button><button class="lu-add-btn" title="Add to lineup"
+      <span class="lu-roster-btns"><button type="button" class="minors-btn" title="${DOWN_TITLE}"
+              aria-label="${DOWN_TITLE.replace('him', p.first_name + ' ' + p.last_name)}">−</button><button class="lu-add-btn" title="Add to lineup"
               onclick="event.stopPropagation();addToLineup('${p.player_id}')"
               ${isIn?'disabled':''}>+</button></span>`;
     card.querySelector('.minors-btn').addEventListener('click', e => {
@@ -1684,8 +1687,8 @@ function renderBullpen() {
         ${p.stat_era!=null?`<div class="lu-skills">${pitcherStatsHtml(p)}</div>`:''}
       </div>
       <select class="bp-role-select" onchange="handleBullpenRoleChange('${p.player_id}',this.value)">${roleOpts}</select>
-      <button type="button" class="minors-btn" title="Send him to the minors"
-              aria-label="Send ${p.first_name} ${p.last_name} to the minors">−</button>`;
+      <button type="button" class="minors-btn" title="${DOWN_TITLE}"
+              aria-label="${DOWN_TITLE.replace('him', p.first_name + ' ' + p.last_name)}">−</button>`;
     card.querySelector('.minors-btn').addEventListener('click', e => {
       e.stopPropagation();
       sendToMinors(p);
@@ -1701,14 +1704,19 @@ function renderBullpen() {
 // Roster tab's draft forgets him.
 async function sendToMinors(p) {
   const name = `${p.first_name} ${p.last_name}`;
-  const ok = await gmConfirm({
+  const out = p.player_type === 'pitcher' ? ' and out of your rotation and bullpen' : ' and out of your lineup';
+  const ok = await gmConfirm(LONG_FORM ? {
+    title: `Take ${name} off the active roster?`,
+    lines: ['He stays on the 40-man but leaves your ' + (p.player_type === 'pitcher' ? 'rotation and bullpen' : 'lineup') + '. You can put him back on from the Roster tab.'],
+    ok: 'Take off', tone: 'danger',
+  } : {
     title: `Send ${name} to the minors?`,
-    lines: ['He comes off the 40-man' + (p.player_type === 'pitcher' ? ' and out of your rotation and bullpen' : ' and out of your lineup') + '. You can call him back up from the Roster tab.'],
+    lines: ['He comes off the 40-man' + out + '. You can call him back up from the Roster tab.'],
     ok: 'Send down', tone: 'danger',
   });
   if (!ok) return;
   try {
-    const r = await fetch(`/leagues/${LEAGUE_ID}/roster/${p.player_id}/minors`, { method: 'POST' });
+    const r = await fetch(`/leagues/${LEAGUE_ID}/roster/${p.player_id}/${LONG_FORM ? 'reserve' : 'minors'}`, { method: 'POST' });
     if (!r.ok) {
       const d = await r.json().catch(() => ({}));
       throw new Error(d.detail || 'Something went wrong.');
@@ -1738,7 +1746,9 @@ async function sendToMinors(p) {
     const key = `roster3_${LEAGUE_ID}`;
     const d = JSON.parse(sessionStorage.getItem(key) || 'null');
     if (d && Array.isArray(d.fortyMan)) {
-      d.fortyMan = d.fortyMan.filter(x => x !== pid);
+      // Long Form keeps him on the 40-man, just off the active roster.
+      if (LONG_FORM) d.active = (d.active || []).filter(x => x !== pid);
+      else d.fortyMan = d.fortyMan.filter(x => x !== pid);
       sessionStorage.setItem(key, JSON.stringify(d));
     }
   } catch (e) {}
@@ -1749,7 +1759,7 @@ async function sendToMinors(p) {
   renderBullpen();
   updatePitchingBanners();
   saveToStorage();
-  gmToast(`${name} sent to the minors`, 'ok');
+  gmToast(LONG_FORM ? `${name} is off the active roster` : `${name} sent to the minors`, 'ok');
 }
 
 function handleBullpenRoleChange(pid, role) {

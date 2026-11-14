@@ -948,9 +948,16 @@ function showInjuryNews(d) {
     });
   });
   (d.roster_moves || []).forEach(function (m) {
+    // Long Form moves say why (src/team/roster_limits.py enforce_active_roster).
+    const longForm = {
+      short: `⇡ ${m.name} called up, your active roster was short`,
+      pitchers: `⇣ ${m.name} off the active roster, too many pitchers`,
+      active_full: `⇣ ${m.name} off the active roster, it was full`,
+      forty_full: `⇣ ${m.name} sent down, 40-man was full`,
+    }[m.why];
     items.push({
-      text: m.to === '40man' ? `⇡ ${m.name} called up to fill your 40-man`
-                             : `⇣ ${m.name} sent down, 40-man was full`,
+      text: longForm || (m.to === '40man' ? `⇡ ${m.name} called up to fill your 40-man`
+                                          : `⇣ ${m.name} sent down, 40-man was full`),
       dest: 'roster',
     });
   });

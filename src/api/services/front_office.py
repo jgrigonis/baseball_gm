@@ -12,11 +12,13 @@ from datetime import date, timedelta
 
 from src.api.services import personas, team_states
 from src.db.repositories.gm_repo import GMRepository
+from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.league import front_office
+from src.league.league_modes import playing_statuses
 from src.league.personas import Leanings
 from src.league.rotation_seeder import seed_ai_rotations
 from src.team.roster_assigner import RosterAssigner
@@ -81,11 +83,12 @@ def replan_roster(
         return
     bonus = outlook.age_bonus(players) if outlook else None
     PlayerStatusRepository(conn).bulk_set(RosterAssigner().assign(players, bonus))
+    mode = LeagueRepository(conn).get_league_mode(league_id)
     seed_ai_rotations(
         conn,
         season_id,
         {team_id},
-        statuses=["26man", "40man"],
+        statuses=playing_statuses(mode),
         effective_date=effective_date,
         league_id=league_id,
     )

@@ -11,6 +11,7 @@ from src.api.view_models.player_cards import attach_injuries, attach_moods, line
 from src.db.repositories.bullpen_roles_repo import BullpenRepository
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.injury_repo import InjuryRepository
+from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.lineup_preference_repo import LineupPreferenceRepository
 from src.db.repositories.player_games import PlayerGameRepository
 from src.db.repositories.player_repo import PlayerRepository
@@ -18,6 +19,7 @@ from src.db.repositories.player_season_stats_repo import PlayerSeasonStatsReposi
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
+from src.league.league_modes import playing_statuses
 from src.player.face import face_url
 from src.player.skill_map import SKILL_MIN
 from src.stats import formulas
@@ -41,7 +43,10 @@ def lineup_context(
     pitchers = []
     team = TeamRepository(db).get_city_and_mascot(team_id) or {}
     rows = {}
-    for row in player_repo.get_active_roster_with_skills(team_id):
+    # Long Form plays off the 26-man only: the rest of the 40-man isn't here.
+    mode = LeagueRepository(db).get_league_mode(league_id)
+    statuses = playing_statuses(mode)
+    for row in player_repo.get_active_roster_with_skills(team_id, statuses):
         g = lineup_card(row)
         rows[g["player_id"]] = row
         g["jersey_number"] = row.get("jersey_number")
@@ -121,6 +126,7 @@ def lineup_context(
         # Starter Leash: the team's (Strategy tab) and any starter's own.
         "team_leash": profile.starter_usage,
         "pitcher_leashes": GMRepository(db).pitcher_leashes(team_id),
+        "long_form": statuses == ["26man"],
     }
 
 
