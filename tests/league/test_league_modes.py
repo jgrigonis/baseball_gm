@@ -92,6 +92,7 @@ def test_new_league_form_offers_every_mode_with_its_presets():
         "longform": LONGFORM.form_presets,
     }
     assert LONGFORM.form_presets["num_seasons"] == 25
+    assert LONGFORM.form_presets["sim_period_days"] == 1
 
 
 def _play(monkeypatch, injuries_enabled):

@@ -80,7 +80,7 @@ LONGFORM = LeagueMode(
         "ready (Confirmed pace)."
     ),
     form_presets={
-        "sim_period_days": 3,
+        "sim_period_days": 1,
         "decision_window_sec": 120,
         "num_seasons": 25,
     },
