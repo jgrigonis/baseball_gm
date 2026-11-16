@@ -166,7 +166,7 @@
         <select id="tr-team" class="tr-team" onchange="trLoadTeam(this.value)">
           <option value="">Pick a team…</option>
           {% for t in trade_teams %}
-          <option value="{{ t.id }}" data-human="{{ 1 if t.human else 0 }}">
+          <option value="{{ t.id }}" data-human="{{ 1 if t.human else 0 }}" data-name="{{ t.name }}">
             {{ t.name }}{% if t.human %} (GM){% elif ai_gms.get(t.id) %} ({{ ai_gms[t.id].name }}){% endif %}{% if t.room_text %} · {{ t.room_text }}{% endif %}{% if not t.human and t.money_label %} · {{ t.money_label }}{% endif %}
           </option>
           {% endfor %}
@@ -460,6 +460,7 @@ window.trPick = function(key, pid, on) {
     return;
   }
   if (on) side.picked.add(pid); else side.picked.delete(pid);
+  keepNo(null);
   render(key);
   summarize();
 };
@@ -467,6 +468,7 @@ window.trPick = function(key, pid, on) {
 window.trLoadTeam = function(teamId, picked) {
   var side = SIDES.theirs;
   if (!picked) COUNTER = null;  // picking a team by hand starts a new offer
+  keepNo(null);  // a new deal: a kept "said no" was about the old one
   side.team = teamId; side.picked = new Set(picked || []); side.players = [];
   var el = document.getElementById(side.el);
   if (!teamId) { el.innerHTML = '<div class="tr-empty">Pick a team to see their players.</div>'; summarize(); return; }
@@ -553,6 +555,7 @@ function markCountered(offerId) {
 }
 window.trCancelCounter = function() {
   COUNTER = null;
+  keepNo(null);
   document.getElementById('tr-result').style.display = 'none';
   summarize();
 };
@@ -634,12 +637,45 @@ function suggestLine(ids) {
   if (!SUGGEST) return '';
   var names = SUGGEST.map(function(pid) {
     var p = SIDES.mine.players.filter(function(q) { return q.player_id === pid; })[0];
-    return p ? '<strong>' + esc(p.first_name + ' ' + p.last_name) + '</strong> (' +
+    return p ? '<strong><a href="#" onclick="event.stopPropagation();openPlayerPanel(\'' + p.player_id +
+      '\');return false;">' + esc(p.first_name + ' ' + p.last_name) + '</a></strong> (' +
       esc(p.overall) + ' ' + esc(posLabel(p.position)) + ', ' + p.age + ')' : 'another player';
   });
   return '<div class="tr-suggest"><span>They\'d take it if you add ' + names.join(' and ') + '.</span>' +
     '<button class="btn btn-primary" onclick="event.stopPropagation();trTakeSuggest()">Add ' +
     (SUGGEST.length > 1 ? 'them' : 'him') + ' and send</button></div>';
+}
+// A "said no" verdict with a suggestion is kept for this browser tab, with
+// the deal it answered, so going to another tab and back shows it again.
+// It's dropped once the deal is changed or sent, or once the league day, a
+// roster or a contract changes (trade_shop.stamp, as for a kept shop).
+var NO_KEY = 'tradeNo:{{ league_id }}';
+function keepNo(verdict) {
+  try {
+    if (!verdict) return sessionStorage.removeItem(NO_KEY);
+    sessionStorage.setItem(NO_KEY, JSON.stringify({
+      stamp: SHOP_STAMP, team: SIDES.theirs.team, verdict: verdict, suggest: SUGGEST,
+      mine: Array.from(SIDES.mine.picked), theirs: Array.from(SIDES.theirs.picked),
+    }));
+  } catch (e) {}
+}
+function restoreNo() {
+  var kept = null;
+  try { kept = JSON.parse(sessionStorage.getItem(NO_KEY)); } catch (e) {}
+  if (!kept) return;
+  var sel = document.getElementById('tr-team');
+  var have = new Set(SIDES.mine.players.map(function(p) { return p.player_id; }));
+  var ok = kept.stamp === SHOP_STAMP && kept.team &&
+    sel.querySelector('option[value="' + CSS.escape(kept.team) + '"]') &&
+    kept.mine.concat(kept.suggest || []).every(function(pid) { return have.has(pid); });
+  if (!ok) return keepNo(null);
+  COUNTER = null;
+  sel.value = kept.team;
+  SIDES.mine.picked = new Set(kept.mine);
+  render('mine');
+  trLoadTeam(kept.team, kept.theirs);  // clears what's kept: put it back
+  showResult(kept.verdict + suggestLine(kept.suggest), 'warn');
+  keepNo(kept.verdict);
 }
 window.trTakeSuggest = function() {
   if (!SUGGEST) return;
@@ -654,10 +690,12 @@ window.trSend = function() {
   var btn = document.getElementById('tr-send');
   var teamSel = document.getElementById('tr-team');
   var opt = teamSel.options[teamSel.selectedIndex];
-  var teamName = opt.text.replace(/\s*\(GM\)$/, '').trim();
+  // Just the name: the option also carries its GM, cap room and money state.
+  var teamName = opt.dataset.name || opt.text.trim();
   var human = opt.dataset.human === '1';
   btn.disabled = true;
   btn.textContent = human ? 'Sending…' : 'Waiting for an answer…';
+  keepNo(null);
   post('', {
     to_team_id: SIDES.theirs.team,
     give: Array.from(SIDES.mine.picked),
@@ -682,8 +720,9 @@ window.trSend = function() {
           markCountered(countered);
           after = '<br>Their first offer is off the table now. You can still send this as a new offer.';
         }
-        showResult('✗ The ' + esc(teamName) + ' said no: “' + esc(d.reason) + '”' + after +
-                   suggestLine(d.suggest), 'warn');
+        var verdict = '✗ The ' + esc(teamName) + ' said no: “' + esc(d.reason) + '”' + after;
+        showResult(verdict + suggestLine(d.suggest), 'warn');
+        if (SUGGEST) keepNo(verdict);
         summarize();
         return;
       }
@@ -1150,9 +1189,14 @@ window.trAbsorbTweak = function(i) {
 
 render('mine');
 renderFilters('theirs');
+// Opened with a deal or a message of its own (below): a kept "said no" isn't shown.
+var openedWith = !!(window._shopPlayer || window._tradeWith || window._tradeResult);
 // From the player panel's Shop him button, or else the last shop, kept.
 if (window._shopPlayer) window.trShop(window._shopPlayer);
 else restoreShop();
+// The last "said no, but they'd take it if you add" verdict, kept. Anything
+// that opens Trades with a deal of its own (below) replaces it.
+if (!openedWith) restoreNo();
 if (window._tradeWith) {
   var tw = window._tradeWith;
   window._tradeWith = null;
