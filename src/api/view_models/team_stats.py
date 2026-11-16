@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from src.api.services import season_value as sval
+from src.api.view_models.departed import attach_departures
 from src.api.view_models.player_cards import attach_injuries
 from src.db.repositories.injury_repo import InjuryRepository
 from src.db.repositories.player_games import PlayerGameRepository
@@ -96,6 +97,13 @@ def team_stats_context(
         inj.get_team_injury_types(selected_team_id) if show_injuries else {},
     )
 
+    # Players who've left the team this season stay listed, tagged.
+    departed_count = 0
+    if is_current_season:
+        departed_count = attach_departures(
+            db, league_id, selected_team_id, batters, pitchers, fielders
+        )
+
     # Year label for selected season
     selected_year = next(
         (s["year"] for s in all_seasons if s["id"] == selected_season_id), None
@@ -113,6 +121,7 @@ def team_stats_context(
         "batters": batters,
         "pitchers": pitchers,
         "fielders": fielders,
+        "departed_count": departed_count,
         "stat_tips": {
             "bat": glossary.BAT,
             "pit": glossary.PIT,
