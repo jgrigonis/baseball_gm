@@ -130,7 +130,11 @@ def test_the_owner_tab(lg, client_for):
     assert f'href="/leagues/{x.league.id}/owner"' in text  # in the tab bar
     for o in service.league_table(x.db, x.league.id):
         assert o["name"] in text
-    assert "Patience" not in text and "Spending" not in text
+    # How they run things and what they judge you on, in words and bars
+    # (Josh, 2026-11-16), never the numbers behind them.
+    assert "Patience" in text and "What they judge you on" in text
+    assert "Wants a say in" in text and "Your job" in text
+    assert "Owner happiness" not in text and "Hot seat under" not in text
 
 
 def test_admins_see_what_their_owner_thinks(lg, client_for, factory):
@@ -658,3 +662,84 @@ def test_a_furious_owner_stays_angry_after_a_few_games():
     assert owner_office.early_reading(0.04, 40, -0.8) == pytest.approx(0.04)
     # A first season starts from neutral, as before.
     assert owner_office.early_reading(0.5, 10, 0.0) == pytest.approx(0.125)
+
+
+# ── The Your Owner card (src/api/services/owner_card.py) ─────────────────────
+
+
+def test_the_card_says_what_a_meddler_steps_in_on(lg):
+    from src.api.services import owner_card
+
+    x = lg()
+    _make_owner(x, meddling=95)
+    b = owner_card.boss(x.db, x.league.id, x.teams[0].id, x.gm.id)
+    say = " ".join(b["say"])
+    assert "Every trade" in say and "B- or better" in say and "Streaks" in say
+    _make_owner(x, meddling=10, temper=10)
+    b = owner_card.boss(x.db, x.league.id, x.teams[0].id, x.gm.id)
+    assert b["say"] == []
+    assert b["job"]["word"] == "Being watched" and not b["job"]["reviewed"]
+    assert b["mood"]["word"] == "Content"
+    assert {t["label"] for t in b["traits"]} >= {"Patience", "Spending", "Writes"}
+    # Weights as bars, longest first, and nothing judged yet in April.
+    widths = [r["width"] for r in b["judge"]["rows"]]
+    assert widths == sorted(widths, reverse=True)
+
+
+def _standing(payroll, budget=177_300_000, limit=191_300_000):
+    from src.league import budget as bg
+
+    return bg.standing(payroll, 140_000_000, budget, limit, 36_800_000, 2_500_000)
+
+
+def test_the_money_verdict_past_the_limit():
+    """Josh's example: $205.4M of spending against a $191.3M limit."""
+    from src.api.services.owner_card import money
+
+    m = money(_standing(157_400_000), "season", 2027)
+    v = m["verdict"]
+    assert v["tone"] == "bad" and "won't approve" in v["head"]
+    assert "$14.1M past their limit" in v["text"]
+    assert "Cutting $9.4M of payroll cuts $14.1M of spending" in v["text"]
+    assert "Budget tab" not in v["text"]  # front office locked in season
+    assert (
+        "Budget tab"
+        in money(_standing(157_400_000), "preseason", 2027)["verdict"]["text"]
+    )
+    bar = m["spend_bar"]
+    assert bar["past"] > 0 and bar["limit"] < 100
+    assert m["payroll_bar"]["over"] > 0
+
+
+def test_the_money_verdict_inside_the_budget_and_past_it():
+    from src.api.services.owner_card import money
+
+    ok = money(_standing(120_000_000), "season", 2027)["verdict"]
+    assert ok["tone"] == "ok" and "Under their budget" in ok["head"]
+    warn = money(_standing(140_000_000), "season", 2027)["verdict"]
+    assert warn["tone"] == "warn" and "more before they stop" in warn["text"]
+
+
+def test_free_agents_room_line_four_states():
+    """Josh, 2026-11-16: the Free Agents header estimates how much salary
+    fits, with the luxury tax counted."""
+    from src.api.services.owner_card import cost_note, fa_room
+
+    # Well under the cap: the owner's limit comes first.
+    low = fa_room(_standing(60_000_000, budget=90_000_000, limit=100_000_000))
+    assert low["tone"] == "ok" and "under the cap" in low["head"]
+    # Under the cap, but a big deal would cross it.
+    mid = fa_room(_standing(120_000_000))
+    assert mid["tone"] == "warn" and "$1.50 with tax" in mid["text"]
+    assert "under the cap" in mid["head"]
+    # Already over the cap.
+    over = fa_room(_standing(145_000_000))
+    assert "over the cap" in over["head"] and "Every dollar" in over["text"]
+    # Past the owner's limit.
+    past = fa_room(_standing(157_400_000))
+    assert past["tone"] == "bad" and "$14.1M past" in past["text"]
+
+    s = _standing(145_000_000)
+    assert cost_note(s, 6_000_000) == "$9M with tax"
+    assert cost_note(_standing(60_000_000), 6_000_000) is None
+    assert cost_note(_standing(60_000_000), 6_000_000, 0.5) == "$3M this season"

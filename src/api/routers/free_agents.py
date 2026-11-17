@@ -24,6 +24,7 @@ from src.api.view_models.player_cards import (
     attach_roster_stats,
     roster_card,
 )
+from src.api.services import owner_card
 from src.db.locks import league_lock
 from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.contract_repo import ContractRepository
@@ -35,6 +36,7 @@ from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.waiver_repo import WaiverRepository
 from src.league.offseason.roster_trimmer import MINORS_LIMIT
+from src.league import prorate
 from src.player.contracts import format_salary
 from src.player.face import face_url
 from src.web.utils import _shell_ctx, tab_response
@@ -153,6 +155,17 @@ def free_agents_tab(
         if ctx.get("has_money", True):
             ctx["payroll_text"] = format_salary(contracts.payroll(team_id, year))
             ctx["budget"] = BudgetRepository(db).standing(league_id, team_id, year)
+            if ctx["budget"]:
+                # What a deal really costs this season, and how much fits
+                # under the owner's limit (Josh, 2026-11-16).
+                share = prorate.still_to_pay(db, league_id)
+                ctx["fa_room"] = owner_card.fa_room(ctx["budget"], share)
+                for card in players:
+                    note = owner_card.cost_note(
+                        ctx["budget"], card.get("salary"), share
+                    )
+                    if note:
+                        card["cost_note"] = note
     return tab_response(request, htmx, "dashboard/partials/free_agents.html", ctx)
 
 

@@ -39,6 +39,15 @@
 </div>
 
 <div class="tab-body">
+  {% if fa_room and can_sign %}
+  <div class="fa-room fa-room-{{ fa_room.tone }}" id="fa-room"><b>{{ fa_room.head }}</b> {{ fa_room.text }}</div>
+  <style>
+    .fa-room { margin-bottom:10px; padding:8px 10px; font-size:12.5px; line-height:1.5; border-left:3px solid var(--red); background:rgba(240,96,79,.12); }
+    .fa-room-ok { border-color:var(--green); background:rgba(95,217,138,.1); }
+    .fa-room-warn { border-color:var(--amber); background:rgba(242,193,78,.1); }
+    .fa-ask .fa-now { display:block; color:var(--amber); font-size:10px; }
+  </style>
+  {% endif %}
   {% if bidding %}
   <div class="fa-note fa-open">
     Free agency is open. Bid a salary and a number of seasons; each player picks one bid
@@ -163,7 +172,7 @@ function row(p) {
       ${isPitcher ? `<div class="lu-skills">${pitcherGradesHtml(p)}</div>` : hitterGradesHtml(p, null)}
     </div>
     <div class="fa-right">
-      ${p.salary_text ? `<div class="fa-ask" title="${w ? 'His deal: a season, and seasons left' : 'His asking price: a season, and how many seasons'}">${p.salary_text}<small>${years}</small></div>` : ''}
+      ${p.salary_text ? `<div class="fa-ask" title="${w ? 'His deal: a season, and seasons left' : 'His asking price: a season, and how many seasons'}">${p.salary_text}<small>${years}</small>${p.cost_note ? `<small class="fa-now" title="What signing him adds to this season's spending">${p.cost_note}</small>` : ''}</div>` : ''}
       ${sign}
     </div>`;
   el.addEventListener('click', e => {

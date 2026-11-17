@@ -11,7 +11,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
 from src.api.dependencies import DB, GMOrViewer, IsHTMX, User
-from src.api.services import owner_debug, owner_office, owners
+from src.api.services import owner_card, owner_debug, owner_office, owners
 from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.contract_repo import ContractRepository
 from src.web.utils import _shell_ctx, tab_response
@@ -36,6 +36,7 @@ def owner_tab(
     if ctx["my_owner"]:
         ctx["office"] = owner_office.office(db, league_id, team_id, gm["id"])
         ctx["owner_unseen"] = 0  # just read
+        ctx["boss"] = owner_card.boss(db, league_id, team_id, gm["id"])
         if ctx.get("is_admin"):
             ctx["owner_debug"] = owner_debug.explain(db, league_id, team_id)
     year = ContractRepository(db).current_year(league_id)
@@ -43,8 +44,15 @@ def owner_tab(
         standing = BudgetRepository(db).standing(league_id, team_id, year)
         if standing:
             ctx["my_budget"] = {"year": year, **standing}
+            state = ctx.get("league_state") or _league_state(db, league_id)
+            ctx["money"] = owner_card.money(standing, state, year)
     ctx["owners"] = owners.league_table(db, league_id)
     ctx["my_team_id"] = team_id
     ctx["archetypes"] = owners.archetype_guide()
     db.commit()  # a league from before owners gets its owners on first look
     return tab_response(request, htmx, "dashboard/partials/owner.html", ctx)
+
+
+def _league_state(db, league_id: str) -> str:
+    row = db.execute("SELECT state FROM leagues WHERE id = %s", (league_id,)).fetchone()
+    return row["state"] if row else ""
