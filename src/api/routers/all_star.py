@@ -11,7 +11,7 @@ from functools import partial
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
 from src.api.dependencies import DB, GM, ActiveLeague, GMOrViewer, IsHTMX, User
 from src.api.services import all_star, coach, hr_derby, rookie_game
@@ -192,3 +192,46 @@ async def rookie_auto_draft(
     """The scouts make the rest of this captain's Rookie Game picks."""
     act = partial(all_star.auto_draft, event=rookie_game.EVENT)
     return await _captain_action(request, league_id, db, gm, act)
+
+
+async def _save_plan(request, league_id, db, gm, event):
+    """A captain's lineup card: JSON {lineup: [{player_id, position}] in
+    batting order, pitch_order: [player_id]}, or {reset: true}."""
+    if not gm["team_id"]:
+        return JSONResponse({"detail": "You don't have a team here."}, 403)
+    body = await request.json()
+    season_id = SeasonRepository(db).get_current_id_for_league(league_id)
+    try:
+        if body.get("reset"):
+            all_star.save_plan(
+                db, league_id, season_id, gm["team_id"], None, None, event
+            )
+        else:
+            all_star.save_plan(
+                db,
+                league_id,
+                season_id,
+                gm["team_id"],
+                body.get("lineup") or [],
+                body.get("pitch_order") or [],
+                event,
+            )
+    except ValueError as e:
+        db.rollback()
+        return JSONResponse({"detail": str(e)}, 422)
+    db.commit()
+    return JSONResponse({"ok": True})
+
+
+@router.post("/leagues/{league_id}/allstar/plan")
+async def save_plan(request: Request, league_id: str, db: DB, gm: GM, _a: ActiveLeague):
+    """The All-Star captain's batting order, positions and pitching order."""
+    return await _save_plan(request, league_id, db, gm, "all_star")
+
+
+@router.post("/leagues/{league_id}/allstar/rookie/plan")
+async def save_rookie_plan(
+    request: Request, league_id: str, db: DB, gm: GM, _a: ActiveLeague
+):
+    """The Rookie Game captain's batting order, positions and pitching order."""
+    return await _save_plan(request, league_id, db, gm, rookie_game.EVENT)

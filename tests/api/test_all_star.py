@@ -1051,3 +1051,42 @@ def test_the_weekend_results_link_the_box_score(client, lg):
     html = client.get(f"/leagues/{lg.league.id}/allstar?weekend=1").text
     assert "in the books" in html
     assert f"openAllStarBox('all_star', '{lg.season.id}')" in html
+
+
+def test_the_captain_sets_the_lineup_and_pitching_order(client, lg):
+    """Josh, 2026-11-16: after the draft the person captain sets the batting
+    order, positions and the pitching order (no bullpen roles), and the
+    game plays it."""
+    repo, _ = _count(lg, lg.mine)
+    assert all_star.plan_context(lg.db, lg.league.id, lg.season.id, lg.mine.id) is None
+    all_star.auto_draft(lg.db, lg.league.id, lg.season.id, lg.mine.id)
+    card = all_star.plan_context(lg.db, lg.league.id, lg.season.id, lg.mine.id)
+    assert card["side"] == 1 and not card["saved"] and len(card["lineup"]) == 9
+    assert (
+        all_star.plan_context(lg.db, lg.league.id, lg.season.id, lg.theirs.id) is None
+    )
+    html = client.get(f"/leagues/{lg.league.id}/allstar").text
+    assert "Your lineup" in html and "Pitching order" in html
+
+    lineup = [
+        {"player_id": r["player_id"], "position": r["position"]}
+        for r in reversed(card["lineup"])
+    ]
+    arms = [p["player_id"] for p in reversed(card["pitchers"])]
+    url = f"/leagues/{lg.league.id}/allstar/plan"
+    bad = client.post(url, json={"lineup": lineup[:8], "pitch_order": arms})
+    assert bad.status_code == 422
+    r = client.post(url, json={"lineup": lineup, "pitch_order": arms})
+    assert r.status_code == 200
+    card = all_star.plan_context(lg.db, lg.league.id, lg.season.id, lg.mine.id)
+    assert card["saved"] and card["lineup"][0]["player_id"] == lineup[0]["player_id"]
+    assert [p["player_id"] for p in card["pitchers"]] == arms
+
+    all_star.play_game(lg.db, lg.league.id, lg.season.id, random.Random(7))
+    lines = {r["player_id"]: r for r in repo.lines(lg.season.id) if r["side"] == 1}
+    assert lines[lineup[0]["player_id"]]["batting_order"] == 1
+    assert lines[lineup[0]["player_id"]]["position"] == lineup[0]["position"]
+    used = sorted(
+        (r for r in lines.values() if r["pitch_order"]), key=lambda r: r["pitch_order"]
+    )
+    assert [r["player_id"] for r in used] == arms[: len(used)]
