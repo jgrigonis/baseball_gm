@@ -10,6 +10,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from src.api.services import arrivals
+from src.api.services import draft_class
 from src.api.services import icons
 from src.api.dependencies import DB, GM, ActiveLeague, IsHTMX, User
 from src.api.schemas import InjuredListRequest, RosterSaveRequest
@@ -77,6 +78,8 @@ def roster(
     attach_moods(db, league_id, players)
     icons.attach(db, team_id, players)
     arrivals.attach(db, league_id, team_id, players)
+    # First-season draftees: the class grade they were drafted with.
+    draft_class.attach(db, league_id, ctx.get("season_id"), players)
 
     # Season stats for display on roster cards
     season_id = ctx.get("season_id")

@@ -1416,6 +1416,30 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
   font-family: var(--font-mono); font-size: 22px;
   font-weight: 600; line-height: 1;
 }
+/* Class grade vs now grade (Josh, 2026-11-17): a draft prospect's grade
+   against his class sits in a dashed sky box labeled CLASS, so it never
+   reads as a pro grade; his pro "now" grade sits beside it. */
+.class-grade {
+  display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+  border: 1px dashed var(--sky); border-radius: 3px; padding: 2px 0 1px; width: 34px;
+  font-family: var(--font-mono); font-size: 14px; font-weight: 600; line-height: 1.1;
+}
+.class-grade small, .now-grade small {
+  display: block; font-size: 7px; font-weight: 500; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--sky); margin-top: 1px;
+}
+.now-grade small { color: var(--text-dim); }
+.now-grade {
+  display: inline-flex; flex-direction: column; align-items: center;
+  font-family: var(--font-mono); font-size: 13px; font-weight: 600; line-height: 1.1;
+}
+.pd-grade-pair { display: flex; gap: 10px; align-items: flex-start; flex-shrink: 0; }
+.pd-overall.class-grade { width: auto; font-size: 22px; padding: 5px 8px 3px; border-radius: 4px; }
+.pd-overall.class-grade small, .pd-overall.now-grade small { font-size: 8px; margin-top: 3px; }
+.pd-overall.now-grade { font-size: 22px; padding-top: 6px; }
+.pd-class { color: var(--sky); }
+/* "CLASS A-" after a first-season draftee's name (draft_class.attach) */
+.lu-class { font-family: var(--font-mono); font-size: 10px; color: var(--sky); margin-left: 6px; cursor: help; white-space: nowrap; }
 
 .pd-badges {
   display: flex; gap: 6px; flex-wrap: wrap;

@@ -2,7 +2,8 @@
 
 {# The Explore/Search sort choices, the same as the lineup tab's. #}
 {% macro sort_options() %}
-  <option value="overall">Overall</option>
+  <option value="overall">Class grade</option>
+  <option value="now_grade">Now grade</option>
   <optgroup label="Hitting">
     <option value="contact">Contact</option>
     <option value="power">Power</option>
@@ -362,6 +363,8 @@
 .pin-btn.on { color: var(--amber); }
 .pin-btn:disabled { opacity: .25; cursor: default; }
 .exp-row { grid-template-columns: 36px 1fr auto; }
+/* Class grade + now grade side by side (pins, projected picks, live board) */
+.d-grades { display: inline-flex; gap: 8px; align-items: center; }
 .prev-row {
   display: grid; grid-template-columns: 54px 1fr auto; gap: 0 8px; align-items: center;
   padding: 7px 12px; border-bottom: 1px solid var(--border); cursor: pointer;
@@ -388,7 +391,7 @@
 .live-clock.you .lc-team { color: var(--amber); }
 .live-sub { font-family: var(--font-mono); font-size: 10px; color: var(--muted); margin-top: 4px; }
 .live-row {
-  display: grid; grid-template-columns: 30px 1fr auto; gap: 0 8px; align-items: center;
+  display: grid; grid-template-columns: auto 1fr auto; gap: 0 8px; align-items: center;
   padding: 7px 12px; border-bottom: 1px solid var(--border);
 }
 .live-row .d-name { cursor: pointer; }
@@ -552,12 +555,12 @@ function renderExplore() {
       + (myTurn() ? `<button class="btn btn-secondary draft-btn" data-draft="${p.player_id}">Draft</button>` : '');
 
     row.innerHTML = `
-      <span class="${gradeClass(p.overall)} d-grade">${p.overall}</span>
+      ${classGradeHtml(p.overall)}
       <div style="min-width:0;">
         <div class="d-name">${p.first_name} ${p.last_name}</div>
         <div class="d-meta">${playerMetaHtml(p)}</div>
         <div class="d-skills">${playerGradesHtml(p)}</div>
-      </div><div style="display:flex;align-items:center;">${pinBtn}</div>`;
+      </div><div style="display:flex;align-items:center;gap:8px;">${nowGradeHtml(p.now_grade)}${pinBtn}</div>`;
 
     row.querySelector('.pin-btn').addEventListener('click', e => {
       e.stopPropagation();
@@ -699,7 +702,7 @@ function renderStrategy() {
             <div class="d-meta">${playerMetaHtml(p)}${pinsGone[pid]
               ? ` · <span class="pin-gone">likely gone at #${pinsGone[pid]}</span>` : ''}</div>
           </div>
-          <span class="${gradeClass(p.overall)} d-grade">${p.overall}</span>
+          <span class="d-grades">${classGradeHtml(p.overall)}${nowGradeHtml(p.now_grade)}</span>
           <div style="display:flex;align-items:center;">
             <div class="pin-arrows">
               <button class="pin-arrow" data-move="${pid}" data-dir="-1" ${i === 0 ? 'disabled' : ''}>▲</button>
@@ -764,7 +767,7 @@ function renderPreview(picks) {
           <div class="d-name">${p.first_name} ${p.last_name}${star}</div>
           <div class="d-meta">${playerMetaHtml(p)}</div>
         </div>
-        <span class="${gradeClass(p.overall)} d-grade">${p.overall}</span>
+        <span class="d-grades">${classGradeHtml(p.overall)}${nowGradeHtml(p.now_grade)}</span>
       </div>`;
   }).join('');
 }
@@ -1005,7 +1008,7 @@ function renderLive() {
       const btn = myTurn() ? `<button class="btn ${pid === n.default ? 'btn-primary' : 'btn-secondary'} draft-btn" data-draft="${pid}">Draft</button>` : '';
       return `
         <div class="live-row">
-          <span class="${gradeClass(p.overall)} d-grade">${p.overall}</span>
+          <span class="d-grades">${classGradeHtml(p.overall)}${nowGradeHtml(p.now_grade)}</span>
           <div style="min-width:0;">
             <div class="d-name" data-open="${pid}">${p.first_name} ${p.last_name}${dflt}</div>
             <div class="d-meta">${playerMetaHtml(p)}</div>

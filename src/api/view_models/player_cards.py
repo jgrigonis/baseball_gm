@@ -80,6 +80,27 @@ def overall_kind(status: str, grades) -> str:
     return "pitcher" if grades.player_type == "pitcher" else "hitter"
 
 
+def now_grade(player_type: str | None, ratings: dict) -> str | None:
+    """A prospect's grade on the pro scale: the one his roster rows will show
+    once he's drafted (Josh, 2026-11-17: class grade + now grade). Current
+    skills only, like every grade; talent caps stay hidden."""
+    if not ratings:
+        return None
+    if player_type == "pitcher":
+        best = max(ratings.get("sp", 0), ratings.get("rp", 0))
+        return overall_to_grade(best, "pitcher") if best else None
+    return overall_to_grade(ratings.get("overall_player"), "hitter")
+
+
+def class_grade(skills: dict, throws: str | None) -> str | None:
+    """His grade against his draft class: the prospect rating on the
+    prospect curve, as the Draft board shows it."""
+    ratings = compute_ratings(skills, throws or "R") if skills else {}
+    if not ratings or ratings.get("prospect") is None:
+        return None
+    return overall_to_grade(ratings["prospect"], "prospect")
+
+
 def overall_grade(status: str, grades, ratings: dict) -> str:
     """Prospect rating for undrafted players, position-aware rating for rostered."""
     value = overall_value(status, grades, ratings)
@@ -302,6 +323,7 @@ def prospect_card(row: dict, skills: dict) -> dict:
     g = grades.model_dump()
     if ratings:
         g["overall"] = overall_to_grade(ratings.get("prospect"), "prospect")
+        g["now_grade"] = now_grade(g.get("player_type"), ratings)
         g["best_def_grade"] = role_to_grade(ratings.get("best_def"), "best_def")
         g["best_def_label"] = ratings.get("best_def_label", "DEF")
         _role_grades(g, ratings)

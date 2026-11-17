@@ -31,7 +31,7 @@ import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from src.api.services import front_office
+from src.api.services import draft_class, front_office
 from src.api.services.draft_needs import draft_strategies
 from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.pick_rights_repo import PickRightsRepository
@@ -300,6 +300,7 @@ class LiveDraft:
             auto,
             datetime.now(UTC).isoformat(),
         )
+        draft_class.record(self.conn, self.id, player_id)
         TeamRepository(self.conn).add_player(slot.team_id, player_id)
         PlayerStatusRepository(self.conn).set_status(player_id, "minors")
         self.draft["current_pick"] = slot.pick + 1
