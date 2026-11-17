@@ -98,8 +98,8 @@ def playoff_race(
     status = clinch_status(teams, team_id, confs, left)
     if status == "division":
         name = _division_name(confs, team_id)
-        # "Clinched the East", "Clinched North America East"
-        return f"Clinched {name}" if " " in name else f"Clinched the {name}"
+        # "Clinched the Europe West division", like the news (Josh, 2026-11-16)
+        return f"Clinched the {name} division"
     if status == "spot":
         return "Clinched a playoff spot"
     if status == "out":

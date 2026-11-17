@@ -49,7 +49,9 @@ def test_every_human_gm_gets_their_own_news(db_conn, factory):
     a = take_injury_news(db_conn, gm_a.id)
     b = take_injury_news(db_conn, gm_b.id)
     assert a == {
-        "new_injuries": [{"name": "Alice ", "days": 10, "is_pitcher": False}],
+        "new_injuries": [
+            {"player_id": hurt_a.id, "name": "Alice ", "days": 10, "is_pitcher": False}
+        ],
         "returned": [],
         "rust_cleared": [],
         "roster_moves": [],
@@ -60,7 +62,14 @@ def test_every_human_gm_gets_their_own_news(db_conn, factory):
     assert b == {
         "new_injuries": [],
         "returned": [
-            {"name": "Bob ", "length": 3, "is_pitcher": False, "on_40man": False}
+            {
+                "player_id": back_b.id,
+                "name": "Bob ",
+                "length": 3,
+                "is_pitcher": False,
+                "on_40man": False,
+                "on_il": False,
+            }
         ],
         "rust_cleared": [],
         "roster_moves": [],
@@ -217,7 +226,7 @@ def test_rust_wearing_off_is_news_when_resting_rusty(db_conn, factory):
     news.record()
 
     assert take_injury_news(db_conn, gm.id)["rust_cleared"] == [
-        {"name": "Rusty ", "is_pitcher": False}
+        {"player_id": rusty.id, "name": "Rusty ", "is_pitcher": False}
     ]
 
 

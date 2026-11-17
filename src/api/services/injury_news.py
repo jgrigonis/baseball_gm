@@ -15,6 +15,7 @@ from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.player.injury_types import injury_effect, injury_label
 from src.player.positions import is_pitcher
+from src.team.injured_list import InjuredList
 
 
 class InjuryNews:
@@ -25,6 +26,7 @@ class InjuryNews:
 
     def __init__(self, conn, league_id: str):
         self.conn = conn
+        self.league_id = league_id
         self.inj_repo = InjuryRepository(conn, league_id)
         self.gm_teams = GMRepository(conn).get_human_gm_teams(league_id)
         self.before = {
@@ -41,12 +43,15 @@ class InjuryNews:
     def record(self) -> None:
         notes = NotificationRepository(self.conn)
         status_repo = PlayerStatusRepository(self.conn)
+        il = InjuredList(self.conn, self.league_id)
         for gm_id, team_id in self.gm_teams.items():
             before = self.before[gm_id]
+            on_il = set(il.for_team(team_id))
             after = self.inj_repo.get_active_for_team(team_id)
             for pid, v in after.items():
                 if pid not in before:
                     note = {
+                        "player_id": pid,
                         "name": v["name"],
                         "days": v["days"],
                         "is_pitcher": self._is_pitcher(pid, v),
@@ -57,11 +62,15 @@ class InjuryNews:
             for pid, v in before.items():
                 if pid not in after:
                     note = {
+                        "player_id": pid,
                         "name": v["name"],
                         # How long the injury was, in days
                         "length": v["length"],
                         "is_pitcher": self._is_pitcher(pid, v),
                         "on_40man": status_repo.get_status(pid) in ("26man", "40man"),
+                        # Long Form: healed but still on the injured list,
+                        # so the news opens the Roster, where he's activated
+                        "on_il": pid in on_il,
                     }
                     effect = self._effect(pid)
                     if effect:
@@ -79,7 +88,11 @@ class InjuryNews:
                     notes.add(
                         gm_id,
                         "rust",
-                        {"name": v["name"], "is_pitcher": self._is_pitcher(pid, v)},
+                        {
+                            "player_id": pid,
+                            "name": v["name"],
+                            "is_pitcher": self._is_pitcher(pid, v),
+                        },
                     )
 
     def _on_team(self, player_id: str, team_id: str) -> bool:

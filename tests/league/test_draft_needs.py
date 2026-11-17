@@ -132,3 +132,31 @@ def test_never_more_than_max_chips():
 def test_strategy_carries_the_chips():
     needs = _league(thin=_roster({**DEPTH, "c": 0}))
     assert needs["thin"].strategy().chips == needs["thin"].chips
+
+
+def test_starters_fill_the_spots_as_a_whole():
+    # A shortstop who rates a bit higher at third stays at short when the
+    # other infielder can only play third (the greedy fill sent him to third
+    # and left shortstop a D, Josh 2026-11-16).
+    from src.league.offseason.draft_needs import _best_assignment
+
+    star = {"ss": 80, "3b": 82}
+    third = {"ss": 30, "3b": 70}
+    got = _best_assignment([(None, star), (None, third)], ["ss", "3b"])
+    assert got == {"ss": 80, "3b": 70}
+
+
+def test_a_lineup_places_its_starters():
+    from src.league.offseason.draft_needs import _starter_grades
+
+    roster = [(p, "26man") for p in [_player("if") for _ in range(4)]]
+    roster += [(_player(s), "26man") for s in ("c", "of", "of", "of")]
+    rated = [(p, st, ratings(p), group(p, ratings(p))) for p, st in roster]
+    weak = _player("if", infield=20, arm=20, speed=20)
+    rated.append((weak, "26man", ratings(weak), group(weak, ratings(weak))))
+    # Without a lineup he sits behind four good infielders; with him at
+    # short in the lineup, as the Depth Chart shows it, he's the weak spot.
+    assert _starter_grades(rated)["if"][0] not in ("D", "D-", "F")
+    graded = _starter_grades(rated, {weak.id: "ss"})
+    assert graded["if"][1] == "Starter at SS"
+    assert graded["if"][0] in ("D", "D-", "F")

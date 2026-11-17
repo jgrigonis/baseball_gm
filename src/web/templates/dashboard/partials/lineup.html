@@ -316,6 +316,7 @@
 #lu-header .lu-glow { border-color: var(--green); color: var(--green); }
 /* Rebuild All + its style menu */
 .lu-split { position: relative; display: inline-flex; margin-left: 8px; }
+.lu-slot.lu-flash { outline: 2px solid var(--amber); outline-offset: -2px; transition: outline-color .4s; }
 .lu-split #rebuild-all-btn { border-top-right-radius: 0; border-bottom-right-radius: 0; }
 .lu-split .lu-split-caret {
   border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: -1px;
@@ -876,6 +877,7 @@ function renderBattingOrder() {
       const isHitter = !!findHitter(slot.player_id);
       row.className = 'lu-slot';
       row.dataset.idx = i;
+      row.dataset.pid = slot.player_id;
       const posOpts = `<option value="" ${!slot.position?'selected':''}>—</option>` +
         POSITIONS.map(pos =>
           `<option value="${pos}" ${slot.position===pos?'selected':''}>${pos.toUpperCase()}</option>`
@@ -1249,6 +1251,20 @@ function toggleShowDef() {
 })();
 
 /* ── Batting: vs RHP / vs LHP ────────────────────────────────────────────────── */
+// The sim card's news about a hitter (hurt, back) opens the lineup he's in:
+// the vs LHP one when he's only in that, and marks his row (Josh, 2026-11-16).
+window.lineupShowPlayer = function (pid) {
+  if (!pid || !findHitter(pid)) return;
+  const inHand = h => (lineups[h] || []).some(s => s && s.player_id === pid);
+  const other = vsHand === 'R' ? 'L' : 'R';
+  if (!inHand(vsHand) && inHand(other)) switchHand(other);
+  const row = document.querySelector(`.lu-slot[data-pid="${pid}"]`);
+  if (!row) return;
+  row.scrollIntoView({ block: 'center' });
+  row.classList.add('lu-flash');
+  setTimeout(() => row.classList.remove('lu-flash'), 2400);
+};
+
 function switchHand(hand) {
   vsHand = hand;
   lineup = lineups[hand];

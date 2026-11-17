@@ -246,7 +246,7 @@ window.offerFreeAgent = async function(pid, name) {
   const vals = await gmConfirm({
     title: `Offer ${name} a deal?`,
     lines: [
-      `He asks ${term(ask.ask_text, ask.ask_years)}. Sign pays that; an offer can try for less, or other seasons.`,
+      `He asks ${term(ask.ask_text, ask.ask_years)}. Sign pays that. You can offer less money or a different number of seasons, and he answers right away.`,
       ...ask.hints,
       c ? `He said he'd take ${term(c.salary_text, c.years)}.` : '',
       ask.offers_left
@@ -696,6 +696,38 @@ function syncActiveTab(path) {
 document.body.addEventListener('htmx:pushedIntoHistory', function(e) {
   syncActiveTab(e.detail.path);
 });
+// A plain link to a page a tab owns (a team on the Standings, a season on
+// History) opens it in place, like the tab does, rather than loading the
+// whole page: a full load would stop a multi-day sim (Josh, 2026-11-16).
+function tabOwning(path) {
+  var links = document.querySelectorAll('.tab-link, .side-link');
+  for (var i = 0; i < links.length; i++) {
+    var href = (links[i].getAttribute('href') || '').split('?')[0].replace(/\/$/, '');
+    if (href && href === path) return links[i];
+  }
+  return null;
+}
+document.addEventListener('click', function(e) {
+  if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  var a = e.target.closest && e.target.closest('a[href]');
+  if (!a || a.hasAttribute('hx-get') || a.target || a.hasAttribute('download') || !window.htmx) return;
+  var url;
+  try { url = new URL(a.getAttribute('href'), location.href); } catch (err) { return; }
+  if (url.origin !== location.origin) return;
+  var path = url.pathname.replace(/\/$/, '');
+  if (path.indexOf('/leagues/{{ league_id }}/') !== 0 || !tabOwning(path)) return;
+  if (!document.getElementById('tab-content')) return;
+  e.preventDefault();
+  if (window.closeGamePanel && a.closest('#game-panel')) window.closeGamePanel();
+  var hash = url.hash.slice(1);
+  // The link is the request's source, so htmx pushes its address.
+  a.setAttribute('hx-push-url', 'true');
+  htmx.ajax('GET', url.pathname + url.search, {source: a, target: '#tab-content', swap: 'innerHTML'}).then(function() {
+    syncActiveTab(url.pathname);
+    var spot = hash && document.getElementById(hash);
+    if (spot) spot.scrollIntoView();
+  });
+});
 document.body.addEventListener('htmx:historyRestore', function(e) {
   syncActiveTab(e.detail.path || location.pathname);
 });
@@ -785,6 +817,9 @@ document.body.addEventListener('htmx:afterSettle', function(e) {
     if (landing && typeof window.switchTab === 'function') {
       window._lineupLandingTab = null;
       window.switchTab(landing);
+      var who = window._lineupLandingPlayer;
+      window._lineupLandingPlayer = null;
+      if (who && typeof window.lineupShowPlayer === 'function') window.lineupShowPlayer(who);
     }
   }
 });
@@ -828,6 +863,7 @@ window.simCard = (function () {
       row.className = 'inj-news-item' + (item.seen ? ' seen' : '');
       row.textContent = item.text;
       row.dataset.dest = item.dest || 'batting';
+      if (item.player) row.dataset.player = item.player;
       row.dataset.i = i;
       if (item.trade) { row.dataset.team = item.trade.team; row.dataset.pid = item.trade.pid; }
       list.appendChild(row);
@@ -882,7 +918,7 @@ window.simCard = (function () {
     add: function (items) {
       if (!items || !items.length) return;
       // The newest day on top, its items in their own order.
-      news = items.map(function (it) { return {text: it.text, dest: it.dest, trade: it.trade, seen: false}; }).concat(news);
+      news = items.map(function (it) { return {text: it.text, dest: it.dest, trade: it.trade, player: it.player, seen: false}; }).concat(news);
       render();
     },
     chrome: chrome,
@@ -932,19 +968,23 @@ function showInjuryNews(d) {
     items.push({
       text: `🚑 ${i.name}${i.injury ? ' — ' + i.injury : ''} (${i.days}d)`,
       dest: i.is_pitcher ? 'pitching' : 'batting',
+      player: i.player_id,
     });
   });
   (d.returned || []).forEach(function (i) {
     items.push({
       text: `✅ ${i.name} returned${i.effect ? ' — ' + i.effect : ''}`,
-      // Not on the 40-man → roster tab, to be placed first
-      dest: !i.on_40man ? 'roster' : i.is_pitcher ? 'pitching' : 'batting',
+      // Not on the 40-man, or still on the injured list (Long Form) →
+      // roster tab, to be placed or activated first
+      dest: (!i.on_40man || i.on_il) ? 'roster' : i.is_pitcher ? 'pitching' : 'batting',
+      player: i.player_id,
     });
   });
   (d.rust_cleared || []).forEach(function (i) {
     items.push({
       text: `✅ Rust fell off ${i.name}`,
       dest: i.is_pitcher ? 'pitching' : 'batting',
+      player: i.player_id,
     });
   });
   (d.roster_moves || []).forEach(function (m) {
@@ -1049,6 +1089,7 @@ function injuryNewsClick(ev) {
     goToTab(dest);
   } else {
     window._lineupLandingTab = dest;
+    window._lineupLandingPlayer = item.dataset.player || null;
     goToTab('lineup');
   }
 }

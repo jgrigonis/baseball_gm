@@ -112,7 +112,10 @@ class TestPlayoffRace:
         ]
         left = {t: 2 for t in ids}
 
-        assert sim_summary.playoff_race(teams, "t0", confs, left) == "Clinched the East"
+        assert (
+            sim_summary.playoff_race(teams, "t0", confs, left)
+            == "Clinched the East division"
+        )
 
     def test_ties_go_against_the_team_when_clinching(self):
         # t7 leads t8 by 4 with 4 to play: they could finish level.

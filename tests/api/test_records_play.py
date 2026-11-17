@@ -143,6 +143,26 @@ def test_a_big_game_beats_the_league_mark_and_makes_news(db_conn, lg):
     assert card.holders[0]["player_id"] == p and card.holders[0]["is_mine"]
 
 
+def test_a_record_game_is_one_story_for_both_clubs(db_conn, lg):
+    from src.api.services import news as league_news
+
+    db = db_conn
+    lid = lg["league"].id
+    p = _player(db, lg["league"], "Hitter")
+    g = _game(db, lg["s"], lg["a"], lg["b"], "2030-04-02")
+    _box(db, g, p, lg["a"], lg["b"], bat_ab=6, bat_hits=6)
+
+    play.update_league(db, lid)  # the sim reads the record book first
+    league_news.update_league(db, lid)
+
+    stories = db.execute(
+        "SELECT kind, team_ids FROM league_news WHERE league_id = %s AND %s = ANY(player_ids)",
+        (lid, p),
+    ).fetchall()
+    assert [s["kind"] for s in stories] == ["record"]
+    assert set(stories[0]["team_ids"]) == {lg["a"].id, lg["b"].id}
+
+
 def test_below_the_mark_the_card_shows_the_mark(db_conn, lg):
     db = db_conn
     lid = lg["league"].id

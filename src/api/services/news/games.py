@@ -132,6 +132,20 @@ def _big_games(conn, news, names, league_id, season_id, since, through) -> None:
         (season_id, _after(since), through),
     ).fetchall()
     names.load_players(r["player_id"] for r in rows)
+    # A game that set or tied a league record has the record's story
+    # (records/news.py), which says it better than a second one here.
+    record_games = (
+        {
+            tuple(r["key"].rsplit(":", 2)[1:])
+            for r in conn.execute(
+                """SELECT key FROM league_news WHERE league_id = %s AND kind = 'record'
+                 AND key LIKE 'rec:g:%%' AND news_date > %s AND news_date <= %s""",
+                (league_id, _after(since), through),
+            ).fetchall()
+        }
+        if rows
+        else set()
+    )
     for r in rows:
         pid, team, opp = r["player_id"], r["team_id"], r["opponent_team_id"]
         who = names.player(pid)
@@ -161,6 +175,8 @@ def _big_games(conn, news, names, league_id, season_id, since, through) -> None:
             kind, weight = "big_game", 1
             headline = f"{who} gets {r['h']} hits"
             body = f"A big day at the plate against the {names.team(opp)}."
+        if kind == "big_game" and (pid, r["game_id"]) in record_games:
+            continue
         how, credit = names.origin(pid, team)
         body = f"{body} {_credit_line(pid, names, how)}".strip()
         if r["playoff"]:
