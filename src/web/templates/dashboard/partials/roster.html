@@ -490,6 +490,7 @@ let colState = {
 
 let _dragging     = null;
 let _draggingFrom = null;  // '40man' | 'org'
+let _draggingSec  = null;  // Long Form: 'active' | 'reserve' (40-man cards)
 
 /* ── Skill value ────────────────────────────────────────────────────────────── */
 function getSkillVal(p, key) {
@@ -707,6 +708,31 @@ function toggleActive(pid) {
   commit();
 }
 
+// Long Form drag: one of a and b is active, the other on the reserve; they
+// trade places unless the pitcher limit says no.
+function swapActive(a, b) {
+  const [on, off] = active.has(a) ? [a, b] : [b, a];
+  if (!active.has(on) || active.has(off)) return;
+  active.delete(on);
+  const why = activeBlock(byId(off));
+  if (why) { active.add(on); showFeedback(why, 'var(--red)'); return; }
+  active.add(off);
+  commit();
+}
+
+// Long Form drag onto the Active or Reserve heading: move him there.
+function secOver(e, sec) {
+  if (!_dragging || _draggingFrom !== '40man' || !_draggingSec || _draggingSec === sec) return;
+  e.preventDefault();
+  e.currentTarget.classList.add('drag-swap');
+}
+function secDrop(e, sec) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-swap');
+  if (!_dragging || _draggingFrom !== '40man' || !_draggingSec || _draggingSec === sec) return;
+  if ((sec === 'active') !== active.has(_dragging)) toggleActive(_dragging);
+}
+
 // Best healthy 40-man players: two catchers, a full pitching staff, then the
 // best hitters. Injured players come off.
 function pickTopActive() {
@@ -775,7 +801,7 @@ function salaryPiece(p) {
   return [`<span title="${p.rookie_deal ? 'Rookie deal' : 'Salary'} this season">${p.salary_text}</span>`];
 }
 
-function makeCard(p, isIn40) {
+function makeCard(p, isIn40, sec) {
   const el = document.createElement('div');
   el.className = 'r-card';
   el.draggable = !p.il;
@@ -830,6 +856,7 @@ function makeCard(p, isIn40) {
   el.addEventListener('dragstart', e => {
     _dragging     = p.player_id;
     _draggingFrom = isIn40 ? '40man' : 'org';
+    _draggingSec  = sec || null;
     el.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
     e.stopPropagation();
@@ -837,7 +864,8 @@ function makeCard(p, isIn40) {
   el.addEventListener('dragend', () => {
     el.classList.remove('dragging');
     document.querySelectorAll('.r-card.drag-swap').forEach(c => c.classList.remove('drag-swap'));
-    setTimeout(() => { _dragging = null; _draggingFrom = null; }, 0);
+    document.querySelectorAll('.r-sec.drag-swap').forEach(c => c.classList.remove('drag-swap'));
+    setTimeout(() => { _dragging = null; _draggingFrom = null; _draggingSec = null; }, 0);
   });
 
   /* Drop target: cross-column drop = swap */
@@ -845,7 +873,8 @@ function makeCard(p, isIn40) {
     if (!_dragging || _dragging === p.player_id || p.il) return;
     const targetIn40 = isIn40;
     const srcIn40    = _draggingFrom === '40man';
-    if (targetIn40 === srcIn40) return; // same column — no visual, not a valid swap target
+    // Same column is only a swap between Long Form's active and reserve.
+    if (targetIn40 === srcIn40 && !(sec && _draggingSec && sec !== _draggingSec)) return;
     e.preventDefault();
     e.stopPropagation();
     document.querySelectorAll('.r-card.drag-swap').forEach(c => c.classList.remove('drag-swap'));
@@ -859,13 +888,20 @@ function makeCard(p, isIn40) {
     if (!_dragging || _dragging === p.player_id || p.il) return;
     const targetIn40 = isIn40;
     const srcIn40    = _draggingFrom === '40man';
-    if (targetIn40 === srcIn40) return;
+    if (targetIn40 === srcIn40) {
+      // Long Form: an active player and a reserve trade places.
+      if (sec && _draggingSec && sec !== _draggingSec) swapActive(_dragging, p.player_id);
+      return;
+    }
     // Swap: one goes in, one comes out
     if (targetIn40) {
       // dragging from org onto a 40-man card
+      const wasActive = active.has(p.player_id);
       fortyMan.delete(p.player_id);  // 40-man player leaves
       fortyMan.add(_dragging);        // org player joins
       active.delete(p.player_id);
+      // Long Form: dropped on an active player, he takes that spot if he fits.
+      if (LONG_FORM && wasActive && !activeBlock(byId(_dragging))) active.add(_dragging);
     } else {
       // dragging from 40-man onto an org card
       fortyMan.delete(_dragging);     // 40-man player leaves
@@ -929,6 +965,10 @@ function render() {
 
   const col40  = document.getElementById('col-40man');
   const colOrg = document.getElementById('col-org');
+  // Rebuilding the lists empties them for a moment, which drops every
+  // scroller above to the top. Put each one back where it was.
+  const scrollers = [col40, colOrg, document.getElementById('tab-content'), document.scrollingElement]
+    .filter(Boolean).map(el => [el, el.scrollTop]);
   col40.querySelectorAll('.r-card, .r-sec').forEach(c => c.remove());
   colOrg.querySelectorAll('.r-card').forEach(c => c.remove());
 
@@ -964,30 +1004,36 @@ function render() {
     fortyCount.style.color = short ? 'var(--red)' : '';
     fortyCount.style.fontWeight = short ? '700' : '';
   }
+  scrollers.forEach(([el, top]) => { el.scrollTop = top; });
 }
 
 // Long Form: the 40-man column in two parts, the active roster (with its
 // pitcher count) and the reserve, each sorted and filtered like the column.
 function renderActiveSections(col) {
   const pitchers = activePitchers();
-  const sec = (html) => {
+  const sec = (html, name) => {
     const el = document.createElement('div');
     el.className = 'r-sec';
     el.innerHTML = html;
+    if (name) {
+      el.addEventListener('dragover', e => secOver(e, name));
+      el.addEventListener('dragleave', () => el.classList.remove('drag-swap'));
+      el.addEventListener('drop', e => secDrop(e, name));
+    }
     col.appendChild(el);
   };
   const cls = (n, max) => n > max ? ' class="over"' : '';
   sec(`<span class="r-sec-label">Active</span>
        <b${cls(active.size, LIMITS.max)}>${active.size} / ${LIMITS.max}</b>
        <span>Pitchers <b${cls(pitchers, LIMITS.pitchers)}>${pitchers} / ${LIMITS.pitchers}</b></span>
-       ${LIMITS.expanded ? '<span class="r-sec-note">September rosters</span>' : ''}`);
+       ${LIMITS.expanded ? '<span class="r-sec-note">September rosters</span>' : ''}`, 'active');
   sortedPlayers([...active].filter(id => fortyMan.has(id)), '40').filter(p => isVisible(p, '40'))
-    .forEach(p => col.appendChild(makeCard(p, true)));
+    .forEach(p => col.appendChild(makeCard(p, true, 'active')));
   const reserve = [...fortyMan].filter(id => !active.has(id) && !onIL(id));
   sec(`<span class="r-sec-label">Reserve</span><b>${reserve.length}</b>
-       <span class="r-sec-note">On the 40-man, not playing</span>`);
+       <span class="r-sec-note">On the 40-man, not playing</span>`, 'reserve');
   sortedPlayers(reserve, '40').filter(p => isVisible(p, '40'))
-    .forEach(p => col.appendChild(makeCard(p, true)));
+    .forEach(p => col.appendChild(makeCard(p, true, 'reserve')));
   const hurt = [...fortyMan].filter(onIL);
   if (hurt.length) {
     const sixty = hurt.filter(id => byId(id).il.kind === 60).length;
