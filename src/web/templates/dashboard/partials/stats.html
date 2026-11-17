@@ -74,6 +74,16 @@
                    background:transparent;color:var(--text-dim);border:1px solid var(--border);cursor:pointer;">
       Hide P
     </button>
+    {% if departed_count %}
+    {# Players who've left the team this season, dimmed and tagged; the
+       choice to hide them is kept in this browser. #}
+    <button id="btn-departed" onclick="toggleShowDeparted()" aria-pressed="true"
+            title="Players no longer with the team: {{ departed_count }}"
+            style="padding:4px 10px;font-family:var(--font-mono);font-size:11px;white-space:nowrap;
+                   background:var(--green-dim);color:var(--green);border:1px solid var(--border);cursor:pointer;">
+      Show departed
+    </button>
+    {% endif %}
     <span id="stats-count" style="font-family:var(--font-mono);font-size:11px;white-space:nowrap;
                                    color:var(--text-dim);margin-left:auto;"></span>
   </div>
@@ -113,6 +123,9 @@ var category    = 'batting';
 var sortKey     = 'AVG';
 var sortAsc     = false;
 var hidePitchers = false;
+var DEPARTED_KEY = 'statsShowDeparted';
+var showDeparted = true;
+try { showDeparted = localStorage.getItem(DEPARTED_KEY) !== '0'; } catch (e) {}
 
 var BAT_COLS = [
   {key:'name',  label:'Player',  fmt:null,    rate:false, asc:true},
@@ -301,6 +314,30 @@ function toggleHidePitchers() {
   renderTable();
 }
 
+function paintDepartedBtn() {
+  var btn = document.getElementById('btn-departed');
+  if (!btn) return;
+  btn.style.background = showDeparted ? 'var(--green-dim)' : 'transparent';
+  btn.style.color      = showDeparted ? 'var(--green)'     : 'var(--text-dim)';
+  btn.setAttribute('aria-pressed', showDeparted ? 'true' : 'false');
+}
+
+function toggleShowDeparted() {
+  showDeparted = !showDeparted;
+  try { localStorage.setItem(DEPARTED_KEY, showDeparted ? '1' : '0'); } catch (e) {}
+  paintDepartedBtn();
+  renderTable();
+}
+
+function departedTap(ev, el) {
+  ev.stopPropagation();
+  if (window.innerWidth <= 700 && window.gmToast) gmToast(el.getAttribute('data-tip'));
+}
+
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
 function setSort(key, defaultAsc) {
   if (sortKey === key) {
     sortAsc = !sortAsc;
@@ -316,6 +353,7 @@ function renderTable() {
   var cols = colsFor(category);
   var rows = category === 'batting' ? BATTERS  : category === 'pitching' ? PITCHERS : FIELDERS;
   if (category === 'defense' && hidePitchers) rows = rows.filter(function(r) { return r.pos !== 'P'; });
+  if (!showDeparted) rows = rows.filter(function(r) { return !r.departed; });
 
 
   rows = rows.slice().sort(function(a, b) {
@@ -348,7 +386,9 @@ function renderTable() {
   }
   document.getElementById('stats-table').style.display = '';
   empty.style.display = 'none';
-  document.getElementById('stats-count').textContent = rows.length + ' players';
+  var gone = rows.filter(function(r) { return r.departed; }).length;
+  document.getElementById('stats-count').textContent = rows.length + ' players'
+    + (gone ? ' (' + gone + ' gone)' : '');
 
   var bodyHtml = '';
   rows.forEach(function(row) {
@@ -367,11 +407,24 @@ function renderTable() {
       if (isRate && !unqual) style += 'font-weight:600;';
       var val = fmtVal(row[col.key], col.fmt);
       if (col.key === 'name') val += rookieTag(row.player_id);
-      if (isName && row.injured) {
+      if (isName && row.injured && !row.departed) {
         var ilLabel = row.injury_days
           ? ' <span style="font-size:10px;color:var(--red);"' + (row.injury_name ? ' title="' + row.injury_name + '"' : '') + '>IL (' + row.injury_days + 'd)</span>'
           : ' <span style="font-size:10px;color:var(--red);">IL</span>';
         val = '<span style="color:var(--red);">' + val + '</span>' + ilLabel;
+      }
+      // A player who's left: his line is dimmed, his name tagged with how
+      // he went (hover for where and when).
+      if (row.departed) {
+        val = '<span style="opacity:.55;">' + val + '</span>';
+        if (col.key === 'name') {
+          // A tap shows the tip rather than opening his card; on a phone
+          // as a toast, since the pinned name column would clip it.
+          val += ' <span class="setting-tip tip-card stats-departed-tag" tabindex="0" onclick="departedTap(event, this)"'
+            + ' data-tip="' + esc(row.departed_tip || row.departed) + '"'
+            + ' style="font-size:10px;padding:0 4px;border:1px solid var(--border);color:var(--text-dim);">'
+            + row.departed + '</span>';
+        }
       }
       bodyHtml += '<td style="' + style + '"' + title + '>' + val + '</td>';
     });
@@ -407,11 +460,14 @@ function sizeStatsScroll() {
 sizeStatsScroll();
 window.addEventListener('resize', sizeStatsScroll);
 restoreView();
+paintDepartedBtn();
 renderTable();
 
 window.setSort          = setSort;
 window.showCategory     = showCategory;
 window.toggleHidePitchers = toggleHidePitchers;
+window.toggleShowDeparted = toggleShowDeparted;
+window.departedTap      = departedTap;
 window.switchTeam       = switchTeam;
 window.switchSeason     = switchSeason;
 window.switchPostseason = switchPostseason;
