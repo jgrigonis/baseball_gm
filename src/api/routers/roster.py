@@ -38,6 +38,7 @@ from src.player.face import face_url
 from src.league.league_modes import is_blitz_style
 from src.player.positions import is_pitcher
 from src.team.injured_list import InjuredList, kinds_for, league_today
+from src.team import playoff_eligibility
 from src.team.roster_limits import MIN_PLAYING_ROSTER, league_active_limits
 from src.web.utils import _current_league_date, _shell_ctx, tab_response
 
@@ -130,6 +131,16 @@ def roster(
             "pitchers": limits.max_pitchers,
             "expanded": limits.expanded,
         }
+        # From September 1: who can't be on the playoff roster.
+        elig = playoff_eligibility.eligible(db, ctx.get("season_id"), team_id)
+        if elig is not None:
+            for p in players:
+                # Minor leaguers never are: only the 40-man is tagged.
+                if p["player_id"] not in elig and p.get("roster_status") in (
+                    "26man",
+                    "40man",
+                ):
+                    p["playoff_ineligible"] = True
     return tab_response(request, htmx, "dashboard/partials/roster.html", ctx)
 
 
@@ -249,6 +260,13 @@ def _active_problem(
         return (
             f"The active roster holds at most {limits.max_pitchers} pitchers "
             f"({pitchers} picked)."
+        )
+    if league.get("state") == "playoffs":
+        season_id = SeasonRepository(db).get_most_recent_season_from_league(
+            league["id"]
+        )
+        return playoff_eligibility.problem(
+            db, league["id"], season_id, team_id, list(active)
         )
     return None
 

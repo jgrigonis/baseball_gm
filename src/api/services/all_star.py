@@ -463,24 +463,11 @@ def play_game(
     rng = rng or random.Random()
     stars = stars_with_injuries(conn, league_id, season_id, event)
     injured = {r["player_id"] for r in stars if r["hurt"]}
-    players = PlayerRepository(conn)
-    gms = GMRepository(conn)
-    sides: dict[int, TeamInGame] = {}
+    sides = {
+        side: _side_team(conn, league_id, g, side, stars, event) for side in (1, 2)
+    }
     starting: dict[int, dict[str, tuple[int, str]]] = {}
-    for side in (1, 2):
-        team_id = g[f"captain{side}_team_id"]
-        mine = [r for r in stars if r["side"] == side and not r["hurt"]]
-        records = [players.look_up(r["player_id"]) for r in mine]
-        team = TeamInGame(
-            TeamRecord(
-                id=team_id,
-                city=g[f"city{side}"],
-                mascot=MASCOTS[event],
-                players=tuple(p for p in records if p),
-            )
-        )
-        team.profile = ManagerProfile.from_row(gms.get_team_profile(team_id, league_id))
-        sides[side] = team
+    plans = {side: _plan(g, side, stars, sides[side], injured) for side in (1, 2)}
     game = Game(
         sides[1],
         sides[2],
@@ -491,13 +478,17 @@ def play_game(
         max_pitcher_outs=all_star.PITCHER_OUTS_CAP,
         # Still tied after nine, a home run swing-off settles it.
         max_innings=9,
+        # Every pitcher works a short stint, in the side's pitching order.
+        pitch_orders={sides[s].record.id: plans[s]["pitch_order"] for s in (1, 2)},
     )
     for side, team in sides.items():
+        plan = plans[side]
         team.set_lineup(
-            starting_pitcher_id=_starter(stars, side, injured),
+            starting_pitcher_id=(plan["pitch_order"] or [None])[0],
             dh=True,
             injured_ids=injured,
             style=team.profile.lineup_style,
+            saved_lineup=plan["lineup"],
         )
         starting[side] = {
             s.player.id: (i, s.position) for i, s in enumerate(team.lineup, 1)
@@ -539,6 +530,143 @@ def play_game(
     }
 
 
+def _side_team(conn, league_id, g, side: int, stars: list[dict], event: str):
+    """One side of the game, its healthy players and its captain's
+    lineup style."""
+    team_id = g[f"captain{side}_team_id"]
+    mine = [r for r in stars if r["side"] == side and not r["hurt"]]
+    players = PlayerRepository(conn)
+    records = [players.look_up(r["player_id"]) for r in mine]
+    team = TeamInGame(
+        TeamRecord(
+            id=team_id,
+            city=g[f"city{side}"],
+            mascot=MASCOTS[event],
+            players=tuple(p for p in records if p),
+        )
+    )
+    team.profile = ManagerProfile.from_row(
+        GMRepository(conn).get_team_profile(team_id, league_id)
+    )
+    return team
+
+
+def _pitch_order(stars: list[dict], side: int, injured: set) -> list[str]:
+    """The side's pitchers, most votes first: the one who starts, then the
+    order they come in."""
+    arms = [
+        r
+        for r in stars
+        if r["side"] == side and r["slot"] == "p" and r["player_id"] not in injured
+    ]
+    arms.sort(key=lambda r: (-r["points"], -r["score"]))
+    return [r["player_id"] for r in arms]
+
+
+def _plan(g, side: int, stars: list[dict], team, injured: set) -> dict:
+    """The side's batting order and pitching order: the captain's card when
+    they saved one (anyone hurt since drops out and the game fills in),
+    otherwise the game's own."""
+    auto = _pitch_order(stars, side, injured)
+    saved = [p for p in (g.get(f"pitch_order{side}") or []) if p in auto]
+    order = saved + [p for p in auto if p not in saved]
+    lineup = g.get(f"lineup{side}") or None
+    return {"pitch_order": order, "lineup": lineup}
+
+
+def plan_context(
+    conn, league_id: str, season_id: str, team_id, event: str = "all_star"
+):
+    """A person captain's lineup card once the draft is done: the batting
+    order and positions, and the pitching order, as the game would play it
+    now (their saved card, or the automatic one). None when it isn't theirs
+    to set."""
+    repo = AllStarRepository(conn, event)
+    g = repo.game(season_id)
+    if not g or g["state"] != "draft" or team_id not in _people(conn, league_id):
+        return None
+    side = next((s for s in (1, 2) if g[f"captain{s}_team_id"] == team_id), None)
+    stars = stars_with_injuries(conn, league_id, season_id, event)
+    if side is None or any(not r["side"] for r in _board(stars)):
+        return None
+    injured = {r["player_id"] for r in stars if r["hurt"]}
+    team = _side_team(conn, league_id, g, side, stars, event)
+    plan = _plan(g, side, stars, team, injured)
+    try:
+        team.set_lineup(
+            starting_pitcher_id=(plan["pitch_order"] or [None])[0],
+            dh=True,
+            injured_ids=injured,
+            style=team.profile.lineup_style,
+            saved_lineup=plan["lineup"],
+        )
+    except ValueError:
+        return None  # too few players for a lineup yet
+    names = {r["player_id"]: r for r in stars}
+    mine = [r for r in stars if r["side"] == side and not r["hurt"]]
+    return {
+        "side": side,
+        "saved": bool(g.get(f"lineup{side}") or g.get(f"pitch_order{side}")),
+        "lineup": [
+            {
+                "player_id": s.player.id,
+                "position": s.position,
+                "name": names[s.player.id]["name"],
+            }
+            for s in team.lineup
+        ],
+        # Anyone on the side can bat (hitters first): a small league's
+        # sides can be short of hitters.
+        "hitters": [
+            {"player_id": r["player_id"], "name": r["name"], "slot": r["slot"]}
+            for r in sorted(mine, key=lambda r: r["slot"] == "p")
+        ],
+        "pitchers": [
+            {"player_id": pid, "name": names[pid]["name"]}
+            for pid in plan["pitch_order"]
+        ],
+        "positions": [p for p in all_star.FIELD_SLOTS] + ["dh"],
+    }
+
+
+def save_plan(
+    conn,
+    league_id: str,
+    season_id: str,
+    team_id: str,
+    lineup: list[dict] | None,
+    pitch_order: list[str] | None,
+    event: str = "all_star",
+) -> None:
+    """Save a captain's lineup card (None and None: back to the game's own).
+    Raises ValueError when it isn't theirs to set or doesn't add up."""
+    card = plan_context(conn, league_id, season_id, team_id, event)
+    if card is None:
+        raise ValueError("You can set your lineup once the draft is done.")
+    if lineup is None and pitch_order is None:
+        AllStarRepository(conn, event).save_plan(season_id, card["side"], None, None)
+        return
+    hitters = {h["player_id"] for h in card["hitters"]}
+    ids = [r.get("player_id") for r in lineup or []]
+    positions = [str(r.get("position") or "").lower() for r in lineup or []]
+    if len(ids) != 9 or len(set(ids)) != 9 or not set(ids) <= hitters:
+        raise ValueError("Pick 9 different players from your side.")
+    if sorted(positions) != sorted(card["positions"]):
+        raise ValueError("Each position needs exactly one player, with a DH.")
+    arms = [p["player_id"] for p in card["pitchers"]]
+    if sorted(pitch_order or []) != sorted(arms):
+        raise ValueError("The pitching order has to list every pitcher once.")
+    AllStarRepository(conn, event).save_plan(
+        season_id,
+        card["side"],
+        [
+            {"player_id": pid, "batting_order": i, "position": pos}
+            for i, (pid, pos) in enumerate(zip(ids, positions), 1)
+        ],
+        list(pitch_order),
+    )
+
+
 def _hitters(team: TeamInGame) -> list[dict]:
     """A side's position players, as swing_off.hitters wants them."""
     return [
@@ -550,18 +678,6 @@ def _hitters(team: TeamInGame) -> list[dict]:
         }
         for p in team.position_players
     ]
-
-
-def _starter(stars: list[dict], side: int, injured: set) -> str | None:
-    """The side's starting pitcher: its pitcher with the most votes."""
-    arms = [
-        r
-        for r in stars
-        if r["side"] == side and r["slot"] == "p" and r["player_id"] not in injured
-    ]
-    if not arms:
-        return None
-    return max(arms, key=lambda r: (r["points"], r["score"]))["player_id"]
 
 
 def _game_line(p, side: int, start: tuple | None, pitch_order: dict) -> dict:
@@ -748,6 +864,9 @@ def game_context(
         ctx["available"] = {
             s: [r for r in left if r["slot"] == s] for s in all_star.SLOTS
         }
+        if not left and ctx["my_side"]:
+            # The draft is done: the captain's lineup card (Josh, 2026-11-16).
+            ctx["plan"] = plan_context(conn, league_id, season_id, team_id, event)
     else:
         lines = AllStarRepository(conn, event).lines(season_id)
         ctx["batting"] = {

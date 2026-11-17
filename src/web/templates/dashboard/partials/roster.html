@@ -867,7 +867,7 @@ function makeCard(p, isIn40, sec) {
     <span class="${gradeClass(p.overall)} lu-grade">${p.overall}</span>
     ${faceImgHtml(p, false)}
     <div style="min-width:0;">
-      <div class="lu-name" style="color:${p.returning?'#f5c518':p.injured?'var(--red)':''};">${jerseyTag(p)}${p.first_name} ${p.last_name}${rookieTag(p.player_id)}${nameTrailHtml(p, [posLabel(p.position)||'?', `${p.bats}/${p.throws}`, `Age ${p.age}`, ...salaryPiece(p)], stats)}${ilTag(p)}${ilListTag(p)}${rustTag(p)}${newTag(p)}${iconTag(p)}${moodTag(p)}</div>
+      <div class="lu-name" style="color:${p.returning?'#f5c518':p.injured?'var(--red)':''};">${jerseyTag(p)}${p.first_name} ${p.last_name}${rookieTag(p.player_id)}${nameTrailHtml(p, [posLabel(p.position)||'?', `${p.bats}/${p.throws}`, `Age ${p.age}`, ...salaryPiece(p)], stats)}${ilTag(p)}${ilListTag(p)}${eligTag(p)}${rustTag(p)}${newTag(p)}${iconTag(p)}${moodTag(p)}</div>
       ${isPitcher ? `<div class="lu-skills">${pitcherGradesHtml(p)}</div>` : hitterGradesHtml(p, null)}
     </div>
     ${btnHtml}`;
@@ -943,6 +943,13 @@ function makeCard(p, isIn40, sec) {
 }
 
 // "10-day IL · back May 14": the list he's on and his first day back.
+// Long Form, from September 1: not on the 40-man then, so he can't be on
+// the playoff roster except to replace a hurt player who was.
+function eligTag(p) {
+  return p.playoff_ineligible
+    ? `<span class="r-il-tag" title="He wasn't on your 40-man on September 1. He can be on the playoff roster only to replace an eligible player who's hurt.">Not playoff eligible</span>`
+    : '';
+}
 function ilListTag(p) {
   if (!p.il) return '';
   const when = p.il.ready ? 'ready' : (p.il.eligible_on > TODAY ? 'back ' + shortDate(p.il.eligible_on) : 'still hurt');

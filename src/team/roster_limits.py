@@ -215,6 +215,21 @@ def enforce_active_roster(
     on_il = set(stints)
     sixty = {pid for pid, st in stints.items() if st.sixty}
 
+    # The playoffs: only players on the 40-man on September 1, plus one
+    # replacement for each of them who's hurt (src/team/playoff_eligibility.py).
+    elig = None
+    allowed = 0
+    if playoffs:
+        from src.db.repositories.season_repo import SeasonRepository
+        from src.team import playoff_eligibility
+
+        season_id = SeasonRepository(conn).get_most_recent_season_from_league(league_id)
+        elig = playoff_eligibility.eligible(conn, season_id, team_id)
+        if elig is not None:
+            allowed = playoff_eligibility.replacements_allowed(
+                conn, league_id, team_id, elig, on
+            )
+
     status = {p["id"]: p["status"] for p in org}
     pitcher = {p["id"]: is_pitcher((p["position"] or "").lower()) for p in org}
     name = {p["id"]: f"{p['first_name']} {p['last_name']}" for p in org}
@@ -222,6 +237,11 @@ def enforce_active_roster(
 
     def ids(*tiers: str) -> list[str]:
         return [pid for pid, s in status.items() if s in tiers]
+
+    def ineligible_active() -> int:
+        if elig is None:
+            return 0
+        return sum(1 for p in ids("26man") if p not in elig)
 
     def pitchers_active() -> int:
         return sum(1 for pid in ids("26man") if pitcher[pid])
@@ -249,6 +269,7 @@ def enforce_active_roster(
         forty_count() <= FORTY_MAX
         and limits.min_active <= len(active) <= limits.max_active
         and pitchers_active() <= limits.max_pitchers
+        and ineligible_active() <= allowed
     )
     if legal and not ai:
         return []
@@ -273,6 +294,11 @@ def enforce_active_roster(
     def move(pid: str, to: str, why: str) -> None:
         status[pid] = to
         moves.append({"player_id": pid, "name": name[pid], "to": to, "why": why})
+
+    # 0. The playoffs: ineligible players past the replacements allowed sit.
+    while ineligible_active() > allowed:
+        worst = min((p for p in ids("26man") if p not in elig), key=rating)
+        move(worst, "40man", "not_eligible")
 
     # 1. Active over the pitcher limit: the lowest-rated pitchers sit.
     while pitchers_active() > limits.max_pitchers:
@@ -316,6 +342,7 @@ def enforce_active_roster(
             for p in pool
             if not hurt(p)
             and room_for(p)
+            and (elig is None or p in elig or ineligible_active() < allowed)
             and (want_pitcher is None or pitcher[p] == want_pitcher)
         ]
         return max(pool, key=rating) if pool else None

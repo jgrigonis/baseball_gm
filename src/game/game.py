@@ -176,6 +176,7 @@ class Game:
         injury_mults: dict[str, float] | None = None,
         injury_rate: float = 1.0,
         analytics_levels: dict[str, int] | None = None,
+        pitch_orders: dict[str, list[str]] | None = None,
     ) -> None:
         """
         Initialize a new game.
@@ -211,6 +212,10 @@ class Game:
             analytics_levels: Each team's Analytics level, by team id, which
                 aims its steals and hit and runs (src/league/budget.py)
                 (default: None, Standard for both)
+            pitch_orders: A team's pitchers in the order they come in, by team
+                id: each change brings in the next one who hasn't pitched (the
+                All-Star Game's pitching order) (default: None, the manager
+                picks)
 
         Raises:
             ValueError: If teams are invalid/missing
@@ -283,6 +288,9 @@ class Game:
         self.max_pitcher_outs = max_pitcher_outs
         self.ghost_runner = ghost_runner
         self.max_innings = max_innings
+        self.pitch_orders = pitch_orders or {}
+        # Pitchers sent in to pinch run, who leave the field after.
+        self.pitcher_runners: set[str] = set()
         # (player_id, severity, activity, injury_type)
         self.new_injuries: list[tuple[str, str, str, str | None]] = []
 
@@ -1096,6 +1104,7 @@ class Game:
     def _consider_defensive_subs(self) -> None:
         """As a team takes the field: better gloves in for weaker ones late,
         most of all to protect a lead (src/game/bench.py)."""
+        self._replace_pitcher_runners()
         for position, fielder, sub in bench.defensive_subs(self):
             self.logger.info(
                 f"🧤 {sub.name} takes over at {position.upper()} for {fielder.name}"
@@ -1111,6 +1120,47 @@ class Game:
                     kind="def",
                 )
             self.pitch_team.substitute(fielder, sub)
+            self.batters_this_game.add(sub.id)
+
+    def _replace_pitcher_runners(self) -> None:
+        """A pitcher who pinch ran (src/game/bench.py) doesn't stay in the
+        field: the best glove on the bench takes his position. A DH stays
+        until his spot is pinch hit for."""
+        team = self.pitch_team
+        for slot in list(team.lineup):
+            p = slot.player
+            if p.id not in self.pitcher_runners:
+                continue
+            position = p.current_position or slot.position
+            if position in (None, "p", "dh"):
+                continue
+            if p is self.current_pitcher:
+                continue
+            options = [
+                b
+                for b in team.bench_players
+                if not (
+                    position in bench.LEFT_HAND_CAPPED_POSITIONS
+                    and (b.throws or "R").upper() == "L"
+                )
+            ]
+            if not options:
+                continue
+            sub = max(options, key=lambda b: (b.ratings.get(position, 0), b.id))
+            self.logger.info(
+                f"🧤 {sub.name} takes over at {position.upper()} for {p.name}"
+            )
+            if self.event_logger:
+                self.event_logger.substitution(
+                    team_id=team.record.id,
+                    incoming_id=sub.id,
+                    incoming_name=sub.name,
+                    outgoing_id=p.id,
+                    outgoing_name=p.name,
+                    position=position,
+                    kind="def",
+                )
+            team.substitute(p, sub)
             self.batters_this_game.add(sub.id)
 
     def _consider_pinch_runners(self) -> None:
@@ -1131,6 +1181,8 @@ class Game:
                 )
             self.bat_team.substitute(runner, sub)
             self.bases.replace_runner(base, sub)
+            if sub.pitcher_fatigue is not None:
+                self.pitcher_runners.add(sub.id)
             # He inherits the run's pitcher and the extra-innings tag.
             sub.responsible_pitcher = runner.responsible_pitcher
             sub.ghost_runner = runner.ghost_runner
@@ -1272,6 +1324,24 @@ class Game:
         if current is not None:
             current.lead_lost = True
 
+    def _next_in_order(self, order: list[str]):
+        """The next pitcher in the team's set order who hasn't pitched yet
+        and isn't hurt, or None."""
+        team_id = self.pitch_team.record.id
+        used = {a.pitcher.id for a in self.pitcher_appearances if a.team_id == team_id}
+        by_id = {p.id: p for p in self.pitch_team.players}
+        for pid in order:
+            p = by_id.get(pid)
+            if (
+                p
+                and pid not in used
+                and pid not in self.pitch_team.removed_ids
+                and pid not in self.injured_ids
+                and not p.is_injured
+            ):
+                return p
+        return None
+
     def _close_pitcher_appearance(self) -> None:
         """End a pitching appearance, set the most recent pitcher's finished_game to False."""
         if self.pitcher_appearances:
@@ -1291,16 +1361,23 @@ class Game:
         ):
             force = True
 
+        order = self.pitch_orders.get(self.pitch_team.record.id)
+
         # ── Closer situation: override fatigue logic entirely ──────────────
+        # (not with a set pitching order, which decides who's next)
         # find_closer uses the same player pool for both the availability check
         # and the selection, so we can never confirm a closer exists then fail
         # to bring them in (which would cause repeated cycling through the bullpen).
-        pitcher = GameStrategy.find_closer(
-            self.current_pitcher,
-            self.pitch_team,
-            self.inning,
-            self.score_differential,
-            self.rng,
+        pitcher = (
+            None
+            if order
+            else GameStrategy.find_closer(
+                self.current_pitcher,
+                self.pitch_team,
+                self.inning,
+                self.score_differential,
+                self.rng,
+            )
         )
         if pitcher:
             outgoing = self.current_pitcher
@@ -1354,7 +1431,8 @@ class Game:
                 if self.pitch_team == self.home
                 else self.away_eligible
             )
-            pitcher = GameStrategy.select_relief_pitcher(
+            pitcher = self._next_in_order(order) if order else None
+            pitcher = pitcher or GameStrategy.select_relief_pitcher(
                 self.pitch_team,
                 self.current_pitcher,
                 self.inning,

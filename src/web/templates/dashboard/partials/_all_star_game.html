@@ -172,6 +172,103 @@
   </div>
 </div>
 
+{% if x.plan %}{% set pl = x.plan %}
+<div class="card as-plan" id="as-plan{{ x.path | replace('/', '-') }}">
+  <div class="card-header"><span class="card-title">Your lineup</span>
+    <span class="as-dim">{{ 'Saved' if pl.saved else 'Automatic, from your lineup style' }}</span></div>
+  <div class="card-body">
+    <div class="as-plan-grid">
+      <div>
+        <div class="as-plan-h">Batting order</div>
+        <table class="data-table as-plan-bat">
+          <tbody>
+            {% for r in pl.lineup %}
+            <tr>
+              <td class="num as-dim">{{ loop.index }}</td>
+              <td><select class="as-plan-pid">
+                {% for h in pl.hitters %}<option value="{{ h.player_id }}"{% if h.player_id == r.player_id %} selected{% endif %}>{{ h.name }} ({{ h.slot | upper }})</option>{% endfor %}
+              </select></td>
+              <td><select class="as-plan-pos">
+                {% for pos in pl.positions %}<option value="{{ pos }}"{% if pos == r.position %} selected{% endif %}>{{ pos | upper }}</option>{% endfor %}
+              </select></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <div class="as-plan-h">Pitching order</div>
+        <ol class="as-plan-arms">
+          {% for p in pl.pitchers %}
+          <li data-pid="{{ p.player_id }}"><span class="as-plan-name">{{ p.name }}</span><span class="as-plan-tag">{{ 'starts' if loop.first else '' }}</span>
+            <button type="button" class="btn btn-secondary as-btn-sm as-plan-up" title="Pitch earlier">↑</button><button type="button" class="btn btn-secondary as-btn-sm as-plan-down" title="Pitch later">↓</button></li>
+          {% endfor %}
+        </ol>
+        <div class="as-dim as-plan-note">No bullpen roles: the first one starts, and each one comes in after the one above him reaches {{ x.pitcher_outs_cap }} outs (or tires).</div>
+      </div>
+    </div>
+    <div class="as-plan-actions">
+      <button type="button" class="btn btn-primary as-btn-sm as-plan-save">Save lineup</button>
+      {% if pl.saved %}<button type="button" class="btn btn-secondary as-btn-sm as-plan-reset">Use the automatic one</button>{% endif %}
+    </div>
+  </div>
+</div>
+<style>
+  .as-plan-grid { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:20px; }
+  .as-plan-h { font-family:var(--font-mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-dim); margin-bottom:6px; }
+  .as-plan-bat td { padding:3px 6px; }
+  .as-plan-bat select { font-size:12px; width:100%; padding:4px 6px; }
+  .as-plan-bat td:nth-child(1) { width:24px; }
+  .as-plan-bat td:nth-child(3) { width:86px; }
+  .as-plan-bat td:nth-child(3) select { min-width:72px; }
+  .as-plan-arms { margin:0; padding-left:22px; }
+  .as-plan-arms li { display:flex; align-items:center; gap:6px; padding:3px 0; font-size:12.5px; }
+  .as-plan-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .as-plan-tag { font-family:var(--font-mono); font-size:10px; color:var(--amber); text-transform:uppercase; min-width:44px; }
+  .as-plan-note { font-size:11.5px; margin-top:8px; line-height:1.5; }
+  .as-plan-actions { margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; }
+  @media (max-width:640px) { .as-plan-grid { grid-template-columns:1fr; } }
+</style>
+<script>
+(function() {
+  const card = document.getElementById('as-plan{{ x.path | replace('/', '-') }}');
+  if (!card) return;
+  const url = '/leagues/{{ league_id }}/allstar{{ x.path }}/plan';
+  const list = card.querySelector('.as-plan-arms');
+  function tags() {
+    list.querySelectorAll('li').forEach((li, i) => { li.querySelector('.as-plan-tag').textContent = i ? '' : 'starts'; });
+  }
+  list.addEventListener('click', e => {
+    const li = e.target.closest('li');
+    if (!li) return;
+    if (e.target.closest('.as-plan-up') && li.previousElementSibling) list.insertBefore(li, li.previousElementSibling);
+    else if (e.target.closest('.as-plan-down') && li.nextElementSibling) list.insertBefore(li.nextElementSibling, li);
+    tags();
+  });
+  async function send(body) {
+    try {
+      const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.detail || 'Something went wrong.');
+    } catch (e) { gmAlert(e.message); return false; }
+    return true;
+  }
+  card.querySelector('.as-plan-save').addEventListener('click', async () => {
+    const lineup = [...card.querySelectorAll('.as-plan-bat tr')].map(tr => ({
+      player_id: tr.querySelector('.as-plan-pid').value,
+      position: tr.querySelector('.as-plan-pos').value,
+    }));
+    const pitch_order = [...list.querySelectorAll('li')].map(li => li.dataset.pid);
+    if (await send({ lineup, pitch_order })) { gmToast('✓ Lineup saved', 'ok'); reloadTab(); }
+  });
+  const reset = card.querySelector('.as-plan-reset');
+  if (reset) reset.addEventListener('click', async () => {
+    if (await send({ reset: true })) { gmToast('Back to the automatic lineup', 'ok'); reloadTab(); }
+  });
+})();
+</script>
+{% endif %}
+
 {% if x.game.state == 'tie' %}
 <div class="card as-slot">
   <div class="card-header"><span class="card-title">Tied for the last spot</span></div>

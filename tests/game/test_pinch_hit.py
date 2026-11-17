@@ -258,3 +258,75 @@ def test_defensive_sub_takes_the_position_and_slot():
     assert game.pitch_team.current_shortstop is sub
     assert fielder.id in game.pitch_team.removed_ids
     assert sub.id in game.batters_this_game
+
+
+# ------------------------------------------------------ pitchers pinch running
+
+
+def _spare_arm(game, speed, days_ago=2):
+    """A starting pitcher on the batting team who pitched days_ago, this
+    fast; every bench hitter slow."""
+    from datetime import date, timedelta
+
+    from src.db.repositories.pitcher_state import PitcherState
+
+    team = game.bat_team
+    for p in team.bench_players:
+        p.skills = {**p.skills, "speed": 20, "base_running": 20}
+    game.game_date = date(2025, 6, 10)
+    arm = next(
+        p
+        for p in team.players
+        if (p.record.position or "") == "sp" and not p.is_starter
+    )
+    arm.skills = {**arm.skills, "speed": speed, "base_running": speed}
+    arm.ratings["overall_offense"] = 0
+    game.pitcher_states[arm.id] = PitcherState(
+        arm.id, 1.0, 1.0, game.game_date - timedelta(days=days_ago)
+    )
+    return arm
+
+
+def test_a_rested_starter_pinch_runs_only_when_far_faster():
+    """Josh, 2026-11-16: pitchers can pinch run, but only when it's a
+    significantly better option."""
+    game, runner = _runner_game()
+    _slow(runner)
+    runner.ratings["overall_offense"] = 0  # his slot's bat costs nothing
+    arm = _spare_arm(game, speed=99)
+    assert bench.pinch_runners(game) == [(1, runner, arm)]
+
+    # A little faster isn't enough, and neither is a starter due to pitch.
+    game, runner = _runner_game()
+    _slow(runner)
+    runner.ratings["overall_offense"] = 0
+    _spare_arm(game, speed=40)
+    assert bench.pinch_runners(game) == []
+    game, runner = _runner_game()
+    _slow(runner)
+    runner.ratings["overall_offense"] = 0
+    _spare_arm(game, speed=99, days_ago=4)
+    assert bench.pinch_runners(game) == []
+    # Not before the 9th.
+    game, runner = _runner_game(inning=8)
+    _slow(runner)
+    runner.ratings["overall_offense"] = 0
+    _spare_arm(game, speed=99)
+    assert all(sub.pitcher_fatigue is None for _, _, sub in bench.pinch_runners(game))
+
+
+def test_a_pitcher_who_pinch_ran_leaves_the_field_and_cant_pitch():
+    game, runner = _runner_game()
+    _slow(runner)
+    runner.ratings["overall_offense"] = 0
+    arm = _spare_arm(game, speed=99)
+    position = runner.current_position
+    game._consider_pinch_runners()
+    team = game.bat_team
+    assert team.lineup[1].player is arm and arm.current_position == position
+    # His team takes the field: a bench glove takes his position.
+    game._swap_teams()
+    game._replace_pitcher_runners()
+    sub = team.lineup[1].player
+    assert sub is not arm and sub.pitcher_fatigue is None
+    assert sub.current_position == position and arm.id in team.removed_ids

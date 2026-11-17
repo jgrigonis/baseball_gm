@@ -291,6 +291,27 @@ class AllStarRepository:
             (state, season_id),
         )
 
+    def save_plan(
+        self,
+        season_id: str,
+        side: int,
+        lineup: list[dict] | None,
+        pitch_order: list[str] | None,
+    ) -> None:
+        """A captain's lineup card for their side (None clears it)."""
+        import json
+
+        n = 1 if side == 1 else 2
+        self.conn.execute(
+            f"""UPDATE {self.games} SET lineup{n} = %s, pitch_order{n} = %s
+                WHERE season_id = %s""",
+            (
+                json.dumps(lineup) if lineup else None,
+                json.dumps(pitch_order) if pitch_order else None,
+                season_id,
+            ),
+        )
+
     def set_auto(self, season_id: str, side: int) -> None:
         """The scouts make this side's picks from now on."""
         col = "auto1" if side == 1 else "auto2"
