@@ -51,6 +51,7 @@
               font-family:var(--font-mono);font-size:11px;color:var(--amber);
               align-items:center;gap:10px;">
     <span>⚠ Unsaved roster changes</span>
+    <button type="button" class="roster-diff-btn" onclick="showRosterChanges()" title="What changed" aria-label="What changed">ⓘ</button>
     <button class="btn btn-secondary" onclick="saveRoster()"
             style="font-size:10px;padding:3px 8px;border-color:var(--amber);color:var(--amber);">
       Save now
@@ -274,6 +275,9 @@
 </div>
 
 <style>
+.roster-diff-btn { background: none; border: 1px solid var(--amber); color: var(--amber); border-radius: 50%;
+  width: 20px; height: 20px; padding: 0; font-size: 12px; line-height: 18px; cursor: pointer; flex-shrink: 0; }
+.roster-diff-btn:hover { background: var(--amber-dim); }
 /* ── Header row ──────────────────────────────────────────────────────────────── */
 #roster-header .roster-head-row { flex-wrap: wrap; align-items: center; row-gap: 8px; column-gap: 16px; }
 .roster-head-info { display: flex; align-items: baseline; flex-wrap: wrap; column-gap: 12px; row-gap: 4px; min-width: 0; }
@@ -566,12 +570,17 @@ function isCatcher(p) {
 
 function pickTopForty() {
   // Injured players already on the 40-man stay (Remove Injured drops them);
-  // injured players in the organization aren't brought up.
+  // injured players in the organization aren't brought up. So does anyone
+  // on the injured list, healed or not: he comes off it with Activate. He
+  // isn't picked a second time (that left the 40-man at 39), and the 60-day
+  // list doesn't count toward the 40.
   const keep = ALL_PLAYERS.filter(p => (p.injured || p.il) && fortyMan.has(p.player_id));
-  const slots = Math.max(0, 40 - keep.length);
+  const counted = keep.filter(p => !(p.il && p.il.kind === 60)).length;
+  const slots = Math.max(0, 40 - counted);
+  const kept = new Set(keep.map(p => p.player_id));
   // Best overall grade first; on a tie, whoever is already on the 40-man
   // keeps the spot so the button doesn't churn equal players.
-  const pool = ALL_PLAYERS.filter(p => !p.injured).sort((a, b) =>
+  const pool = ALL_PLAYERS.filter(p => !p.injured && !p.il && !kept.has(p.player_id)).sort((a, b) =>
     (gradeVal(a.overall) - gradeVal(b.overall)) ||
     ((fortyMan.has(b.player_id) ? 1 : 0) - (fortyMan.has(a.player_id) ? 1 : 0)));
 
@@ -679,6 +688,9 @@ async function placeOnIL(pid) {
 async function activateFromIL(pid) {
   const p = byId(pid);
   const name = p ? `${p.first_name} ${p.last_name}` : 'He';
+  // Unsaved moves (a player just taken off the 40-man to make room for him)
+  // are saved first, so it's one click, not Save and then Activate.
+  if (hasUnsavedChanges() && !(await saveRoster())) return;
   try {
     const r = await fetch(`/leagues/${LEAGUE_ID}/roster/${pid}/activate`, { method: 'POST' });
     const d = await r.json().catch(() => ({}));
@@ -764,6 +776,39 @@ function pickTopActive() {
   if (removed) parts.push(`${removed} off`);
   showFeedback(`Top ${LIMITS.max}: ${parts.join(', ')}`, 'var(--green)');
 }
+
+/* ── What changed (the ⓘ on the unsaved bar) ─────────────────────────────────── */
+// Who's coming onto and off the 40-man and, in Long Form, the active roster,
+// against what's saved: what Pick Top 40 or Pick Top 26 just did, say.
+function rosterLabel(id) {
+  const p = byId(id);
+  if (!p) return '?';
+  const pos = (p.position || '').toUpperCase();
+  return `${p.first_name} ${p.last_name} (${p.overall || '?'} ${pos})`;
+}
+function rosterChanges() {
+  const lines = [];
+  const list = (title, ids) => {
+    if (!ids.length) return;
+    lines.push(`${title}:`);
+    ids.map(byId).filter(Boolean)
+      .sort((a, b) => gradeVal(a.overall) - gradeVal(b.overall))
+      .forEach(p => lines.push(`· ${rosterLabel(p.player_id)}`));
+  };
+  list('Onto the 40-man', [...fortyMan].filter(id => !lastSavedIds.has(id)));
+  list('Off the 40-man', [...lastSavedIds].filter(id => !fortyMan.has(id)));
+  if (LONG_FORM) {
+    list('Onto the active roster', [...active].filter(id => !lastSavedActive.has(id)));
+    // Leaving the 40-man already says he's off the active roster.
+    list('Off the active roster', [...lastSavedActive].filter(id => !active.has(id) && fortyMan.has(id)));
+  }
+  return lines;
+}
+function showRosterChanges() {
+  const lines = rosterChanges();
+  gmConfirm({title: 'Roster changes', lines: lines.length ? lines : ['Nothing changed.'], ok: 'OK', cancel: null});
+}
+window.showRosterChanges = showRosterChanges;
 
 /* ── Revert ─────────────────────────────────────────────────────────────────── */
 function revertToSaved() {
@@ -1090,12 +1135,14 @@ async function saveRoster() {
       document.getElementById('lineup-btn').style.display = 'inline-flex';
       saveToStorage();
       measureHeader();
+      return true;
     } else {
       const d = await res.json().catch(()=>({}));
       showFeedback('✗ ' + (d.detail || 'Error'), 'var(--red)');
     }
   } catch (err) { showFeedback('✗ Network error', 'var(--red)'); }
   finally { btn.disabled = false; btn.textContent = 'Save Roster'; }
+  return false;
 }
 
 // A toast at the top of the screen (gmToast in dialogs.js); the colour

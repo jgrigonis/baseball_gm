@@ -481,7 +481,8 @@ def _division_titles(conn, news, names, league_id, season_id, on) -> None:
                 continue
             w, l = records.get(winner, (0, 0))
             gm = names.gm_name(names.gm_of(winner))
-            headline = f"{names.team(winner)} win the {div.name}"
+            # "Lions win the Europe West division" (Josh, 2026-11-16).
+            headline = f"{names.team(winner)} win the {div.name} division"
             body = f"The {names.full_team(winner)} finished {w}-{l}"
             prev = last_year.get(winner)
             if prev and prev[0] < prev[1]:

@@ -74,13 +74,14 @@ class StandingsRepository:
         }
 
     def get_recent_results(self, season_id: str) -> list[dict]:
-        """All completed game results newest-first, for streak/L10 calculations."""
+        """All completed regular-season results newest-first, for streak/L10
+        calculations. A doubleheader's games keep the order they were made."""
         rows = self.conn.execute(
             """SELECT tgs.team_id, tgs.win, g.game_date
                FROM team_game_stats tgs
                JOIN games g ON g.id = tgs.game_id
-               WHERE g.season_id = %s AND g.completed = 1
-               ORDER BY g.game_date DESC""",
+               WHERE g.season_id = %s AND g.completed = 1 AND g.series_id IS NULL
+               ORDER BY g.game_date DESC, g.created_at DESC, g.id DESC""",
             (season_id,),
         ).fetchall()
         return [dict(r) for r in rows]

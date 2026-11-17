@@ -569,7 +569,9 @@ def _news_market(conn, league_id: str, year: int, gone: list[tuple[str, str]]):
     repo = PlayerRepository(conn)
     players = [p for p in (repo.look_up(pid) for pid, _ in gone) if p]
     players.sort(key=lambda p: -role_rating(p))
-    names = ", ".join(f"{p.first_name} {p.last_name}" for p in players[:4])
+    nm = Names(conn, league_id)
+    nm.load_players([p.id for p in players[:4]])
+    names = ", ".join(nm.player(p.id) for p in players[:4])
     more = len(players) - 4
     season_id = SeasonRepository(conn).get_current_id_for_league(league_id)
     NewsRepository(conn).add(
@@ -1128,7 +1130,7 @@ def settle(conn, league_id: str) -> list[dict]:
             date(year, 3, 31).isoformat(),
             "free_agency",
             f"fa-sign:{year}:{pid}",
-            f"{p.first_name} {p.last_name} signs with {names.get(b['team_id'], 'a new team')}",
+            f"{nm.player(pid)} signs with {names.get(b['team_id'], 'a new team')}",
             f"{ct.format_salary(deal.salary)} a season for {deal.years} "
             f"season{'s' if deal.years != 1 else ''}"
             + (

@@ -66,14 +66,11 @@ def standings_rows(
                 )
     gms = team_gms(db, league_id)
 
-    # Build per-team recent results
+    # Every result, newest first: L10 reads the first ten, and the streak
+    # can run longer than that (it stopped at W10 when only ten were kept).
     team_recent: dict[str, list] = {}
     for r in recent_rows:
-        tid = r["team_id"]
-        if tid not in team_recent:
-            team_recent[tid] = []
-        if len(team_recent[tid]) < 10:
-            team_recent[tid].append(r["win"])
+        team_recent.setdefault(r["team_id"], []).append(r["win"])
 
     # Sort by win pct descending, with H2H and RS tiebreakers
     rows = st_repo.get_records(league_id, season_id)

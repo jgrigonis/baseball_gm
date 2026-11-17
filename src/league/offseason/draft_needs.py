@@ -104,23 +104,57 @@ def _below(grade: str, cut: str) -> bool:
     return grade in GRADES and GRADES.index(grade) > GRADES.index(cut)
 
 
-def _starter_grades(roster: Rated) -> dict[str, tuple[str, str]]:
+def _best_assignment(
+    hitters: list[tuple[PlayerRecord, dict[str, int]]], spots: list[str]
+) -> dict[str, float]:
+    """{spot: rating} filling each spot with a different hitter so the
+    ratings add up to the most. A greedy fill (best rating anywhere first)
+    put a great shortstop at third, where he rated a bit higher, and left
+    shortstop to whoever was left (Josh, 2026-11-16: "Starter at SS grades
+    D" with a B shortstop). Dynamic programming over which spots are taken:
+    eight spots is 256 states a hitter."""
+    # best[mask] = (total, {spot: rating}) for the spots in mask
+    best: dict[int, tuple[float, dict[str, float]]] = {0: (0.0, {})}
+    for _, r in hitters:
+        nxt = dict(best)
+        for mask, (total, filled) in best.items():
+            for i, spot in enumerate(spots):
+                if mask & (1 << i):
+                    continue
+                m = mask | (1 << i)
+                t = total + r[spot]
+                if m not in nxt or t > nxt[m][0]:
+                    nxt[m] = (t, {**filled, spot: r[spot]})
+        best = nxt
+    # Fewer hitters than spots: the most spots filled, then the best total.
+    mask = max(best, key=lambda m: (bin(m).count("1"), best[m][0]))
+    return dict(best[mask][1]) if best else {}
+
+
+def _starter_grades(
+    roster: Rated, lineup: dict[str, str] | None = None
+) -> dict[str, tuple[str, str]]:
     """{chip: (grade, what)} for the 26-man's starters: the weakest at each
-    chip's fielding spots, and the rotation's and bullpen's average."""
+    chip's fielding spots, and the rotation's and bullpen's average. A
+    starter in the team's lineup (``lineup``: {player_id: position}) plays
+    where the lineup has him, like the Depth Chart; the spots it leaves open
+    go to the best fit."""
     active = [(p, r, g) for p, status, r, g in roster if status == "26man"]
     if not active:
         return {}  # no big league roster yet: nothing to judge
     hitters = [(p, r) for p, r, _ in active if not p.is_pitcher()]
-    # The eight spots, filled best fit first, one spot a player.
     spots = [s for chip in SPOTS.values() for s in chip]
-    pairs = sorted(((r[s], p.id, s) for p, r in hitters for s in spots), reverse=True)
     starters: dict[str, float] = {}
     used: set[str] = set()
-    for rating, pid, spot in pairs:
-        if spot in starters or pid in used:
-            continue
-        starters[spot] = rating
-        used.add(pid)
+    for p, r in hitters:
+        spot = (lineup or {}).get(p.id)
+        if spot in spots and spot not in starters:
+            starters[spot] = r[spot]
+            used.add(p.id)
+    open_spots = [s for s in spots if s not in starters]
+    starters.update(
+        _best_assignment([(p, r) for p, r in hitters if p.id not in used], open_spots)
+    )
     out = {}
     for chip, chip_spots in SPOTS.items():
         worst = min(((starters.get(s, 0.0), s) for s in chip_spots), key=lambda x: x[0])
@@ -193,11 +227,14 @@ def _type_scores(roster: Rated) -> dict[str, float]:
 def league_needs(
     rosters: dict[str, list[tuple[PlayerRecord, str]]],
     staff: dict[str, str] | None = None,
+    lineups: dict[str, dict[str, str]] | None = None,
 ) -> dict[str, TeamNeeds]:
     """{team_id: TeamNeeds} for every team, given each team's players and
-    their statuses (26man, 40man, minors…), and `staff`: {player_id: sp|rp}
-    for the pitchers in a rotation or bullpen."""
+    their statuses (26man, 40man, minors…), `staff`: {player_id: sp|rp}
+    for the pitchers in a rotation or bullpen, and `lineups`: {team_id:
+    {player_id: position}} for the teams with a lineup."""
     staff = staff or {}
+    lineups = lineups or {}
     rated: dict[str, Rated] = {}
     for tid, players in rosters.items():
         rs = [(p, status, ratings(p)) for p, status in players]
@@ -219,7 +256,9 @@ def league_needs(
 
     needs = {}
     for tid in rated:
-        gaps = _position_gaps(depths[tid], average, _starter_grades(rated[tid]))
+        gaps = _position_gaps(
+            depths[tid], average, _starter_grades(rated[tid], lineups.get(tid))
+        )
         type_gaps = []
         for chip, mine in type_scores[tid].items():
             # Place among the league: 1 = best, n_teams = worst

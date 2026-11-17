@@ -179,3 +179,17 @@ def test_the_list_clears_at_season_end(db_conn, factory):
     il.place(team.id, active[0].id, 60, TODAY)
     il.clear_all("2025-10-30")
     assert il.for_team(team.id) == {}
+
+
+def test_back_but_still_on_the_list_news_opens_the_roster(db_conn, factory):
+    from src.api.services.injury_news import InjuryNews, take_injury_news
+
+    league, team, active, _ = _team(factory)
+    gm = db_conn.execute("SELECT id FROM gms WHERE team_id = %s", (team.id,)).fetchone()
+    _hurt(db_conn, league, team, active[0], back="2099-01-01")
+    InjuredList(db_conn, league.id).place(team.id, active[0].id, 10, TODAY)
+    news = InjuryNews(db_conn, league.id)
+    db_conn.execute("DELETE FROM player_injuries WHERE player_id = %s", (active[0].id,))
+    news.record()
+    (back,) = take_injury_news(db_conn, gm["id"])["returned"]
+    assert back["on_il"] is True and back["player_id"] == active[0].id

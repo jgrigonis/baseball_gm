@@ -30,12 +30,27 @@ def needs_for_draft(db, draft_id: str, cached: bool = True) -> dict[str, TeamNee
         return hit[1]
     draft_repo = DraftRepository(db)
     team_ids = [r["team_id"] for r in draft_repo.get_team_id_draft_order(draft_id)]
+    draft = draft_repo.get_draft(draft_id)
     needs = league_needs(
         draft_repo.get_roster_records(team_ids, draft_id),
         draft_repo.get_staff_groups(team_ids),
+        _lineups(db, draft, team_ids),
     )
     _cache[draft_id] = (time.monotonic(), needs)
     return needs
+
+
+def _lineups(db, draft: dict | None, team_ids: list[str]) -> dict[str, dict[str, str]]:
+    """{team_id: {player_id: position}}: each team's lineup as the Depth
+    Chart reads it, so Weak Spots judges the same starters it shows."""
+    from src.api.view_models.depth_chart import _lineup
+
+    if not draft:
+        return {}
+    league_id, season_id = draft.get("league_id"), draft.get("season_id")
+    if not league_id or not season_id:
+        return {}
+    return {tid: dict(_lineup(db, league_id, tid, season_id)) for tid in team_ids}
 
 
 def draft_strategies(

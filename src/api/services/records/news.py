@@ -79,6 +79,12 @@ def broken(conn, league_id: str, season_id: str, events: list[tuple]) -> None:
                 )
             )
             pids = [pid]
+            # One story for the game: the record's, not the big game's too
+            # (games._big_games skips it when this one is written first).
+            conn.execute(
+                "DELETE FROM league_news WHERE league_id = %s AND key = %s",
+                (league_id, f"big_game:{f['game_id']}:{pid}"),
+            )
         else:
             s = defs.STREAK_BY_KEY[stat]
             if s.team:
@@ -96,9 +102,12 @@ def broken(conn, league_id: str, season_id: str, events: list[tuple]) -> None:
             body = f"The old league record was {before}." + (
                 " It's still going." if f["active"] else ""
             )
+        # A single game names both clubs, like the big game story, so it
+        # shows as good news for the GM it happened against too.
+        teams = [team, f.get("opp_team_id")] if kind == "game" else [team]
         repo.add(
             league_id, season_id, f["on_date"], "record", f"rec:{f['key']}",
-            headline, body, weight=3, team_ids=[team] if team else [],
+            headline, body, weight=3, team_ids=[t for t in teams if t],
             player_ids=pids, gm_ids=names.gm_ids(team),
         )  # fmt: skip
 
@@ -204,6 +213,9 @@ def season_over(conn, league_id: str, season_id: str, on: str | None) -> None:
     year = info[season_id]["year"]
     names = Names(conn, league_id)
     repo = NewsRepository(conn)
+    # One story a player, however many records he set (Josh, 2026-11-16):
+    # "Ruiz sets league records: .371 batting average and .462 on-base".
+    by_player: dict[str, list[tuple[str, str, str, str]]] = {}
     for c in cards["batting"] + cards["pitching"]:
         if not c.note or not c.holders:  # rate cards carry their qualifier
             continue
@@ -213,12 +225,34 @@ def season_over(conn, league_id: str, season_id: str, on: str | None) -> None:
         before = next((r for r in c.rows if r["detail"] != str(year)), None)
         if not before:
             continue
-        pid = top["player_id"]
-        names.load_players([pid])
+        by_player.setdefault(top["player_id"], []).append(
+            (c.key, c.label, top["shown"], before["shown"])
+        )
+    names.load_players(list(by_player))
+    for pid, recs in by_player.items():
+        row = conn.execute(
+            "SELECT team_id FROM team_players WHERE player_id = %s LIMIT 1", (pid,)
+        ).fetchone()
+        team = row["team_id"] if row else None
+        if len(recs) == 1:
+            key, label, shown, old = recs[0]
+            headline = f"{names.player(pid)} sets the league record: {shown} {label}"
+            body = f"The best qualified season ever. The old mark was {old}."
+        else:
+            listed = [f"{shown} {label}" for _, label, shown, _ in recs]
+            headline = (
+                f"{names.player(pid)} sets league records: "
+                + ", ".join(listed[:-1])
+                + f" and {listed[-1]}"
+            )
+            body = (
+                "The best qualified seasons ever. The old marks: "
+                + "; ".join(f"{old} {label}" for _, label, _, old in recs)
+                + "."
+            )
         repo.add(
             league_id, season_id, on, "record",
-            f"rec:rate:{c.key}:{season_id}",
-            f"{names.player(pid)} sets the league record: {top['shown']} {c.label}",
-            f"The best qualified season ever. The old mark was {before['shown']}.",
-            weight=3, player_ids=[pid],
+            f"rec:rate:{':'.join(k for k, *_ in recs)}:{season_id}",
+            headline, body, weight=3, team_ids=[team] if team else [],
+            player_ids=[pid], gm_ids=names.gm_ids(team) if team else [],
         )  # fmt: skip
