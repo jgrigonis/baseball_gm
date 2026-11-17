@@ -276,11 +276,13 @@ def test_the_owner_tab_explains_the_cap_and_leash(lg, client_for):
     _seat(x, x.mine, 95)
     cap = x.budgets.cap(x.league.id, 2026)
     html = client_for(x).get(f"/leagues/{x.league.id}/owner").text
-    assert f"payroll cap is <strong>{bg.format_salary(cap)}</strong>" in html
-    assert "the same for every team" not in html
-    assert "for total spending" in html and "for player payroll" in html
+    # Two bars and a verdict line (Josh, 2026-11-16), the words in hovers.
+    assert "Payroll vs the cap" in html and "Total spending vs your owner" in html
+    assert f"League cap {bg.format_salary(cap)}." in html
+    assert "Their budget" in html and "Their limit" in html
     pay = x.contracts.payroll(x.mine.id, 2026)
-    assert f"Your payroll now: <strong>{bg.format_salary(pay)}</strong>" in html
+    assert f"Payroll {bg.format_salary(pay)}" in html
+    assert 'class="oc-verdict' in html
 
 
 def test_speed_blitz_roster_shows_no_payroll(lg, client_for):

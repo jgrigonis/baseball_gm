@@ -46,6 +46,96 @@
   .ow-why-sub { display:none; font-size:11px; color:var(--text-dim); line-height:1.5; margin-top:2px; }
   .ow-admin-h { font-family:var(--font-mono); font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin:14px 0 6px; }
   .ow-admin-ev { font-size:12px; line-height:1.6; padding:3px 0; }
+  /* Your Owner card (services/owner_card.py, plans/owner-card mockup) */
+  .oc-boss { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.15fr); }
+  .oc-boss > div { padding:16px; min-width:0; }
+  .oc-boss > div + div { border-left:1px solid var(--border); }
+  .oc-since { font-family:var(--font-mono); font-size:11px; color:var(--text-dim); margin-top:4px; }
+  .oc-k { font-family:var(--font-mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-dim); }
+  .oc-meter { margin-top:14px; display:block; }
+  .oc-meter-row { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; }
+  .oc-word { font-family:var(--font-mono); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; }
+  .oc-red { color:var(--red); } .oc-amber { color:var(--amber); } .oc-green { color:var(--green); }
+  .oc-steps { display:grid; gap:3px; }
+  .oc-steps span { height:8px; background:var(--bg-3); border-radius:2px; }
+  .oc-steps span.on { outline:2px solid var(--text); outline-offset:1px; }
+  .oc-mood span:nth-child(1){background:#7a2a22}.oc-mood span:nth-child(2){background:#a8402f}.oc-mood span:nth-child(3){background:#9c7a2a}
+  .oc-mood span:nth-child(4){background:#4f6f5d}.oc-mood span:nth-child(5){background:#2f8a55}.oc-mood span:nth-child(6){background:#3fbf73}
+  .oc-job span:nth-child(1){background:#a8402f}.oc-job span:nth-child(2){background:#9c7a2a}.oc-job span:nth-child(3){background:#2f8a55}.oc-job span:nth-child(4){background:#3fbf73}
+  .oc-ends { display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:10px; color:var(--muted); margin-top:3px; }
+  .oc-i { display:inline-grid; place-items:center; width:15px; height:15px; border-radius:50%; border:1px solid var(--text-dim); font-family:var(--font-mono); font-size:9px; color:var(--text-dim); margin-left:4px; vertical-align:1px; }
+  .oc-traits { margin:16px 0 0; display:grid; grid-template-columns:auto 1fr; gap:5px 12px; font-size:12px; }
+  .oc-traits dt { font-family:var(--font-mono); font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-dim); padding-top:2px; }
+  .oc-traits dd { margin:0; color:var(--text); }
+  .oc-say { margin-top:16px; border:1px solid var(--amber-dim, #6b5520); background:rgba(242,193,78,.06); padding:10px 12px; }
+  .oc-say-h { font-family:var(--font-mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--amber); margin-bottom:6px; }
+  .oc-say ul { margin:0; padding-left:18px; line-height:1.65; font-size:12.5px; }
+  .oc-judge-h { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px; }
+  .oc-jrow { display:grid; grid-template-columns:120px minmax(0,1fr) 96px; align-items:center; gap:10px; padding:5px 0; }
+  .oc-jlab { font-size:12px; }
+  .oc-jbar { height:10px; background:var(--bg-3); border-radius:2px; position:relative; }
+  .oc-jbar i { position:absolute; left:0; top:0; bottom:0; background:var(--sky, #7cc6e6); border-radius:2px; opacity:.85; }
+  .oc-jless .oc-jbar i { opacity:.45; }
+  .oc-tone { font-family:var(--font-mono); font-size:10px; letter-spacing:.04em; text-transform:uppercase; text-align:right; white-space:nowrap; }
+  .oc-tone-good{color:var(--green)}.oc-tone-ok{color:var(--text-dim)}.oc-tone-bad{color:var(--red)}.oc-tone-none{color:var(--muted)}
+  .oc-more { margin-top:8px; font-size:12px; color:var(--text-dim); }
+  .oc-more summary { cursor:pointer; color:var(--amber); list-style:none; display:inline; }
+  .oc-more summary::-webkit-details-marker { display:none; }
+  .oc-more[open] summary { display:none; }
+  .oc-mrow { margin-bottom:22px; }
+  .oc-mrow:last-child { margin-bottom:0; }
+  .oc-mhead { display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:6px; }
+  .oc-mtitle { font-weight:600; }
+  .oc-mnow { font-family:var(--font-mono); font-size:12px; }
+  .oc-track { position:relative; height:22px; background:var(--tile, #08120d); border:1px solid var(--border); border-radius:3px; }
+  .oc-track.tall { height:30px; }
+  .oc-seg { position:absolute; top:0; bottom:0; }
+  .oc-seg.pay { background:var(--sky, #7cc6e6); opacity:.85; }
+  .oc-seg.over { background:repeating-linear-gradient(135deg,#f2c14e 0 5px,#c99a2e 5px 10px); }
+  .oc-seg.tax { background:var(--red); }
+  .oc-seg.fo { background:#8fa89a; }
+  .oc-seg.min { background:#b39ddb; }
+  .oc-seg.past { pointer-events:none; background:repeating-linear-gradient(135deg,rgba(240,96,79,0) 0 5px,rgba(240,96,79,.55) 5px 8px); border:1px solid var(--red); }
+  .oc-seglab { position:absolute; left:8px; top:50%; transform:translateY(-50%); font-family:var(--font-mono); font-size:11px; color:#06120c; font-weight:500; white-space:nowrap; overflow:hidden; max-width:calc(100% - 10px); }
+  .oc-seg.tax .oc-seglab { left:4px; color:#fff; }
+  .oc-tick { position:absolute; top:-5px; bottom:-5px; width:2px; background:var(--text); }
+  .oc-tick.lim { background:var(--red); }
+  .oc-tl { position:relative; height:30px; font-family:var(--font-mono); font-size:10px; color:var(--text-dim); }
+  .oc-tl span { position:absolute; top:4px; transform:translateX(-50%); white-space:nowrap; line-height:1.3; }
+  .oc-tl span b { color:var(--text); font-weight:500; }
+  .oc-tl.above { height:20px; }
+  .oc-tl.above span { top:2px; }
+  .oc-bracket { position:relative; height:6px; border:1px solid var(--red); border-top:0; margin-top:2px; }
+  .oc-phone-ticks { display:none; flex-wrap:wrap; gap:4px 14px; font-family:var(--font-mono); font-size:11px; color:var(--text-dim); margin:6px 0 8px; }
+  .oc-phone-ticks b { color:var(--text); font-weight:500; }
+  .oc-phone-ticks i { display:inline-block; width:2px; height:11px; margin-right:6px; vertical-align:-1px; }
+  .oc-legend { display:flex; flex-wrap:wrap; gap:6px 14px; font-family:var(--font-mono); font-size:10px; color:var(--text-dim); margin-top:2px; }
+  .oc-legend i { display:inline-block; width:10px; height:10px; vertical-align:-1px; margin-right:5px; border-radius:2px; }
+  .oc-verdict { margin-top:10px; padding:8px 10px; font-size:12.5px; line-height:1.5; border-left:3px solid var(--red); background:rgba(240,96,79,.12); }
+  .oc-verdict.ok { border-color:var(--green); background:rgba(95,217,138,.1); }
+  .oc-verdict.warn { border-color:var(--amber); background:rgba(242,193,78,.1); }
+  /* Tips: hover on a desk, tap (focus) on a phone. */
+  .oc-tipw { position:relative; cursor:help; outline:none; }
+  .oc-seg.oc-tipw, .oc-tick.oc-tipw { position:absolute; }
+  .oc-tip { display:none; position:absolute; z-index:5; bottom:calc(100% + 10px); left:50%; transform:translateX(-50%); width:260px; background:var(--bg-raised, #214a37); border:1px solid var(--border-hi, #356a50); padding:9px 11px; font-family:var(--font-sans); font-size:12px; line-height:1.5; color:var(--text); box-shadow:0 6px 20px rgba(0,0,0,.45); text-transform:none; letter-spacing:0; text-align:left; white-space:normal; font-weight:400; }
+  .oc-tip b { color:var(--text); }
+  .oc-tip::after { content:""; position:absolute; top:100%; left:50%; margin-left:-6px; border:6px solid transparent; border-top-color:var(--border-hi, #356a50); }
+  .oc-tipw:hover > .oc-tip, .oc-tipw:focus > .oc-tip { display:block; }
+  .oc-tip.r { left:auto; right:-40px; transform:none; }
+  .oc-tip.r::after { left:auto; right:40px; }
+  .oc-tip.l { left:-10px; transform:none; }
+  .oc-tip.l::after { left:16px; }
+  @media (max-width: 640px) {
+    .oc-boss { grid-template-columns:1fr; }
+    .oc-boss > div + div { border-left:0; border-top:1px solid var(--border); }
+    .oc-jrow { grid-template-columns:96px minmax(0,1fr) 84px; gap:8px; }
+    .oc-phone-ticks { display:flex; }
+    .oc-tl.above, .oc-bracket + .oc-tl { display:none; }
+    .oc-seg.tax .oc-seglab { display:none; }
+    .oc-seg.fo .oc-seglab { font-size:0; }
+    .oc-seg.fo .oc-seglab::after { content:"FO"; font-size:10px; }
+    .oc-tip { width:220px; }
+  }
   @media (max-width: 640px) {
     .ow-admin-table .ow-why-col { display:none; }
     .ow-why-sub { display:block; }
@@ -62,27 +152,98 @@
   </div>
 </div>
 
-{% if my_owner %}
+{% if my_owner %}{% set b = boss %}
 <div class="card" style="margin-bottom:16px;">
-  <div class="card-body">
-    <div class="ow-card">
-      <div class="ow-hat" aria-hidden="true">🎩</div>
-      <div>
-        <div><span class="ow-name">{{ my_owner.name }}</span>{% if my_owner.archetype %}<span class="ow-arch">{{ my_owner.archetype }}</span>{% endif %}</div>
-        {% if office and office.mood %}<div class="ow-mood">Mood: <span class="ow-mood-{{ office.mood }}">{{ office.mood }}</span></div>{% endif %}
-        {% if my_owner.bio %}<div class="ow-bio">“{{ my_owner.bio }}”</div>{% endif %}
-        {% if my_owner.wants %}<div class="ow-line">{{ my_owner.wants }}</div>{% endif %}
-        {% if my_budget %}<div class="ow-line">The league's {{ my_budget.year }} payroll cap is <strong>{{ my_budget.cap_text }}</strong>. It counts player payroll only, and it's a soft cap: you can go over it, and pay {{ (my_budget.tax_rate * 100) | round | int }}% luxury tax on the difference.</div>
-        <div class="ow-line">Your owner's budget is <strong>{{ my_budget.budget_text }}</strong> for total spending: player payroll and its luxury tax, plus the front office ({{ my_budget.front_office_text }}) and the minor leagues ({{ my_budget.minors_text }}).
-          {% if my_budget.payroll_budget > 0 %}That leaves <strong>{{ my_budget.payroll_budget_text }}</strong> for player payroll.{% else %}That leaves nothing for player payroll.{% endif %}
-          Going past their budget risks their profit, and once total spending passes <strong>{{ my_budget.limit_text }}</strong> they won't sign off on moves that add money. The Budget tab has the details.</div>
-        <div class="ow-line">Your payroll now: <strong>{{ my_budget.payroll_text }}</strong>{% if my_budget.over %}, <span class="ow-over">{{ my_budget.over_text }} over the cap ({{ my_budget.tax_text }} tax if it stays there)</span>{% elif my_budget.room_text %}, {{ my_budget.room_text }} under the cap{% endif %}{% if my_budget.over_budget %}, <span class="ow-over">{{ my_budget.over_budget_text }} past your owner's budget</span>{% endif %}.</div>{% endif %}
-        {% if my_owner.rival %}<div class="ow-line">Can't stand losing to the {{ my_owner.rival }}.</div>{% endif %}
-        <div class="ow-dim">Your boss. Keep them happy and you keep your job. Judging you from {{ my_owner.since_year }}.</div>
+  <div class="oc-boss">
+    <div>
+      <div class="ow-card">
+        <div class="ow-hat" aria-hidden="true">🎩</div>
+        <div>
+          <div><span class="ow-name">{{ my_owner.name }}</span>{% if my_owner.archetype %}<span class="ow-arch">{{ my_owner.archetype }}</span>{% endif %}</div>
+          {% if my_owner.bio %}<div class="ow-bio" style="margin-bottom:0;">“{{ my_owner.bio }}”</div>{% endif %}
+          <div class="oc-since">Judging you from {{ my_owner.since_year }}{% if my_owner.rival %} · can't stand losing to the {{ my_owner.rival }}{% endif %}</div>
+        </div>
       </div>
+      {% if b %}
+      <div class="oc-meter oc-tipw" tabindex="0">
+        <div class="oc-meter-row"><span class="oc-k">Mood <span class="oc-i">i</span></span><span class="oc-word {{ 'oc-' ~ b.mood.tone if b.mood.tone }}">{{ b.mood.word }}</span></div>
+        <div class="oc-steps oc-mood" style="grid-template-columns:repeat({{ b.mood.steps }},1fr);">{% for i in range(b.mood.steps) %}<span{% if i == b.mood.step %} class="on"{% endif %}></span>{% endfor %}</div>
+        <div class="oc-ends"><span>Furious</span><span>Thrilled</span></div>
+        <div class="oc-tip l"><b>{{ b.mood.word }}.</b> {{ b.mood.tip }}</div>
+      </div>
+      <div class="oc-meter oc-tipw" tabindex="0">
+        <div class="oc-meter-row"><span class="oc-k">Your job <span class="oc-i">i</span></span><span class="oc-word {{ 'oc-' ~ b.job.tone if b.job.tone }}">{{ b.job.word }}</span></div>
+        <div class="oc-steps oc-job" style="grid-template-columns:repeat({{ b.job.steps }},1fr);">{% for i in range(b.job.steps) %}<span{% if i == b.job.step %} class="on"{% endif %}></span>{% endfor %}</div>
+        <div class="oc-ends"><span>Hot seat</span><span>Safe</span></div>
+        <div class="oc-tip l"><b>{{ b.job.word }}.</b> {{ b.job.tip }}</div>
+      </div>
+      <dl class="oc-traits">
+        {% for t in b.traits %}<dt>{{ t.label }}</dt><dd>{{ t.words }}</dd>{% endfor %}
+      </dl>
+      <div class="oc-say">
+        <div class="oc-say-h">Wants a say in</div>
+        {% if b.say %}<ul>{% for line in b.say %}<li>{{ line }}</li>{% endfor %}</ul>
+        {% else %}<div style="font-size:12.5px;">Not much: they leave the moves to you.</div>{% endif %}
+      </div>
+      {% endif %}
+    </div>
+    {% if b %}{% set j = b.judge %}
+    <div>
+      <div class="oc-judge-h"><span class="card-title">What they judge you on</span><span class="oc-k">{{ 'This season' if j.season else 'Last season' }}</span></div>
+      {% macro jrow(r) %}<div class="oc-jrow {% if r.less %}oc-jless{% endif %}"><span class="oc-jlab">{{ r.label }}</span><span class="oc-jbar"><i style="width:{{ r.width }}%"></i></span><span class="oc-tone oc-tone-{{ r.tone }}">{{ r.word }}</span></div>{% endmacro %}
+      {% for r in j.rows %}{{ jrow(r) }}{% endfor %}
+      {% if j.more %}
+      <details class="oc-more"><summary>{{ j.more | length }} more they weigh less ({{ j.more | map(attribute='label') | join(', ') }}). Show all</summary>
+        {% for r in j.more %}{{ jrow(r) }}{% endfor %}
+      </details>
+      {% endif %}
+      <div class="oc-more">Longer bar = matters more to them.</div>
+      {% if my_owner.wants %}<div class="oc-more" style="margin-top:10px;">“{{ my_owner.wants }}”{% if j.worst %} Their {{ 'worst mark right now is' if j.worst | length == 1 else 'two worst marks right now are' }} {{ j.worst | join(' and ') }}.{% endif %}</div>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% if money %}{% set m = money %}{% set p = m.payroll_bar %}{% set s = m.spend_bar %}
+<div class="card" style="margin-bottom:16px;" id="owner-money">
+  <div class="card-header"><span class="card-title">{{ m.year }} money</span><a class="oc-k oc-amber" style="text-decoration:none;" href="#" onclick="window.goToTab('budget');return false;">Budget tab ›</a></div>
+  <div class="card-body">
+    <div class="oc-mrow">
+      <div class="oc-mhead"><span class="oc-mtitle">Payroll vs the cap</span><span class="oc-mnow">{{ m.payroll_text }}{% if m.over_text %} · <span class="oc-amber">{{ m.over_text }} over</span> · <span class="oc-red">{{ m.tax_text }} tax</span>{% elif m.room_text %} · {{ m.room_text }} under{% endif %}</span></div>
+      <div class="oc-track">
+        <span class="oc-seg pay oc-tipw" tabindex="0" style="left:0;width:{{ p.pay }}%"><span class="oc-tip l"><b>{{ p.under_text }}{{ ' under the cap' if m.over_text else ' payroll' }}.</b> Player payroll only: salaries plus dead money.</span></span>
+        {% if p.over %}<span class="oc-seg over oc-tipw" tabindex="0" style="left:{{ p.cap }}%;width:{{ p.over }}%"><span class="oc-tip r"><b>{{ m.over_text }} over the cap.</b> It's a soft cap: you can go over, and pay {{ m.tax_pct }}% luxury tax on what's over. If payroll ends the season here, that's <b>{{ m.tax_text }}</b> of tax.</span></span>{% endif %}
+        <span class="oc-tick oc-tipw" tabindex="0" style="left:{{ p.cap }}%"><span class="oc-tip r"><b>League cap {{ m.cap_text }}.</b> It counts player payroll only. Over it, you pay {{ m.tax_pct }}% luxury tax on the difference.</span></span>
+      </div>
+      <div class="oc-tl"><span style="left:{{ [p.cap, 92] | min }}%">Cap <b>{{ m.cap_text }}</b></span></div>
+    </div>
+
+    <div class="oc-mrow">
+      <div class="oc-mhead"><span class="oc-mtitle">Total spending vs your owner</span><span class="oc-mnow">{{ m.spend_text }}{% if m.over_limit_text %} · <span class="oc-red">{{ m.over_limit_text }} past their limit</span>{% elif m.over_budget_text %} · <span class="oc-amber">{{ m.over_budget_text }} past their budget</span>{% endif %}</span></div>
+      <div class="oc-tl above">
+        <span style="left:{{ s.budget_label }}%">Budget <b>{{ m.budget_text }}</b> ▾</span>
+        <span style="left:{{ s.limit_label }}%">Limit <b>{{ m.limit_text }}</b> ▾</span>
+      </div>
+      <div class="oc-track tall">
+        <span class="oc-seg fo oc-tipw" tabindex="0" style="left:0;width:{{ s.fo }}%">{% if s.fo >= 12 %}<span class="oc-seglab">Front office {{ m.front_office_text }}</span>{% endif %}<span class="oc-tip l"><b>Front office {{ m.front_office_text }}.</b> Coaching, facilities and analytics, set on the Budget tab in the draft and preseason.</span></span>
+        <span class="oc-seg min oc-tipw" tabindex="0" style="left:{{ s.fo }}%;width:{{ s.minors }}%"><span class="oc-tip l"><b>Minor leagues {{ m.minors_text }}.</b> What your farm players are paid.</span></span>
+        <span class="oc-seg pay oc-tipw" tabindex="0" style="left:{{ s.fo + s.minors }}%;width:{{ s.pay }}%">{% if s.pay >= 14 %}<span class="oc-seglab">Payroll {{ m.payroll_text }}</span>{% endif %}<span class="oc-tip"><b>Player payroll {{ m.payroll_text }}.</b></span></span>
+        {% if s.tax %}<span class="oc-seg tax oc-tipw" tabindex="0" style="left:{{ s.fo + s.minors + s.pay }}%;width:{{ s.tax }}%"><span class="oc-seglab">Tax</span><span class="oc-tip r"><b>Luxury tax {{ m.tax_text }}</b>, from being over the cap. It counts as spending too.</span></span>{% endif %}
+        {% if s.past %}<span class="oc-seg past" style="left:{{ s.limit }}%;width:{{ s.past }}%"></span>{% endif %}
+        <span class="oc-tick oc-tipw" tabindex="0" style="left:{{ s.budget }}%"><span class="oc-tip r"><b>Their budget {{ m.budget_text }}</b> for everything. Past it you cut into their profit, and they notice.</span></span>
+        <span class="oc-tick lim oc-tipw" tabindex="0" style="left:{{ s.limit }}%"><span class="oc-tip r"><b>Their limit {{ m.limit_text }}.</b> Past this they won't sign off on any move that adds money: trades, signings, re-signs.</span></span>
+      </div>
+      {% if s.past %}
+      <div class="oc-bracket" style="left:{{ s.limit }}%;width:{{ s.past }}%"></div>
+      <div class="oc-tl"><span class="oc-red" style="left:{{ s.past_mid }}%">{{ m.over_limit_text }} too much</span></div>
+      {% else %}<div style="height:8px;"></div>{% endif %}
+      <div class="oc-phone-ticks"><span><i style="background:var(--text)"></i>Budget <b>{{ m.budget_text }}</b></span><span><i style="background:var(--red)"></i>Limit <b>{{ m.limit_text }}</b></span>{% if m.over_limit_text %}<span class="oc-red">{{ m.over_limit_text }} too much</span>{% endif %}</div>
+      <div class="oc-legend"><span><i style="background:#8fa89a"></i>Front office</span><span><i style="background:#b39ddb"></i>Minors</span><span><i style="background:var(--sky, #7cc6e6)"></i>Payroll</span>{% if s.tax %}<span><i style="background:var(--red)"></i>Tax</span>{% endif %}{% if s.past %}<span><i style="background:repeating-linear-gradient(135deg,transparent 0 3px,var(--red) 3px 5px);border:1px solid var(--red)"></i>Past their limit</span>{% endif %}</div>
+      <div class="oc-verdict {{ m.verdict.tone }}"><b>{{ m.verdict.head }}</b> {{ m.verdict.text }}</div>
     </div>
   </div>
 </div>
+{% endif %}
 {% endif %}
 
 {% if office %}
