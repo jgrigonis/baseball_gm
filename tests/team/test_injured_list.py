@@ -193,3 +193,33 @@ def test_back_but_still_on_the_list_news_opens_the_roster(db_conn, factory):
     news.record()
     (back,) = take_injury_news(db_conn, gm["id"])["returned"]
     assert back["on_il"] is True and back["player_id"] == active[0].id
+
+
+def test_lineup_and_player_card_offer_the_list(db_conn, factory):
+    """A hurt active player can go on the IL from the Lineup and from his
+    card (Josh, 2026-11-16); once on it, the card stops offering it."""
+    from src.api.routers.players import _il_kinds
+    from src.api.view_models.lineup import lineup_context
+
+    league, team, active, _ = _team(factory)
+    gm = db_conn.execute("SELECT * FROM gms WHERE team_id = %s", (team.id,)).fetchone()
+    hitter, pitcher = active[0], active[13]
+    _hurt(db_conn, league, team, hitter, back="2099-01-01")
+    _hurt(db_conn, league, team, pitcher, back="2099-01-01")
+
+    ctx = lineup_context(db_conn, league.id, dict(gm), None)
+    by_id = {p["player_id"]: p for p in ctx["hitters"] + ctx["pitchers"]}
+    assert by_id[hitter.id]["il_kinds"] == [10, 60]
+    assert by_id[pitcher.id]["il_kinds"] == [15, 60]
+    assert "il_kinds" not in by_id[active[1].id]
+
+    card = {
+        "player_id": hitter.id,
+        "team_id": team.id,
+        "injured": True,
+        "position": "SS",
+    }
+    assert _il_kinds(db_conn, league.id, card, team.id) == [10, 60]
+    assert _il_kinds(db_conn, league.id, card, "someone-else") == []
+    InjuredList(db_conn, league.id).place(team.id, hitter.id, 10, TODAY)
+    assert _il_kinds(db_conn, league.id, card, team.id) == []

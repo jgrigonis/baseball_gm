@@ -167,6 +167,36 @@ window.releasePlayer = async function(pid, name) {
   closePlayerPanel();
   reloadTab();
 };
+// Long Form: put a hurt player on the injured list, from the Roster, the
+// Lineup or his player card. The short list he can go on, or the 60-day,
+// which frees his 40-man spot too. Resolves to the kind, or null. With
+// opts.reload false the caller updates its own page.
+window.gmPlaceOnIL = async function(p, opts) {
+  opts = opts || {};
+  if (!p || !p.il_kinds || !p.il_kinds.length) return null;
+  const name = p.name;
+  const short = p.il_kinds[0];
+  const n = p.injury_days;
+  const days = n ? `He's out ${n} more day${n === 1 ? '' : 's'}. ` : '';
+  const ans = await gmConfirm({
+    title: `Put ${name} on the injured list?`,
+    lines: [days + `He comes off the active roster and stays on the 40-man. The ${short}-day IL holds him at least ${short} days, counted from when he got hurt (up to 3 days back).`,
+            'The 60-day IL frees his 40-man spot too.'],
+    alt: '60-day IL', ok: `${short}-day IL`, tone: 'go',
+  });
+  if (!ans) return null;
+  const kind = ans === 'alt' ? 60 : short;
+  let d;
+  try { d = await postJson(`/leagues/{{ league_id }}/roster/${p.player_id}/il`, { kind }); }
+  catch (e) { gmAlert(e.message); return null; }
+  const on = d.eligible_on
+    ? new Date(d.eligible_on + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+    : '';
+  gmToast(`${name} is on the ${kind}-day IL` + (on ? `, back ${on} at the earliest` : ''), 'ok');
+  closePlayerPanel();
+  if (opts.reload !== false) reloadTab();
+  return kind;
+};
 // Claim a player off waivers (src/api/services/waivers.py), or take a claim back.
 window.claimWaiver = async function(pid, name) {
   const base = `/leagues/{{ league_id }}/waivers/${pid}/claim`;
@@ -957,12 +987,12 @@ var DAY_TO_DAY = 1;
 // Show the new_injuries / returned / rust_cleared lists from a sim response
 // or /news. Returns true if there was news that stops a sim run until an
 // injury: any injury or return longer than a day, a player's rust wearing
-// off (only sent when the Strategy tab rests rusty players), or a roster move.
+// off while he sat it out (one already playing just shows), or a roster move.
 function showInjuryNews(d) {
   var items = [];
   var stops = (d.new_injuries || []).some(i => i.days > DAY_TO_DAY)
            || (d.returned || []).some(i => i.length !== DAY_TO_DAY)
-           || (d.rust_cleared || []).length > 0
+           || (d.rust_cleared || []).some(i => !i.playing)
            || (d.roster_moves || []).length > 0;
   (d.new_injuries || []).forEach(function (i) {
     items.push({

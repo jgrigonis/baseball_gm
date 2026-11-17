@@ -36,6 +36,13 @@
          Shop him
        </button>
        {% endif %}
+       {% if il_kinds %}
+       <button class="btn btn-secondary pp-action pp-il"
+               onclick='gmPlaceOnIL({{ {"player_id": player.player_id, "name": player.first_name ~ " " ~ player.last_name, "il_kinds": il_kinds, "injury_days": player.injury_days} | tojson }})'
+               title="Put him on the injured list" style="border-color:var(--red);color:var(--red);">
+         Injured list
+       </button>
+       {% endif %}
        <button class="btn btn-secondary pp-action pp-release"
                onclick="releasePlayer('{{ player.player_id }}', '{{ player.first_name }} {{ player.last_name }}')"
                title="Let him go to free agency">

@@ -719,3 +719,58 @@ class TestHidingNews:
             for s in headlines(db_conn, lg["league"].id, None, lg["gm"].id)
         ]
         assert heads == ["Captains make a trade"]
+
+
+class TestSweeps:
+    def _states(self, monkeypatch, lg, state):
+        from src.db.repositories.team_state_repo import TeamStateRepository
+
+        monkeypatch.setattr(
+            TeamStateRepository,
+            "latest",
+            lambda self, league_id, season_id: {lg["theirs"].id: {"state": state}},
+        )
+
+    def _series(self, db, lg, days, winner, loser, then=True):
+        for d in days:
+            _game(db, lg, d, winner, loser)
+        if then:  # the next series, unplayed: this one is over
+            _game(db, lg, "2025-05-20", lg["theirs"], lg["mine"])
+            db.execute(
+                "UPDATE games SET completed = 0 WHERE game_date = '2025-05-20' AND season_id = %s",
+                (lg["season"].id,),
+            )
+
+    def test_sweeping_a_contender_is_news(self, db_conn, lg, monkeypatch):
+        self._states(monkeypatch, lg, "contending")
+        self._series(
+            db_conn,
+            lg,
+            ["2025-05-01", "2025-05-02", "2025-05-03"],
+            lg["mine"],
+            lg["theirs"],
+        )
+        news.update_league(db_conn, lg["league"].id)
+        (s,) = _stories(db_conn, lg, "sweep")
+        assert s["headline"] == "Captains sweep the Samurai"
+        assert "all three games from the contending Tokyo Samurai" in s["body"]
+
+    def test_no_sweep_of_a_rebuilding_team(self, db_conn, lg, monkeypatch):
+        self._states(monkeypatch, lg, "rebuilding")
+        self._series(
+            db_conn,
+            lg,
+            ["2025-05-01", "2025-05-02", "2025-05-03"],
+            lg["mine"],
+            lg["theirs"],
+        )
+        news.update_league(db_conn, lg["league"].id)
+        assert _stories(db_conn, lg, "sweep") == []
+
+    def test_a_split_series_is_no_sweep(self, db_conn, lg, monkeypatch):
+        self._states(monkeypatch, lg, "all-in")
+        _game(db_conn, lg, "2025-05-01", lg["mine"], lg["theirs"])
+        _game(db_conn, lg, "2025-05-02", lg["mine"], lg["theirs"])
+        self._series(db_conn, lg, ["2025-05-03"], lg["theirs"], lg["mine"])
+        news.update_league(db_conn, lg["league"].id)
+        assert _stories(db_conn, lg, "sweep") == []

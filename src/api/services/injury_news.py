@@ -9,10 +9,13 @@ from __future__ import annotations
 
 from src.api.view_models.player_cards import compute_ratings
 from src.db.repositories.gm_repo import GMRepository
+from src.db.repositories.bullpen_roles_repo import BullpenRepository
 from src.db.repositories.injury_repo import InjuryRepository
+from src.db.repositories.lineup_preference_repo import LineupPreferenceRepository
 from src.db.repositories.notification_repo import NotificationRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
+from src.db.repositories.season_repo import SeasonRepository
 from src.player.injury_types import injury_effect, injury_label
 from src.player.positions import is_pitcher
 from src.team.injured_list import InjuredList
@@ -20,9 +23,8 @@ from src.team.injured_list import InjuredList
 
 class InjuryNews:
     """Snapshot every human team's injured list before a sim; call record()
-    after it to store each GM's new injuries and returns. A GM whose Strategy
-    tab has Rest rusty players on also hears when a player's rust wears off,
-    since that player is back in the lineup."""
+    after it to store each GM's new injuries and returns, and whose rust
+    wore off."""
 
     def __init__(self, conn, league_id: str):
         self.conn = conn
@@ -33,11 +35,11 @@ class InjuryNews:
             gm_id: self.inj_repo.get_active_for_team(team_id)
             for gm_id, team_id in self.gm_teams.items()
         }
-        gm_repo = GMRepository(conn)
+        # Every person hears when a player's rust wears off (Josh,
+        # 2026-11-16); only one who was sitting it out stops a sim.
         self.rusty_before = {
             gm_id: self.inj_repo.get_rusty_for_team(team_id)
             for gm_id, team_id in self.gm_teams.items()
-            if (gm_repo.get_profile(gm_id) or {}).get("rest_rusty")
         }
 
     def record(self) -> None:
@@ -79,12 +81,15 @@ class InjuryNews:
             rusty_before = self.rusty_before.get(gm_id)
             if rusty_before:
                 rusty_after = self.inj_repo.get_rusty_for_team(team_id)
+                in_use = None
                 for pid, v in rusty_before.items():
                     # Still rusty, hurt again, or no longer on the team: no news
                     if pid in rusty_after or pid in after:
                         continue
                     if not self._on_team(pid, team_id):
                         continue
+                    if in_use is None:
+                        in_use = self._in_use(team_id)
                     notes.add(
                         gm_id,
                         "rust",
@@ -92,8 +97,31 @@ class InjuryNews:
                             "player_id": pid,
                             "name": v["name"],
                             "is_pitcher": self._is_pitcher(pid, v),
+                            # Already in the lineup, rotation or a bullpen
+                            # role: the news shows, the sim plays on.
+                            "playing": pid in in_use,
                         },
                     )
+
+    def _in_use(self, team_id: str) -> set[str]:
+        """The team's players in its saved lineups, its rotation or a
+        bullpen role."""
+        out: set[str] = set()
+        prefs = LineupPreferenceRepository(self.conn)
+        for hand in ("R", "L"):
+            out |= {
+                r["player_id"]
+                for r in prefs.get_preferences(team_id, self.league_id, hand) or []
+                if r.get("batting_order")
+            }
+        season_id = SeasonRepository(self.conn).get_most_recent_season_from_league(
+            self.league_id
+        )
+        if season_id:
+            bullpen = BullpenRepository(self.conn)
+            out |= bullpen.get_active_rotation_player_ids(team_id, season_id)
+            out |= set(bullpen.get_roles_map(team_id, season_id))
+        return out
 
     def _on_team(self, player_id: str, team_id: str) -> bool:
         return bool(
