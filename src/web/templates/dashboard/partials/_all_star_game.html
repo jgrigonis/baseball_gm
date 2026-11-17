@@ -216,8 +216,11 @@
 <style>
   .as-plan-grid { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:20px; }
   .as-plan-h { font-family:var(--font-mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-dim); margin-bottom:6px; }
-  .as-plan-bat select { font-size:12px; width:100%; }
-  .as-plan-bat td:nth-child(3) { width:80px; }
+  .as-plan-bat td { padding:3px 6px; }
+  .as-plan-bat select { font-size:12px; width:100%; padding:4px 6px; }
+  .as-plan-bat td:nth-child(1) { width:24px; }
+  .as-plan-bat td:nth-child(3) { width:86px; }
+  .as-plan-bat td:nth-child(3) select { min-width:72px; }
   .as-plan-arms { margin:0; padding-left:22px; }
   .as-plan-arms li { display:flex; align-items:center; gap:6px; padding:3px 0; font-size:12.5px; }
   .as-plan-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
