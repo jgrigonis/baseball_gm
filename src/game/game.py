@@ -289,6 +289,8 @@ class Game:
         self.ghost_runner = ghost_runner
         self.max_innings = max_innings
         self.pitch_orders = pitch_orders or {}
+        # Pitchers sent in to pinch run, who leave the field after.
+        self.pitcher_runners: set[str] = set()
         # (player_id, severity, activity, injury_type)
         self.new_injuries: list[tuple[str, str, str, str | None]] = []
 
@@ -1102,6 +1104,7 @@ class Game:
     def _consider_defensive_subs(self) -> None:
         """As a team takes the field: better gloves in for weaker ones late,
         most of all to protect a lead (src/game/bench.py)."""
+        self._replace_pitcher_runners()
         for position, fielder, sub in bench.defensive_subs(self):
             self.logger.info(
                 f"🧤 {sub.name} takes over at {position.upper()} for {fielder.name}"
@@ -1117,6 +1120,47 @@ class Game:
                     kind="def",
                 )
             self.pitch_team.substitute(fielder, sub)
+            self.batters_this_game.add(sub.id)
+
+    def _replace_pitcher_runners(self) -> None:
+        """A pitcher who pinch ran (src/game/bench.py) doesn't stay in the
+        field: the best glove on the bench takes his position. A DH stays
+        until his spot is pinch hit for."""
+        team = self.pitch_team
+        for slot in list(team.lineup):
+            p = slot.player
+            if p.id not in self.pitcher_runners:
+                continue
+            position = p.current_position or slot.position
+            if position in (None, "p", "dh"):
+                continue
+            if p is self.current_pitcher:
+                continue
+            options = [
+                b
+                for b in team.bench_players
+                if not (
+                    position in bench.LEFT_HAND_CAPPED_POSITIONS
+                    and (b.throws or "R").upper() == "L"
+                )
+            ]
+            if not options:
+                continue
+            sub = max(options, key=lambda b: (b.ratings.get(position, 0), b.id))
+            self.logger.info(
+                f"🧤 {sub.name} takes over at {position.upper()} for {p.name}"
+            )
+            if self.event_logger:
+                self.event_logger.substitution(
+                    team_id=team.record.id,
+                    incoming_id=sub.id,
+                    incoming_name=sub.name,
+                    outgoing_id=p.id,
+                    outgoing_name=p.name,
+                    position=position,
+                    kind="def",
+                )
+            team.substitute(p, sub)
             self.batters_this_game.add(sub.id)
 
     def _consider_pinch_runners(self) -> None:
@@ -1137,6 +1181,8 @@ class Game:
                 )
             self.bat_team.substitute(runner, sub)
             self.bases.replace_runner(base, sub)
+            if sub.pitcher_fatigue is not None:
+                self.pitcher_runners.add(sub.id)
             # He inherits the run's pitcher and the extra-innings tag.
             sub.responsible_pitcher = runner.responsible_pitcher
             sub.ghost_runner = runner.ghost_runner
@@ -1289,6 +1335,7 @@ class Game:
             if (
                 p
                 and pid not in used
+                and pid not in self.pitch_team.removed_ids
                 and pid not in self.injured_ids
                 and not p.is_injured
             ):

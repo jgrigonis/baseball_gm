@@ -192,6 +192,45 @@ def _run_matters(game: Game, base: int) -> bool:
     return diff + ahead + 1 in (0, 1)
 
 
+# A starting pitcher can pinch run (Josh, 2026-11-16: "only if it's a
+# significantly better option"): in the 9th or later, between starts (he
+# pitched this many days ago), and only when he beats the runner by this many
+# times what a bench player would need.
+PITCHER_RUN_FROM_INNING = 9
+PITCHER_RUN_REST_DAYS = (1, 3)
+PITCHER_RUN_FACTOR = 2.0
+
+
+def spare_starters(game: Game, team: TeamInGame) -> list[PlayerInGame]:
+    """The batting team's starting pitchers who could pinch run: not today's
+    starter, not in a bullpen role, not in the game or out of it, healthy,
+    and between starts."""
+    if not game.game_date:
+        return []
+    lo, hi = PITCHER_RUN_REST_DAYS
+    lineup = {s.player.id for s in team.lineup}
+    out = []
+    for p in team.players:
+        if (
+            p.pitcher_fatigue is None
+            or p.is_starter
+            or getattr(p, "bullpen_role", None)
+            or p.id in lineup
+            or p.id in team.removed_ids
+            or p.is_injured
+            or p.current_position is not None
+            or p.game_stats.pitching.pitch_count
+            or (team._eligible_ids is not None and p.id not in team._eligible_ids)
+        ):
+            continue
+        state = game.pitcher_states.get(p.id)
+        last = getattr(state, "last_game_date", None)
+        if last is None or not lo <= (game.game_date - last).days <= hi:
+            continue
+        out.append(p)
+    return sorted(out, key=lambda p: p.id)
+
+
 def pinch_runners(game: Game) -> list[tuple[int, PlayerInGame, PlayerInGame]]:
     """The pinch runners the batting team should send in now, as (base,
     runner, sub), lead runner first."""
@@ -206,8 +245,9 @@ def pinch_runners(game: Game) -> list[tuple[int, PlayerInGame, PlayerInGame]]:
     bat_share = BAT_COST_SHARE.get(inning, LATE_BAT_COST_SHARE)
     bench = _available(game, team)
     moves = []
+    arms_used: set = set()
     for base, runner in sorted(game.bases.occupied_map().items(), reverse=True):
-        if not bench or not _run_matters(game, base):
+        if not _run_matters(game, base):
             continue
         slot = next((s for s in team.lineup if s.player is runner), None)
         if slot is None:
@@ -222,9 +262,22 @@ def pinch_runners(game: Game) -> list[tuple[int, PlayerInGame, PlayerInGame]]:
             edge = run_value(p) - run_value(runner) - glove - bat * bat_share
             if edge >= best_edge:
                 best, best_edge = p, edge
+        if best is None and inning >= PITCHER_RUN_FROM_INNING:
+            # No bench player is worth it: a rested starter, if he's far
+            # faster. He can't stay in the field (Game moves him out).
+            for p in spare_starters(game, team):
+                if p in arms_used:
+                    continue
+                bat = max(0.0, bat_value(team, runner, hand) - bat_value(team, p, hand))
+                edge = run_value(p) - run_value(runner) - bat * bat_share
+                if edge >= best_edge * PITCHER_RUN_FACTOR:
+                    best, best_edge = p, edge / PITCHER_RUN_FACTOR
         if best is not None:
             moves.append((base, runner, best))
-            bench.remove(best)
+            if best in bench:
+                bench.remove(best)
+            else:
+                arms_used.add(best)
     return moves
 
 

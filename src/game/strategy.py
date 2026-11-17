@@ -784,6 +784,7 @@ class GameStrategy:
                 and p.pitcher_fatigue.get_level()
                 in (FatigueLevel.FRESH, FatigueLevel.GOOD)
                 and p.current_position is None
+                and p.id not in getattr(team, "removed_ids", ())
             )
 
         if usage == "best-available":
@@ -899,6 +900,7 @@ class GameStrategy:
             and p.game_stats.pitching.pitch_count == 0
             and p.pitcher_fatigue is not None
             and p.current_position is None
+            and p.id not in getattr(team, "removed_ids", ())
             and not p.is_injured
             and _is_available(p)
             and (eligible_ids is None or p.id in eligible_ids)
