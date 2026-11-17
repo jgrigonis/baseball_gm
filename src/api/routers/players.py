@@ -115,6 +115,34 @@ def _tradeable_now(db, league_id: str, player: dict) -> bool:
     return bool(trade_deadline.window(db, dict(league), season_id)["open"])
 
 
+@router.get("/leagues/{league_id}/players/{player_id}/where")
+def player_where(league_id: str, player_id: str, db: DB, gm: GMOrViewer):
+    """Where a news link about your player should open, judged from where
+    he is now rather than from the kind of news (Josh, 2026-11-17: a
+    returned player moved off the 26-man still opened the Lineup). He's in
+    the Lineup only while he's on your playing roster and off the injured
+    list; otherwise the Roster, where he can be moved."""
+    from src.db.repositories.player_status_repo import PlayerStatusRepository
+    from src.league.league_modes import playing_statuses
+    from src.team.injured_list import InjuredList
+
+    team_id = gm.get("team_id") if gm else None
+    if not team_id:
+        return {"lineup": False}
+    on_team = db.execute(
+        "SELECT 1 FROM team_players WHERE player_id = %s AND team_id = %s",
+        (player_id, team_id),
+    ).fetchone()
+    if not on_team:
+        return {"lineup": False}
+    mode = LeagueRepository(db).get_league_mode(league_id)
+    if PlayerStatusRepository(db).get_status(player_id) not in playing_statuses(mode):
+        return {"lineup": False}
+    if player_id in InjuredList(db, league_id).for_team(team_id):
+        return {"lineup": False}
+    return {"lineup": True}
+
+
 @router.get(
     "/leagues/{league_id}/players/{player_id}/career", response_class=HTMLResponse
 )

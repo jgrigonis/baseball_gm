@@ -128,3 +128,27 @@ def test_il_pill_shape():
     assert "1 hurt on your active roster and 2 ready" in pill["title"]
     assert next_move._il_pill(ctx, "roster") is None
     assert next_move._il_pill({"league_id": "L"}, "standings") is None
+
+
+def test_news_links_open_where_the_player_is_now(client, db_conn, setup):
+    """Josh, 2026-11-17: a returned player moved off the 26-man still
+    opened the Lineup. The link asks where he is when it's clicked."""
+    from src.api.dependencies import get_gm_or_viewer
+
+    league, _, team, gm, hitters, _ = setup
+    app.dependency_overrides[get_gm_or_viewer] = lambda: {
+        "id": gm.id,
+        "team_id": team.id,
+    }
+
+    def where(p):
+        r = client.get(f"/leagues/{league.id}/players/{p.id}/where")
+        assert r.status_code == 200, r.text
+        return r.json()["lineup"]
+
+    assert where(hitters[1]) is True
+    # On the 40-man only: the Roster.
+    assert where(hitters[13]) is False
+    # On the injured list: the Roster too.
+    client.post(f"/leagues/{league.id}/roster/{hitters[0].id}/il", json={"kind": 10})
+    assert where(hitters[0]) is False
