@@ -743,3 +743,24 @@ def test_free_agents_room_line_four_states():
     assert cost_note(s, 6_000_000) == "$9M with tax"
     assert cost_note(_standing(60_000_000), 6_000_000) is None
     assert cost_note(_standing(60_000_000), 6_000_000, 0.5) == "$3M this season"
+
+
+def test_free_agents_room_line_short_with_mid_season_hover():
+    """Josh, 2026-11-17: the proration note read as if the tax were
+    prorated. The line just says what fits; the hover explains it."""
+    from src.api.services.owner_card import fa_room
+
+    full = fa_room(_standing(120_000_000))
+    assert full["fits"].endswith("of salary fits under your owner's limit.")
+    assert full["tip"] is None and "rest of it" not in full["text"]
+
+    half = fa_room(_standing(120_000_000), 0.5)
+    assert "about 50%" in half["tip"] and "his salary" in half["tip"]
+    assert "rest of it" not in half["fits"]
+
+    # Room left under the minimum salary: nobody fits.
+    s = _standing(120_000_000)
+    s["limit_payroll_room"] = 361_000
+    tight = fa_room(s)
+    assert tight["fits"].startswith("No free agent fits")
+    assert "$780K" in tight["fits"]
