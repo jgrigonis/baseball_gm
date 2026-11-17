@@ -17,7 +17,7 @@ from src.league import owner_messages as om
 from src.league import owner_scoring as sc
 from src.league import owners
 from src.league.league_modes import get_mode
-from src.player.contracts import format_salary
+from src.player.contracts import MIN_SALARY, format_salary
 
 # Mood words from worst to best, for the six-step meter.
 MOOD_STEPS = tuple(w for _, w in reversed(om.MOODS))
@@ -427,34 +427,50 @@ def fa_room(standing: dict, share: float = 1.0) -> dict:
                 else "You're at their limit."
             ),
         }
-    fits = _money(standing["limit_payroll_room"] / share)
-    later = " (mid-season, he's paid only the rest of it)" if share < 0.999 else ""
+    room = standing["limit_payroll_room"]
+    salary = room / share
+    if salary < MIN_SALARY:
+        fits = (
+            f"No free agent fits under your owner's limit: {_money(salary)} of"
+            f" salary, and the minimum is {_money(MIN_SALARY)}."
+        )
+    else:
+        fits = f"{_money(salary)} of salary fits under your owner's limit."
+    tip = None
+    if share < 0.999:
+        # Josh, 2026-11-17: the proration note read as if the tax were
+        # prorated. Keep the line short and say it here.
+        tip = (
+            "Mid-season, a player you sign is paid only the part of his"
+            f" salary left this season (about {round(share * 100)}%). So a"
+            f" {_money(salary)} salary uses {_money(room)} of the room"
+            " under your owner's limit this year."
+        )
     cap_room = standing["cap"] - standing["payroll"]
     if cap_room <= 0:
         return {
             "tone": "warn",
             "head": f"{standing['over_text'] or '$0'} over the cap.",
-            "text": (
-                f"Every dollar of a new deal costs {times} with tax. {fits} of"
-                f" salary fits under your owner's limit{later}."
-            ),
+            "text": f"Every dollar of a new deal costs {times} with tax.",
+            "fits": fits,
+            "tip": tip,
         }
     under = _money(cap_room / share)
-    if standing["limit_payroll_room"] <= cap_room:
+    if room <= cap_room:
         return {
             "tone": "ok",
             "head": f"{standing['room_text']} under the cap.",
-            "text": (
-                f"A deal up to that costs just its salary. {fits} of salary"
-                f" fits under your owner's limit{later}."
-            ),
+            "text": "A deal up to that costs just its salary.",
+            "fits": fits,
+            "tip": tip,
         }
     return {
         "tone": "warn",
         "head": f"{standing['room_text']} under the cap.",
         "text": (
             f"A deal up to {under} a season costs just its salary; past that, each dollar"
-            f" costs {times} with tax. {fits} of salary fits under your owner's"
-            f" limit{later}."
+            f" costs {times} with tax."
         ),
+        "fits": fits,
+        "tip": tip,
     }
