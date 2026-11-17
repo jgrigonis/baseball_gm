@@ -156,6 +156,26 @@ function iconTag(p) {
   return `<span class="lu-icon" title="Franchise icon: ${n} seasons with ${p.icon_team ? 'the ' + p.icon_team : 'the club'} and still a top player. Owners who care about icons won't like seeing him traded or released.">ICON</span>`;
 }
 
+// Class grade vs now grade (Josh, 2026-11-17). The Draft board's letter is
+// a prospect's grade against his draft class: it sits in a dashed CLASS box
+// so it never reads as a pro grade. classGradeHtml draws that box,
+// nowGradeHtml his pro grade (the one his roster row will show).
+function classGradeHtml(g) {
+  return `<span class="${gradeClass(g)} class-grade" title="Class grade: against the other prospects in this draft class, not against pros">${g || '?'}<small>class</small></span>`;
+}
+function nowGradeHtml(g) {
+  if (!g) return '';
+  return `<span class="${gradeClass(g)} now-grade" title="Now grade: against pros, the grade he'll show on a roster once he's drafted">${g}<small>now</small></span>`;
+}
+
+// "CLASS A-" after a draftee's name through his first season
+// (src/api/services/draft_class.py): his class grade on draft day, so a D+
+// on the farm reads as a good pick for his class.
+function classTag(p) {
+  if (!p.class_grade) return '';
+  return `<span class="lu-class" title="Drafted this season as a class ${p.class_grade} prospect: graded against his draft class then. His grade at the left is against pros.">CLASS ${p.class_grade}</span>`;
+}
+
 // "NEW" after a player who joined in the last week (src/api/services/arrivals.py).
 function newTag(p) {
   if (!p.arrived) return '';

@@ -11,6 +11,8 @@ from src.api.grade_curves import role_to_grade
 from src.api.schemas import player_row_to_grades, skill_to_grade
 from src.api.view_models.player_history import player_history
 from src.api.view_models.player_cards import (
+    PROSPECT_STATUSES,
+    now_grade,
     compute_ratings,
     overall_grade as player_overall_grade,
     overall_value as player_overall_value,
@@ -34,7 +36,7 @@ from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.api.services import hr_derby, rookie_game
 from src.api.services import awards as awards_service
-from src.api.services import hall_of_fame, icons
+from src.api.services import draft_class, hall_of_fame, icons
 from src.api.services.records import held as records_held
 from src.league import all_star
 from src.league import awards as awards_mod
@@ -421,6 +423,20 @@ def player_panel_data(
         "grades": grade_map,
         "overall_grade": overall_grade,
         "overall_value": round(overall_value) if overall_value is not None else None,
+        # Draft prospects: overall_grade is his class grade; now_grade the
+        # pro grade he'll carry once drafted. Drafted players: the class
+        # grade he had on draft day (src/api/services/draft_class.py).
+        "is_prospect": status in PROSPECT_STATUSES,
+        "now_grade": (
+            now_grade(grades.player_type, ratings)
+            if status in PROSPECT_STATUSES
+            else None
+        ),
+        "drafted": (
+            None
+            if status in PROSPECT_STATUSES
+            else draft_class.drafted(db, league_id, pid)
+        ),
         "best_def_grade": best_def_grade,
         "best_def_label": best_def_label,
         "energy": energy,
@@ -823,6 +839,7 @@ def player_career_data(db, league_id: str, pid: str) -> dict | None:
         **grades.model_dump(),
         "player_id": pid,
         "overall_grade": overall_grade,
+        "is_prospect": status in PROSPECT_STATUSES,
         "rating_sections": rating_sections,
         "pitching_seasons": pitching_seasons,
         "pitching_totals": pitching_totals,

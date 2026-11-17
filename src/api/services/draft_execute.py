@@ -13,7 +13,7 @@ import logging
 import random
 from datetime import datetime, UTC
 
-from src.api.services import front_office, trades, waivers
+from src.api.services import draft_class, front_office, trades, waivers
 from src.api.services.draft_needs import draft_strategies
 from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.draft_repo import DraftRepository
@@ -239,6 +239,7 @@ def execute_blitz_draft(draft_id: str, conn) -> dict:
             auto,
             now,
         )
+        draft_class.record(conn, draft_id, pick.player_id)
 
     dr.set_complete_current_pick(draft_id, len(picks) + 1)
     finish_draft(conn, draft, human_team_ids, outlooks)

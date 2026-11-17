@@ -128,7 +128,7 @@
           {% for a in p.awards %}<div class="cs-meta cs-all-star">{{ a.icon }} {{ a.name }} {{ a.years | join(', ') }}</div>{% endfor %}
         </div>
         <div class="cs-overall-block">
-          <div class="cs-overall-label">Overall</div>
+          <div class="cs-overall-label"{% if p.is_prospect %} style="color:var(--sky);" title="Class grade: against the other prospects in this draft class, not against pros"{% endif %}>{{ 'Class' if p.is_prospect else 'Overall' }}</div>
           <div class="cs-overall grade-{{ grade_class(p.overall_grade) }}">
             {{ p.overall_grade }}
           </div>

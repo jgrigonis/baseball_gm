@@ -34,6 +34,9 @@
      · {% if c.guaranteed %}<span class="pd-contract-rookie" title="Guaranteed: he's played a game on the 40-man under this deal, so releasing him still costs what's left on it">guaranteed</span>{% else %}<span class="pd-contract-unguaranteed" title="Not guaranteed until he plays a game on the 40-man under this deal: releasing him before then costs nothing">not guaranteed</span>{% endif %}
    </div>
    {% endif %}
+   {% if player.drafted %}{% set dp = player.drafted %}
+   <div class="pd-contract">Drafted {{ dp.year }} · round {{ dp.round }}, pick {{ dp.in_round }} · <span class="pd-class" title="His class grade on draft day: against the other prospects in his draft class, not against pros">class {{ dp.class_grade }}</span></div>
+   {% endif %}
    {% if player.happiness %}{% set h = player.happiness %}
    <div class="pd-mood">
      <span class="pd-mood-type setting-tip" tabindex="0" data-tip="{{ h.type }}: {{ h.blurb }}{% if h.cares %} Cares most about {{ h.cares }}.{% endif %}">{{ h.type }}</span>{% if h.prefers %} · <span class="pd-mood-pref setting-tip" tabindex="0" data-tip="What he'd rather do. Any pitcher can start or relieve: his SP and RP grades say which he's better at, and he's happier doing the one he prefers.">{{ h.prefers }}</span>{% endif %}{% if h.ruiner %} · <span class="pd-mood-ruiner setting-tip" tabindex="0" data-tip="Morale ruiner: when he's unhappy, he drags his teammates down with him.">morale ruiner</span>{% endif %}{% if h.mood %} · <span class="pd-mood-word mood-{{ h.mood }}"
@@ -57,10 +60,26 @@
    {% if is_admin %}<div class="admin-id" title="player_id">{{ player.player_id }}</div>{% endif %}
   </div>
  </div>
+ {% if player.is_prospect %}
+ {# Draft prospects: his grade against his class, then against pros (Josh, 2026-11-17) #}
+ <div class="pd-grade-pair">
+   <div class="pd-overall class-grade grade-{{ grade_class(player.overall_grade) }}"
+        title="Class grade: against the other prospects in this draft class, not against pros{% if is_admin and player.overall_value is not none %} ({{ player.overall_value }}){% endif %}">
+     {{ player.overall_grade }}<small>class</small>
+   </div>
+   {% if player.now_grade %}
+   <div class="pd-overall now-grade grade-{{ grade_class(player.now_grade) }}"
+        title="Now grade: against pros, the grade he'll show on a roster once he's drafted">
+     {{ player.now_grade }}<small>now</small>
+   </div>
+   {% endif %}
+ </div>
+ {% else %}
  <div class="pd-overall grade-{{ grade_class(player.overall_grade) }}"
       {% if is_admin and player.overall_value is not none %}title="{{ player.overall_value }}"{% endif %}>
    {{ player.overall_grade }}
  </div>
+ {% endif %}
 </div>
 
 {# ── Status badges ─────────────────────────────────────────────────────────── #}
