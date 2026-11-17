@@ -1152,8 +1152,8 @@ function renderRoster() {
         </div>
         ${hitterGradesHtml(p, null)}
       </div>
-      <span class="lu-roster-btns"><button type="button" class="minors-btn" title="${DOWN_TITLE}"
-              aria-label="${DOWN_TITLE.replace('him', p.first_name + ' ' + p.last_name)}">−</button><button class="lu-add-btn" title="Add to lineup"
+      <span class="lu-roster-btns"><button type="button" class="minors-btn" title="${downTitle(p)}"
+              aria-label="${downTitle(p).replace('him', p.first_name + ' ' + p.last_name)}">−</button><button class="lu-add-btn" title="Add to lineup"
               onclick="event.stopPropagation();addToLineup('${p.player_id}')"
               ${isIn?'disabled':''}>+</button></span>`;
     card.querySelector('.minors-btn').addEventListener('click', e => {
@@ -1704,8 +1704,8 @@ function renderBullpen() {
         ${p.stat_era!=null?`<div class="lu-skills">${pitcherStatsHtml(p)}</div>`:''}
       </div>
       <select class="bp-role-select" onchange="handleBullpenRoleChange('${p.player_id}',this.value)">${roleOpts}</select>
-      <button type="button" class="minors-btn" title="${DOWN_TITLE}"
-              aria-label="${DOWN_TITLE.replace('him', p.first_name + ' ' + p.last_name)}">−</button>`;
+      <button type="button" class="minors-btn" title="${downTitle(p)}"
+              aria-label="${downTitle(p).replace('him', p.first_name + ' ' + p.last_name)}">−</button>`;
     card.querySelector('.minors-btn').addEventListener('click', e => {
       e.stopPropagation();
       sendToMinors(p);
@@ -1719,26 +1719,36 @@ function renderBullpen() {
 // the minors, right away (after a confirm). The server also drops him from
 // the rotation and his bullpen role; here he leaves this tab's lists, and the
 // Roster tab's draft forgets him.
+// A hurt player in Long Form goes on the injured list instead.
+function downTitle(p) { return LONG_FORM && p.il_kinds ? 'Put him on the injured list' : DOWN_TITLE; }
 async function sendToMinors(p) {
   const name = `${p.first_name} ${p.last_name}`;
   const out = p.player_type === 'pitcher' ? ' and out of your rotation and bullpen' : ' and out of your lineup';
-  const ok = await gmConfirm(LONG_FORM ? {
-    title: `Take ${name} off the active roster?`,
-    lines: ['He stays on the 40-man but leaves your ' + (p.player_type === 'pitcher' ? 'rotation and bullpen' : 'lineup') + '. You can put him back on from the Roster tab.'],
-    ok: 'Take off', tone: 'danger',
-  } : {
-    title: `Send ${name} to the minors?`,
-    lines: ['He comes off the 40-man' + out + '. You can call him back up from the Roster tab.'],
-    ok: 'Send down', tone: 'danger',
-  });
-  if (!ok) return;
-  try {
-    const r = await fetch(`/leagues/${LEAGUE_ID}/roster/${p.player_id}/${LONG_FORM ? 'reserve' : 'minors'}`, { method: 'POST' });
-    if (!r.ok) {
-      const d = await r.json().catch(() => ({}));
-      throw new Error(d.detail || 'Something went wrong.');
-    }
-  } catch (e) { gmAlert(e.message); return; }
+  // Long Form: a hurt player goes on the injured list instead, which also
+  // takes him off the active roster (Josh, 2026-11-16).
+  if (LONG_FORM && p.il_kinds) {
+    const kind = await gmPlaceOnIL({ player_id: p.player_id, name, il_kinds: p.il_kinds,
+                                     injury_days: p.injury_days }, { reload: false });
+    if (!kind) return;
+  } else {
+    const ok = await gmConfirm(LONG_FORM ? {
+      title: `Take ${name} off the active roster?`,
+      lines: ['He stays on the 40-man but leaves your ' + (p.player_type === 'pitcher' ? 'rotation and bullpen' : 'lineup') + '. You can put him back on from the Roster tab.'],
+      ok: 'Take off', tone: 'danger',
+    } : {
+      title: `Send ${name} to the minors?`,
+      lines: ['He comes off the 40-man' + out + '. You can call him back up from the Roster tab.'],
+      ok: 'Send down', tone: 'danger',
+    });
+    if (!ok) return;
+    try {
+      const r = await fetch(`/leagues/${LEAGUE_ID}/roster/${p.player_id}/${LONG_FORM ? 'reserve' : 'minors'}`, { method: 'POST' });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        throw new Error(d.detail || 'Something went wrong.');
+      }
+    } catch (e) { gmAlert(e.message); return; }
+  }
 
   const pid = p.player_id;
   [ALL_HITTERS, ALL_PITCHERS].forEach(list => {
@@ -1776,7 +1786,9 @@ async function sendToMinors(p) {
   renderBullpen();
   updatePitchingBanners();
   saveToStorage();
-  gmToast(LONG_FORM ? `${name} is off the active roster` : `${name} sent to the minors`, 'ok');
+  // gmPlaceOnIL already said where he went.
+  if (!(LONG_FORM && p.il_kinds))
+    gmToast(LONG_FORM ? `${name} is off the active roster` : `${name} sent to the minors`, 'ok');
 }
 
 function handleBullpenRoleChange(pid, role) {

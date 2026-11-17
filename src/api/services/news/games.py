@@ -42,6 +42,7 @@ LONG_INJURY_DAYS = 30
 def write(conn, names: Names, league_id: str, season_id: str, since, through) -> None:
     news = NewsRepository(conn)
     _streaks(conn, news, names, league_id, season_id, since)
+    _sweeps(conn, news, names, league_id, season_id, since, through)
     _big_games(conn, news, names, league_id, season_id, since, through)
     _milestones(conn, news, names, league_id, season_id, since, through)
     _injuries(conn, news, names, league_id, season_id, since, through)
@@ -100,6 +101,80 @@ def _streaks(conn, news, names, league_id, season_id, since) -> None:
             weight=3 if length >= 10 else 2,
             team_ids=[team], gm_ids=names.gm_ids(team),
         )  # fmt: skip
+
+
+# ── Sweeps ────────────────────────────────────────────────────────────────────
+
+# A 3 or 4 game sweep of a team whose front office is going for it is news
+# (Josh, 2026-11-16).
+SWEEP_LENGTHS = (3, 4)
+SWEEP_VICTIM_STATES = ("contending", "all-in")
+
+
+def _series(games: list[dict]) -> list[list[dict]]:
+    """One team's schedule, in order, cut into series: back-to-back games
+    with the same two teams at the same park."""
+    out: list[list[dict]] = []
+    for g in games:
+        last = out[-1][-1] if out else None
+        if last and (last["home_team_id"], last["away_team_id"]) == (
+            g["home_team_id"],
+            g["away_team_id"],
+        ):
+            out[-1].append(g)
+        else:
+            out.append([g])
+    return out
+
+
+def _sweeps(conn, news, names, league_id, season_id, since, through) -> None:
+    from src.db.repositories.team_state_repo import TeamStateRepository
+
+    rows = conn.execute(
+        """SELECT id, game_date, home_team_id, away_team_id, winner_id, completed
+           FROM games WHERE season_id = %s AND series_id IS NULL
+           ORDER BY game_date, created_at, id""",
+        (season_id,),
+    ).fetchall()
+    states = {
+        t: r["state"]
+        for t, r in TeamStateRepository(conn).latest(league_id, season_id).items()
+    }
+    by_team: dict[str, list[dict]] = {}
+    for r in rows:
+        for t in (r["home_team_id"], r["away_team_id"]):
+            by_team.setdefault(t, []).append(dict(r))
+    for loser, games in by_team.items():
+        if states.get(loser) not in SWEEP_VICTIM_STATES:
+            continue
+        series = _series(games)
+        for i, sr in enumerate(series):
+            # Over: every game played, and the team has moved on to another.
+            if i == len(series) - 1 or not all(g["completed"] for g in sr):
+                continue
+            end = sr[-1]["game_date"]
+            if not (_after(since) < end <= through):
+                continue
+            winners = {g["winner_id"] for g in sr}
+            if len(sr) not in SWEEP_LENGTHS or len(winners) != 1:
+                continue
+            (winner,) = winners
+            if winner == loser or not winner:
+                continue
+            word = {3: "three", 4: "four"}[len(sr)]
+            state = "all-in" if states[loser] == "all-in" else "contending"
+            headline = f"{names.team(winner)} sweep the {names.team(loser)}"
+            body = (
+                f"The {names.full_team(winner)} took all {word} games from the "
+                f"{state} {names.full_team(loser)}, {_day(sr[0]['game_date'])} "
+                f"to {_day(end)}."
+            )
+            news.add(
+                league_id, season_id, end, "sweep",
+                f"sweep:{season_id}:{sr[0]['id']}",
+                headline, body, weight=2,
+                team_ids=[winner, loser], gm_ids=names.gm_ids(winner, loser),
+            )  # fmt: skip
 
 
 def _day(iso: str) -> str:

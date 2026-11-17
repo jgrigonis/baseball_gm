@@ -57,9 +57,34 @@ def player_panel(
     ctx["can_trade_for"] = _can_trade_for(
         db, league_id, ctx["player"], ctx["my_team_id"]
     )
+    ctx["il_kinds"] = _il_kinds(db, league_id, ctx["player"], ctx["my_team_id"])
     return templates.TemplateResponse(
         request, "dashboard/partials/player_panel.html", ctx
     )
+
+
+def _il_kinds(db, league_id: str, player: dict | None, my_team_id) -> list[int]:
+    """Long Form: the injured lists your own hurt player can go on, for the
+    card's Injured list button (Josh, 2026-11-16); [] otherwise."""
+    from src.db.repositories.injury_repo import InjuryRepository
+    from src.db.repositories.player_status_repo import PlayerStatusRepository
+    from src.league.league_modes import is_blitz_style
+    from src.team.injured_list import InjuredList, kinds_for
+
+    if not player or not my_team_id or player["team_id"] != my_team_id:
+        return []
+    if not player.get("injured"):
+        return []
+    league = LeagueRepository(db).get_by_id(league_id)
+    if not league or is_blitz_style(league.get("mode")):
+        return []
+    pid = player["player_id"]
+    if PlayerStatusRepository(db).get_status(pid) not in ("26man", "40man"):
+        return []
+    if pid in InjuredList(db, league_id).for_team(my_team_id):
+        return []
+    types = InjuryRepository(db, league_id).get_team_injury_types(my_team_id)
+    return kinds_for(player.get("position"), types.get(pid))
 
 
 def _can_shop(db, league_id: str, player: dict | None, my_team_id) -> bool:

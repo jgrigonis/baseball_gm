@@ -226,23 +226,31 @@ def test_rust_wearing_off_is_news_when_resting_rusty(db_conn, factory):
     news.record()
 
     assert take_injury_news(db_conn, gm.id)["rust_cleared"] == [
-        {"player_id": rusty.id, "name": "Rusty ", "is_pitcher": False}
+        {"player_id": rusty.id, "name": "Rusty ", "is_pitcher": False, "playing": False}
     ]
 
 
-def test_no_rust_news_without_rest_rusty(db_conn, factory):
+def test_rust_news_without_rest_rusty_says_hes_playing(db_conn, factory):
+    # Everyone hears it (Josh, 2026-11-16). A player already in the saved
+    # lineup is "playing": the sim card shows it without stopping.
     league = factory.league(state="season")
     team = factory.team()
     gm = factory.gm(team=team, league=league, is_ai=False)
     _rest_rusty(db_conn, gm, on=False)
     rusty = _player_on(db_conn, factory, team, "Rusty")
     _back_rusty(db_conn, league, rusty)
+    db_conn.execute(
+        """INSERT INTO gm_lineup_preferences (gm_id, player_id, batting_order, position, vs_hand)
+           VALUES (%s, %s, 1, 'cf', 'R')""",
+        (gm.id, rusty.id),
+    )
 
     news = InjuryNews(db_conn, league.id)
     _rust_wears_off(db_conn, rusty)
     news.record()
 
-    assert take_injury_news(db_conn, gm.id)["rust_cleared"] == []
+    (got,) = take_injury_news(db_conn, gm.id)["rust_cleared"]
+    assert got["player_id"] == rusty.id and got["playing"] is True
 
 
 def test_no_rust_news_when_hurt_again(db_conn, factory):

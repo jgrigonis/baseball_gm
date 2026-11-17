@@ -23,6 +23,7 @@ from src.league.league_modes import playing_statuses
 from src.player.face import face_url
 from src.player.skill_map import SKILL_MIN
 from src.stats import formulas
+from src.team.injured_list import kinds_for
 from src.team.manager_profile import ManagerProfile
 from src.team.lineup_optimizer import STYLE_GUIDE
 
@@ -103,6 +104,14 @@ def lineup_context(
         rust,
     )
     attach_rusty_grades(pitchers, rows, rust)
+    if statuses == ["26man"]:
+        # Long Form: the lists a hurt player can go on, for the Lineup's IL
+        # button (Josh, 2026-11-16).
+        types = inj.get_team_injury_types(team_id)
+        for p in hitters + pitchers:
+            if p.get("injured"):
+                pos = "sp" if p.get("player_type") == "pitcher" else "dh"
+                p["il_kinds"] = kinds_for(pos, types.get(p["player_id"]))
     profile = ManagerProfile.from_row(GMRepository(db).get_profile(gm["id"]))
     return {
         "hitters": hitters,
