@@ -1118,13 +1118,29 @@ function injuryNewsClick(ev) {
     else { window._tradeWith = want; goToTab('trades'); }
   } else if (dest === 'roster' || dest === 'trades' || dest === 'free-agents') {
     goToTab(dest);
+  } else if (item.dataset.player) {
+    // A player's news opens where he is now, not where he was when it
+    // happened: off the playing roster or on the injured list, that's the
+    // Roster (Josh, 2026-11-17).
+    var pid = item.dataset.player;
+    fetch(`/leagues/${LEAGUE_ID}/players/${pid}/where`)
+      .then(r => r.ok ? r.json() : {lineup: true})
+      .catch(() => ({lineup: true}))
+      .then(function (w) {
+        if (w.lineup) openLineupAt(dest, pid);
+        else goToTab('roster');
+      });
   } else {
-    window._lineupLandingTab = dest;
-    window._lineupLandingPlayer = item.dataset.player || null;
-    goToTab('lineup');
+    openLineupAt(dest, null);
   }
 }
 window.injuryNewsClick = injuryNewsClick;
+
+function openLineupAt(dest, pid) {
+  window._lineupLandingTab = dest;
+  window._lineupLandingPlayer = pid || null;
+  goToTab('lineup');
+}
 
 // ── Next-move button (top bar, _next_move.html) ───────────────────────────────
 // Do the move: call the page's function named by data-fn with data-arg (a
