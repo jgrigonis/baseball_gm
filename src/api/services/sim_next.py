@@ -39,6 +39,7 @@ from src.db.repositories.team_repo import TeamRepository
 from src.db.repositories.team_rotations_repo import TeamRotationsRepository
 from src.league.play_season import play_game
 from src.league import trade_deadline
+from src.team import playoff_eligibility
 from src.team.roster_limits import enforce_roster_limits
 from src.league.playoffs.setup_playoffs import setup_playoff_bracket
 from src.league.offseason.build_season_stats import build_season
@@ -189,6 +190,9 @@ def sim_next_day(league_id: str, conn) -> dict:
 
     # Rosters below the minimum or over the limit, e.g. after a trade, are
     # fixed before anyone plays (Long Form: the 26-man, 28 from September 1).
+    # Long Form: who's on each 40-man on September 1 is who can play in
+    # the playoffs (src/team/playoff_eligibility.py).
+    playoff_eligibility.snapshot(conn, league_id, season_id, str(game_date))
     for team_id in team_ids:
         enforce_roster_limits(conn, league_id, team_id, league_mode, game_date)
 
