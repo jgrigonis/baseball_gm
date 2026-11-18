@@ -124,9 +124,21 @@ class HappinessRepository:
         self.update(season_id, as_of)
         return True
 
-    def update(self, season_id: str, as_of: date) -> int:
+    def refresh_traded(self, season_id: str, player_ids, as_of: date) -> int:
+        """Just after a trade: work out the traded players' reasons and
+        lines against their new teams right away (Josh, 2026-11-18), and the
+        fresh start the weekly update would give them anyway (their mood
+        halfway to the new target, any trade request dropped). No dice for
+        trade requests or sitting out and no news: that stays weekly."""
+        ids = set(player_ids)
+        if not ids:
+            return 0
+        return self.update(season_id, as_of, only=ids)
+
+    def update(self, season_id: str, as_of: date, only: set | None = None) -> int:
         """Work out every rostered player's mood as of this date. Returns
-        how many were updated."""
+        how many were updated. With only (refresh_traded), just those
+        players, quietly, without moving the league's weekly clock."""
         teams = self._teams(season_id)
         if not teams:
             return 0
@@ -196,7 +208,10 @@ class HappinessRepository:
                 ruiners[p["team_id"]].append((now["mood"], pid))
 
         rows = []
+        last = self.last_update(season_id) if only is not None else None
         for pid, p in players.items():
+            if only is not None and pid not in only:
+                continue
             team = teams[p["team_id"]]
             person = pers[pid]
             u = usage.get(pid, hp.Usage())
@@ -292,12 +307,14 @@ class HappinessRepository:
 
             rng = random.Random(f"mood:{pid}:{as_of.isoformat()}")
             value = hp.request_value(league_rank.get(pid), p["status"] == "minors")
-            if not request and hp.asks_for_trade(
+            if only is not None:
+                pass  # a refresh after a trade rolls no dice
+            elif not request and hp.asks_for_trade(
                 mood, weeks, person.traits, rng.random(), value
             ):
                 request = as_of.isoformat()
                 events.append(("request", pid, p["team_id"], person))
-            if not refusing and p["status"] != "minors":
+            if only is None and not refusing and p["status"] != "minors":
                 days = hp.refuses_to_play(mood, person.traits, rng.random())
                 if days:
                     refusing = (as_of + timedelta(days=days)).isoformat()
@@ -329,6 +346,15 @@ class HappinessRepository:
                 detail["coaching"] = round(lift, 3)
             if grudge:
                 detail["grudge"] = round(grudge, 3)
+            updated_on = as_of.isoformat()
+            if only is not None:
+                # Keep the league's weekly clock (last_update) where it was.
+                if now is not None:
+                    updated_on = now["updated_on"]
+                elif last:
+                    updated_on = last
+                else:
+                    updated_on = (as_of - timedelta(days=UPDATE_EVERY_DAYS)).isoformat()
             rows.append(
                 (
                     pid,
@@ -338,7 +364,7 @@ class HappinessRepository:
                     round(mood, 4),
                     round(goal, 4),
                     Jsonb(detail),
-                    as_of.isoformat(),
+                    updated_on,
                     weeks,
                     request,
                     refusing,
@@ -364,6 +390,8 @@ class HappinessRepository:
                 """,
                 rows,
             )
+        if only is not None:
+            return len(rows)  # a refresh after a trade: no fading, no news
         # Grudges fade: one more update for the players updated, and gone
         # once spent.
         held = [pid for pid in ids if pid in grudges]

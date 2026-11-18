@@ -304,6 +304,66 @@ def test_a_pitchers_wish_to_start_or_relieve_shows_with_his_happiness(lg):
     assert prefers("ss") is None
 
 
+def test_a_free_agent_keeps_what_is_about_him_not_his_last_team(lg):
+    """Moods are only worked out on a roster, so his newest row is from his
+    old team: off a team he keeps his type, mood word and weather wish, but
+    not "Happy with his contract." or "Enjoys being the man here."."""
+    from src.api.view_models.player_detail import _happiness
+
+    _repo(lg).update(lg.season.id, date(2025, 4, 11))
+    pid = lg.players[lg.a.id][0].id
+    repo = _repo(lg)
+    pers = repo.personalities([pid])[pid]
+    pers = replace(pers, climate="tropical")
+    wish = hp.climate_wish(pers)
+    assert wish == "Wishes he played somewhere tropical."
+    lg.db.execute(
+        """UPDATE player_moods SET detail = jsonb_set(detail, '{lines}', %s::jsonb)
+           WHERE player_id = %s""",
+        ('["Enjoys being the man here.", "' + wish + '"]', pid),
+    )
+    with patch.object(
+        HappinessRepository, "personalities", lambda self, ids: {pid: pers}
+    ):
+        on = _happiness(lg.db, lg.league.id, pid)
+        off = _happiness(lg.db, lg.league.id, pid, on_team=False)
+    assert on["lines"] == ["Enjoys being the man here.", wish]
+    assert off["lines"] == [wish]
+    assert off["mood"] == on["mood"] is not None
+    assert not off["wants_trade"] and not off["refusing"]
+    assert off["type"] == on["type"]
+    assert off["admin"]["last_team"] and not on["admin"]["last_team"]
+
+
+def test_a_traded_player_is_judged_by_his_new_team_right_away(lg):
+    """After a trade his reasons and lines are about the new team at once,
+    with the fresh start's mood, but no dice rolled, no news, and the
+    league's weekly clock left alone."""
+    repo = _repo(lg)
+    pid = lg.players[lg.b.id][0].id  # Tokyo has lost 8 of 10
+    repo.update(lg.season.id, date(2025, 4, 11))
+    old = repo.mood(pid, lg.season.id)
+    assert old["detail"]["drives"]["winning"][0] < 0
+    lg.db.execute(
+        "UPDATE team_players SET team_id = %s WHERE player_id = %s", (lg.a.id, pid)
+    )
+    news_before = NewsRepository(lg.db).newest_id(lg.league.id)
+    with patch.object(hp, "asks_for_trade", side_effect=AssertionError):
+        assert repo.refresh_traded(lg.season.id, [pid], date(2025, 4, 14)) == 1
+    new = repo.mood(pid, lg.season.id)
+    assert new["team_id"] == lg.a.id
+    assert new["detail"]["drives"]["winning"][0] > 0
+    assert new["mood"] == pytest.approx(
+        0.5 * old["mood"] + 0.5 * new["target"], abs=1e-3
+    )
+    assert new["updated_on"] == old["updated_on"]
+    assert repo.last_update(lg.season.id) == old["updated_on"]
+    assert NewsRepository(lg.db).newest_id(lg.league.id) == news_before
+    # Only he changed.
+    other = lg.players[lg.a.id][1].id
+    assert repo.mood(other, lg.season.id)["updated_on"] == old["updated_on"]
+
+
 def test_a_lowball_grudge_lowers_his_target_and_fades(lg):
     from src.player import negotiation as ng
 
