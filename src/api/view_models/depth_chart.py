@@ -130,6 +130,8 @@ def depth_chart(db, league_id: str, season_id: str | None, team_id: str) -> dict
         return None
     teams = _teams(db, league_id, season_id)
     ids = [t["id"] for t in teams]
+    if team_id is None and ids:
+        team_id = ids[0]  # a viewer with no team of their own
     if team_id not in ids:
         return None
     repo = DraftRepository(db)

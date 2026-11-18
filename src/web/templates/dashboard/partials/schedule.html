@@ -23,9 +23,9 @@
             {# The season's year goes without saying: month and day only. #}
             <td style="font-family:var(--font-mono);color:var(--text-dim);font-size:11px;white-space:nowrap;" title="{{ g.date }}">{{ (g.date|string)[5:] }}</td>
             <td style="white-space:nowrap;">
-              {# The opponent's roster and stats #}
-              <a href="/leagues/{{ league_id }}/stats?team_id={{ g.opp_id }}"
-                 title="Roster and stats" style="color:inherit;text-decoration:none;">
+              {# The opponent's depth chart #}
+              <a href="/leagues/{{ league_id }}/depth?team_id={{ g.opp_id }}"
+                 title="Depth chart" style="color:inherit;text-decoration:none;">
                 {{ team_badge(g.opp_city, g.opp_mascot) }}<span class="phone-hide">{{ g.opp_city }} </span>{{ g.opp_mascot }}
               </a>
             </td>

@@ -8,7 +8,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
-from src.api.dependencies import DB, GM, IsHTMX, User
+from src.api.dependencies import DB, GMOrViewer, IsHTMX, User
 from src.api.view_models.depth_chart import depth_chart
 from src.web.utils import _shell_ctx, tab_response
 
@@ -22,10 +22,12 @@ def depth_tab(
     league_id: str,
     db: DB,
     user: User,
-    gm: GM,
+    gm: GMOrViewer,
     team_id: str | None = None,
 ):
-    """``team_id`` shows another team's chart (handy when shopping)."""
+    """``team_id`` shows another team's chart (handy when shopping). Team
+    links around the league open here, so viewers of a public league can see
+    it too; with no team of their own they start on the first one."""
     ctx = _shell_ctx(request, db, gm, league_id, "depth", user)
     ctx["depth"] = depth_chart(
         db, league_id, ctx["season_id"], team_id or gm.get("team_id")

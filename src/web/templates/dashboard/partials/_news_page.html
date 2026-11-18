@@ -15,7 +15,7 @@
     <div class="news-kicker"><span aria-hidden="true">{{ s.icon }}</span> {{ s.label }}</div>
     <div class="news-head">
       {% if s.teams %}<span class="news-teams">{% for t in s.teams %}<a class="news-team" title="{{ t.city }} {{ t.mascot }}"
-         href="/leagues/{{ league_id }}/stats?team_id={{ t.id }}" hx-get="/leagues/{{ league_id }}/stats?team_id={{ t.id }}"
+         href="/leagues/{{ league_id }}/depth?team_id={{ t.id }}" hx-get="/leagues/{{ league_id }}/depth?team_id={{ t.id }}"
          hx-target="#tab-content" hx-push-url="true">{{ team_badge(t.city, t.mascot) }}</a>{% endfor %}</span>{% endif %}
       <h3 class="news-headline">{{ s.headline_html }}</h3>
     </div>

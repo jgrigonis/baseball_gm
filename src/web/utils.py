@@ -192,6 +192,7 @@ def _compute_visible_tabs(state: str, draft_complete: bool = False) -> list[str]
 _VIEWER_TABS = (
     "standings",
     "power",
+    "depth",
     "headlines",
     "leaders",
     "stats",
