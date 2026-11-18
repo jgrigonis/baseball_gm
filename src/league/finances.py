@@ -264,7 +264,7 @@ BALLPARK = (
     ),
     Project(
         "stadium_showpiece", "New stadium: Showpiece",
-        "A landmark the whole city shows off: a roof, a skyline view, the works. Four seasons to build.",
+        "A landmark the whole city shows off: a retractable roof, a skyline view, the works. Four seasons to build.",
         cost=12.5, revenue=0.90, fans=3, build=4, group="stadium", upfront=0.5,
         capacity=52_000, replaces=UPGRADES,
     ),
