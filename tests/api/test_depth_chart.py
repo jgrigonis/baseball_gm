@@ -53,6 +53,36 @@ def lg(db_conn, factory):
     return {"league": league, "season": season, "mine": mine, "teams": teams, "gm": gm}
 
 
+def test_field_grades_overall_defense_offense(db_conn, lg):
+    """The field shows each starter's overall grade by default, with his
+    glove at the spot and his bat one pick away (Josh, 2026-11-18)."""
+    from src.api.grade_curves import overall_to_grade, role_to_grade
+    from src.db.repositories.draft_repo import DraftRepository
+    from src.league.offseason.draft_strategy import ratings
+
+    d = depth_chart(db_conn, lg["league"].id, lg["season"].id, lg["mine"].id)
+    recs = {
+        p.id: ratings(p)
+        for p, _ in DraftRepository(db_conn).get_roster_records([lg["mine"].id])[
+            lg["mine"].id
+        ]
+    }
+    for e in d["defense"]:
+        if not e["name"]:
+            continue
+        r = recs[e["id"]]
+        assert e["field"] == {
+            "ovr": overall_to_grade(r["overall_player"], "hitter"),
+            "def": role_to_grade(r[e["spot"]], e["spot"]),
+            "off": role_to_grade(r["overall_offense"], "overall_offense"),
+        }
+        assert e["field"]["def"] == e["grade"]  # the Defense card's grade
+        for b in e["backups"]:
+            assert set(b["field"]) == {"ovr", "def", "off"}
+    if d["dh"]:
+        assert d["dh"]["field"]["def"] is None
+
+
 def test_depth_chart_groups_and_backups(db_conn, lg):
     d = depth_chart(db_conn, lg["league"].id, lg["season"].id, lg["mine"].id)
     assert [e["slot"] for e in d["rotation"]] == ["SP1", "SP2", "SP3", "SP4", "SP5"]
@@ -168,6 +198,8 @@ class TestPages:
         assert r.status_code == 200
         assert "Depth Chart" in r.text and "dc-field" in r.text
         assert "City0 Mascots0 (you)" in r.text
+        assert 'data-mode="ovr"' in r.text and 'id="dc-mode"' in r.text
+        assert "glove at his position" in r.text and "depthFieldMode" in r.text
         other = lg["teams"][2]
         r = client.get(f"{url}?team_id={other.id}", headers={"HX-Request": "true"})
         assert f'value="{other.id}" selected' in r.text
