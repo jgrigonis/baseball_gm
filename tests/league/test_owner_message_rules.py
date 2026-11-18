@@ -55,7 +55,10 @@ def test_the_review_ends_on_job_security():
 def test_every_template_fills():
     fields = {**FIELDS, "payroll": "$200M"}
     asides = {k: tuple(v.values()) for k, v in om.ASIDES.items()}
-    tables = (om.WANTS, *om.NOTES.values(), asides, om.TRADE_REACTIONS)
+    # Trade reactions: wordings that name the player, then plain ones.
+    trades = {f"{k}{i}": v[i] for k, v in om.TRADE_REACTIONS.items() for i in (0, 1)}
+    fields["player"] = "Joe Smith"
+    tables = (om.WANTS, *om.NOTES.values(), asides, trades)
     for table in (*tables, {"over": om.OVER_BUDGET}, om.CHECKIN_OPEN, om.CHECKIN_TURN):
         for lines in table.values():
             for line in lines:

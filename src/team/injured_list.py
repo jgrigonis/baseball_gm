@@ -63,22 +63,11 @@ def ai_kind(position: str | None, injury_type: str | None, days_out: int) -> int
 
 def league_today(conn, league_id: str) -> str:
     """The league's next game day (the date on the top bar), which the
-    injured list counts from."""
+    injured list counts from. Injury days left count from the same day
+    (InjuryRepository.current_date), so the two always agree."""
     from src.db.repositories.injury_repo import InjuryRepository
-    from src.db.repositories.league_repo import LeagueRepository
-    from src.db.repositories.season_repo import SeasonRepository
-    from src.web.utils import _current_league_date
 
-    league = LeagueRepository(conn).get_by_id(league_id) or {}
-    season_id = SeasonRepository(conn).get_most_recent_season_from_league(league_id)
-    on = _current_league_date(
-        conn, season_id, league.get("state") or "", all_star_game=False
-    )
-    return (
-        str(on)[:10]
-        if on
-        else InjuryRepository(conn, league_id).current_date().isoformat()
-    )
+    return InjuryRepository(conn, league_id).current_date().isoformat()
 
 
 def _iso(d) -> str:

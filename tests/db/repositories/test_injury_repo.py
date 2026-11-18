@@ -83,8 +83,52 @@ def test_current_date_is_day_after_last_completed_game(setup):
     s = setup
     _add_game(s, "2025-04-01", 1)
     _add_game(s, "2025-04-03", 1)
-    _add_game(s, "2025-04-05", 0)
+    _add_game(s, "2025-04-04", 0)
     assert s.repo.current_date() == date(2025, 4, 4)
+
+
+def test_current_date_is_the_next_game_day_after_an_off_day(setup):
+    """Like the top bar (and the injured list): Apr 4 is an off day, so
+    today is Apr 5."""
+    s = setup
+    _add_game(s, "2025-04-01", 1)
+    _add_game(s, "2025-04-03", 1)
+    _add_game(s, "2025-04-05", 0)
+    assert s.repo.current_date() == date(2025, 4, 5)
+
+
+def test_injury_days_count_through_the_offseason(setup):
+    """Josh, 2026-11-18: hurt Aug 24 for 79 days, he still showed 24 days
+    left on Apr 1 of the next season (counted from the last game played),
+    while the injured list said he wasn't hurt."""
+    from src.team.injured_list import league_today
+
+    s = setup
+    _add_game(s, "2025-08-24", 1)
+    _add_game(s, "2025-10-18", 1)  # the last game of the season
+    s.repo.injure(s.player.id, s.season.id, date(2025, 8, 24), days=79)
+    # Next season's schedule is out; it's preseason.
+    nxt = s.factory.season(year=2026)
+    s.factory.league_season(s.league, nxt)
+    s.conn.execute(
+        """INSERT INTO games (id, game_date, season_id, home_team_id, away_team_id, completed)
+           VALUES (%s, '2026-04-01', %s, %s, %s, 0)""",
+        (s.factory._id(), nxt.id, s.team.id, s.other.id),
+    )
+    s.conn.execute(
+        "UPDATE leagues SET state = 'preseason' WHERE id = %s", (s.league.id,)
+    )
+    assert s.repo.current_date() == date(2026, 4, 1)
+    assert league_today(s.conn, s.league.id) == "2026-04-01"
+    assert s.repo.get_team_injuries(s.team.id) == {}
+    assert not s.repo.is_injured(s.player.id)
+    # In the offseason, before the schedule: next spring.
+    s.conn.execute(
+        "UPDATE leagues SET state = 'offseason' WHERE id = %s", (s.league.id,)
+    )
+    s.conn.execute("DELETE FROM games WHERE season_id = %s", (nxt.id,))
+    s.conn.execute("DELETE FROM league_seasons WHERE season_id = %s", (nxt.id,))
+    assert s.repo.current_date() == date(2026, 3, 22)
 
 
 def test_team_views_report_days_remaining(setup):
