@@ -450,41 +450,93 @@ def _trade_reactions(
     owner cares about a lot: an icon gone, more churn, a star in."""
     w = owners.clean_weights(owner["weights"])
     written = 0
-    for t in conn.execute(
+    trades = conn.execute(
         """SELECT o.id,
                   ARRAY(SELECT i.player_id FROM trade_offer_items i
-                        WHERE i.offer_id = o.id AND i.from_team_id = %s) AS sent,
-                  EXISTS (SELECT 1 FROM trade_offer_items i JOIN all_stars a
+                        WHERE i.offer_id = o.id AND i.from_team_id = %s
+                          AND i.player_id IS NOT NULL) AS sent,
+                  ARRAY(SELECT i.player_id FROM trade_offer_items i
+                        WHERE i.offer_id = o.id AND i.from_team_id <> %s
+                          AND i.player_id IS NOT NULL) AS got,
+                  ARRAY(SELECT i.player_id FROM trade_offer_items i JOIN all_stars a
                           ON a.player_id = i.player_id
-                          WHERE i.offer_id = o.id AND i.from_team_id <> %s) AS star_in
+                          WHERE i.offer_id = o.id AND i.from_team_id <> %s) AS stars_in
            FROM trade_offers o
            WHERE o.season_id = %s AND o.status = 'accepted'
              AND %s IN (o.from_team_id, o.to_team_id)
            ORDER BY o.decided_at""",
-        (team_id, team_id, season_id, team_id),
-    ).fetchall():
+        (team_id, team_id, team_id, season_id, team_id),
+    ).fetchall()
+    trades = [
+        t for t in trades if not _has(conn, league_id, team_id, f"trade:{t['id']}")
+    ]
+    if not trades:
+        return 0
+    meddles = owners.clean_traits(owner["traits"])["meddling"] >= om.MEDDLES
+    ids = list({p for t in trades for p in [*(t["sent"] or []), *(t["got"] or [])]})
+    grades = icons._grades(conn, ids)
+    names = (
+        {
+            r["id"]: f"{r['first_name']} {r['last_name']}"
+            for r in conn.execute(
+                "SELECT id, first_name, last_name FROM players WHERE id = ANY(%s)",
+                (ids,),
+            ).fetchall()
+        }
+        if ids
+        else {}
+    )
+
+    def best(pids) -> str | None:
+        """The best-graded of these players: the one the owner names."""
+        rank = {g: i for i, g in enumerate(GRADES)}
+        pids = [p for p in pids or [] if p in names]
+        return min(pids, key=lambda p: rank.get(grades.get(p), 99), default=None)
+
+    earlier = _season_bodies(conn, league_id, team_id, season_id, "trade")
+    for t in trades:
         key = f"trade:{t['id']}"
-        if _has(conn, league_id, team_id, key):
-            continue
-        what = None
+        what, who = None, None
         icon_out = w["icons"] >= owners.STRONG and icons.find(
-            conn, [(pid, team_id) for pid in t["sent"] or []]
+            conn, [(pid, team_id) for pid in t["sent"] or []], grades
         )
         if icon_out:
-            what = "icons"
-        elif t["star_in"] and w["stars"] >= owners.STRONG:
-            what = "stars"
+            what, who = "icons", best([p for p, _ in icon_out])
+        elif t["stars_in"] and w["stars"] >= owners.STRONG:
+            what, who = "stars", best(t["stars_in"])
         elif w["stability"] >= owners.STRONG:
             what = "stability"
-        elif owners.clean_traits(owner["traits"])["meddling"] >= om.MEDDLES:
+        elif meddles:
             what = "meddling"
         if what:
-            body = om.trade_reaction(what, fields, _rng(t["id"], team_id))
-            written += _write(
+            if who is None:  # the best player coming in, else going out
+                who = best(t["got"]) or best(t["sent"])
+            body = om.trade_reaction(
+                what,
+                {**fields, "player": names.get(who, "")},
+                _rng(t["id"], team_id),
+                earlier,
+            )
+            if _write(
                 conn, league_id, team_id, gm["id"], season_id, key, "trade", body,
                 today, None,
-            )  # fmt: skip
+            ):  # fmt: skip
+                written += 1
+                earlier.append(body)
     return written
+
+
+def _season_bodies(conn, league_id, team_id, season_id, kind) -> list[str]:
+    """What the team's owner already wrote this season of this kind."""
+    return [
+        r["body"]
+        for r in conn.execute(
+            """SELECT body FROM owner_messages
+               WHERE league_id = %s AND team_id = %s AND season_id = %s
+                 AND kind = %s""",
+            (league_id, team_id, season_id, kind),
+        ).fetchall()
+    ]
 
 
 # Guaranteed money still owed that makes a release worth a word on its own,

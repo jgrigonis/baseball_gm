@@ -76,9 +76,17 @@ class InjuryRepository:
 
     def current_date(self) -> date:
         """
-        The league's "today" for injury purposes: the day after the most
-        recent completed game in this league. Before any game is played,
-        the first scheduled game date; failing that, the real date.
+        The league's "today" for injury purposes: the date on the top bar
+        (the next game day; between seasons, next spring), and never before
+        the day after the most recent completed game in this league. Before
+        any game is played, the first scheduled game date; failing that, the
+        real date. The injured list counts from the same day
+        (injured_list.league_today).
+
+        Josh, 2026-11-18: a player hurt in August for 79 days still showed
+        24 days left on April 1, counted from the last game played in
+        October, while the injured list, counting from the top bar, said he
+        was healthy.
         """
         row = self.conn.execute(
             """SELECT MAX(g.game_date) FILTER (WHERE g.completed = 1) AS last_played,
@@ -89,10 +97,33 @@ class InjuryRepository:
             (self.league_id,),
         ).fetchone()
         if row and row["last_played"]:
-            return _to_date(row["last_played"]) + timedelta(days=1)
-        if row and row["next_up"]:
-            return _to_date(row["next_up"])
-        return date.today()
+            base = _to_date(row["last_played"]) + timedelta(days=1)
+        elif row and row["next_up"]:
+            base = _to_date(row["next_up"])
+        else:
+            base = None
+        top = self._top_bar_date()
+        if base and top:
+            return max(base, top)
+        return base or top or date.today()
+
+    def _top_bar_date(self) -> date | None:
+        """The date the league's top bar shows, if it shows one."""
+        from src.db.repositories.season_repo import SeasonRepository
+        from src.web.utils import _current_league_date
+
+        league = self.conn.execute(
+            "SELECT state FROM leagues WHERE id = %s", (self.league_id,)
+        ).fetchone()
+        if not league:
+            return None
+        season_id = SeasonRepository(self.conn).get_most_recent_season_from_league(
+            self.league_id
+        )
+        on = _current_league_date(
+            self.conn, season_id, league["state"] or "", all_star_game=False
+        )
+        return _to_date(on) if on else None
 
     def _as_of(self, as_of) -> str:
         return (_to_date(as_of) if as_of else self.current_date()).isoformat()
