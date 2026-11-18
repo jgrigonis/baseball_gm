@@ -145,11 +145,20 @@ def _waiver(db, pid: str) -> dict | None:
 
 
 def _happiness(
-    db, league_id: str, pid: str, position: str | None = None
+    db,
+    league_id: str,
+    pid: str,
+    position: str | None = None,
+    on_team: bool = True,
 ) -> dict | None:
     """His public type and mood word, what's on his mind, a pitcher's wish to
     start or relieve, and (for admins) the numbers behind it
-    (src/player/happiness.py)."""
+    (src/player/happiness.py).
+
+    Moods are only worked out for rostered players, so a free agent's newest
+    mood row is from his last team. Off a team he shows just his type: no
+    mood word or lines like "Happy with his contract." (Josh, 2026-11-18);
+    admins still see the old numbers, marked as from his last team."""
     repo = HappinessRepository(db, league_id)
     pers = repo.personalities([pid]).get(pid)
     if pers is None:
@@ -158,17 +167,19 @@ def _happiness(
     detail = (row or {}).get("detail") or {}
     drives = detail.get("drives") or {}
     today = league_current_date(db, league_id)
+    shown = row if on_team else None
     return {
-        "wants_trade": pid in repo.trade_requests([pid]),
-        "refusing": bool(today and pid in repo.refusing([pid], today)),
+        "wants_trade": on_team and pid in repo.trade_requests([pid]),
+        "refusing": bool(on_team and today and pid in repo.refusing([pid], today)),
         "type": pers.type,
         "blurb": hp.TYPES.get(pers.type, {}).get("blurb", ""),
         "cares": hp.type_cares(pers.type),
         "ruiner": pers.ruiner,
         "prefers": hp.ROLE_PREFERENCE.get((position or "").lower()),
-        "mood": hp.mood_word(row["mood"]) if row else None,
-        "lines": detail.get("lines") or [],
+        "mood": hp.mood_word(shown["mood"]) if shown else None,
+        "lines": (detail.get("lines") or []) if shown else [],
         "admin": {
+            "last_team": bool(row) and not on_team,
             "mood": round(row["mood"], 2) if row else None,
             "target": round(row["target"], 2) if row else None,
             "updated_on": row["updated_on"] if row else None,
@@ -419,7 +430,9 @@ def player_panel_data(
         "asking": _asking(db, league_id, pid) if status == "free_agent" else None,
         "waiver": _waiver(db, pid) if status == "free_agent" else None,
         "home_region": p.get("home_region"),
-        "happiness": _happiness(db, league_id, pid, grades.position),
+        "happiness": _happiness(
+            db, league_id, pid, grades.position, on_team=team is not None
+        ),
         "grades": grade_map,
         "overall_grade": overall_grade,
         "overall_value": round(overall_value) if overall_value is not None else None,

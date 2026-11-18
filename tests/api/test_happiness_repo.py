@@ -302,3 +302,19 @@ def test_a_pitchers_wish_to_start_or_relieve_shows_with_his_happiness(lg):
     assert prefers("sp") == "prefers to start"
     assert prefers("RP") == "prefers relief"
     assert prefers("ss") is None
+
+
+def test_a_free_agent_shows_no_mood_from_his_last_team(lg):
+    """Moods are only worked out on a roster, so his newest row is from his
+    old team: off a team, no mood word or "Happy with his contract." lines."""
+    from src.api.view_models.player_detail import _happiness
+
+    _repo(lg).update(lg.season.id, date(2025, 4, 11))
+    pid = lg.players[lg.a.id][0].id
+    on = _happiness(lg.db, lg.league.id, pid)
+    assert on["mood"] and on["lines"]
+    off = _happiness(lg.db, lg.league.id, pid, on_team=False)
+    assert off["mood"] is None and off["lines"] == []
+    assert not off["wants_trade"] and not off["refusing"]
+    assert off["type"] == on["type"]
+    assert off["admin"]["last_team"] and not on["admin"]["last_team"]
