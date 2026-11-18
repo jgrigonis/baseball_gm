@@ -138,11 +138,18 @@ def stance(
     row: dict,
     fits: dict | None = None,
     teams: dict | None = None,
+    years: int | None = None,
 ) -> ng.Stance:
     """Where an expiring player stands with his own club. fits: the
     clubs' offseason_fa._fits, and teams: AI rosters for fa_offers.callers,
-    when already looked up (the AI teams' talks do them all at once)."""
+    when already looked up (the AI teams' talks do them all at once).
+    years: for an arbitration player, the length of the extension offered:
+    his ask is then what those seasons are worth (extension_ask)."""
     p, team_id, ask = row["player"], row["team_id"], row["ask"]
+    security = 0.0
+    if row["arb_season"] is not None and years:
+        ask = extension_ask(row, years)
+        security = ng.extension_security(years)
     happy = HappinessRepository(conn, league_id)
     person = happy.personalities([p.id]).get(p.id) or hp.personality_for(p.id)
     home = conn.execute(
@@ -174,7 +181,18 @@ def stance(
         money=person.drives["money"],
         home=True,
         seasons=row["seasons"],
+        security=security,
     )
+
+
+def extension_ask(row: dict, years: int) -> ct.Deal:
+    """An arbitration player's price for an extension of this many seasons:
+    the arbitration seasons it buys out and any market seasons past them
+    (contracts.extension_salary), before his discount for the security."""
+    salary = ct.extension_salary(
+        row["market_salary"], row["arb_season"], years, row["scale"]
+    )
+    return ct.Deal(max(salary, row["ask"].salary), years, "standard")
 
 
 def _counter_view(salary, years) -> dict | None:
@@ -191,10 +209,23 @@ def preview(conn, league_id: str, team_id: str, player_id: str) -> dict:
     why = offseason_fa.no_offer(row)
     if why:
         raise ResignOfferError(why)
+    arb = row["arb_season"]
     s = stance(conn, league_id, season_id, year, row)
     talks = _talks(conn, player_id, year) or {}
     offers = talks.get("offers", 0)
     grudge = HappinessRepository(conn, league_id).grudge(player_id, team_id, year) > 0
+    extension = None
+    if arb is not None:
+        left = offseason_fa.MARKET_SEASONS - arb + 1
+        years = min(offseason_fa.MAX_BID_YEARS, max(ng.EXTENSION_MIN_YEARS, left))
+        extension = {
+            "arb_season": arb,
+            "arb_left": left,
+            "market_text": ct.format_salary(row["market_salary"]),
+            "min_years": ng.EXTENSION_MIN_YEARS,
+            "years": years,
+            "salary": extension_ask(row, years).salary,
+        }
     mood = HappinessRepository(conn, league_id).latest_moods([player_id]).get(player_id)
     can_walk = row["market"] is not None
     return {
@@ -204,6 +235,7 @@ def preview(conn, league_id: str, team_id: str, player_id: str) -> dict:
         "min_salary": s.minimum,
         "max_years": offseason_fa.MAX_BID_YEARS,
         "can_walk": can_walk,
+        "extension": extension,
         "hints": ng.resign_hints(
             s, mood, _underpaid(conn, league_id, player_id), grudge
         ),
@@ -239,6 +271,11 @@ def offer(conn, league_id: str, team_id: str, player_id: str, salary, years) -> 
             raise ResignOfferError(why)
         if not 1 <= years <= offseason_fa.MAX_BID_YEARS:
             raise ResignOfferError(f"Offer 1 to {offseason_fa.MAX_BID_YEARS} seasons.")
+        if row["arb_season"] is not None and years < ng.EXTENSION_MIN_YEARS:
+            raise ResignOfferError(
+                "Arbitration sets his price for one season. Offer an extension "
+                f"of {ng.EXTENSION_MIN_YEARS} seasons or more, or re-sign him at it."
+            )
         low = _minimum(row)
         if salary < low:
             raise ResignOfferError(
@@ -267,7 +304,7 @@ def offer(conn, league_id: str, team_id: str, player_id: str, salary, years) -> 
                 )
                 + " or let him go."
             )
-        s = stance(conn, league_id, season_id, year, row)
+        s = stance(conn, league_id, season_id, year, row, years=years)
         if taking_counter or s.takes(salary, years):
             conn.execute(
                 """INSERT INTO contract_choices
@@ -431,6 +468,7 @@ def ai_negotiate(
         for r in rows
         if r["team_id"] not in humans
         and r["player_id"] in keep
+        and r["arb_season"] is None  # extensions are a person's call
         and not offseason_fa.no_offer(r)
     ]
     if not talks:

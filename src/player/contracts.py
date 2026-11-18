@@ -251,6 +251,17 @@ def arbitration_deal(market: Deal, season: int, scale: float = 1.0) -> Deal | No
     return Deal(round_salary(market.salary * share, scale), 1, "arbitration")
 
 
+def extension_salary(market: int, season: int, years: int, scale: float = 1.0) -> int:
+    """What an extension for an arbitration player is worth a season, before
+    any discount (Josh, 2026-11-18): the seasons it buys out at their
+    arbitration share of his market price, and any past them at the market
+    price, averaged over its length. season: which season in the league
+    its first one is."""
+    years = max(1, years)
+    total = sum(market * ARBITRATION_SHARE.get(season + i, 1.0) for i in range(years))
+    return round_salary(total / years, scale)
+
+
 def owed(
     deals: list[dict],
     year: int,
