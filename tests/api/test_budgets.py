@@ -782,7 +782,7 @@ def test_setting_the_front_office_on_the_budget_tab(lg, client_for):
     # And back up to Standard is always fine too, even past the limit
     # (Josh, 2026-11-09); only above Standard has to fit.
     r = client.post(url, data={"department": "coaching", "level": bg.STANDARD})
-    assert "Your owner won't allow it" not in r.text
+    assert "Your owner won&#39;t allow it" not in r.text
     assert x.budgets.levels(x.league.id, x.mine.id, 2026)["coaching"] == bg.STANDARD
     r = client.post(url, data={"department": "coaching", "level": bg.STANDARD + 1})
     assert "won't allow" in r.text
@@ -1967,3 +1967,50 @@ def test_only_a_project_you_can_order_says_when_it_opens(lg, client_for):
     assert "1 season to build, opens 2027" in page
     i = page.index("Upper deck expansion")
     assert "opens 20" not in page[i : page.index("</form>", i)]
+
+
+def test_front_office_cuts_stay_cut_once_their_room_is_spent(lg, client_for):
+    # Josh, 2026-11-18: near the limit a GM could cut the front office, sign
+    # a free agent with the freed room, then raise it all back to Standard.
+    x = lg()
+    pid = x.factory.rated_player(x.theirs, x.league, level=70, status="free_agent").id
+    x.db.execute("DELETE FROM team_players WHERE player_id = %s", (pid,))
+    x.budgets.for_league(x.league.id, 2026)
+    client = client_for(x)
+    url = f"/leagues/{x.league.id}/budget/front-office"
+    x.db.execute("UPDATE leagues SET state = 'preseason' WHERE id = %s", (x.league.id,))
+    x.db.execute("UPDATE team_budgets SET budget = 1000000, cap = 160000000")
+    for dept in bg.DEPARTMENT_KEYS:
+        client.post(url, data={"department": dept, "level": 0})
+    # Undoing one cut before spending anything is still fine.
+    r = client.post(url, data={"department": "coaching", "level": bg.STANDARD})
+    assert "Your owner won&#39;t allow it" not in r.text
+    assert x.budgets.levels(x.league.id, x.mine.id, 2026)["coaching"] == bg.STANDARD
+    client.post(url, data={"department": "coaching", "level": 0})
+    # Spend the room (a roomy budget stands in for the freed money).
+    x.db.execute("UPDATE team_budgets SET budget = 900000000")
+    free_agents.sign(x.db, x.league.id, x.mine.id, pid)
+    x.db.execute("UPDATE team_budgets SET budget = 1000000")
+    r = client.post(url, data={"department": "coaching", "level": bg.STANDARD})
+    assert "Your owner won&#39;t allow it" in r.text and "has been spent" in r.text
+    assert x.budgets.levels(x.league.id, x.mine.id, 2026)["coaching"] == 0
+    # Cutting further is always fine.
+    x.budgets.set_level(x.league.id, x.mine.id, 2026, "analytics", 1)
+    r = client.post(url, data={"department": "analytics", "level": 0})
+    assert x.budgets.levels(x.league.id, x.mine.id, 2026)["analytics"] == 0
+
+
+def test_a_carried_over_cut_cant_be_raised_past_the_limit(lg, client_for):
+    # No cut this offseason to undo, so a raise to Standard past the
+    # limit adds money like any other move.
+    x = lg()
+    x.budgets.for_league(x.league.id, 2026)
+    x.budgets.set_level(x.league.id, x.mine.id, 2026, "coaching", 0)
+    x.db.execute("UPDATE leagues SET state = 'preseason' WHERE id = %s", (x.league.id,))
+    x.db.execute("UPDATE team_budgets SET budget = 1000000, cap = 160000000")
+    r = client_for(x).post(
+        f"/leagues/{x.league.id}/budget/front-office",
+        data={"department": "coaching", "level": bg.STANDARD},
+    )
+    assert "Your owner won&#39;t allow it" in r.text and "has been spent" not in r.text
+    assert x.budgets.levels(x.league.id, x.mine.id, 2026)["coaching"] == 0

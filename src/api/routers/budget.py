@@ -345,13 +345,29 @@ def set_front_office(
         elif league["state"] not in FRONT_OFFICE_STATES:
             error = "The front office is set between seasons, from the draft to Opening Day."
         else:
-            # Standard or less is always allowed, even past the owner's hard
-            # limit (Josh, 2026-11-09); only funding above Standard has to
-            # fit inside it.
+            # Funding above Standard has to fit inside the owner's hard
+            # limit. Back up to Standard is allowed past it (Josh,
+            # 2026-11-09) only as an undo: spending can't end up higher than
+            # it was before the cuts, so a GM can't cut, spend the freed room
+            # on a signing or trade, then raise it all back (Josh, 2026-11-18).
             cap = budgets.cap(league_id, year)
             added = bg.level_cost(cap, level) - bg.level_cost(cap, levels[department])
-            if bg.clean_level(level) > bg.STANDARD:
+            standing = budgets.standing(league_id, team_id, year)
+            if added > 0:
                 error = budgets.refusal(league_id, team_id, year, added, payroll=False)
+                undo = budgets.undo_spend(league_id, team_id, year)
+                if error and bg.clean_level(level) <= bg.STANDARD:
+                    if standing is None or (
+                        undo is not None and standing["spend"] + added <= undo
+                    ):
+                        error = None
+                    elif undo is not None:
+                        error += (
+                            " The room your front office cuts freed has been"
+                            " spent, so they stay cut this season."
+                        )
+            elif added < 0 and standing is not None:
+                budgets.note_cut(league_id, team_id, year, standing["spend"])
             if not error:
                 budgets.set_level(league_id, team_id, year, department, level)
         db.commit()

@@ -356,6 +356,26 @@ class BudgetRepository:
             (bg.clean_level(level), league_id, team_id, year),
         )
 
+    def undo_spend(self, league_id: str, team_id: str, year: int) -> int | None:
+        """Total spending just before the team's front office cuts this
+        season (the most it has been), or None with no cuts yet."""
+        row = self.conn.execute(
+            """SELECT fo_undo_spend FROM team_budgets
+               WHERE league_id = %s AND team_id = %s AND year = %s""",
+            (league_id, team_id, year),
+        ).fetchone()
+        return row["fo_undo_spend"] if row else None
+
+    def note_cut(self, league_id: str, team_id: str, year: int, spend: int) -> None:
+        """Remember the spending before a front office cut, so the GM can
+        undo it later but not after spending the room it freed."""
+        self.conn.execute(
+            """UPDATE team_budgets
+               SET fo_undo_spend = GREATEST(COALESCE(fo_undo_spend, 0), %s)
+               WHERE league_id = %s AND team_id = %s AND year = %s""",
+            (int(spend), league_id, team_id, year),
+        )
+
     def budget_seen(self, league_id: str, team_id: str, year: int) -> bool:
         """Whether the GM has opened the Budget tab between seasons this
         year, while the front office and ticket prices could still change.
