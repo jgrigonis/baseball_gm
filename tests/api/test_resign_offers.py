@@ -101,6 +101,11 @@ def _person(monkeypatch, **kw):
     monkeypatch.setattr(resign_offers, "stance", fake)
 
 
+def _insulted(monkeypatch):
+    """The lowball insults him (the roll is seeded by his random id)."""
+    monkeypatch.setattr(ng.Stance, "home_insulted", lambda *a: True)
+
+
 def _row(lg, pid):
     return next(
         r
@@ -193,6 +198,7 @@ def test_a_lowball_leaves_a_grudge_but_easygoing_shrugs(lg, monkeypatch):
 
 
 def test_an_insulted_veteran_raises_his_price(lg, monkeypatch):
+    _insulted(monkeypatch)
     _person(monkeypatch, temper=95)
     monkeypatch.setattr(ng.Stance, "refuse_chance", lambda self: 0.0)
     pid = _expiring(lg, 2021, 6)
@@ -211,6 +217,7 @@ def test_an_insulted_veteran_raises_his_price(lg, monkeypatch):
 
 
 def test_an_insulted_veteran_can_refuse_and_cant_come_back(lg, monkeypatch):
+    _insulted(monkeypatch)
     _person(monkeypatch, temper=95, loyalty=5)
     monkeypatch.setattr(ng.Stance, "refuse_chance", lambda self: 1.0)
     pid = _expiring(lg, 2021, 6)
@@ -227,6 +234,7 @@ def test_an_insulted_veteran_can_refuse_and_cant_come_back(lg, monkeypatch):
 
 
 def test_a_player_under_control_cant_walk_but_holds_it_against_you(lg, monkeypatch):
+    _insulted(monkeypatch)
     _person(monkeypatch, temper=95)
     pid = _expiring(lg, 2024, 3)  # 3 seasons: tendered, can't walk
     ask = _row(lg, pid)
