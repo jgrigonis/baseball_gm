@@ -17,6 +17,15 @@ a salary and a number of seasons. He answers right away, like a free agent
   under team control holds a bigger grudge.
 - No offers to an arbitration player, a refuser, one asking the minimum, or
   in a league without money (offseason_fa.no_offer).
+
+AI teams negotiate their own re-signs too (Josh, 2026-11-18: ai_negotiate),
+when the offseason runs, for the players they mean to keep. The GM opens by
+the owner's Spending and the GM's Risk, like a free agent offer
+(fa_offers.ai_opening), nearer the ask the more loyal the GM is to his own
+players (the Loyalty dial). The player answers by the same rules as for a
+person, grudges, insults and refusals included. A GM takes his counter by
+Risk and Loyalty; one that walks away loses a player who can walk, and
+re-signs one under team control at his asking price.
 """
 
 from __future__ import annotations
@@ -121,20 +130,31 @@ def _underpaid(conn, league_id: str, player_id: str) -> bool:
     return bool(money) and money[1] == "under"
 
 
-def stance(conn, league_id: str, season_id: str, year: int, row: dict) -> ng.Stance:
-    """Where an expiring player stands with his own club."""
+def stance(
+    conn,
+    league_id: str,
+    season_id: str,
+    year: int,
+    row: dict,
+    fits: dict | None = None,
+    teams: dict | None = None,
+) -> ng.Stance:
+    """Where an expiring player stands with his own club. fits: the
+    clubs' offseason_fa._fits, and teams: AI rosters for fa_offers.callers,
+    when already looked up (the AI teams' talks do them all at once)."""
     p, team_id, ask = row["player"], row["team_id"], row["ask"]
     happy = HappinessRepository(conn, league_id)
     person = happy.personalities([p.id]).get(p.id) or hp.personality_for(p.id)
     home = conn.execute(
         "SELECT home_region FROM players WHERE id = %s", (p.id,)
     ).fetchone()
-    fits = offseason_fa._fits(conn, league_id, season_id, year, [team_id])
+    if fits is None or team_id not in fits:
+        fits = offseason_fa._fits(conn, league_id, season_id, year, [team_id])
     fit, share = offseason_fa.team_fit_for(
         person, p, home["home_region"] if home else None, fits[team_id]
     )
     callers = (
-        fa_offers.callers(conn, league_id, p, year, ask, exclude={team_id})
+        fa_offers.callers(conn, league_id, p, year, ask, exclude={team_id}, teams=teams)
         if row["market"]
         else 0
     )
@@ -355,3 +375,123 @@ def offer(conn, league_id: str, team_id: str, player_id: str, salary, years) -> 
                 conn, league_id, team_id, year, mine, row, want
             ),
         }
+
+
+# ── AI teams ─────────────────────────────────────────────────────────────────
+
+# A loyal GM (Loyalty dial 100) opens this much nearer the ask, and is this
+# much likelier to take the counter; one who cuts bait fast, less.
+AI_LOYAL_OPEN = 0.05
+AI_LOYAL_TAKE = 0.15
+
+
+def ai_opening(spending: int, risk: int, loyalty: int) -> float:
+    """How close to his ask an AI GM opens with his own player."""
+    share = fa_offers.ai_opening(spending, risk) + AI_LOYAL_OPEN * (loyalty - 50) / 50
+    low = fa_offers.AI_OPEN_LOW - fa_offers.AI_OPEN_RISK - AI_LOYAL_OPEN
+    return max(low, min(1.0, share))
+
+
+def ai_takes(risk: int, loyalty: int, roll: float) -> bool:
+    """Whether an AI GM takes his own player's counter."""
+    chance = fa_offers.AI_TAKE_LOW + (
+        fa_offers.AI_TAKE_HIGH - fa_offers.AI_TAKE_LOW
+    ) * (risk / 100)
+    chance += AI_LOYAL_TAKE * (loyalty - 50) / 50
+    return roll < chance
+
+
+def _ai_dials(conn, league_id: str) -> dict[str, tuple[int, int, int]]:
+    """Each team's (owner Spending, GM Risk, GM Loyalty), 50 where unknown."""
+    from src.api.services import owners, personas
+
+    lean = personas.leanings(conn, league_id)
+    seats = owners.ensure(conn, league_id)
+    out = {}
+    for team_id in set(lean) | set(seats):
+        traits = (seats.get(team_id) or {}).get("traits") or {}
+        gm = lean.get(team_id)
+        out[team_id] = (
+            int(traits.get("spending", 50)),
+            gm.risk if gm else 50,
+            gm.loyalty if gm else 50,
+        )
+    return out
+
+
+def ai_negotiate(
+    conn, league_id: str, year: int, rows: list[dict], keep: set[str], humans
+) -> tuple[dict[str, ct.Deal | None], set[str]]:
+    """AI teams talk with the expiring players they mean to keep (keep).
+    Returns ({player: the deal he signs, or None if he goes to market},
+    players who refused after an insult). Players not in it re-sign at their
+    asking price, as before."""
+    talks = [
+        r
+        for r in rows
+        if r["team_id"] not in humans
+        and r["player_id"] in keep
+        and not offseason_fa.no_offer(r)
+    ]
+    if not talks:
+        return {}, set()
+    from src.api.services import ai_free_agents
+
+    season_id = SeasonRepository(conn).get_current_id_for_league(league_id)
+    dials = _ai_dials(conn, league_id)
+    fits = offseason_fa._fits(
+        conn, league_id, season_id, year, sorted({r["team_id"] for r in talks})
+    )
+    teams = None
+    if any(r["market"] for r in talks):
+        teams = {
+            t["team_id"]: ai_free_agents.role_values(
+                ai_free_agents._rated_team(conn, league_id, t["team_id"])
+            )
+            for t in conn.execute(
+                "SELECT DISTINCT team_id FROM league_season_teams WHERE league_id = %s",
+                (league_id,),
+            ).fetchall()
+            if t["team_id"] not in humans
+        }
+    happy = HappinessRepository(conn, league_id)
+    deals: dict[str, ct.Deal | None] = {}
+    refused: set[str] = set()
+    for r in talks:
+        pid, ask = r["player_id"], r["ask"]
+        spending, risk, loyalty = dials.get(r["team_id"], (50, 50, 50))
+        opening = max(
+            _minimum(r),
+            ct.round_salary(
+                ask.salary * ai_opening(spending, risk, loyalty), r["scale"]
+            ),
+        )
+        if opening >= ask.salary:
+            continue
+        s = stance(conn, league_id, season_id, year, r, fits, teams)
+        if s.takes(opening, ask.years):
+            deals[pid] = ct.Deal(opening, ask.years, ask.kind)
+            continue
+        want = min(ask.salary, s.counter(ask.years, fa_offers.round_up))
+        rng = random.Random(f"ai-resign:{league_id}:{pid}:{year}")
+        can_walk = r["market"] is not None
+        if s.home_insulted(opening, want, rng.random()):
+            happy.add_grudge(pid, r["team_id"], year, s.grudge(opening, want, True))
+            if not can_walk:
+                continue  # he can't leave: tendered at his price
+            if rng.random() < s.refuse_chance():
+                deals[pid] = None
+                refused.add(pid)
+            elif ai_takes(risk, loyalty, rng.random()):
+                bumped = ct.round_salary(ask.salary * (1 + ng.HOME_BUMP), r["scale"])
+                deals[pid] = ct.Deal(bumped, ask.years, ask.kind)
+            else:
+                deals[pid] = None
+            continue
+        happy.add_grudge(pid, r["team_id"], year, s.grudge(opening, want))
+        if ai_takes(risk, loyalty, rng.random()):
+            deals[pid] = ct.Deal(want, ask.years, ask.kind)
+        elif can_walk:
+            deals[pid] = None
+        # Under team control and the GM won't meet him: tendered at his ask.
+    return deals, refused

@@ -548,6 +548,23 @@ def close_window(conn, league_id: str) -> dict:
     humans = set(GMRepository(conn).get_human_team_ids(league_id))
     money = has_money(LeagueRepository(conn).get_by_id(league_id))
     keep = _keeps(conn, league_id, year, rows, humans, money)
+    # AI teams negotiate with the players they keep (Josh, 2026-11-18).
+    if money:
+        from src.api.services import resign_offers
+
+        deals, insulted = resign_offers.ai_negotiate(
+            conn, league_id, year, rows, keep, humans
+        )
+        for r in rows:
+            pid = r["player_id"]
+            if pid not in deals:
+                continue
+            if deals[pid] is None:
+                keep.discard(pid)
+                if pid in insulted:
+                    r["refuses"] = "insulted"
+            else:
+                r["deal"] = deals[pid]
     contracts = ContractRepository(conn)
     status = PlayerStatusRepository(conn)
     teams = TeamRepository(conn)

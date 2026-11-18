@@ -313,3 +313,80 @@ def test_a_grudge_takes_off_his_mood_and_fades():
         0.05
     )
     assert grudge_left(0.1, ng.GRUDGE_WEEKS, ng.GRUDGE_WEEKS) == 0
+
+
+# ── AI teams (Josh, 2026-11-18) ──────────────────────────────────────────────
+
+
+def test_ai_openings_follow_owner_gm_risk_and_loyalty():
+    assert resign_offers.ai_opening(100, 50, 50) == pytest.approx(1.0)
+    miser = resign_offers.ai_opening(0, 50, 50)
+    assert (
+        resign_offers.ai_opening(0, 50, 100)
+        > miser
+        > resign_offers.ai_opening(0, 50, 0)
+    )
+    assert resign_offers.ai_takes(50, 100, 0.7)
+    assert not resign_offers.ai_takes(50, 0, 0.7)
+
+
+def _ai_keeps(lg, pid):
+    rows = offseason_fa.expiring(lg.db, lg.league.id, 2026)
+    return rows, {pid}
+
+
+def test_an_ai_team_signs_its_player_for_less(lg, monkeypatch):
+    _person(monkeypatch)
+    monkeypatch.setattr(resign_offers, "ai_opening", lambda *a: 0.9)
+    monkeypatch.setattr(
+        ng.Stance, "takes", lambda self, s, y: s >= 0.85 * self.ask_salary
+    )
+    pid = _expiring(lg, 2021, 6, team=lg.ai)
+    rows, keep = _ai_keeps(lg, pid)
+    ask = next(r["ask"] for r in rows if r["player_id"] == pid)
+    deals, refused = resign_offers.ai_negotiate(
+        lg.db, lg.league.id, 2026, rows, keep, {lg.mine.id}
+    )
+    assert deals[pid].salary < ask.salary and not refused
+
+
+def test_an_ai_gm_who_walks_from_the_counter_loses_a_veteran_only(lg, monkeypatch):
+    _person(monkeypatch, easygoing=True)
+    monkeypatch.setattr(resign_offers, "ai_opening", lambda *a: 0.85)
+    monkeypatch.setattr(resign_offers, "ai_takes", lambda *a: False)
+    vet = _expiring(lg, 2021, 6, team=lg.ai)
+    young = _expiring(lg, 2024, 3, team=lg.ai)
+    rows = offseason_fa.expiring(lg.db, lg.league.id, 2026)
+    deals, _ = resign_offers.ai_negotiate(
+        lg.db, lg.league.id, 2026, rows, {vet, young}, {lg.mine.id}
+    )
+    assert deals[vet] is None
+    assert young not in deals  # tendered at his asking price
+    # And when the offseason runs, the veteran goes to market.
+    monkeypatch.setattr(offseason_fa, "_keeps", lambda *a, **k: {vet, young})
+    offseason_fa.close_window(lg.db, lg.league.id)
+    assert lg.status.get_status(vet) == "free_agent"
+    assert lg.contracts.active(young, 2027)["start_year"] == 2027
+
+
+def test_an_insulted_ai_veteran_can_refuse_his_team(lg, monkeypatch):
+    _person(monkeypatch, temper=95, loyalty=5)
+    _insulted(monkeypatch)
+    monkeypatch.setattr(ng.Stance, "refuse_chance", lambda self: 1.0)
+    monkeypatch.setattr(resign_offers, "ai_opening", lambda *a: 0.75)
+    pid = _expiring(lg, 2021, 6, team=lg.ai)
+    monkeypatch.setattr(offseason_fa, "_keeps", lambda *a, **k: {pid})
+    offseason_fa.close_window(lg.db, lg.league.id)
+    assert lg.status.get_status(pid) == "free_agent"
+    assert free_agents.refused(lg.db, lg.league.id, lg.ai.id, pid, 2027)
+    assert HappinessRepository(lg.db, lg.league.id).grudge(pid, lg.ai.id, 2026) > 0
+
+
+def test_people_and_arbitration_players_arent_in_ai_talks(lg, monkeypatch):
+    _person(monkeypatch)
+    mine = _expiring(lg, 2021, 6)
+    rows = offseason_fa.expiring(lg.db, lg.league.id, 2026)
+    deals, _ = resign_offers.ai_negotiate(
+        lg.db, lg.league.id, 2026, rows, {mine}, {lg.mine.id}
+    )
+    assert deals == {}
