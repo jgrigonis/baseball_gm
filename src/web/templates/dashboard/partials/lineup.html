@@ -1152,10 +1152,10 @@ function renderRoster() {
         </div>
         ${hitterGradesHtml(p, null)}
       </div>
-      <span class="lu-roster-btns"><button type="button" class="minors-btn" title="${downTitle(p)}"
-              aria-label="${downTitle(p).replace('him', p.first_name + ' ' + p.last_name)}">−</button><button class="lu-add-btn" title="Add to lineup"
+      <span class="lu-roster-btns"><button class="lu-add-btn" title="Add to lineup"
               onclick="event.stopPropagation();addToLineup('${p.player_id}')"
-              ${isIn?'disabled':''}>+</button></span>`;
+              ${isIn?'disabled':''}>+</button><button type="button" class="minors-btn" title="${downTitle(p)}"
+              aria-label="${downTitle(p).replace('him', p.first_name + ' ' + p.last_name)}">−</button></span>`;
     card.querySelector('.minors-btn').addEventListener('click', e => {
       e.stopPropagation();
       sendToMinors(p);
