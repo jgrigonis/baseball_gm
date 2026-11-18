@@ -8,29 +8,35 @@ These values tune the likelihood of various outcomes throughout the game.
 League-wide scoring is calibrated to MLB 2023-2025 (about 4.5 runs per team
 game, .245/.316/.406). After changing anything here or in the pitch /
 in-play modifiers, check it with scripts/league_stat_check.py.
+
+Retuned 2026-11-18 (with the home-field edge and the clutch fix): since the
+Nov 11 draft-class changes, founding pitchers are weaker and BABIP had
+crept to .306-.310, so hits on balls in play, home runs, balls and wild
+pitches came down and swinging strikes went up. Check long leagues too
+(reports/mlb-compare/lf_run.py): talent keeps moving for about 10 seasons.
 """
 
 # Pitch outcome weights
-BALL_PROB = 15900
+BALL_PROB = 15700
 FOUL_PROB = 6400
-HOME_RUN_PROB = 338
+HOME_RUN_PROB = 325
 HBP_PROB = 130
 BALK_PROB = 0
 ILLEGAL_PITCH_PROB = 0
 CATCHER_INTERFERENCE_PROB = 3
-WILD_PITCH_PROB = 300
+WILD_PITCH_PROB = 275
 PASSED_BALL_PROB = 69
 IN_PLAY_PROB = 5875
 # Called and swinging strikes split the old single STRIKE_PROB (11500).
 CALLED_STRIKE_PROB = 5750
-SWINGING_STRIKE_PROB = 5950
+SWINGING_STRIKE_PROB = 6050
 
 # In play outcome weights
 FLY_OUT_PROB = 4440
 GROUND_OUT_PROB = 1740
-SINGLE_PROB = 1525
-DOUBLE_PROB = 465
-TRIPLE_PROB = 55
+SINGLE_PROB = 1350
+DOUBLE_PROB = 430
+TRIPLE_PROB = 51
 DOUBLE_PLAY_PROB = 0
 FIELDERS_CHOICE_PROB = 0
 SAC_FLY_PROB = 0
