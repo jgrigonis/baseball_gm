@@ -35,6 +35,12 @@ from src.player import contracts as ct
 from src.player.contracts import format_salary
 
 
+def _tier_name(key: str) -> str:
+    """A stadium tier's short name: "Basic", "Modern", "Showpiece"."""
+    p = fn.project(key)
+    return p.name.split(": ")[-1] if p else ""
+
+
 class BudgetRepository:
     def __init__(self, conn):
         self.conn = conn
@@ -1152,7 +1158,8 @@ class BudgetRepository:
         """Each team's ballpark projects open this season (with year None,
         all of them), by team id. Only the newest open stadium counts: a
         replacement does away with the old one, and its key carries which
-        stadium it is (finances.built_key)."""
+        stadium it is (finances.built_key); what it replaces is left out
+        (finances.open_projects)."""
         out: dict[str, list[str]] = {}
         stadium: dict[str, tuple] = {}
         for r in self.conn.execute(
@@ -1168,6 +1175,11 @@ class BudgetRepository:
             out.setdefault(r["team_id"], []).append(key)
         for t, key in stadium.items():
             out.setdefault(t, []).append(key)
+        # A new stadium does away with the old park's upgrades, and with an
+        # older stadium's add-ons.
+        for t, keys in out.items():
+            keep = fn.open_projects(keys)
+            out[t] = [k for k in keys if k in keep]
         return out
 
     def fans_now(self, league_id: str, team_id: str, year: int) -> int | None:
@@ -1208,6 +1220,11 @@ class BudgetRepository:
         balance = bank["balance"] - bank["owed"] if bank else None
         stadiums = [p for p in rows if p["project"] in fn.STADIUM_TIERS]
         current = stadiums[-1] if stadiums else None
+        # The stadium the team plays in now (an older one while its
+        # replacement goes up): its add-ons are the ones on offer.
+        opened = [p for p in stadiums if p["year"] <= year]
+        park = opened[-1] if opened else None
+        park_tier = fn.tier_index(park["project"]) if park else -1
         # A stadium 25 seasons old can be replaced by one of its tier or
         # higher; while one is going up, nothing else.
         replace_from = current["year"] + fn.STADIUM_LIFE if current else None
@@ -1219,10 +1236,29 @@ class BudgetRepository:
             mine = built.get(p.key)
             if is_stadium and current and mine is not current:
                 mine = None  # an old stadium, replaced
+            if p.tier:
+                # An add-on counts in the stadium it was built for.
+                mine = next(
+                    (
+                        r
+                        for r in rows
+                        if park
+                        and r["project"] == p.key
+                        and r["generation"] == park["generation"]
+                    ),
+                    None,
+                )
+            if p.key in fn.UPGRADES and park:
+                mine = None  # the new stadium has its own
             rebuild = (
                 is_stadium and can_replace and fn.STADIUM_TIERS.index(p.key) >= tier_now
             )
-            generation = len(stadiums) + 1 if is_stadium else 1
+            if is_stadium:
+                generation = len(stadiums) + 1
+            elif p.tier and park:
+                generation = park["generation"]
+            else:
+                generation = 1
             key = fn.built_key(p.key, generation)
             cost = (
                 int(mine["cost"])
@@ -1243,11 +1279,29 @@ class BudgetRepository:
                         blocked = "Below your stadium's tier"
                     elif not can_replace:
                         blocked = f"Can be replaced from {replace_from}"
+                elif p.key in fn.UPGRADES and current:
+                    blocked = "Included in your new stadium"
+                elif p.tier:
+                    need = fn.tier_index(p.tier)
+                    tier_name = _tier_name(p.tier)
+                    if park_tier > need:
+                        blocked = (
+                            f"Included in your {_tier_name(park['project'])} stadium"
+                        )
+                    elif park_tier == need and current is not park:
+                        blocked = "Your new stadium is going up"
+                    elif park_tier < need:
+                        building = current and fn.tier_index(current["project"]) >= need
+                        blocked = (
+                            f"Unlocks when your stadium opens in {current['year']}"
+                            if building
+                            else f"Unlocks with a {tier_name} stadium"
+                        )
                 elif not mine:
                     blocker = fn.blocked_by(p.key, built)
                     if blocker:
                         blocked = (
-                            "Replaced by your new stadium"
+                            "Included in your new stadium"
                             if blocker in fn.STADIUM_TIERS
                             else f"Ruled out by your {fn.project(blocker).name.lower()}"
                         )
@@ -1259,8 +1313,11 @@ class BudgetRepository:
                     "what": p.what,
                     "cost": cost,
                     "earns": earns,
-                    "fans": round(p.fans * fn.rebuild_mult(key)),
+                    "fans": fn.project_fans(key),
                     "seats": p.capacity,
+                    "adds_seats": p.seats,
+                    "tier": _tier_name(p.tier) if p.tier else None,
+                    "upgrade": p.key in fn.UPGRADES,
                     "value": fn.project_value(
                         key, average, money.market, fans, revenue, row["ticket_price"]
                     ),
