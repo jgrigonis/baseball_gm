@@ -252,9 +252,10 @@ def stance(
     n_callers: int | None = None,
 ) -> ng.Stance:
     """Where he stands with this club."""
-    person = HappinessRepository(conn, league_id).personalities([player.id]).get(
+    happy = HappinessRepository(conn, league_id)
+    person = happy.personalities([player.id]).get(player.id) or hp.personality_for(
         player.id
-    ) or hp.personality_for(player.id)
+    )
     row = conn.execute(
         "SELECT home_region FROM players WHERE id = %s", (player.id,)
     ).fetchone()
@@ -262,6 +263,10 @@ def stance(
     fits = offseason_fa._fits(conn, league_id, season_id, year, [team_id])
     fit, share = offseason_fa.team_fit_for(person, player, home, fits[team_id])
     released = move_news.last_released_by(conn, league_id, player.id)
+    # A club that lowballed him at re-sign time is no better than one that
+    # released him (Josh, 2026-11-18).
+    if released != team_id and happy.grudge(player.id, team_id, year - 1) > 0:
+        released = team_id
     last = offseason_fa._last_team(conn, league_id, player.id)
     if n_callers is None:
         n_callers = callers(conn, league_id, player, year, ask, exclude={team_id})
@@ -280,6 +285,7 @@ def stance(
         old_club=last == team_id and released != team_id,
         released_by=released == team_id,
         minimum=minimum(conn, league_id, year),
+        money=person.drives["money"],
     )
 
 

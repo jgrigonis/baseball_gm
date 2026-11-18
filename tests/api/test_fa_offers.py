@@ -257,3 +257,36 @@ def test_a_cautious_ai_gm_can_walk_away_from_the_counter(lg, monkeypatch):
     )
     assert not got and not made_room
     assert lg.status.get_status(pid) == "free_agent"
+
+
+def test_a_club_he_holds_a_grudge_against_is_like_one_that_released_him(lg):
+    from src.db.repositories.happiness_repo import HappinessRepository
+    from src.db.repositories.season_repo import SeasonRepository
+
+    pid = _free_agent(lg)
+    p = PlayerRepository(lg.db).look_up(pid)
+    ask = _ask(lg, pid)
+    season_id = SeasonRepository(lg.db).get_current_id_for_league(lg.league.id)
+
+    def stance():
+        return fa_offers.stance(
+            lg.db, lg.league.id, season_id, 2026, lg.mine.id, p, ask, n_callers=0
+        )
+
+    assert not stance().released_by
+    HappinessRepository(lg.db, lg.league.id).add_grudge(pid, lg.mine.id, 2025, 0.1)
+    assert stance().released_by
+    assert "Hasn't forgotten how you treated him." in ng.hints(stance())
+
+
+def test_his_money_drive_goes_into_the_stance(lg):
+    from src.db.repositories.season_repo import SeasonRepository
+    from src.player import happiness as hp
+
+    pid = _free_agent(lg)
+    p = PlayerRepository(lg.db).look_up(pid)
+    season_id = SeasonRepository(lg.db).get_current_id_for_league(lg.league.id)
+    s = fa_offers.stance(
+        lg.db, lg.league.id, season_id, 2026, lg.mine.id, p, _ask(lg, pid), n_callers=0
+    )
+    assert s.money == hp.personality_for(pid).drives["money"]

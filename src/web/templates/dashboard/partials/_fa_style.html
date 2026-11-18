@@ -52,6 +52,9 @@
 .fa-choice button:last-child { border-right: none; }
 .fa-choice button.on.resign { color: var(--green); background: var(--green-dim); }
 .fa-choice button.on.go { color: var(--red); background: var(--red-dim); }
+.fa-choice button.offer:not(:disabled):hover, .fa-choice button.offer.talking { color: var(--amber); }
+.fa-choice button:disabled { opacity: .45; cursor: not-allowed; }
+.fa-agreed { color: var(--green); }
 .fa-bids { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); }
 .fa-empty { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); padding: 12px 0; max-width: 520px; line-height: 1.5; }
 @media (max-width: 700px) {

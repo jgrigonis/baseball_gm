@@ -541,7 +541,10 @@ def test_a_re_sign_call_returns_every_rows_fate_and_the_room(lg, client):
     )
     assert r.status_code == 200
     d = r.json()
-    assert d["rows"][pid] == {"choice": "let_go", "fate": "go"}
+    assert {k: d["rows"][pid][k] for k in ("choice", "fate")} == {
+        "choice": "let_go",
+        "fate": "go",
+    }
     assert "left_text" in d["money"]
 
 

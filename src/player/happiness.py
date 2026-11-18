@@ -829,10 +829,16 @@ def refuses_to_resign(
     return None
 
 
+# A grudge from a lowball re-sign offer (src/player/negotiation.py grudge)
+# this big shows on his mind.
+GRUDGE_LINE_AT = 0.03
+GRUDGE_LINE_TEXT = "Remembers the lowball offer."
+
 # Why he won't re-sign, as the Expiring Deals tab and the news tell it.
 REFUSE_LINES = {
     "miserable": "He's miserable here and won't re-sign at any price.",
     "fame": "He wants a bigger stage and won't re-sign at any price.",
+    "insulted": "Your offer insulted him, and he won't re-sign with you.",
 }
 
 
