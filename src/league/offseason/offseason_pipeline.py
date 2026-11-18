@@ -221,8 +221,10 @@ class OffseasonPipeline:
             # The team's Coaching department: young players grow toward
             # their ceilings faster or slower (src/league/budget.py).
             team_level = coaching_levels.get(player.id)
+            staff = 1.0
             if team_level is not None:
-                coaching *= bg.coaching_growth(team_level, player.age)
+                staff = bg.coaching_growth(team_level, player.age)
+                coaching *= staff
             new_skills = skills.age_to(
                 player.age + 1,
                 from_age=player.age,
@@ -230,6 +232,7 @@ class OffseasonPipeline:
                 caps=caps,
                 coaching=coaching,
                 swings=True,
+                staff=staff,
             )
             self.player_repo.update_skills(player.id, new_skills)
             if caps and caps != caps_before:
