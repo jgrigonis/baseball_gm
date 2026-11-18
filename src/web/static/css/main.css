@@ -1225,6 +1225,9 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
 .gm-modal-title { font-family: var(--font-sans); font-weight: 700; font-size: 16px; color: var(--text-hi); margin-bottom: 10px; }
 .gm-modal-line { font-family: var(--font-mono); font-size: 12px; line-height: 1.55; color: var(--text); margin: 0 0 8px; }
 .gm-modal-warn { color: var(--red); border-left: 2px solid var(--red); padding-left: 8px; }
+.gm-modal-caution { border-left: 2px solid var(--amber); padding-left: 8px; margin: 0 0 12px; color: var(--amber); font-family: var(--font-mono); font-size: 12px; }
+.gm-modal-caution p { margin: 0 0 4px; font-size: inherit; line-height: 1.45; }
+.gm-modal-caution p:last-child { margin-bottom: 0; }
 .gm-modal-field { display: flex; flex-direction: column; gap: 3px; margin: 0 0 10px; font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); }
 .gm-modal-field input { font-size: 14px; padding: 6px 8px; width: 100%; max-width: 220px; }
 .gm-modal-field small { font-size: 10px; color: var(--text-dim); }
@@ -2190,6 +2193,18 @@ button.player-face:focus-visible { outline: 2px solid var(--sky); outline-offset
 .dc-who { font-size: 12px; color: var(--text-hi); white-space: nowrap; }
 .dc-bk-mini { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); white-space: nowrap; }
 .dc-bk-mini .dc-g { font-size: 10px; }
+/* Field grade view (Overall / Defense / Offense): only the picked one shows. */
+.dc-field[data-mode="ovr"] .dc-m:not(.dc-m-ovr),
+.dc-field[data-mode="def"] .dc-m:not(.dc-m-def),
+.dc-field[data-mode="off"] .dc-m:not(.dc-m-off) { display: none; }
+.dc-field[data-mode="ovr"] .dc-flag-ovr,
+.dc-field[data-mode="def"] .dc-flag-def,
+.dc-field[data-mode="off"] .dc-flag-off { border-color: var(--red); }
+.dc-dash { color: var(--text-dim); }
+.dc-mode {
+  position: absolute; left: 6px; bottom: 6px; width: auto;
+  font-size: 10px; height: 22px; padding: 0 4px; background: var(--tile);
+}
 @media (max-width: 900px) {
   .dc-b-grid, .dc-b-lower { grid-template-columns: minmax(0, 1fr); }
   .dc-page { padding: 12px 12px 72px; }

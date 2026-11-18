@@ -21,6 +21,7 @@ function mountPanel(url) {
     .then(r => r.text())
     .then(html => {
       document.getElementById('player-panel-mount').innerHTML = html;
+      ppApplyRemembered();
       addBackdrop();
       const hint = document.getElementById('compare-hint');
       if (hint) hint.remove();
@@ -72,10 +73,22 @@ window.ppSyncTabs = function(body) {
 };
 // A ratings group (Hitting, Defense, Pitching) toggles together across
 // compared players so rows line up.
+// Season Stats and Injury History (data-remember) also keep their open or
+// closed state for the next panel you open (Josh, 2026-11-18).
 window.ppToggleOffRole = function(el) {
   document.querySelectorAll('#player-panel details.pd-group[data-group="' + el.dataset.group + '"]')
     .forEach(d => { if (d.open !== el.open) d.open = el.open; });
+  if (el.dataset.remember) {
+    try { localStorage.setItem('pp-open-' + el.dataset.group, el.open ? '1' : '0'); } catch (e) {}
+  }
 };
+function ppApplyRemembered() {
+  document.querySelectorAll('#player-panel details.pd-group[data-remember]').forEach(d => {
+    let v = null;
+    try { v = localStorage.getItem('pp-open-' + d.dataset.group); } catch (e) {}
+    if (v !== null) d.open = v === '1';
+  });
+}
 window.closePlayerPanel = function() {
   document.getElementById('player-panel-mount').innerHTML = '';
   removeBackdrop();
@@ -276,7 +289,7 @@ window.offerFreeAgent = async function(pid, name) {
   const vals = await gmConfirm({
     title: `Offer ${name} a deal?`,
     lines: [
-      `He asks ${term(ask.ask_text, ask.ask_years)}. Sign pays that. You can offer less money or a different number of seasons, and he answers right away.`,
+      `He asks ${term(ask.ask_text, ask.ask_years)}. Sign pays that. ${ask.ask_salary <= ask.min_salary ? "That's the minimum, so you can only offer a different number of seasons." : 'You can offer less money or a different number of seasons.'} He answers right away.`,
       ...ask.hints,
       c ? `He said he'd take ${term(c.salary_text, c.years)}.` : '',
       ask.offers_left
@@ -401,6 +414,88 @@ window.withdrawBid = async function(pid, name) {
   closePlayerPanel();
   reloadTab();
 };
+// Negotiating a re-sign (src/api/services/resign_offers.py, Josh
+// 2026-11-18): the free agent offer dialog, for his own club. A warning
+// above the salary says what a lowball can do to him.
+window.offerExpiring = async function(pid, name) {
+  const url = `/leagues/{{ league_id }}/players/${pid}/expiring/offer`;
+  let ask;
+  try {
+    const r = await fetch(url);
+    ask = await r.json();
+    if (!r.ok) throw new Error(ask.detail || 'Something went wrong.');
+  } catch (e) { gmAlert(e.message); return; }
+  const term = (s, y) => `${s} a season for ${y} season${y === 1 ? '' : 's'}`;
+  const c = ask.counter;
+  if (!ask.offers_left && !c) {
+    gmAlert(`${name} is done talking`, "That's all your offers. Re-sign him at his price or let him go.");
+    return;
+  }
+  const start = ask.agreed || c;
+  // An arbitration player: an extension of 2+ seasons (Josh, 2026-11-18).
+  const ext = ask.extension;
+  const first = start || (ext ? {salary: ext.salary, years: ext.years} : null);
+  const vals = await gmConfirm({
+    title: ext ? `Offer ${name} an extension?` : `Offer ${name} a new deal?`,
+    lines: [
+      ext
+        ? `Arbitration pays him ${term(ask.ask_text, 1)} (season ${ext.arb_season} of 6; his market price is ${ext.market_text}). ` +
+          `An extension of ${ext.min_years} seasons or more buys out his arbitration seasons and can run into his free agency. He takes less for the security, and he answers right away.`
+        : `He asks ${term(ask.ask_text, ask.ask_years)}. Re-sign pays that. ${ask.ask_salary <= ask.min_salary ? "That's the minimum, so you can only offer a different number of seasons." : 'You can offer less money or a different number of seasons.'} He answers right away.`,
+      ...ask.hints,
+      ask.agreed ? `He's agreed to ${term(ask.agreed.salary_text, ask.agreed.years)}.` : '',
+      c && !ask.agreed ? `He said he'd take ${term(c.salary_text, c.years)}.` : '',
+      ask.offers_left
+        ? `${ask.offers_left} offer${ask.offers_left === 1 ? '' : 's'} left before the offseason runs.`
+        : 'No offers left, but his answer stands.',
+    ],
+    caution: ask.warnings,
+    fields: [
+      {name: 'salary', label: 'Salary a season ($M)', value: ((first ? first.salary : ask.ask_salary) / 1e6).toFixed(2),
+       min: (ask.min_salary / 1e6).toFixed(2), step: 0.05},
+      {name: 'years', label: 'Seasons', value: first ? first.years : ask.ask_years, min: ext ? ext.min_years : 1, max: ask.max_years, step: 1},
+    ],
+    ok: 'Make offer', tone: 'go',
+    cancel: 'Cancel',
+  });
+  if (!vals) return;
+  const salary = Math.round(vals.salary * 1e6), years = Math.round(vals.years);
+  if (!(salary >= ask.min_salary)) {
+    gmAlert('Offer at least the minimum', `The league minimum is $${(ask.min_salary / 1e6).toFixed(2)}M a season.`);
+    return;
+  }
+  await sendResignOffer(url, name, salary, years);
+};
+async function sendResignOffer(url, name, salary, years) {
+  let d;
+  try { d = await postJson(url, {salary, years}); }
+  catch (e) { gmAlert(e.message); return; }
+  if (!(window.faExpiringUpdate && window.faExpiringUpdate(d))) reloadTab();
+  if (d.result === 'signed') {
+    gmToast(`${name} agrees: ${d.salary_text} a season for ${d.years}`, 'ok');
+    return;
+  }
+  if (d.result === 'refused') { gmAlert(`${name} won't re-sign`, d.line); return; }
+  if (d.result === 'insulted') { gmAlert(`${name} is insulted`, d.line); return; }
+  const c = d.counter;
+  const seasons = `${c.years} season${c.years === 1 ? '' : 's'}`;
+  const lines = [
+    `He'd take ${c.salary_text} a season for ${seasons}. That stands until the offseason runs.`,
+    d.stung ? "He didn't like that offer, and he'll remember it." : '',
+    ...d.hints,
+  ];
+  if (d.blocked) {
+    await gmConfirm({title: `${name} says no`, lines: [...lines, d.blocked], ok: 'OK', cancel: null});
+    return;
+  }
+  const take = await gmConfirm({
+    title: `${name} says no`,
+    lines: [...lines, d.offers_left ? `${d.offers_left} offer${d.offers_left === 1 ? '' : 's'} left.` : "That's all your offers."],
+    ok: `Re-sign at ${c.salary_text}`, tone: 'go',
+    cancel: 'Not now',
+  });
+  if (take) await sendResignOffer(url, name, c.salary, c.years);
+}
 window.expiringChoice = async function(pid, choice) {
   let d;
   try { d = await postJson(`/leagues/{{ league_id }}/players/${pid}/expiring`, {choice}); }
@@ -439,6 +534,7 @@ window.openCareerPage = function(playerId) {
     .then(r => r.text())
     .then(html => {
       document.getElementById('player-panel-mount').innerHTML = html;
+      ppApplyRemembered();
       addBackdrop();
     })
     .catch(err => console.error('Career page load failed:', err));

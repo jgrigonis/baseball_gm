@@ -98,6 +98,7 @@ def _groups(html):
         for block in re.findall(
             r'<details class="pd-offrole pd-group".*?</details>', html, re.S
         )
+        if "data-remember" not in block.split("\n")[0]
     ]
 
 
@@ -114,6 +115,18 @@ def test_hitter_tucks_pitching_behind_a_toggle(setup):
         (["Defense"], True),
         (["Pitching"], False),
     ]
+
+
+def test_season_stats_and_injuries_fold_up_on_their_own(setup):
+    """Season Stats and Injury History are separate toggles whose open or
+    closed state the panel remembers (Josh, 2026-11-18)."""
+    import re
+
+    client, league, (a, *_) = setup
+    html = _panel(client, league, a)
+    tags = re.findall(r"<details [^>]*data-remember[^>]*>\s*<summary>([^<]+)<", html)
+    assert tags[0] == "Season Stats"
+    assert 'data-group="stats"' in html
 
 
 def test_pitcher_shows_general_and_tucks_hitting_and_defense_behind_a_toggle(

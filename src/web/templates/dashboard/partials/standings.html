@@ -38,9 +38,10 @@
           <tr class="{% if team.is_mine %}my-team{% elif team.is_human %}human-team{% endif %}{% if team.clinch == 'out' %} row-out{% endif %}">
             <td style="color:var(--muted);font-family:var(--font-mono);font-size:11px;">{{ team.rank }}</td>
             <td>
-              {# The team's roster and stats, for that season #}
-              <a href="/leagues/{{ league_id }}/stats?team_id={{ team.team_id }}{% if past_season %}&season_id={{ past_season.id }}{% endif %}"
-                 title="Roster and stats{% if is_admin %} · team_id: {{ team.team_id }}{% endif %}"
+              {# The team's depth chart (Josh, 2026-11-18); a past season's
+                 table keeps that season's stats, since the chart is today's. #}
+              <a href="/leagues/{{ league_id }}/{% if past_season %}stats?team_id={{ team.team_id }}&season_id={{ past_season.id }}{% else %}depth?team_id={{ team.team_id }}{% endif %}"
+                 title="{% if past_season %}Roster and stats{% else %}Depth chart{% endif %}{% if is_admin %} · team_id: {{ team.team_id }}{% endif %}"
                  style="font-family:var(--font-sans);font-weight:600;text-decoration:none;
                         color:{% if team.is_mine %}var(--green){% elif team.is_human %}var(--sky){% else %}var(--text){% endif %};">
                 {{ team_badge(team.city, team.mascot) }}<span class="phone-hide">{{ team.city }} </span>{% if team.clinch %}<span style="white-space:nowrap;">{{ team.mascot }}{{ clinch_mark(team.clinch) }}</span>{% else %}{{ team.mascot }}{% endif %}
@@ -234,9 +235,9 @@
           <div style="color:var(--text-dim);font-size:10px;margin-bottom:2px;">{{ g.date }}</div>
           <div style="display:flex;gap:6px;align-items:baseline;">
             <span style="color:var(--muted);font-size:10px;">{{ g.home_away }}</span>
-            {# The opponent's roster and stats #}
-            <a href="/leagues/{{ league_id }}/stats?team_id={{ g.opp_id }}"
-               title="Roster and stats" style="color:var(--text);text-decoration:none;">{{ g.opponent }}</a>
+            {# The opponent's depth chart #}
+            <a href="/leagues/{{ league_id }}/depth?team_id={{ g.opp_id }}"
+               title="Depth chart" style="color:var(--text);text-decoration:none;">{{ g.opponent }}</a>
           </div>
         </div>
         {% endfor %}

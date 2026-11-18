@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from src.api.services import ai_free_agents, free_agents, offseason_fa
+from src.api.services import ai_free_agents, free_agents, offseason_fa, resign_offers
 from src.api.services.free_agents import FreeAgentError
 from src.api.services.news.names import plain
 from src.api.services.offseason_fa import OffseasonFAError
@@ -56,6 +56,9 @@ def roomy_owners(monkeypatch):
     monkeypatch.setattr(offseason_fa, "_room", _roomy)
     monkeypatch.setattr(offseason_fa, "_bank", lambda *a: 0)
     monkeypatch.setattr(hp, "refuses_to_resign", lambda *a: None)
+    # AI teams' re-sign talks have their own tests (test_resign_offers.py):
+    # here AI teams pay the asking price, as they did before them.
+    monkeypatch.setattr(resign_offers, "ai_negotiate", lambda *a: ({}, set()))
 
 
 def _roomy(conn, league_id, team_id, year, human):

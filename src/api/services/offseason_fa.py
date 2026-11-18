@@ -14,7 +14,10 @@ Offseason free agency (free agency phase 2, PR 3; Josh's decisions
      them go, as long as the owner's hard limit has room for him next
      season (Josh, 2026-11-07: re-signs answer to the owner; 2026-11-09:
      judged on next season, when the expiring salaries are gone).
-   A GM makes the call on the Expiring Deals tab (contract_choices). AI teams
+   A GM makes the call on the Expiring Deals tab (contract_choices), or
+   negotiates a deal with him there (Josh, 2026-11-18:
+   src/api/services/resign_offers.py): an agreed deal is kept on his
+   contract_choices row and replaces his asking price. AI teams
    re-sign the best first while their owner's budget has room (market-bound
    players only from the 40-man) and let fringe players go rather than pay
    them more than the minimum (_keeps). The window closes when the
@@ -34,7 +37,8 @@ Offseason free agency (free agency phase 2, PR 3; Josh's decisions
    best first, takes the one he likes best: the money against his asking
    price, plus how well the team suits him (winning, home, market, coaching:
    src/player/happiness.py team_fit), as much as he cares about those. He
-   won't take less than MIN_BID_SHARE of his asking price. A bid the
+   won't take less than MIN_BID_SHARE of his asking price, more for a player
+   driven by money (negotiation.money_lean). A bid the
    owner's hard limit no longer allows is skipped, and so is one from a
    team whose minors are full. Free agents nobody gets can still be signed
    at their asking price in the rest of the preseason and the season.
@@ -136,7 +140,8 @@ def expiring(conn, league_id: str, year: int, team_ids=None) -> list[dict]:
     rows = conn.execute(
         """
         SELECT tp.team_id, tp.player_id, ps.status, c.salary AS old_salary,
-               cc.choice
+               cc.choice, cc.salary AS agreed_salary, cc.years AS agreed_years,
+               rt.bumped, rt.refused, rt.closed
         FROM team_players tp
         JOIN player_status ps ON ps.player_id = tp.player_id
         JOIN player_contracts c ON c.player_id = tp.player_id
@@ -144,6 +149,8 @@ def expiring(conn, league_id: str, year: int, team_ids=None) -> list[dict]:
              AND c.start_year <= %s AND c.start_year + c.years - 1 = %s
         LEFT JOIN contract_choices cc ON cc.player_id = tp.player_id
              AND cc.year = %s AND cc.team_id = tp.team_id
+        LEFT JOIN resign_talks rt ON rt.player_id = tp.player_id
+             AND rt.year = %s AND rt.team_id = tp.team_id
         WHERE tp.team_id = ANY(%s) AND ps.status = ANY(%s)
           AND NOT EXISTS (
               SELECT 1 FROM player_contracts n
@@ -151,7 +158,7 @@ def expiring(conn, league_id: str, year: int, team_ids=None) -> list[dict]:
                 AND n.start_year > %s)
         ORDER BY tp.team_id, tp.player_id
         """,
-        (year, year, year, teams, list(SIGNED_STATUSES), year),
+        (year, year, year, year, teams, list(SIGNED_STATUSES), year),
     ).fetchall()
     if not rows:
         return []
@@ -178,7 +185,20 @@ def expiring(conn, league_id: str, year: int, team_ids=None) -> list[dict]:
         deal, wants_out = contracts.renewal(
             p, year + 1, happy, scale, arb.get(p.id), shifts
         )
-        arb_season = arb.get(p.id) if deal.kind == "arbitration" else None
+        # Insulted in talks, he raised his price (resign_offers.py).
+        if r["bumped"]:
+            deal = ct.Deal(
+                ct.round_salary(deal.salary * (1 + ng.HOME_BUMP), scale),
+                deal.years,
+                deal.kind,
+            )
+        ask = deal
+        agreed = bool(r["agreed_salary"]) and r["choice"] == "resign"
+        if agreed:
+            # An arbitration player's extension is a standard deal.
+            kind = "standard" if r["agreed_years"] > 1 else deal.kind
+            deal = ct.Deal(r["agreed_salary"], r["agreed_years"], kind)
+        arb_season = arb.get(p.id) if ask.kind == "arbitration" else None
         mood = moods.get(p.id)
         if seasons.get(p.id, 0) >= MARKET_SEASONS:
             market = "veteran"
@@ -197,6 +217,9 @@ def expiring(conn, league_id: str, year: int, team_ids=None) -> list[dict]:
             if money and market == "veteran" and arb_season is None
             else None
         )
+        # Insulted in talks, he won't re-sign with this club.
+        if r["refused"]:
+            refuses = "insulted"
         out.append(
             {
                 "player_id": p.id,
@@ -205,6 +228,9 @@ def expiring(conn, league_id: str, year: int, team_ids=None) -> list[dict]:
                 "player": p,
                 "old_salary": r["old_salary"],
                 "deal": deal,
+                "ask": ask,
+                "agreed": agreed,
+                "talks_closed": bool(r["closed"]),
                 "wants_out": wants_out,
                 "market": market,
                 "refuses": refuses,
@@ -260,14 +286,18 @@ def choose(
             if choice == "resign" and row["refuses"]:
                 raise OffseasonFAError(hp.REFUSE_LINES[row["refuses"]])
             if choice == "resign":
-                refusal = _resign_refusal(conn, league_id, team_id, year, mine, row)
+                refusal = _resign_refusal(
+                    conn, league_id, team_id, year, mine, row, row["ask"].salary
+                )
                 if refusal:
                     raise OffseasonFAError(refusal)
+            # Re-sign pays his asking price, so it replaces any agreed deal.
             conn.execute(
                 """INSERT INTO contract_choices (league_id, player_id, team_id, year, choice)
                    VALUES (%s, %s, %s, %s, %s)
                    ON CONFLICT (player_id, year) DO UPDATE
-                   SET choice = excluded.choice, team_id = excluded.team_id""",
+                   SET choice = excluded.choice, team_id = excluded.team_id,
+                       salary = NULL, years = NULL""",
                 (league_id, player_id, team_id, year, choice),
             )
         conn.commit()
@@ -305,13 +335,22 @@ def _bank(conn, league_id: str, team_id: str) -> int:
 
 
 def _resign_refusal(
-    conn, league_id: str, team_id: str, year: int, mine: list[dict], row: dict
+    conn,
+    league_id: str,
+    team_id: str,
+    year: int,
+    mine: list[dict],
+    row: dict,
+    salary: int | None = None,
 ) -> str | None:
     """Why the owner won't let a person re-sign him now, or None: his new
     salary, with the re-signs already called, has to fit next season's room.
     A person re-signing their own player may go past the limit as far as the
     owner's bank reaches (Josh, 2026-11-09, like the NBA's Bird rights): the
-    owner pays it from the bank, and the losses show in their mood."""
+    owner pays it from the bank, and the losses show in their mood. salary:
+    what he'd be paid (an offer), else his deal."""
+    offer = salary is not None
+    salary = row["deal"].salary if salary is None else salary
     room = _next_room(conn, league_id, team_id, year, True, mine)
     if room == float("inf"):
         return None
@@ -321,13 +360,13 @@ def _resign_refusal(
         if r["choice"] == "resign" and r["player_id"] != row["player_id"]
     )
     left = room - called + _bank(conn, league_id, team_id)
-    if row["deal"].salary <= left:
+    if salary <= left:
         return None
     have = ct.format_salary(int(left)) if left >= 1 else "nothing"
     return (
         f"Your owner won't allow it: even dipping into their bank, next season "
-        f"has {have} left, and he wants "
-        f"{ct.format_salary(row['deal'].salary)}. Let someone else go to make room."
+        f"has {have} left, and {'that offer is' if offer else 'he wants'} "
+        f"{ct.format_salary(salary)}. Let someone else go to make room."
     )
 
 
@@ -511,6 +550,23 @@ def close_window(conn, league_id: str) -> dict:
     humans = set(GMRepository(conn).get_human_team_ids(league_id))
     money = has_money(LeagueRepository(conn).get_by_id(league_id))
     keep = _keeps(conn, league_id, year, rows, humans, money)
+    # AI teams negotiate with the players they keep (Josh, 2026-11-18).
+    if money:
+        from src.api.services import resign_offers
+
+        deals, insulted = resign_offers.ai_negotiate(
+            conn, league_id, year, rows, keep, humans
+        )
+        for r in rows:
+            pid = r["player_id"]
+            if pid not in deals:
+                continue
+            if deals[pid] is None:
+                keep.discard(pid)
+                if pid in insulted:
+                    r["refuses"] = "insulted"
+            else:
+                r["deal"] = deals[pid]
     contracts = ContractRepository(conn)
     status = PlayerStatusRepository(conn)
     teams = TeamRepository(conn)
@@ -559,6 +615,10 @@ def close_window(conn, league_id: str) -> dict:
         "DELETE FROM contract_choices WHERE league_id = %s AND year <= %s",
         (league_id, year),
     )
+    conn.execute(
+        "DELETE FROM resign_talks WHERE league_id = %s AND year <= %s",
+        (league_id, year),
+    )
     return {"resigned": resigned, "to_market": len(gone)}
 
 
@@ -598,6 +658,10 @@ def _why_gone(r: dict, human: bool) -> str:
     """Why an expiring player didn't re-sign, as the story tells it."""
     if r.get("refuses") == "miserable":
         return "couldn't keep him; he's miserable there and refused to re-sign"
+    if r.get("refuses") == "insulted":
+        return (
+            "couldn't keep him; he was insulted by their offer and refused to re-sign"
+        )
     if r.get("refuses") == "fame":
         return "couldn't keep him; he wants a bigger stage and refused to re-sign"
     if r["choice"] == "let_go":
@@ -712,7 +776,7 @@ def expiring_view(conn, league_id: str, team_id: str) -> list[dict]:
                 "arb_of": MARKET_SEASONS,
                 "arb_share": (
                     round(ct.ARBITRATION_SHARE[r["arb_season"]] * 100)
-                    if r["arb_season"]
+                    if r["arb_season"] and d.kind == "arbitration"
                     else None
                 ),
                 "market_salary_text": (
@@ -723,9 +787,39 @@ def expiring_view(conn, league_id: str, team_id: str) -> list[dict]:
                 "wants_out": r["wants_out"],
                 "refuses": r["refuses"],
                 "refuses_text": hp.REFUSE_LINES.get(r["refuses"] or ""),
+                # Re-sign negotiations (Josh, 2026-11-18): his asking deal,
+                # whether the one shown is a deal he agreed to, and why an
+                # offer can't be made, if it can't.
+                "ask_salary": r["ask"].salary,
+                "ask_text": ct.format_salary(r["ask"].salary),
+                "ask_years": r["ask"].years,
+                "agreed": r["agreed"],
+                "no_offer": no_offer(r),
             }
         )
     return out
+
+
+def room_to_talk(ask: ct.Deal, scale: float) -> bool:
+    """Whether an asking deal leaves anything to offer: a salary over the
+    minimum, or more than one season (fewer can be offered)."""
+    minimum = ct.round_salary(ct.MIN_SALARY * scale, scale)
+    return ask.salary > minimum or ask.years > 1
+
+
+def no_offer(r: dict) -> str | None:
+    """Why a GM can't make an expiring player an offer (resign_offers.py),
+    or None: a refuser, one asking the minimum for one season (unless he's
+    in arbitration: he can be offered an extension), or talks he broke off.
+    One asking the minimum for more seasons can still be offered fewer
+    (Josh, 2026-11-18: a 39-year-old asking the minimum for 2)."""
+    if r["refuses"]:
+        return hp.REFUSE_LINES.get(r["refuses"])
+    if r["arb_season"] is None and not room_to_talk(r["ask"], r["scale"]):
+        return "He asks the minimum for one season. There's nothing to negotiate."
+    if r["talks_closed"]:
+        return "He's done talking. Re-sign him at his price or let him go."
+    return None
 
 
 # ── 2. Bidding ────────────────────────────────────────────────────────────────
@@ -1084,8 +1178,10 @@ def settle(conn, league_id: str) -> list[dict]:
         person = pers.get(pid) or hp.personality_for(pid)
         ask = asking(conn, league_id, p, year)
         best = None
+        # A player driven by money won't come down as far (Josh, 2026-11-18).
+        floor = MIN_BID_SHARE + ng.MONEY_FLOOR * ng.money_lean(person.drives["money"])
         for b in by_player[pid]:
-            if b["salary"] < MIN_BID_SHARE * ask.salary:
+            if b["salary"] < floor * ask.salary:
                 continue
             if free_agents.refused(conn, league_id, b["team_id"], pid, year):
                 continue

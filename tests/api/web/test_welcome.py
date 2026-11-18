@@ -514,3 +514,90 @@ def test_a_team_outside_the_pool_shows_no_city_facts(client, league):
     lg, _, _ = league
 
     assert 'class="wl-facts"' not in client.get(f"/leagues/{lg.id}/welcome").text
+
+
+def _past(w=90, l=72, playoffs=None, champ=False, streaks=None, games_out=None):
+    return {
+        "last": {"w": w, "l": l, "playoffs": playoffs},
+        "champion": {"is_mine": champ},
+        "streaks": {"titles": 0, "playoffs": 0, "losing": 0, **(streaks or {})},
+        "games_out": games_out,
+    }
+
+
+@pytest.mark.parametrize(
+    "past, key",
+    [
+        (_past(champ=True, playoffs="won the championship"), "champion"),
+        (_past(playoffs="lost in the first round"), "playoffs"),
+        # Missing the playoffs is no taste of October (the old line said so).
+        (_past(playoffs="missed the playoffs"), "winning"),
+        (_past(w=70, l=92, playoffs="missed the playoffs"), "losing"),
+        (_past(w=81, l=81), "losing"),
+    ],
+)
+def test_the_season_preview_line_changes_every_season(past, key):
+    lines = {
+        wv.return_tagline("London", "Lions", past, year)
+        for year in range(2026, 2026 + len(wv.RETURN_TAGLINES[key]))
+    }
+    expected = {
+        t.format(city="London", City="London", mascot="Lions", n=1, **wv.verbs("Lions"))
+        for t in wv.RETURN_TAGLINES[key]
+    }
+    assert lines == expected
+    for year in range(2026, 2040):
+        assert wv.return_tagline("London", "Lions", past, year) != wv.return_tagline(
+            "London", "Lions", past, year + 1
+        )
+
+
+@pytest.mark.parametrize(
+    "past, text",
+    [
+        (
+            _past(champ=True, playoffs="won the championship", streaks={"titles": 2}),
+            "Back-to-back champions. Can the Lions make it three?",
+        ),
+        (
+            _past(champ=True, playoffs="won the championship", streaks={"titles": 4}),
+            "A dynasty in the making. London wants the next ring.",
+        ),
+        (
+            _past(playoffs="lost in the Finals", streaks={"playoffs": 2}),
+            "Another October for the Lions. London is getting used to this.",
+        ),
+        (
+            _past(playoffs="lost in the Finals", streaks={"playoffs": 5}),
+            "The Lions have been to October 5 straight years. The streak is on the line.",
+        ),
+        (
+            _past(w=60, l=102, playoffs="missed the playoffs", streaks={"losing": 3}),
+            "3 losing seasons in a row. London’s patience has limits.",
+        ),
+        (
+            _past(playoffs="missed the playoffs", games_out=0.5),
+            "The Lions missed October by a game. London hasn’t forgotten.",
+        ),
+        (
+            _past(playoffs="missed the playoffs", games_out=2),
+            "Two games short last year. Every game counts this time.",
+        ),
+    ],
+)
+def test_streaks_and_near_misses_get_their_own_line(past, text):
+    assert wv.return_tagline("London", "Lions", past, 2030) == text
+
+
+def test_streak_lines_agree_with_a_singular_name():
+    past = _past(playoffs="lost in the Finals", streaks={"playoffs": 3})
+    assert wv.return_tagline("Berlin", "Bear", past, 2030).startswith(
+        "The Bear has been to October 3 straight years."
+    )
+    for lines in wv.RETURN_TAGLINES.values():
+        for t in lines:
+            line = t.format(
+                city="Berlin", City="Berlin", mascot="Bear", n=3, **wv.verbs("Bear")
+            )
+            assert "Bear are" not in line and "Bear were" not in line
+            assert "Bear start " not in line and "Bear defend " not in line

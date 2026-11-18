@@ -566,7 +566,7 @@ class TestLinks:
         ]  # fmt: skip
 
         assert f"openPlayerPanel('{pid}')" in item["headline_html"]
-        assert f"stats?team_id={lg['theirs'].id}" in item["body_html"]
+        assert f"depth?team_id={lg['theirs'].id}" in item["body_html"]
         # No profile or persona to go to: the name alone, after "GM".
         assert "was drafted by GM Josh in 2025" in item["body_html"]
 

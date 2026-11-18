@@ -610,23 +610,54 @@ REVIEW_OPEN = {
     "bad": ("That was not good enough.", "What a disappointment.", "I've seen better."),
 }
 
-# A reaction to a move: a trade, or losing an icon.
+# A reaction to a move: a trade, or losing an icon. Each key has wordings
+# that name the trade's headline player ({player}) and ones for a trade with
+# nobody to name. A meddler talks about every trade, so the same line came up
+# again and again in one season (Josh, 2026-11-18): lines name the player,
+# and a wording already used this season waits until the rest have been.
 TRADE_REACTIONS = {
     "icons": (
-        "You traded away one of our icons. I hope you know what you're doing.",
-        "That player was this franchise. I'm stunned.",
+        (
+            "You traded away {player}. That player was this franchise. I'm stunned.",
+            "{player} is gone? He was one of our icons. I hope you know what you're doing.",
+            "Trading {player} is the kind of move people remember, {gm}. It had better be worth it.",
+        ),
+        (
+            "You traded away one of our icons. I hope you know what you're doing.",
+            "That player was this franchise. I'm stunned.",
+        ),
     ),
     "stability": (
-        "Another trade. I'd like a roster I recognize.",
-        "Easy on the phone, {gm}.",
+        (
+            "Another trade, and now {player} is in the mix. I'd like a roster I recognize.",
+            "The {player} deal makes another trade, {gm}. Easy on the phone.",
+            "First this, now {player}. Let a roster settle in before the next one.",
+        ),
+        (
+            "Another trade. I'd like a roster I recognize.",
+            "Easy on the phone, {gm}.",
+        ),
     ),
     "future": (
-        "Did we just give away our future? Explain that to me.",
-        "I hope that trade doesn't cost us in three years.",
+        (
+            "Did we just give away our future for {player}? Explain that to me.",
+            "I hope the {player} trade doesn't cost us in three years.",
+        ),
+        (
+            "Did we just give away our future? Explain that to me.",
+            "I hope that trade doesn't cost us in three years.",
+        ),
     ),
     "stars": (
-        "Now that's a name. Good move.",
-        "Finally, someone people have heard of.",
+        (
+            "{player}. Now that's a name. Good move.",
+            "Finally, someone people have heard of. Getting {player} was a good move.",
+            "People will buy tickets to see {player}. I like it.",
+        ),
+        (
+            "Now that's a name. Good move.",
+            "Finally, someone people have heard of.",
+        ),
     ),
 }
 
@@ -634,9 +665,20 @@ TRADE_REACTIONS = {
 # trade, even one that touches nothing they weigh heavily.
 MEDDLES = 70
 TRADE_REACTIONS["meddling"] = (
-    "Another trade I had nothing to do with. I hope you know what you're doing.",
-    "I read about that trade in the paper, {gm}. I'll be watching how it works out.",
-    "I'm not sure I'd have made that trade. It had better work.",
+    (
+        "The {player} trade? I had nothing to do with it. I hope you know what you're doing.",
+        "I read about the {player} trade in the paper, {gm}. I'll be watching how it works out.",
+        "I'm not sure I'd have made the {player} trade. It had better work.",
+        "{player}, huh. Nobody asked me about that one. Let's see how it looks in a month.",
+        "You moved on {player} without a word to me. I'll judge it by the results.",
+        "So that's the {player} deal. I'd have driven a harder bargain, {gm}.",
+    ),
+    (
+        "Another trade I had nothing to do with. I hope you know what you're doing.",
+        "I read about that trade in the paper, {gm}. I'll be watching how it works out.",
+        "I'm not sure I'd have made that trade. It had better work.",
+        "Another deal, and nobody asked me. Let's see how it looks in a month.",
+    ),
 )
 
 # A reaction to releasing players (Josh, 2026-11-11: "I'm quite surprised the
@@ -754,11 +796,56 @@ _STREAK_WORDS = {
     20: "Twenty",
 }
 # One of the club's own set a league record (the record book's news).
+# {record} names it: "Ruiz's 5 home runs in one game" (record_what).
 RECORD_SET = (
+    "A league record: {record}! That's the kind of thing fans tell their kids about.",
+    "Our name in the record book: {record}. Good. Keep giving them reasons to buy tickets, {gm}.",
+    "I saw it. {Record}, a league record. Put it on the scoreboard, put it on a T-shirt. Nice work.",
+)
+# When the record can't be named (a story wording record_what doesn't know).
+RECORD_SET_PLAIN = (
     "A league record! That's the kind of thing fans tell their kids about.",
     "Our name in the record book. Good. Keep giving them reasons to buy tickets, {gm}.",
     "I saw the record. Put it on the scoreboard, put it on a T-shirt. Nice work.",
 )
+# The record news headlines (services/records/news.py), turned into what
+# the owner calls the record. Names are plain text here.
+_RECORD_WORDS = (
+    (re.compile(r"^(.+) sets a league record with (\S+) (.+)$"),
+     lambda m, b: f"{m[1]}'s {m[2]} {m[3]} in one game"),
+    (re.compile(r"^(.+) ties the league record with (\S+) (.+)$"),
+     lambda m, b: f"{m[1]}'s {m[2]} {m[3]} in one game, tied for the most ever"),
+    (re.compile(r"^The (.+) set a league record: (\d+) straight wins$"),
+     lambda m, b: f"our {m[2]} straight wins"),
+    (re.compile(r"^(.+)'s (.+) reaches a record (\d+) games$"),
+     lambda m, b: f"{m[1]}'s {m[3]}-game {m[2].lower()}"),
+    (re.compile(r"^(.+) sets the single-season record for (.+)$"),
+     lambda m, b: (f"{m[1]}'s {v[1]} {m[2]} this season"
+                   if (v := re.match(r"He's at (\S+),", b)) else None)),
+    (re.compile(r"^(.+) becomes the league's career leader in (.+)$"),
+     lambda m, b: (f"{m[1]}'s {v[1]} career {m[2]}"
+                   if (v := re.match(r"(\S+) and counting", b)) else None)),
+    (re.compile(r"^(.+) sets the league record: (.+)$"),
+     lambda m, b: f"{m[1]}'s {_lower_labels(m[2])}"),
+    (re.compile(r"^(.+) sets league records: (.+)$"),
+     lambda m, b: f"{m[1]}'s {_lower_labels(m[2])}"),
+)  # fmt: skip
+
+
+def _lower_labels(text: str) -> str:
+    """ ".371 Batting average and 1.85 ERA" -> ".371 batting average and 1.85 ERA"."""
+    return re.sub(r"(\S )([A-Z])(?=[a-z])", lambda x: x[1] + x[2].lower(), text)
+
+
+def record_what(headline: str, body: str = "") -> str | None:
+    """What a record story's record is, for the owner to name: "Ruiz's
+    5 home runs in one game", "our 14 straight wins". None for a wording
+    it doesn't know."""
+    for pattern, words in _RECORD_WORDS:
+        if m := pattern.match(headline):
+            return words(m, body or "")
+    return None
+
 
 WINNING_STREAK = (
     "{n} straight wins. Now that's what I like to see.",
@@ -1194,8 +1281,23 @@ def review(
     )
 
 
-def trade_reaction(key: str, fields: dict, rng: random.Random) -> str:
-    return _pick(rng, TRADE_REACTIONS[key], fields)
+def trade_reaction(
+    key: str, fields: dict, rng: random.Random, earlier: list[str] = ()
+) -> str:
+    """The owner's word on a trade. fields["player"]: the trade's headline
+    player, if any. earlier: this season's trade messages; their wordings
+    are used again only once every wording has been."""
+    named, plain = TRADE_REACTIONS[key]
+    options = named if fields.get("player") else plain
+
+    def used(o: str) -> bool:
+        # Same wording, whoever it named: every fixed piece is in one message.
+        parts = [_fill(p, fields).strip(" .,?") for p in o.split("{player}")]
+        parts = [p for p in parts if p]
+        return any(all(p in b for p in parts) for b in earlier)
+
+    fresh = tuple(o for o in options if not used(o))
+    return _fill(rng.choice(fresh or options), fields)
 
 
 def over_budget(fields: dict, rng: random.Random) -> str:
@@ -1214,8 +1316,11 @@ def streak_reaction(won: bool, length: int, fields: dict, rng: random.Random) ->
     return _pick(rng, LOSING_STREAK[mark], {**fields, **n})
 
 
-def record_set(fields: dict, rng: random.Random) -> str:
-    return _pick(rng, RECORD_SET, fields)
+def record_set(fields: dict, rng: random.Random, record: str | None = None) -> str:
+    if not record:
+        return _pick(rng, RECORD_SET_PLAIN, fields)
+    named = {"record": record, "Record": record[:1].upper() + record[1:]}
+    return _pick(rng, RECORD_SET, {**fields, **named})
 
 
 def release_veto(icon: bool, fields: dict, rng: random.Random) -> str:

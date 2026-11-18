@@ -165,6 +165,9 @@ class HappinessRepository:
         all_stars = self._all_stars(season_id, ids)
         coaching = self._coaching(year, team_ids)
         previous = self._previous_moods(season_id, ids)
+        grudges = self._grudges(ids)
+        from src.player import negotiation as ng
+
         current = self.moods(ids, season_id)
         league_regions = {t["region"] for t in teams.values() if t["region"]}
         events: list[tuple] = []
@@ -265,6 +268,12 @@ class HappinessRepository:
                     person
                 )
                 goal = max(-1.0, goal - pull)
+            # A lowball re-sign offer from his club, fading week by week.
+            grudge = 0.0
+            for g in grudges.get(pid, ()):
+                if g["team_id"] == p["team_id"]:
+                    grudge = grudge_left(g["amount"], g["updates"], ng.GRUDGE_WEEKS)
+            goal = max(-1.0, goal - grudge)
             now = current.get(pid)
             before = previous.get(pid)
             request = None
@@ -325,6 +334,8 @@ class HappinessRepository:
                 lines = [hp.CLUBHOUSE_LINE_TEXT.format(name=name)] + lines[:1]
             if person.ruiner and mood < hp.UNHAPPY and p["status"] == "26man":
                 lines = lines + [hp.RUINER_LINE_TEXT]
+            if grudge >= hp.GRUDGE_LINE_AT:
+                lines = [hp.GRUDGE_LINE_TEXT] + lines[:1]
             detail = {
                 "drives": {d: [round(s, 3), why] for d, (s, why) in sats.items()},
                 "lines": lines,
@@ -333,6 +344,8 @@ class HappinessRepository:
                 detail["clubhouse"] = [round(pull, 3), worst]
             if lift:
                 detail["coaching"] = round(lift, 3)
+            if grudge:
+                detail["grudge"] = round(grudge, 3)
             updated_on = as_of.isoformat()
             if only is not None:
                 # Keep the league's weekly clock (last_update) where it was.
@@ -377,10 +390,24 @@ class HappinessRepository:
                 """,
                 rows,
             )
-        if only is None:
-            self._news(
-                season_id, as_of, events, quiet_requests=self._trades_closed(season_id)
+        if only is not None:
+            return len(rows)  # a refresh after a trade: no fading, no news
+        # Grudges fade: one more update for the players updated, and gone
+        # once spent.
+        held = [pid for pid in ids if pid in grudges]
+        if held:
+            self.conn.execute(
+                """UPDATE player_grudges SET updates = updates + 1
+                   WHERE league_id = %s AND player_id = ANY(%s)""",
+                (self.league_id, held),
             )
+            self.conn.execute(
+                "DELETE FROM player_grudges WHERE league_id = %s AND updates >= %s",
+                (self.league_id, ng.GRUDGE_WEEKS),
+            )
+        self._news(
+            season_id, as_of, events, quiet_requests=self._trades_closed(season_id)
+        )
         return len(rows)
 
     # ── What the league already knows ──────────────────────────────────────
@@ -767,6 +794,51 @@ class HappinessRepository:
         seasons = getattr(self, "_resign_seasons", {}).get(player_id, 0)
         return hp.resign_terms(mood, pers.traits["loyalty"] if pers else 50, seasons)
 
+    # ── Grudges (Josh, 2026-11-18: lowball re-sign offers) ──────────────────
+
+    def add_grudge(self, player_id: str, team_id: str, year: int, amount: float):
+        """A lowball from his club: amount comes off his mood target next
+        season, fading over negotiation.GRUDGE_WEEKS weekly updates. More
+        lowballs add up, to negotiation.GRUDGE_CAP."""
+        from src.player import negotiation as ng
+
+        if amount <= 0:
+            return
+        self.conn.execute(
+            """INSERT INTO player_grudges (league_id, player_id, team_id, year, amount)
+               VALUES (%s, %s, %s, %s, %s)
+               ON CONFLICT (player_id, team_id) DO UPDATE
+               SET amount = LEAST(%s, CASE WHEN player_grudges.year = excluded.year
+                                           THEN player_grudges.amount ELSE 0 END
+                                      + excluded.amount),
+                   year = excluded.year, updates = 0, league_id = excluded.league_id""",
+            (self.league_id, player_id, team_id, year, amount, ng.GRUDGE_CAP),
+        )
+
+    def grudge(self, player_id: str, team_id: str, since_year: int) -> float:
+        """What's left of his grudge against a club, from a re-sign window in
+        since_year or later, or 0."""
+        from src.player import negotiation as ng
+
+        row = self.conn.execute(
+            """SELECT amount, updates FROM player_grudges
+               WHERE player_id = %s AND team_id = %s AND year >= %s""",
+            (player_id, team_id, since_year),
+        ).fetchone()
+        if not row:
+            return 0.0
+        return grudge_left(row["amount"], row["updates"], ng.GRUDGE_WEEKS)
+
+    def _grudges(self, ids) -> dict[str, list[dict]]:
+        rows = self.conn.execute(
+            "SELECT * FROM player_grudges WHERE league_id = %s AND player_id = ANY(%s)",
+            (self.league_id, list(ids)),
+        ).fetchall()
+        out: dict[str, list[dict]] = defaultdict(list)
+        for r in rows:
+            out[r["player_id"]].append(dict(r))
+        return out
+
     def request_trades(self, players: list[tuple[str, str]], year: int) -> None:
         """Miserable players who re-signed for a year and want out: the
         request goes on their newest mood row (it carries into the season
@@ -877,3 +949,9 @@ class HappinessRepository:
             if b:
                 out[pid] = b
         return out
+
+
+def grudge_left(amount: float, updates: int, weeks: int) -> float:
+    """What's left of a grudge after this many weekly updates: it fades
+    evenly to nothing over `weeks`."""
+    return max(0.0, amount * (1 - updates / weeks))

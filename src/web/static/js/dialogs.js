@@ -4,7 +4,8 @@
 // Loaded on every page from base.html; the look is .gm-modal in main.css.
 //
 // gmConfirm(opts) resolves true when the GM presses the action button.
-// opts: {title, lines: [text], warn: a red warning line, ok: button label,
+// opts: {title, lines: [text], caution: [amber lines above the fields],
+// warn: a red warning line, ok: button label,
 // tone: 'danger' | 'go', cancel: label, or null for an alert with one
 // button, fields: [{name, label, value, min, max, step, hint}] number inputs;
 // with fields it resolves {name: number} on OK, false otherwise; alt: a
@@ -36,6 +37,7 @@ window.gmConfirm = function(opts) {
       <div class="gm-modal" role="dialog" aria-modal="true" aria-labelledby="gm-modal-title">
         <div class="gm-modal-title" id="gm-modal-title">${_esc(opts.title)}</div>
         ${(opts.lines || []).filter(Boolean).map(l => `<p class="gm-modal-line">${_esc(l)}</p>`).join('')}
+        ${(opts.caution || []).length ? `<div class="gm-modal-caution">${opts.caution.filter(Boolean).map(l => `<p>${_esc(l)}</p>`).join('')}</div>` : ''}
         ${(opts.fields || []).map(f => `<label class="gm-modal-field"><span>${_esc(f.label)}</span>
           <input type="number" name="${_esc(f.name)}" value="${_esc(f.value ?? '')}"
                  ${f.min !== undefined ? `min="${_esc(f.min)}"` : ''} ${f.max !== undefined ? `max="${_esc(f.max)}"` : ''}

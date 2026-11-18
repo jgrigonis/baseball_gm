@@ -157,3 +157,23 @@ def test_saves_the_defensive_lineup_style(client, db_conn, gm):
     r = client.post(f"/leagues/{gm.league_id}/strategy", data={"lineup_style": 4})
     assert r.status_code == 200
     assert GMRepository(db_conn).get_profile(gm.id)["lineup_style"] == "defensive"
+
+
+def test_leash_and_bullpen_run_short_to_long(client, db_conn, gm):
+    # Starter Leash: 75 on the left, 115 on the right. Bullpen Shape: Deep pen
+    # on the left, Starter-heavy on the right.
+    client.post(
+        f"/leagues/{gm.league_id}/strategy",
+        data={"starter_usage": 0, "bullpen_pref": 0},
+    )
+    row = GMRepository(db_conn).get_profile(gm.id)
+    assert row["starter_usage"] == "75"
+    assert row["bullpen_pref"] == "deep-pen"
+
+    client.post(
+        f"/leagues/{gm.league_id}/strategy",
+        data={"starter_usage": 4, "bullpen_pref": 2},
+    )
+    row = GMRepository(db_conn).get_profile(gm.id)
+    assert row["starter_usage"] == "115"
+    assert row["bullpen_pref"] == "starter-heavy"

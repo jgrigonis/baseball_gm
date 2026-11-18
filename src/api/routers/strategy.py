@@ -151,9 +151,9 @@ SETTINGS: tuple[tuple[str, tuple[Setting, ...]], ...] = (
             Setting(
                 "starter_usage",
                 "Starter Leash",
-                mp.STARTER_USAGE,
-                ("115", "105", "95", "85", "75"),
-                ("Long leash", "Short leash"),
+                mp.STARTER_USAGE[::-1],
+                ("75", "85", "95", "105", "115"),
+                ("Short leash", "Long leash"),
                 "The pitch count a starter is usually pulled at on a normal "
                 "day; 85 is standard. One who's getting hit can come out "
                 "sooner, and at 75 he's pulled sooner the third time through "
@@ -174,9 +174,9 @@ SETTINGS: tuple[tuple[str, tuple[Setting, ...]], ...] = (
             Setting(
                 "bullpen_pref",
                 "Bullpen Shape",
-                mp.BULLPEN_PREF,
-                ("Starter-heavy", "Balanced", "Deep pen"),
-                ("Ride the starter", "Use the pen"),
+                mp.BULLPEN_PREF[::-1],
+                ("Deep pen", "Balanced", "Starter-heavy"),
+                ("Use the pen", "Ride the starter"),
                 "How you handle trouble and use relievers. Starter-heavy lets a "
                 "starter pitch through a rough inning and finish a few more "
                 "batters at his pitch count, and relievers often go two innings. "

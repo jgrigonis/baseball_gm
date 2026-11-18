@@ -39,7 +39,7 @@ def test_upcoming_opponents_link_to_their_stats(db_conn, factory):
         app.dependency_overrides.clear()
 
     upcoming = html.split("Upcoming")[1].split("Recent Results")[0]
-    assert f"/leagues/{league.id}/stats?team_id={opp.id}" in upcoming
+    assert f"/leagues/{league.id}/depth?team_id={opp.id}" in upcoming
     # Both the opponent and the top bar's own team carry their color badge
     assert '>CHI</span><span class="phone-hide">Chicago </span>Wind' in upcoming
     topbar = html.split('class="topbar-team"')[1].split("</a>")[0]

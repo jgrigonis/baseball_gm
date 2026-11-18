@@ -555,8 +555,48 @@ def test_a_meddler_has_an_opinion_on_every_trade(lg, factory):
     )
     assert owner_office.reactions(x.db, x.league.id) == 1
     (said,) = _said(x, "trade")
-    wordings = owner_office.om.TRADE_REACTIONS["meddling"]
-    assert any(said.startswith(w.split("{")[0]) for w in wordings)
+    _, plain = owner_office.om.TRADE_REACTIONS["meddling"]  # nobody to name
+    assert any(said.startswith(w.split("{")[0]) for w in plain)
+
+
+def test_a_meddler_doesnt_repeat_one_line_for_every_trade(lg, factory):
+    """Josh, 2026-11-18: "I'm not sure I'd have made that trade. It had
+    better work." twice in one season. Each line names the trade's best
+    player coming in, and no wording comes up twice."""
+    from src.api.services import owner_office
+
+    x = lg(n=2)
+    _make_owner(x, meddling=95)
+    named, _ = owner_office.om.TRADE_REACTIONS["meddling"]
+    for i in range(len(named)):
+        got = factory.rated_player(x.teams[1], x.league, name=f"Got{i}")
+        sent = factory.rated_player(x.teams[0], x.league, level=30, name=f"Sent{i}")
+        x.db.execute(
+            """INSERT INTO trade_offers (id, league_id, season_id, from_team_id,
+                   to_team_id, status, created_on, decided_at)
+               VALUES (%s, %s, %s, %s, %s, 'accepted', '2026-04-10', NOW())""",
+            (f"t{i}", x.league.id, x.season.id, x.teams[0].id, x.teams[1].id),
+        )
+        x.db.execute(
+            """INSERT INTO trade_offer_items (offer_id, player_id, from_team_id)
+               VALUES (%s, %s, %s), (%s, %s, %s)""",
+            (f"t{i}", got.id, x.teams[1].id, f"t{i}", sent.id, x.teams[0].id),
+        )
+        assert owner_office.reactions(x.db, x.league.id) == 1
+    said = _said(x, "trade")
+    assert len(said) == len(named)
+    for i in range(len(named)):
+        assert any(f"Test Got{i}" in b for b in said)
+    # The same wording, whoever it names, never twice.
+    shapes = {
+        next(
+            b.replace(f"Test Got{i}", "X")
+            for i in range(len(named))
+            if f"Test Got{i}" in b
+        )
+        for b in said
+    }
+    assert len(shapes) == len(named)
 
 
 def _streak(x, length, won=False, start="2026-04-03"):
@@ -598,6 +638,34 @@ def test_a_hot_tempered_owner_reacts_to_a_losing_streak(lg):
     assert owner_office.reactions(x.db, x.league.id) == 0
     _streak(x, 10, won=True, start="2026-05-01")
     assert owner_office.reactions(x.db, x.league.id) == 1
+
+
+def test_the_owner_names_the_record_and_the_other_club_doesnt_cheer(lg):
+    """Josh: "A league record!" should say what the record was."""
+    from src.api.services import owner_office
+    from src.api.services.news.names import token
+    from src.db.repositories.news_repo import NewsRepository
+
+    x = lg(n=2)
+    a, b = x.teams[0].id, x.teams[1].id
+    _make_owner(x, temper=50)
+    # A single-game record names the club that set it first, the other second.
+    NewsRepository(x.db).add(
+        x.league.id, x.season.id, "2026-04-20", "record", "rec:game:hr:1",
+        f"{token('p', 'p1', 'Joe Ruiz')} sets a league record with 5 home runs",
+        "5 home runs in one game. The old mark was 4.",
+        team_ids=[b, a], gm_ids=[x.gm.id],
+    )  # fmt: skip
+    assert owner_office.reactions(x.db, x.league.id) == 0
+    NewsRepository(x.db).add(
+        x.league.id, x.season.id, "2026-04-21", "record", "rec:game:hr:2",
+        f"{token('p', 'p2', 'Al Diaz')} sets a league record with 6 home runs",
+        "6 home runs in one game. The old mark was 5.",
+        team_ids=[a, b], gm_ids=[x.gm.id],
+    )  # fmt: skip
+    assert owner_office.reactions(x.db, x.league.id) == 1
+    (said,) = _said(x, "record")
+    assert "Al Diaz's 6 home runs in one game" in said
 
 
 def test_a_steady_owner_lets_a_streak_pass(lg):

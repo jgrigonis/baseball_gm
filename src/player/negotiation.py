@@ -30,6 +30,29 @@ the looking up).
   An Easygoing player never takes it personally.
 - A club gets OFFERS_PER_WEEK offers a week to one player. His counter
   stands for the rest of the week.
+- Money (Josh, 2026-11-18): a player driven by money (the money drive past
+  MONEY_START) has a higher bar and floor, and a lowball stings him more.
+
+Re-signing his own club's offer (Josh, 2026-11-18, the Expiring Deals tab:
+src/api/services/resign_offers.py) uses the same Stance with home=True:
+
+- His ask is his renewal price, his mood already worked in (the hometown
+  discount, or an unhappy player's premium). Re-sign pays that.
+- Loyalty counts more the longer he's been with the club (HOME_PULL plus
+  HOME_PER_SEASON a season). His floor is HOME_FLOOR of his ask, down to
+  HOME_BEST_FLOOR, since the ask already carries any hometown discount.
+- Only a player who can walk (a veteran or an unhappy player) has other
+  teams calling.
+- A lowball (under GRUDGE_LINE of what he'd take) leaves a grudge: a mood
+  hit carried into next season (grudge). Under HOME_INSULT of it he may be
+  insulted (home_insulted): talks close for the window. One who can walk
+  then raises his price HOME_BUMP, or refuses to re-sign at all
+  (refuses_after_insult), mostly when he's hot-tempered or disloyal.
+- An Easygoing player never holds a grudge or takes it personally.
+- An arbitration player can't be talked down from his one-season price, but
+  he can be offered an extension of EXTENSION_MIN_YEARS seasons or more:
+  his ask is what those seasons are worth (contracts.extension_salary), and
+  he takes less for the security (extension_security).
 """
 
 from __future__ import annotations
@@ -73,6 +96,61 @@ OFFERS_PER_WEEK = 2
 # Counters go up in this step of his asking salary, so they read cleanly.
 MAX_COUNTER = 1.25
 
+# Money (Josh, 2026-11-18): past MONEY_START on the money drive, his bar
+# rises up to MONEY_PULL and his floor up to MONEY_FLOOR (at a drive of 100).
+MONEY_START = 50
+MONEY_PULL = 0.05
+MONEY_FLOOR = 0.05
+
+# Re-signing with his own club.
+HOME_PULL = 0.06  # times loyalty / 100, like OLD_CLUB_PULL
+HOME_PER_SEASON = 0.01  # more a season with the club, up to HOME_SEASONS
+HOME_SEASONS = 6
+HOME_FLOOR = 0.85
+HOME_BEST_FLOOR = 0.8
+OFFERS_PER_WINDOW = 3
+# An offer under GRUDGE_LINE of what he'd take leaves a grudge; under
+# HOME_INSULT of it he may be insulted.
+GRUDGE_LINE = 0.9
+HOME_INSULT = 0.75
+# The grudge: at most GRUDGE_MAX off his mood (temper 100, loyalty 0, money
+# 100), twice that when insulted, GRUDGE_CAP in all. It fades over
+# GRUDGE_WEEKS weekly mood updates.
+GRUDGE_MAX = 0.15
+GRUDGE_CAP = 0.3
+GRUDGE_WEEKS = 8
+# Insulted at home: the chance he takes it personally, from calm to hot.
+HOME_INSULT_LOW = 0.5
+HOME_INSULT_TEMPER = 30  # temper where the chance starts to climb
+# One who can walk raises his price this much, or refuses to re-sign:
+# REFUSE_BASE for anyone, up to REFUSE_TEMPER more for temper over 50 and
+# REFUSE_DISLOYAL more for loyalty under 50, REFUSE_MAX at most (Josh,
+# 2026-11-18: mainly hot-tempered and/or disloyal players).
+HOME_BUMP = 0.10
+REFUSE_BASE = 0.05
+REFUSE_TEMPER = 0.35
+REFUSE_DISLOYAL = 0.35
+REFUSE_MAX = 0.6
+
+
+# Arbitration extensions (Josh, 2026-11-18): a player still under team
+# control gives a discount for guaranteed seasons, EXTENSION_SECURITY a
+# season past the first, up to EXTENSION_MAX, and never past EXTENSION_FLOOR
+# of what the seasons are worth.
+EXTENSION_SECURITY = 0.03
+EXTENSION_MAX = 0.12
+EXTENSION_FLOOR = 0.7
+EXTENSION_MIN_YEARS = 2
+
+
+def extension_security(years: int) -> float:
+    return min(EXTENSION_MAX, EXTENSION_SECURITY * max(0, years - 1))
+
+
+def money_lean(money: int) -> float:
+    """0 to 1: how far past MONEY_START his money drive is."""
+    return max(0.0, min(1.0, (money - MONEY_START) / (100 - MONEY_START)))
+
 
 def season_value(age: int, years: int) -> float:
     """The security a deal of this many seasons gives him: each season by
@@ -107,8 +185,20 @@ class Stance:
     star: bool = False
     callers: int = 0  # other teams with a hole he fills
     old_club: bool = False  # his last club, and it didn't release him
-    released_by: bool = False  # this club released him
+    released_by: bool = False  # this club released him (or he holds a grudge)
     minimum: int = 780_000
+    money: int = 0  # his money drive, 0 to 100
+    home: bool = False  # re-signing with his own club
+    seasons: int = 0  # seasons with the league, for the home pull
+    security: float = 0.0  # an extension's guaranteed seasons, off his bar
+
+    @property
+    def home_pull(self) -> float:
+        return (
+            (HOME_PULL + HOME_PER_SEASON * min(max(self.seasons, 0), HOME_SEASONS))
+            * self.loyalty
+            / 100
+        )
 
     @property
     def fit_term(self) -> float:
@@ -121,10 +211,14 @@ class Stance:
         if self.star:
             b += STAR_PULL
         b += CALLER_PULL * min(self.callers, CALLER_MAX)
-        if self.old_club:
+        if self.home:
+            b -= self.home_pull
+        elif self.old_club:
             b -= OLD_CLUB_PULL * self.loyalty / 100
         if self.released_by:
             b += RELEASED_PULL * (1 + self.temper / 100)
+        b += MONEY_PULL * money_lean(self.money)
+        b -= self.security
         return b
 
     @property
@@ -134,14 +228,17 @@ class Stance:
             max(0.0, min(1.0, self.share * self.fit / FIT_FULL)),
             1 - self.ego / 100,
             1.0 if self.callers == 0 else 0.0,
-            self.loyalty / 100 if self.old_club else 0.0,
+            self.loyalty / 100 if (self.old_club or self.home) else 0.0,
         )
         avg = sum(parts) / len(parts)
         return max(0.0, min(1.0, (avg - FAVOR_START) / (FAVOR_FULL - FAVOR_START)))
 
     @property
     def floor(self) -> int:
-        share = FLOOR - (FLOOR - BEST_FLOOR) * self.favor
+        top, best = (HOME_FLOOR, HOME_BEST_FLOOR) if self.home else (FLOOR, BEST_FLOOR)
+        share = top - (top - best) * self.favor
+        share += MONEY_FLOOR * money_lean(self.money)
+        share = max(EXTENSION_FLOOR, share - self.security)
         return max(self.minimum, math.ceil(self.ask_salary * share))
 
     def value(self, salary: int, years: int) -> float:
@@ -186,12 +283,54 @@ class Stance:
             return False
         return random.Random(seed).random() < chance
 
+    # ── At home ──────────────────────────────────────────────────────────
+
+    def grudge(self, salary: int, counter: int, insulted: bool = False) -> float:
+        """How much a lowball from his own club takes off his mood next
+        season: nothing for a fair try (GRUDGE_LINE of what he'd take or
+        better) or an Easygoing player; more for temper and money, less for
+        loyalty; twice as much when he was insulted."""
+        if self.easygoing or salary >= GRUDGE_LINE * counter:
+            return 0.0
+        g = (
+            GRUDGE_MAX
+            * self.temper
+            / 100
+            * (1 - self.loyalty / 200)
+            * (0.5 + self.money / 200)
+        )
+        return min(GRUDGE_CAP, g * (2 if insulted else 1))
+
+    def home_insulted(self, salary: int, counter: int, roll: float) -> bool:
+        """A lowball far under what he'd take (HOME_INSULT of it): he may
+        take it personally, more likely the hotter his temper. An Easygoing
+        player never does."""
+        if self.easygoing or salary >= HOME_INSULT * counter:
+            return False
+        hot = max(
+            0.0,
+            min(1.0, (self.temper - HOME_INSULT_TEMPER) / (100 - HOME_INSULT_TEMPER)),
+        )
+        return roll < HOME_INSULT_LOW + (1 - HOME_INSULT_LOW) * hot
+
+    def refuse_chance(self) -> float:
+        """Insulted, and free to walk: the chance he won't re-sign at all
+        (Josh, 2026-11-18: it can happen to anyone, mainly the hot-tempered
+        and the disloyal)."""
+        if self.easygoing:
+            return REFUSE_BASE
+        hot = max(0.0, (self.temper - 50) / 50)
+        cold = max(0.0, (50 - self.loyalty) / 50)
+        return min(
+            REFUSE_MAX, REFUSE_BASE + REFUSE_TEMPER * hot + REFUSE_DISLOYAL * cold
+        )
+
 
 def hints(s: Stance) -> list[str]:
     """A line or two on where he stands, never a number."""
     out = []
     if s.released_by:
-        out.append("Hasn't forgotten you released him.")
+        out.append("Hasn't forgotten how you treated him.")
     elif s.old_club and s.loyalty >= 60:
         out.append("Glad to hear from his old club.")
     if s.fit_term >= 0.06:
@@ -206,4 +345,59 @@ def hints(s: Stance) -> list[str]:
         out.append("Nobody else is calling yet.")
     if s.star and s.ego >= 65:
         out.append("Wants to be paid like a star.")
+    elif money_lean(s.money) >= 0.5:
+        out.append("Money talks with him.")
     return out[:3]
+
+
+def resign_hints(
+    s: Stance, mood: float | None, underpaid: bool, grudge: bool
+) -> list[str]:
+    """Where a player stands with his own club, a line or two, never a
+    number. mood is his latest mood (happiness.py), underpaid whether his
+    money satisfaction is under (he thinks he's underpaid)."""
+    out = []
+    if grudge:
+        out.append("Remembers the lowball offer.")
+    if mood is None:
+        out.append("Open to staying, at the right price.")
+    else:
+        if mood >= 0.25 and s.loyalty >= 60:
+            out.append("Wants to stay.")
+        elif mood >= 0.25:
+            out.append("Likes it here.")
+        elif mood >= -0.15:
+            out.append("Open to staying, at the right price.")
+        else:
+            out.append("Isn't sure he wants to stay.")
+    if underpaid:
+        out.append("Feels underpaid.")
+    if s.callers >= 1:
+        out.append("Knows other teams want him.")
+    if s.star and s.ego >= 65:
+        out.append("Wants to be paid like a star.")
+    return out[:3]
+
+
+def resign_warnings(s: Stance, can_walk: bool, grudge: bool) -> list[str]:
+    """The warning on the re-sign offer dialog (Josh, 2026-11-18): what a
+    lowball can do, in words only."""
+    if s.easygoing:
+        first = "A lowball won't upset him much. He's hard to upset."
+        return [first] + (["He still remembers your last offer."] if grudge else [])
+    if can_walk:
+        first = "A lowball can anger him. He may raise his price, or refuse to re-sign."
+    else:
+        first = (
+            "He's under your control and can't leave, but a lowball can anger "
+            "him, and he'll carry it into next season."
+        )
+    out = [first]
+    extra = []
+    if s.temper >= 70:
+        extra.append("He has a short fuse.")
+    if s.loyalty < 35:
+        extra.append("He doesn't owe you any loyalty.")
+    if grudge:
+        extra.append("He still remembers your last offer.")
+    return out + extra[:2]

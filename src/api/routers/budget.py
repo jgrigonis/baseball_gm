@@ -571,7 +571,11 @@ def _crowds_view(now: dict | None, past: list[dict], year: int, seats: int) -> d
 
 
 def _ballpark_view(
-    offers: list[dict], year: int, open_: bool, seats: int | None = None
+    offers: list[dict],
+    year: int,
+    open_: bool,
+    seats: int | None = None,
+    stadium: str | None = None,
 ) -> dict:
     rows = []
     for o in offers:
@@ -608,6 +612,16 @@ def _ballpark_view(
                 and not o["blocked"],
                 "new": o["built"] == year,
                 "status": status,
+                # A higher tier comes with the lower tiers' add-ons.
+                "includes_addons": _and(
+                    [
+                        fn.project(k).name.lower()
+                        for k in fn.included(o["key"])
+                        if fn.project(k).tier
+                    ]
+                )
+                if o["stadium"]
+                else None,
                 "build_text": (
                     f"{_seasons(o['build'])} to build, opens {o['opens']}"
                     if o["build"]
@@ -622,8 +636,16 @@ def _ballpark_view(
         "floor_caps": fn.BALLPARK_FLOOR,
         "life": fn.STADIUM_LIFE,
         "rebuild_pct": round((fn.STADIUM_REBUILD - 1) * 100),
-        "seats": seats,
+        "seats": seats if seats is not None else fn.CROWD_CAPACITY,
+        "stadium": fn.project(stadium).name.split(": ")[-1] if stadium else None,
     }
+
+
+def _and(names: list[str]) -> str:
+    """ "a, b and c" """
+    if len(names) < 2:
+        return "".join(names)
+    return ", ".join(names[:-1]) + " and " + names[-1]
 
 
 def _broadcast_view(deal: dict, year: int, open_: bool) -> dict:
@@ -884,9 +906,13 @@ def _render(
         sponsor = budgets.sponsors(league_id, year, [team_id]).get(team_id)
         ctx["sponsor"] = _sponsor_view(sponsor, ctx["fo_open"]) if sponsor else None
         offers = budgets.ballpark_offers(league_id, team_id, year)
-        seats = fn.capacity(budgets.ballparks(league_id, year).get(team_id, ()))
+        park = budgets.ballparks(league_id, year).get(team_id, ())
+        seats = fn.capacity(park)
+        stadium = next(
+            (k for k in fn.open_projects(park) if fn.tier_index(k) >= 0), None
+        )
         ctx["ballpark"] = (
-            _ballpark_view(offers, year, ctx["fo_open"], seats)
+            _ballpark_view(offers, year, ctx["fo_open"], seats, stadium)
             if offers and bank
             else None
         )

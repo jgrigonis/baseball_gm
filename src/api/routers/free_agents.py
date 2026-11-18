@@ -16,6 +16,7 @@ from src.api.services import (
     icons,
     offseason_fa,
     ready_check,
+    resign_offers,
     waivers,
 )
 from src.api.view_models.player_cards import (
@@ -107,8 +108,9 @@ def free_agents_tab(
             card["salary"] = deal.salary
             card["salary_text"] = format_salary(deal.salary)
             card["ask_years"] = deal.years
-            # Above the minimum there's room to talk (fa_offers.py).
-            card["can_offer"] = deal.salary > lowest
+            # Above the minimum, or for more than one season, there's room
+            # to talk (fa_offers.py).
+            card["can_offer"] = deal.salary > lowest or deal.years > 1
         last = last_team.get(row["id"])
         card["last_team"] = names.get(last) if last else None
         players.append(card)
@@ -366,8 +368,22 @@ def _expiring_result(db, league_id: str, team_id: str, result: dict) -> dict:
     """Every expiring row's call and fate, since one call moves the room for
     the rest, the room line, and the Re-sign All plan, for the Expiring Deals
     tab to update in place."""
+    keys = (
+        "choice",
+        "fate",
+        "salary",
+        "salary_text",
+        "years",
+        "agreed",
+        "no_offer",
+        "ask_salary",
+        "ask_text",
+        "ask_years",
+        "refuses",
+        "refuses_text",
+    )
     result["rows"] = {
-        e["player_id"]: {"choice": e["choice"], "fate": e["fate"]}
+        e["player_id"]: {k: e[k] for k in keys}
         for e in offseason_fa.expiring_view(db, league_id, team_id)
     }
     result["money"] = offseason_fa.next_season_money(db, league_id, team_id)
@@ -475,5 +491,34 @@ def expiring_choice(
             db, league_id, gm["team_id"], player_id, body.choice
         )
     except offseason_fa.OffseasonFAError as e:
+        return JSONResponse({"detail": str(e)}, status_code=422)
+    return JSONResponse(_expiring_result(db, league_id, gm["team_id"], result))
+
+
+@router.get("/leagues/{league_id}/players/{player_id}/expiring/offer")
+def resign_offer_preview(league_id: str, player_id: str, db: DB, gm: GM):
+    """For the re-sign offer dialog (src/api/services/resign_offers.py)."""
+    try:
+        result = resign_offers.preview(db, league_id, gm["team_id"], player_id)
+    except resign_offers.ResignOfferError as e:
+        return JSONResponse({"detail": str(e)}, status_code=422)
+    return JSONResponse(result)
+
+
+@router.post("/leagues/{league_id}/players/{player_id}/expiring/offer")
+def make_resign_offer(
+    league_id: str,
+    player_id: str,
+    body: OfferBody,
+    db: DB,
+    gm: GM,
+    _active: ActiveLeague,
+):
+    """Offer an expiring player a new deal; he answers right away."""
+    try:
+        result = resign_offers.offer(
+            db, league_id, gm["team_id"], player_id, body.salary, body.years
+        )
+    except resign_offers.ResignOfferError as e:
         return JSONResponse({"detail": str(e)}, status_code=422)
     return JSONResponse(_expiring_result(db, league_id, gm["team_id"], result))

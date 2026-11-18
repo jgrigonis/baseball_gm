@@ -362,3 +362,28 @@ def test_a_traded_player_is_judged_by_his_new_team_right_away(lg):
     # Only he changed.
     other = lg.players[lg.a.id][1].id
     assert repo.mood(other, lg.season.id)["updated_on"] == old["updated_on"]
+
+
+def test_a_lowball_grudge_lowers_his_target_and_fades(lg):
+    from src.player import negotiation as ng
+
+    pid = lg.players[lg.a.id][0].id
+    other = lg.players[lg.a.id][1].id
+    repo = _repo(lg)
+    repo.update(lg.season.id, date(2025, 4, 4))
+    before = repo.mood(pid, lg.season.id)["target"]
+    repo.add_grudge(pid, lg.a.id, 2024, 0.2)
+    repo.add_grudge(pid, lg.a.id, 2024, 0.2)  # adds up, to the cap
+    repo.add_grudge(other, lg.b.id, 2024, 0.2)  # held against another club
+    assert repo.grudge(pid, lg.a.id, 2024) == pytest.approx(ng.GRUDGE_CAP)
+    repo.update(lg.season.id, date(2025, 4, 11))
+    row = repo.mood(pid, lg.season.id)
+    assert row["detail"]["grudge"] == pytest.approx(ng.GRUDGE_CAP)
+    assert row["target"] < before
+    assert row["detail"]["lines"][0] == hp.GRUDGE_LINE_TEXT
+    assert "grudge" not in repo.mood(other, lg.season.id)["detail"]
+    # One update in, it has faded a step; after GRUDGE_WEEKS it's gone.
+    assert repo.grudge(pid, lg.a.id, 2024) < ng.GRUDGE_CAP
+    for w in range(ng.GRUDGE_WEEKS):
+        repo.update(lg.season.id, date(2025, 4, 18) + timedelta(days=7 * w))
+    assert repo.grudge(pid, lg.a.id, 2024) == 0

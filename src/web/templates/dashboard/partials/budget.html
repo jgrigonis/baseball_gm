@@ -191,10 +191,15 @@
     <span class="admin-dim" style="margin-left:auto;font-size:11px;">{% if not ballpark.open %}projects ordered in the offseason{% endif %}</span></div>
   <div class="card-body">
     {% if park_error %}<div class="bud-line bud-bad" style="margin-top:0;margin-bottom:10px;">{{ park_error }}</div>{% endif %}
+    <div class="bud-note" style="margin-top:0;margin-bottom:8px;" id="park-seats">Your {% if ballpark.stadium %}{{ ballpark.stadium|lower }} stadium{% else %}ballpark{% endif %} holds {{ "{:,}".format(ballpark.seats) }} fans.{% if not ballpark.stadium %} A new stadium holds more.{% endif %}</div>
     {% for p in ballpark.rows %}
     {% if p.stadium and loop.previtem is defined and not loop.previtem.stadium %}
     <div class="bud-label" style="margin-top:14px;">A new stadium</div>
-    <div class="bud-note" style="margin-bottom:4px;">The big one: pick a price. Your owner pays for it a season at a time while it goes up, so half the price in the bank (over the reserve) is enough to start. It takes over from a renovation. Once a stadium is {{ ballpark.life }} seasons old it can be replaced by one of the same tier or higher, at today's prices, earning about {{ ballpark.rebuild_pct }}% more than the one before.</div>
+    <div class="bud-note" style="margin-bottom:4px;">The big one: pick a price. Every tier of new stadium includes all the ballpark features above, and any you built in your old park are gone once it opens: the new stadium has its own, and they can't be bought again. Your owner pays for it a season at a time while it goes up, so half the price in the bank (over the reserve) is enough to start. Once a stadium is {{ ballpark.life }} seasons old it can be replaced by one of the same tier or higher, at today's prices, earning about {{ ballpark.rebuild_pct }}% more than the one before.</div>
+    {% endif %}
+    {% if p.tier and loop.previtem is defined and not loop.previtem.tier %}
+    <div class="bud-label" style="margin-top:14px;">Stadium add-ons</div>
+    <div class="bud-note" style="margin-bottom:4px;">Each tier of new stadium unlocks add-ons of its own, from the offseason after it opens. A higher tier comes with the add-ons of the tiers below it built in. A replacement stadium has its own too, so add-ons don't carry over.</div>
     {% endif %}
     <form class="bud-dept bud-park" data-quiet-swap hx-post="/leagues/{{ league_id }}/budget/ballpark"
           hx-target="#tab-content" hx-swap="innerHTML"
@@ -204,13 +209,16 @@
       <input type="hidden" name="project" value="{{ p.key }}">
       <div class="bud-dept-name">
         <strong>{{ p.name }}</strong> <span class="admin-dim" style="font-size:12px;">{{ p.cost_text }}</span>
+        {% if p.tier %}<span class="admin-dim" style="font-size:11px;">· {{ p.tier }} stadium</span>{% endif %}
         <div class="bud-note">{{ p.what }}</div>
         <div class="bud-note">
           {%- if p.earns_text %}About {{ p.earns_text }} a season for you{% if p.payback_text %} · {{ p.payback_text }}{% endif %}{% endif %}
           {%- if p.fans %}{% if p.earns_text %} · {% endif %}+{{ p.fans }} fan interest a season{% endif %}
           {%- if p.seats %} · {{ "{:,}".format(p.seats) }} seats{% if ballpark.seats and p.seats > ballpark.seats %} ({{ "{:+,}".format(p.seats - ballpark.seats) }}){% endif %}{% endif %}
+          {%- if p.adds_seats %} · {{ "{:+,}".format(p.adds_seats) }} seats{% endif %}
         </div>
-        {% if p.build_text and (p.built is none or p.can) %}<div class="bud-note">{{ p.build_text }}</div>{% endif %}
+        {% if p.stadium %}<div class="bud-note">Includes club seats, luxury suites, the fan plaza and video board and a full renovation{% if p.includes_addons %}, plus {{ p.includes_addons }}{% endif %}.</div>{% endif %}
+        {% if p.build_text and (p.built is none or p.can) and not (p.blocked or '').startswith('Included') %}<div class="bud-note">{{ p.build_text }}</div>{% endif %}
         {% if p.built is not none and p.can %}<div class="bud-note bud-good">{{ p.status }}</div>{% endif %}
       </div>
       {% if p.built is not none and not p.can %}
@@ -224,7 +232,7 @@
       {% endif %}
     </form>
     {% endfor %}
-    <div class="bud-line">Upgrades are your owner's to pay for, from their bank, so they don't come off your budget or this season's profit; what they earn goes into profit every season after. Your owner only builds with savings to spare: the bank has to hold {% if ballpark.floor_caps == 1 %}a full season's cap{% else %}{{ ballpark.floor_caps }} caps{% endif %} after paying (for a new stadium, paid as it goes up, after paying half). Club seats open right away; the rest take a season or more to build. One project ordered a season, from the draft to Opening Day.</div>
+    <div class="bud-line">Upgrades are your owner's to pay for, from their bank, so they don't come off your budget or this season's profit; what they earn goes into profit every season after. Your owner only builds with savings to spare: the bank has to hold {% if ballpark.floor_caps == 1 %}a full season's cap{% else %}{{ ballpark.floor_caps }} caps{% endif %} after paying (for a new stadium, paid as it goes up, after paying half). Club seats and the party deck open right away; the rest take a season or more to build. One project ordered a season, from the draft to Opening Day.</div>
   </div>
 </div>
 {% if park_saved %}<script>if (window.gmToast) gmToast('Ballpark project ordered');</script>{% endif %}
