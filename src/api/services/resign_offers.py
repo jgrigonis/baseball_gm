@@ -15,8 +15,10 @@ a salary and a number of seasons. He answers right away, like a free agent
   insult him: talks close for the window. One who could walk (a veteran,
   or an unhappy player) then raises his price or refuses to re-sign; one
   under team control holds a bigger grudge.
-- No offers to an arbitration player, a refuser, one asking the minimum, or
-  in a league without money (offseason_fa.no_offer).
+- No offers to a refuser, one asking the minimum for one season (an
+  arbitration player can still be offered an extension), or in a league
+  without money (offseason_fa.no_offer). One asking the minimum for more
+  seasons can be offered fewer.
 
 AI teams negotiate their own re-signs too (Josh, 2026-11-18: ai_negotiate),
 when the offseason runs, for the players they mean to keep. The GM opens by

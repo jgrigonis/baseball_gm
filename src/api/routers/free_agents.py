@@ -108,8 +108,9 @@ def free_agents_tab(
             card["salary"] = deal.salary
             card["salary_text"] = format_salary(deal.salary)
             card["ask_years"] = deal.years
-            # Above the minimum there's room to talk (fa_offers.py).
-            card["can_offer"] = deal.salary > lowest
+            # Above the minimum, or for more than one season, there's room
+            # to talk (fa_offers.py).
+            card["can_offer"] = deal.salary > lowest or deal.years > 1
         last = last_team.get(row["id"])
         card["last_team"] = names.get(last) if last else None
         players.append(card)

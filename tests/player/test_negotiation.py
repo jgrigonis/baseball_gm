@@ -145,3 +145,19 @@ def test_home_insults_need_a_big_lowball_and_never_bother_the_easygoing():
     # Hotter tempers take it personally more often.
     assert _s(home=True, temper=100).home_insulted(7_000_000, 10_000_000, 0.95)
     assert not _s(home=True, temper=30).home_insulted(7_000_000, 10_000_000, 0.6)
+
+
+def test_a_veteran_asking_the_minimum_for_two_seasons_can_be_offered_one():
+    # Josh, 2026-11-18: a 39-year-old asking the minimum for 2 seasons.
+    low = 950_000
+    vet = dict(ask_salary=low, ask_years=2, age=39, minimum=low, home=True)
+    # A loyal one with years at his club takes a single season at the minimum.
+    assert _s(**vet, loyalty=70, seasons=6).takes(low, 1)
+    # A proud one wants a little more for giving up the second season, never
+    # a lowball he'd hold against you or be insulted by.
+    proud = _s(**vet, ego=90, loyalty=20, seasons=1)
+    assert not proud.takes(low, 1)
+    want = proud.counter(1, round_up)
+    assert low < want <= low * ng.MAX_COUNTER
+    assert proud.grudge(low, want) == 0
+    assert not proud.home_insulted(low, want, 0.0)

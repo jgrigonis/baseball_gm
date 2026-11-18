@@ -276,7 +276,7 @@ window.offerFreeAgent = async function(pid, name) {
   const vals = await gmConfirm({
     title: `Offer ${name} a deal?`,
     lines: [
-      `He asks ${term(ask.ask_text, ask.ask_years)}. Sign pays that. You can offer less money or a different number of seasons, and he answers right away.`,
+      `He asks ${term(ask.ask_text, ask.ask_years)}. Sign pays that. ${ask.ask_salary <= ask.min_salary ? "That's the minimum, so you can only offer a different number of seasons." : 'You can offer less money or a different number of seasons.'} He answers right away.`,
       ...ask.hints,
       c ? `He said he'd take ${term(c.salary_text, c.years)}.` : '',
       ask.offers_left
@@ -428,7 +428,7 @@ window.offerExpiring = async function(pid, name) {
       ext
         ? `Arbitration pays him ${term(ask.ask_text, 1)} (season ${ext.arb_season} of 6; his market price is ${ext.market_text}). ` +
           `An extension of ${ext.min_years} seasons or more buys out his arbitration seasons and can run into his free agency. He takes less for the security, and he answers right away.`
-        : `He asks ${term(ask.ask_text, ask.ask_years)}. Re-sign pays that. You can offer less money or a different number of seasons, and he answers right away.`,
+        : `He asks ${term(ask.ask_text, ask.ask_years)}. Re-sign pays that. ${ask.ask_salary <= ask.min_salary ? "That's the minimum, so you can only offer a different number of seasons." : 'You can offer less money or a different number of seasons.'} He answers right away.`,
       ...ask.hints,
       ask.agreed ? `He's agreed to ${term(ask.agreed.salary_text, ask.agreed.years)}.` : '',
       c && !ask.agreed ? `He said he'd take ${term(c.salary_text, c.years)}.` : '',
