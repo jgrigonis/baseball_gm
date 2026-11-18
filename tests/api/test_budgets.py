@@ -1855,8 +1855,7 @@ def test_a_new_stadium_includes_the_upgrades_and_lower_tier_add_ons():
     assert fn.included("stadium_basic") == fn.UPGRADES
     assert fn.included("stadium_showpiece#2") == tuple(
         f"{k}#2"
-        for k in fn.UPGRADES
-        + ("party_deck", "upper_deck", "premium_club", "hall_kids")
+        for k in fn.UPGRADES + ("party_deck", "upper_deck", "premium_club", "hall_kids")
     )
     # Fans add up to the +5/8/12 Josh set.
     assert [fn.project_fans(k) for k in fn.STADIUM_TIERS] == [5, 8, 12]
@@ -1919,7 +1918,9 @@ def test_stadium_add_ons_unlock_once_the_stadium_opens(lg):
     # park's can be bought, and the add-ons wait for opening day.
     assert offers["club_seats"]["built"] == 2025
     assert offers["suites"]["blocked"] == "Included in your new stadium"
-    assert offers["premium_club"]["blocked"] == "Unlocks when your stadium opens in 2030"
+    assert (
+        offers["premium_club"]["blocked"] == "Unlocks when your stadium opens in 2030"
+    )
     assert x.budgets.ballparks(x.league.id, 2029)[x.mine.id] == ["club_seats"]
     assert x.budgets.ballparks(x.league.id, 2030)[x.mine.id] == ["stadium_modern"]
     x.budgets.for_league(x.league.id, 2030)
