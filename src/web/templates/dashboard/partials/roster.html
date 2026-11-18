@@ -471,6 +471,10 @@ const LONG_FORM = {{ long_form | default(false) | tojson }};
 const LIMITS    = {{ active_limits | default(none) | tojson }};
 // The league's next game day: an injured-list player comes back from it.
 const TODAY     = {{ il_today | default('') | tojson }};
+// Strategy tab's Rest rusty players: a rusty player sits on game days, so
+// Pick Top 40 leaves a rusty healed player on the injured list and Pick
+// Top 26 rates rusty players last.
+const REST_RUSTY = {{ rest_rusty | default(false) | tojson }};
 
 
 /* ── State ──────────────────────────────────────────────────────────────────── */
@@ -485,6 +489,9 @@ let lastSavedIds = new Set([...SERVER_FORTY]);
 let lastSavedActive = new Set([...SERVER_ACTIVE]);
 let fortyMan;
 let active = new Set([...SERVER_ACTIVE]);
+// Long Form: healed players Pick Top 40 takes off the injured list. They
+// come off it when the roster is saved.
+let activating = new Set();
 let rosterSaved = false;
 
 let colState = {
@@ -571,16 +578,24 @@ function isCatcher(p) {
 function pickTopForty() {
   // Injured players already on the 40-man stay (Remove Injured drops them);
   // injured players in the organization aren't brought up. So does anyone
-  // on the injured list, healed or not: he comes off it with Activate. He
-  // isn't picked a second time (that left the 40-man at 39), and the 60-day
-  // list doesn't count toward the 40.
-  const keep = ALL_PLAYERS.filter(p => (p.injured || p.il) && fortyMan.has(p.player_id));
+  // still on the injured list, and the 60-day list doesn't count toward
+  // the 40.
+  //
+  // Long Form: healed players on the injured list come off it with the
+  // save. A 10- or 15-day player already holds his 40-man spot, so he's
+  // activated; a 60-day player has to win a spot like anyone else. With
+  // Rest rusty players on (Strategy tab), a healed player who's still rusty
+  // stays on the list: he'd sit anyway, and rust fades as fast there.
+  const offIL = p => LONG_FORM && p.il && p.il.ready && fortyMan.has(p.player_id)
+                     && !(REST_RUSTY && p.rust);
+  const keep = ALL_PLAYERS.filter(p => fortyMan.has(p.player_id) &&
+    (p.injured || (p.il && !(offIL(p) && p.il.kind === 60))));
   const counted = keep.filter(p => !(p.il && p.il.kind === 60)).length;
   const slots = Math.max(0, 40 - counted);
   const kept = new Set(keep.map(p => p.player_id));
   // Best overall grade first; on a tie, whoever is already on the 40-man
   // keeps the spot so the button doesn't churn equal players.
-  const pool = ALL_PLAYERS.filter(p => !p.injured && !p.il && !kept.has(p.player_id)).sort((a, b) =>
+  const pool = ALL_PLAYERS.filter(p => !p.injured && (!p.il || offIL(p)) && !kept.has(p.player_id)).sort((a, b) =>
     (gradeVal(a.overall) - gradeVal(b.overall)) ||
     ((fortyMan.has(b.player_id) ? 1 : 0) - (fortyMan.has(a.player_id) ? 1 : 0)));
 
@@ -599,17 +614,33 @@ function pickTopForty() {
   take(() => true, slots);
 
   const next = new Set([...keep.map(p => p.player_id), ...picked]);
+  const nextOff = new Set(ALL_PLAYERS.filter(p => offIL(p) && next.has(p.player_id)).map(p => p.player_id));
   const added   = [...next].filter(id => !fortyMan.has(id)).length;
   const removed = [...fortyMan].filter(id => !next.has(id)).length;
-  if (!added && !removed) { showFeedback('Already your top 40', 'var(--text-dim)'); return; }
+  const newlyOff = [...nextOff].filter(id => !activating.has(id));
+  const held = LONG_FORM ? ALL_PLAYERS.filter(p => p.il && p.il.ready && REST_RUSTY && p.rust && fortyMan.has(p.player_id)).length : 0;
+  if (!added && !removed && !newlyOff.length) {
+    showFeedback(held ? `Already your top 40 (${held} rusty kept on the IL: Rest rusty players)` : 'Already your top 40', 'var(--text-dim)');
+    return;
+  }
   fortyMan = next;
   active = new Set([...active].filter(id => fortyMan.has(id)));
+  activating = nextOff;
+  // Off the IL and onto the active roster where there's room (best first,
+  // rated with any rust taken off), otherwise the reserve.
+  newlyOff.map(byId).sort((a, b) => gradeVal(playGrade(a)) - gradeVal(playGrade(b)))
+    .forEach(p => { if (!activeBlock(p)) active.add(p.player_id); });
   commit();
   const parts = [];
   if (added)   parts.push(`${added} in`);
   if (removed) parts.push(`${removed} out`);
-  showFeedback(`Top 40: ${parts.join(', ')}`, 'var(--green)');
+  if (newlyOff.length) parts.push(`${newlyOff.length} off the IL`);
+  if (held) parts.push(`${held} rusty kept on the IL`);
+  showFeedback(`Top 40: ${parts.join(', ')}. Save to keep it.`, 'var(--green)');
 }
+
+// The grade a player plays at today: his rust taken off (rusty_overall).
+function playGrade(p) { return p.rusty_overall || p.overall; }
 
 function removeInjured() {
   if (LONG_FORM) {
@@ -646,9 +677,11 @@ function removeFromRoster(pid) {
 function isPitcher(p) { return p.player_type === 'pitcher'; }
 function byId(id) { return ALL_PLAYERS.find(p => p.player_id === id); }
 // Long Form's injured list: on it (p.il), or could go on it (p.il_kinds).
-function onIL(id) { const p = byId(id); return !!(p && p.il); }
+// A healed player Pick Top 40 is taking off it counts as off.
+function ilOf(p) { return p && p.il && !activating.has(p.player_id) ? p.il : null; }
+function onIL(id) { return !!ilOf(byId(id)); }
 // The 40-man as it counts: the 60-day injured list doesn't.
-function countForty() { return [...fortyMan].filter(id => { const p = byId(id); return !(p && p.il && p.il.kind === 60); }).length; }
+function countForty() { return [...fortyMan].filter(id => { const il = ilOf(byId(id)); return !(il && il.kind === 60); }).length; }
 function shortDate(iso) {
   const d = new Date(iso + 'T12:00:00');
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
@@ -689,7 +722,7 @@ function activePitchers() { return [...active].filter(id => isPitcher(byId(id) |
 
 // Why he can't go on the active roster right now, or '' if he can.
 function activeBlock(p) {
-  if (p.il) return 'Activate him from the injured list first';
+  if (ilOf(p)) return 'Activate him from the injured list first';
   if (active.size >= LIMITS.max) return `Active roster full (${LIMITS.max} max)`;
   if (isPitcher(p) && activePitchers() >= LIMITS.pitchers) return `${LIMITS.pitchers} pitchers max on the active roster`;
   return '';
@@ -729,10 +762,14 @@ function secDrop(e, sec) {
 }
 
 // Best healthy 40-man players: two catchers, a full pitching staff, then the
-// best hitters. Injured players come off.
+// best hitters. Injured players come off. Rusty players are rated with their
+// rust taken off, the way they play today; with Rest rusty players on they
+// go last, picked only to fill the roster.
 function pickTopActive() {
-  const pool = [...fortyMan].map(byId).filter(p => p && !p.injured && !p.il).sort((a, b) =>
-    (gradeVal(a.overall) - gradeVal(b.overall)) ||
+  const sits = p => (REST_RUSTY && p.rust) ? 1 : 0;
+  const pool = [...fortyMan].map(byId).filter(p => p && !p.injured && !ilOf(p)).sort((a, b) =>
+    (sits(a) - sits(b)) ||
+    (gradeVal(playGrade(a)) - gradeVal(playGrade(b))) ||
     ((active.has(b.player_id) ? 1 : 0) - (active.has(a.player_id) ? 1 : 0)));
   const picked = new Set();
   let pitchers = 0;
@@ -781,6 +818,7 @@ function rosterChanges() {
   list('Onto the 40-man', [...fortyMan].filter(id => !lastSavedIds.has(id)));
   list('Off the 40-man', [...lastSavedIds].filter(id => !fortyMan.has(id)));
   if (LONG_FORM) {
+    list('Off the injured list', [...activating]);
     list('Onto the active roster', [...active].filter(id => !lastSavedActive.has(id)));
     // Leaving the 40-man already says he's off the active roster.
     list('Off the active roster', [...lastSavedActive].filter(id => !active.has(id) && fortyMan.has(id)));
@@ -797,12 +835,14 @@ window.showRosterChanges = showRosterChanges;
 function revertToSaved() {
   fortyMan = new Set([...lastSavedIds]);
   active = new Set([...lastSavedActive]);
+  activating = new Set();
   commit();
   showFeedback('Reverted to saved', 'var(--text-dim)');
 }
 
 /* ── Unsaved tracking ───────────────────────────────────────────────────────── */
 function hasUnsavedChanges() {
+  if (activating.size) return true;
   if (fortyMan.size !== lastSavedIds.size) return true;
   for (const id of fortyMan) { if (!lastSavedIds.has(id)) return true; }
   if (active.size !== lastSavedActive.size) return true;
@@ -832,7 +872,7 @@ function salaryPiece(p) {
 function makeCard(p, isIn40, sec) {
   const el = document.createElement('div');
   el.className = 'r-card';
-  el.draggable = !p.il;
+  el.draggable = !ilOf(p);
   el.dataset.id = p.player_id;
   if (p.injured) el.style.borderLeft = p.returning ? '3px solid #a07800' : '3px solid var(--red)';
 
@@ -845,7 +885,7 @@ function makeCard(p, isIn40, sec) {
                aria-label="${on ? 'Take' : 'Put'} ${p.first_name} ${p.last_name} ${on ? 'off' : 'on'} the active roster"
                onclick="event.stopPropagation();toggleActive('${p.player_id}')">${on ? '↓' : '↑'}</button>`;
   // Injured list: Activate for a player on it, IL for a hurt one who isn't.
-  const il = p.il;
+  const il = ilOf(p);
   const ilBtn = p.il_kinds ? `<button class="r-action-btn il-btn" title="Put him on the injured list"
                onclick="event.stopPropagation();placeOnIL('${p.player_id}')">IL</button>` : '';
   const backBtn = il ? `<button class="r-action-btn back-btn" ${il.ready ? '' : 'disabled'}
@@ -898,7 +938,7 @@ function makeCard(p, isIn40, sec) {
 
   /* Drop target: cross-column drop = swap */
   el.addEventListener('dragover', e => {
-    if (!_dragging || _dragging === p.player_id || p.il) return;
+    if (!_dragging || _dragging === p.player_id || ilOf(p)) return;
     const targetIn40 = isIn40;
     const srcIn40    = _draggingFrom === '40man';
     // Same column is only a swap between Long Form's active and reserve.
@@ -913,7 +953,7 @@ function makeCard(p, isIn40, sec) {
     e.preventDefault();
     e.stopPropagation();
     el.classList.remove('drag-swap');
-    if (!_dragging || _dragging === p.player_id || p.il) return;
+    if (!_dragging || _dragging === p.player_id || ilOf(p)) return;
     const targetIn40 = isIn40;
     const srcIn40    = _draggingFrom === '40man';
     if (targetIn40 === srcIn40) {
@@ -951,6 +991,8 @@ function eligTag(p) {
     : '';
 }
 function ilListTag(p) {
+  if (p.il && activating.has(p.player_id))
+    return `<span class="r-il-tag ready" title="Pick Top 40 is taking him off the ${p.il.kind}-day injured list. He comes off it when you save.">Off the IL on save</span>`;
   if (!p.il) return '';
   const when = p.il.ready ? 'ready' : (p.il.eligible_on > TODAY ? 'back ' + shortDate(p.il.eligible_on) : 'still hurt');
   return `<span class="r-il-tag${p.il.ready ? ' ready' : ''}">${p.il.kind}-day IL · ${when}</span>`;
@@ -1071,7 +1113,7 @@ function renderActiveSections(col) {
     .forEach(p => col.appendChild(makeCard(p, true, 'reserve')));
   const hurt = [...fortyMan].filter(onIL);
   if (hurt.length) {
-    const sixty = hurt.filter(id => byId(id).il.kind === 60).length;
+    const sixty = hurt.filter(id => ilOf(byId(id)).kind === 60).length;
     sec(`<span class="r-sec-label" style="color:var(--red);">Injured list</span><b>${hurt.length}</b>
          <span class="r-sec-note">${sixty ? `${sixty} on the 60-day, off the 40-man count` : 'On the 40-man, can\'t play'}</span>`);
     sortedPlayers(hurt, '40').filter(p => isVisible(p, '40'))
@@ -1110,9 +1152,22 @@ async function saveRoster() {
     const res = await fetch(`/leagues/${LEAGUE_ID}/roster/save`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ forty_man: [...fortyMan], active: [...active] }),
+      body: JSON.stringify({ forty_man: [...fortyMan], active: [...active], activate: [...activating] }),
     });
     if (res.ok) {
+      // Off the injured list: the cards (and their IL tags) come fresh.
+      if (activating.size) {
+        const n = activating.size;
+        activating = new Set();
+        lastSavedIds = new Set([...fortyMan]);
+        lastSavedActive = new Set([...active]);
+        rosterSaved = true;
+        saveToStorage();
+        gmToast(`✓ Roster saved, ${n} off the injured list`, 'ok');
+        if (window.refreshNextMove) window.refreshNextMove();
+        reloadTab();
+        return true;
+      }
       lastSavedIds = new Set([...fortyMan]);
       lastSavedActive = new Set([...active]);
       rosterSaved = true;

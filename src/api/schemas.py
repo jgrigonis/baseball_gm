@@ -271,6 +271,9 @@ class RosterSaveRequest(BaseModel):
     forty_man: list[str] = []
     # Long Form: who of the 40-man is on the active (26-man) roster.
     active: list[str] = []
+    # Long Form: healed players to take off the injured list with this save
+    # (Pick Top 40 picks them).
+    activate: list[str] = []
 
 
 class InjuredListRequest(BaseModel):

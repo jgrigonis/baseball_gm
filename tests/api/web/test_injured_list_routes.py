@@ -107,6 +107,78 @@ def test_activate_waits_for_the_days(client, db_conn, setup):
     assert r.json()["to"] == "26man"
 
 
+def test_save_takes_healed_players_off_the_il(client, db_conn, setup):
+    """Pick Top 40 sends the healed players it activates with the save."""
+    league, _, _, _, hitters, pitchers = setup
+    client.post(f"/leagues/{league.id}/roster/{hitters[0].id}/il", json={"kind": 10})
+    every = [p.id for p in hitters + pitchers]
+    active = [p.id for p in hitters[1:13] + pitchers]
+    body = {
+        "forty_man": every,
+        "active": active + [hitters[0].id],
+        "activate": [hitters[0].id],
+    }
+    # Still hurt and inside his days: no.
+    r = client.put(f"/leagues/{league.id}/roster/save", json=body)
+    assert r.status_code == 422 and "until" in r.json()["detail"]
+    db_conn.execute(
+        "UPDATE player_injuries SET return_date = '2025-05-01' WHERE player_id = %s",
+        (hitters[0].id,),
+    )
+    db_conn.execute(
+        "UPDATE injured_list SET eligible_on = '2025-05-09' WHERE player_id = %s",
+        (hitters[0].id,),
+    )
+    # Healed: off the list and onto the active roster in the one save.
+    r = client.put(f"/leagues/{league.id}/roster/save", json=body)
+    assert r.status_code == 200, r.text
+    assert PlayerStatusRepository(db_conn).get_status(hitters[0].id) == "26man"
+    left = db_conn.execute(
+        "SELECT activated_on FROM injured_list WHERE player_id = %s", (hitters[0].id,)
+    ).fetchone()
+    assert left["activated_on"] is not None
+
+
+def test_a_60_day_player_coming_off_counts_toward_the_40(
+    client, db_conn, factory, setup
+):
+    league, _, team, _, hitters, pitchers = setup
+    client.post(f"/leagues/{league.id}/roster/{hitters[0].id}/il", json={"kind": 60})
+    db_conn.execute(
+        "UPDATE player_injuries SET return_date = '2025-05-01' WHERE player_id = %s",
+        (hitters[0].id,),
+    )
+    db_conn.execute(
+        "UPDATE injured_list SET eligible_on = '2025-05-09' WHERE player_id = %s",
+        (hitters[0].id,),
+    )
+    extra = [factory.rated_player(team, league, status="minors") for _ in range(14)]
+    forty = [p.id for p in hitters + pitchers + extra]  # 40 counted + him
+    active = [p.id for p in hitters[1:13] + pitchers]
+    r = client.put(
+        f"/leagues/{league.id}/roster/save", json={"forty_man": forty, "active": active}
+    )
+    assert r.status_code == 200, r.text
+    r = client.put(
+        f"/leagues/{league.id}/roster/save",
+        json={"forty_man": forty, "active": active, "activate": [hitters[0].id]},
+    )
+    assert r.status_code == 422 and "exceed 40" in r.json()["detail"]
+
+
+def test_roster_tab_knows_rest_rusty(client, db_conn, setup):
+    league, _, _, gm, _, _ = setup
+    html = client.get(f"/leagues/{league.id}/roster").text
+    assert "const REST_RUSTY = false" in html
+    db_conn.execute(
+        """INSERT INTO gm_profiles (gm_id, rest_rusty) VALUES (%s, TRUE)
+           ON CONFLICT (gm_id) DO UPDATE SET rest_rusty = TRUE""",
+        (gm.id,),
+    )
+    html = client.get(f"/leagues/{league.id}/roster").text
+    assert "const REST_RUSTY = true" in html
+
+
 def test_roster_tab_offers_the_il(client, setup):
     league, _, _, _, hitters, _ = setup
     html = client.get(f"/leagues/{league.id}/roster").text
