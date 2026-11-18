@@ -1950,3 +1950,20 @@ def test_the_budget_tab_says_what_the_park_holds(lg, client_for):
     assert "includes all the ballpark features above" in page
     assert "Stadium add-ons" in page and "Unlocks with a Basic stadium" in page
     assert "plus outfield party deck and upper deck expansion" in page
+
+
+def test_only_a_project_you_can_order_says_when_it_opens(lg, client_for):
+    """Josh, 2026-11-18: "opens 2032" only beside an active Build button."""
+    x = lg()
+    _owned(x, spending=95)
+    x.budgets.for_league(x.league.id, 2026)
+    client = client_for(x)
+    # In season nothing can be ordered: no project says when it opens.
+    page = client.get(f"/leagues/{x.league.id}/budget").text
+    assert "1 season to build" in page and "to build, opens" not in page
+    x.db.execute("UPDATE leagues SET state = 'preseason' WHERE id = %s", (x.league.id,))
+    page = client.get(f"/leagues/{x.league.id}/budget").text
+    # Suites can be built now; the Basic stadium's add-ons can't.
+    assert "1 season to build, opens 2027" in page
+    i = page.index("Upper deck expansion")
+    assert "opens 20" not in page[i : page.index("</form>", i)]

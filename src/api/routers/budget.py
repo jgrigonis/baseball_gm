@@ -598,6 +598,13 @@ def _ballpark_view(
                 status += ", old enough to replace"
         else:
             status = None
+        can = (
+            open_
+            and (o["built"] is None or o["rebuild"])
+            and not o["short"]
+            and not o["waiting"]
+            and not o["blocked"]
+        )
         rows.append(
             {
                 **o,
@@ -605,11 +612,7 @@ def _ballpark_view(
                 "earns_text": _money(o["earns"]) if o["earns"] else None,
                 "payback_text": payback,
                 "short_text": _money(o["short"]) if o["short"] else None,
-                "can": open_
-                and (o["built"] is None or o["rebuild"])
-                and not o["short"]
-                and not o["waiting"]
-                and not o["blocked"],
+                "can": can,
                 "new": o["built"] == year,
                 "status": status,
                 # A higher tier comes with the lower tiers' add-ons.
@@ -622,8 +625,11 @@ def _ballpark_view(
                 )
                 if o["stadium"]
                 else None,
+                # Only a project that can be ordered now says when it
+                # would open (Josh, 2026-11-18).
                 "build_text": (
-                    f"{_seasons(o['build'])} to build, opens {o['opens']}"
+                    f"{_seasons(o['build'])} to build"
+                    + (f", opens {o['opens']}" if can else "")
                     if o["build"]
                     else None
                 ),
