@@ -1660,10 +1660,11 @@ def test_a_new_stadium_takes_seasons_and_replaces_a_renovation():
         (2028, 100 * m),
     ]
     assert fn.installments(50 * m, 2026, 2026) == [(2026, 50 * m)]
+    # A new stadium does away with all of the old park's upgrades.
     assert fn.open_projects(["renovation", "stadium_basic", "suites"]) == {
         "stadium_basic",
-        "suites",
     }
+    assert fn.blocked_by("suites", ["stadium_basic"]) == "stadium_basic"
     assert fn.blocked_by("stadium_modern", ["stadium_basic"]) == "stadium_basic"
     assert fn.blocked_by("renovation", ["stadium_basic"]) == "stadium_basic"
     assert fn.blocked_by("stadium_basic", ["renovation"]) is None
@@ -1697,7 +1698,7 @@ def test_a_rich_owner_builds_a_new_stadium_over_seasons(lg):
         o["key"]: o for o in x.budgets.ballpark_offers(x.league.id, x.mine.id, 2027)
     }
     assert offers["renovation"]["blocked"] and offers["stadium_modern"]["blocked"]
-    assert "Replaced by your new stadium" in x.budgets.build(
+    assert "Included in your new stadium" in x.budgets.build(
         x.league.id, x.mine.id, 2027, "renovation"
     )
     assert x.budgets.ballparks(x.league.id, 2028) == {}
@@ -1823,7 +1824,7 @@ def test_a_stadium_25_seasons_old_can_be_replaced_at_its_tier_or_higher(lg):
     second = fn.project_money("stadium_modern#2", 100 * m, 3, 60, 100 * m)
     assert second == pytest.approx(first * 1.10, rel=0.01)
     assert fn.ballpark_fans(["stadium_modern#2"]) == round(
-        fn.project("stadium_modern").fans * 1.10
+        fn.project_fans("stadium_modern") * 1.10
     )
 
     assert y.budgets.build(y.league.id, y.mine.id, 2026, "stadium_modern") is None
@@ -1840,3 +1841,112 @@ def test_a_stadium_25_seasons_old_can_be_replaced_at_its_tier_or_higher(lg):
         o["key"]: o for o in y.budgets.ballpark_offers(y.league.id, y.mine.id, 2027)
     }
     assert offers["stadium_showpiece"]["blocked"] == "Your new stadium is going up"
+
+
+# ── A new stadium includes the upgrades; tier add-ons ─────────────────────────
+
+
+def test_a_new_stadium_includes_the_upgrades_and_lower_tier_add_ons():
+    """Josh, 2026-11-18: a new stadium comes with club seats, suites, the
+    plaza and a renovation, and a higher tier with the lower tiers' add-ons;
+    each tier's add-ons only count in the stadium they were built for."""
+    from src.league import finances as fn
+
+    assert fn.included("stadium_basic") == fn.UPGRADES
+    assert fn.included("stadium_showpiece#2") == tuple(
+        f"{k}#2"
+        for k in fn.UPGRADES + ("party_deck", "upper_deck", "premium_club", "hall_kids")
+    )
+    # Fans add up to the +5/8/12 Josh set.
+    assert [fn.project_fans(k) for k in fn.STADIUM_TIERS] == [5, 8, 12]
+    cap, m = 160_000_000, 1_000_000
+    average = cap * 2.08
+    args = (average, 3, 50, round(average))
+    upgrades = sum(fn.project_money(k, *args) for k in fn.UPGRADES)
+    for k in fn.STADIUM_TIERS:
+        # Never earns less than the upgrades it does away with, and still
+        # pays back inside a league.
+        assert fn.project_money(k, *args) > upgrades + 100 * m
+        assert 4 <= fn.payback(fn.project_cost(k, cap), fn.project_value(k, *args)) <= 7
+    for k in fn.ADDONS:
+        seasons = fn.payback(fn.project_cost(k, cap), fn.project_value(k, *args))
+        assert 4.5 <= seasons <= 8.5, k
+    # The old park's upgrades stop counting once a stadium opens.
+    park = ["club_seats", "suites", "plaza", "renovation", "stadium_basic"]
+    assert fn.open_projects(park) == {"stadium_basic"}
+    assert fn.ballpark_fans(park) == 5
+    # Add-ons count in their own stadium only.
+    assert fn.open_projects(["stadium_basic", "upper_deck", "party_deck"]) == {
+        "stadium_basic",
+        "upper_deck",
+        "party_deck",
+    }
+    assert fn.open_projects(["stadium_modern#2", "upper_deck"]) == {"stadium_modern#2"}
+    assert fn.capacity(["stadium_basic", "upper_deck"]) == 48_000
+    assert fn.capacity(["stadium_modern#2", "upper_deck"]) == 48_000
+    assert fn.capacity(["club_seats"]) == fn.CROWD_CAPACITY == 42_000
+
+
+def test_stadium_add_ons_unlock_once_the_stadium_opens(lg):
+    from src.league import finances as fn
+
+    x = lg()
+    _owned(x, spending=95)
+    x.db.execute(
+        "UPDATE team_owners SET bank_start = 10000000000, bank_year = 2026"
+        " WHERE league_id = %s AND team_id = %s",
+        (x.league.id, x.mine.id),
+    )
+    x.budgets.for_league(x.league.id, 2026)
+    offers = {
+        o["key"]: o for o in x.budgets.ballpark_offers(x.league.id, x.mine.id, 2026)
+    }
+    assert offers["party_deck"]["blocked"] == "Unlocks with a Basic stadium"
+    assert offers["village"]["blocked"] == "Unlocks with a Showpiece stadium"
+    assert offers["club_seats"]["blocked"] is None
+    assert x.budgets.build(x.league.id, x.mine.id, 2026, "club_seats") is None
+    x.db.execute(
+        "UPDATE ballpark_projects SET ordered = 2025, year = 2025"
+        " WHERE league_id = %s AND team_id = %s",
+        (x.league.id, x.mine.id),
+    )
+    assert x.budgets.build(x.league.id, x.mine.id, 2026, "stadium_modern") is None
+    offers = {
+        o["key"]: o for o in x.budgets.ballpark_offers(x.league.id, x.mine.id, 2027)
+    }
+    # Club seats earn until the stadium opens; nothing else of the old
+    # park's can be bought, and the add-ons wait for opening day.
+    assert offers["club_seats"]["built"] == 2025
+    assert offers["suites"]["blocked"] == "Included in your new stadium"
+    assert (
+        offers["premium_club"]["blocked"] == "Unlocks when your stadium opens in 2030"
+    )
+    assert x.budgets.ballparks(x.league.id, 2029)[x.mine.id] == ["club_seats"]
+    assert x.budgets.ballparks(x.league.id, 2030)[x.mine.id] == ["stadium_modern"]
+    x.budgets.for_league(x.league.id, 2030)
+    offers = {
+        o["key"]: o for o in x.budgets.ballpark_offers(x.league.id, x.mine.id, 2030)
+    }
+    assert offers["club_seats"]["built"] is None
+    assert offers["club_seats"]["blocked"] == "Included in your new stadium"
+    assert offers["party_deck"]["blocked"] == "Included in your Modern stadium"
+    assert offers["village"]["blocked"] == "Unlocks with a Showpiece stadium"
+    for k in ("premium_club", "hall_kids"):
+        assert offers[k]["blocked"] is None and offers[k]["tier"] == "Modern"
+    assert x.budgets.build(x.league.id, x.mine.id, 2030, "hall_kids") is None
+    assert x.budgets.ballparks(x.league.id, 2031)[x.mine.id] == [
+        "hall_kids",
+        "stadium_modern",
+    ]
+    assert fn.ballpark_fans(["hall_kids", "stadium_modern"]) == 12
+
+
+def test_the_budget_tab_says_what_the_park_holds(lg, client_for):
+    x = lg()
+    _owned(x, spending=95)
+    x.budgets.for_league(x.league.id, 2026)
+    page = client_for(x).get(f"/leagues/{x.league.id}/budget").text
+    assert "Your ballpark holds 42,000 fans." in page
+    assert "includes all the ballpark features above" in page
+    assert "Stadium add-ons" in page and "Unlocks with a Basic stadium" in page
+    assert "plus outfield party deck and upper deck expansion" in page
