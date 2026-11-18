@@ -123,6 +123,24 @@ def _entry(p, r, status, role, slot="") -> dict:
     }
 
 
+def _field_grades(e: dict, r, pos: str) -> dict:
+    """The field's three views of a hitter (Josh, 2026-11-18): his overall
+    grade (the default), his glove at this spot, and his bat. `pos` is ""
+    for the DH, who has no glove grade."""
+    ovr = overall_to_grade(r["overall_player"], "hitter")
+    off = role_to_grade(r["overall_offense"], "overall_offense")
+    dfn = role_to_grade(r[pos], pos) if pos else None
+    e["field"] = {
+        "ovr": ovr,
+        "def": dfn,
+        "off": off,
+    }
+    e["field_weak"] = {
+        k: bool(g) and _worse(g, WEAK_BELOW) for k, g in e["field"].items()
+    }
+    return e
+
+
 def depth_chart(db, league_id: str, season_id: str | None, team_id: str) -> dict | None:
     """Everything both views show for `team_id`, or None if it isn't in the
     league this season."""
@@ -260,10 +278,12 @@ def depth_chart(db, league_id: str, season_id: str | None, team_id: str) -> dict
             else {"slot": pos.upper(), "name": None, "grade": "F", "weak": True}
         )
         e["spot"] = pos
+        if pid:
+            _field_grades(e, by_id[pid][1], pos)
         e["backups"] = [
             b
             for b in (
-                _entry(p, r, s, pos)
+                _field_grades(_entry(p, r, s, pos), r, pos)
                 for p, r, s in sorted(
                     (x for x in org_hitters if x[0].id not in in_nine),
                     key=lambda x: x[1][pos],
@@ -275,7 +295,9 @@ def depth_chart(db, league_id: str, season_id: str | None, team_id: str) -> dict
         defense.append(e)
     dh = next(
         (
-            _entry(*by_id[p.id], "overall_offense", "DH")
+            _field_grades(
+                _entry(*by_id[p.id], "overall_offense", "DH"), by_id[p.id][1], ""
+            )
             for p, pos in nine
             if pos == "dh"
         ),

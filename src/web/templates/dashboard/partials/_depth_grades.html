@@ -5,3 +5,8 @@
 {% macro nexts(list) %}{% for b in list %}{% if not loop.first %} · {% endif %}<a href="#" class="dc-bk-name" onclick="event.preventDefault(); openPlayerPanel('{{ b.id }}')">{{ b.last }}</a> {{ gr(b.grade) }}{{ aaa(b) }}{% endfor %}{% endmacro %}
 {% macro head(g) %}<div class="dc-card-h"><b>{{ g.label }}</b><span>{{ gr(g.grade, 'dc-big') }} <span class="dc-rank{% if g.weak %} dc-weak{% endif %}">{{ g.rank_text }}</span></span></div>{% endmacro %}
 {% macro row(e) %}<div class="dc-row{% if e.weak %} dc-flag{% endif %}"><span class="dc-slot">{{ e.slot }}</span><span class="dc-nm">{% if e.name %}{{ who(e) }}{% if e.pos %} <span class="dc-poslbl">{{ e.pos }}</span>{% endif %}{{ aaa(e) }}{% else %}<span class="dc-weak">Nobody</span>{% endif %}</span>{% if e.name %}{{ gr(e.grade) }}{% endif %}{% if e.backups is defined %}<span class="dc-bk{% if not e.backups %} dc-none{% endif %}">{% if e.backups %}next: {{ nexts(e.backups) }}{% else %}no backup rated C- or better{% endif %}</span>{% endif %}</div>{% endmacro %}
+{# The field's grade in each view (Overall / Defense / Offense); CSS shows
+   the one picked in .dc-field[data-mode]. #}
+{% macro fg(e) %}{% for m in ('ovr', 'def', 'off') %}<span class="dc-m dc-m-{{ m }}">{% if e.field[m] %}{{ gr(e.field[m]) }}{% else %}<span class="dc-g dc-dash" title="No glove grade at DH">—</span>{% endif %}</span>{% endfor %}{% endmacro %}
+{% macro fflags(e) %}{% for m in ('ovr', 'def', 'off') %}{% if e.field_weak[m] %} dc-flag-{{ m }}{% endif %}{% endfor %}{% endmacro %}
+{% macro fnexts(list) %}{% for b in list %}{% if not loop.first %} · {% endif %}<a href="#" class="dc-bk-name" onclick="event.preventDefault(); openPlayerPanel('{{ b.id }}')">{{ b.last }}</a> {{ fg(b) }}{{ aaa(b) }}{% endfor %}{% endmacro %}
