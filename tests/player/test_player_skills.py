@@ -809,7 +809,9 @@ def test_focus_breakout_moves_the_cap():
     try:
         plain = skills.age_to(23, from_age=22, rng=random.Random(1), caps=dict(caps))
         moved = dict(caps)
-        broke = skills.age_to(23, from_age=22, rng=random.Random(1), caps=moved, swings=True)
+        broke = skills.age_to(
+            23, from_age=22, rng=random.Random(1), caps=moved, swings=True
+        )
     finally:
         ps_mod.winter_swing, ps_mod.focus_breakouts = orig_swing, orig_focus
     assert broke["power"] - plain["power"] in (4, 5, 6)

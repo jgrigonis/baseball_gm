@@ -49,9 +49,17 @@ def test_home_edge_is_small():
 
 
 def _batter_in_play(clutch: int) -> dict:
-    weights = {"fly_out": 4440, "ground_out": 1740, "single": 1385, "double": 430, "triple": 51}
+    weights = {
+        "fly_out": 4440,
+        "ground_out": 1740,
+        "single": 1385,
+        "double": 430,
+        "triple": 51,
+    }
     resolver = SimpleNamespace(in_play_outcome=WeightedChoice(dict(weights), Random(1)))
-    skills = {k: 50 for k in ("power", "contact", "speed", "base_running")} | {"clutch": clutch}
+    skills = {k: 50 for k in ("power", "contact", "speed", "base_running")} | {
+        "clutch": clutch
+    }
     batter = SimpleNamespace(skills=skills, get_effective_stat=lambda v: v)
     InPlayModifiers.modify_for_batter(resolver, batter, Score())  # tied game
     return resolver.in_play_outcome.get_weights()

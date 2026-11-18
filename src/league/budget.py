@@ -176,7 +176,11 @@ def tax_shares(payrolls: dict[str, int], cap: int) -> dict[str, int]:
 # five levels, set once each offseason (draft and preseason) and locked for
 # the season. Scouting waits for grade fog. Department levels are private.
 DEPARTMENTS = (
-    ("coaching", "Coaching", "How fast players grow, how often young ones break out, and how they like the staff"),
+    (
+        "coaching",
+        "Coaching",
+        "How fast players grow, how often young ones break out, and how they like the staff",
+    ),
     (
         "facilities",
         "Facilities",
