@@ -30,6 +30,7 @@ from src.db.repositories.games_repo import GameRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.series_repo import SeriesRepository
+from src.db.repositories.standings_repo import StandingsRepository
 from src.db.repositories.team_repo import TeamRepository
 from src.league.offseason.draft_strategy import CHIPS, ratings, staff_groups
 from src.league.power_rankings import (
@@ -116,11 +117,49 @@ TAGLINES = (
 
 
 # The season preview's line under the title, by how last season ended.
+# A team sees a different one each season (by year); a streak or a near
+# miss has its own lines and comes first (return_tagline).
 RETURN_TAGLINES = {
-    "champion": "Defending champions. Everyone in the league is coming for {city} now.",
-    "playoffs": "October had a taste of {mascot} baseball. {City} wants more.",
-    "winning": "A winning season behind them. Time to take the next step.",
-    "losing": "Last season is done. A clean slate for the {mascot}.",
+    "champion": (
+        "Defending champions. Everyone in the league is coming for {city} now.",
+        "The banner is up. Now the {mascot} defend{s} it.",
+        "{city} threw a parade. Now it wants another one.",
+        "Champions don’t get a head start. The {mascot} start{s} from zero like everyone else.",
+        "Every team circled the {mascot} on their schedule this winter.",
+        "The hardest thing in baseball is doing it twice. Let’s find out.",
+    ),
+    "playoffs": (
+        "October had a taste of {mascot} baseball. {city} wants more.",
+        "The {mascot} found October last year. This year they want to stay longer.",
+        "A playoff team returns. The bar has been set.",
+        "{city} got a taste of October. Nobody’s satisfied with a taste.",
+        "The {mascot} proved they belong. Now they have to prove it again.",
+        "Last fall ended too soon. Unfinished business for the {mascot}.",
+    ),
+    "winning": (
+        "A winning season behind them. Time to take the next step.",
+        "Good wasn’t good enough last year. The {mascot} {are} chasing October.",
+        "More wins than losses, and nothing to show for it. That changes now.",
+        "The {mascot} {were} close. {city} expects closer.",
+        "One step from October. Time to take it.",
+    ),
+    "losing": (
+        "Last season is done. A clean slate for the {mascot}.",
+        "Every team is 0-0 on Opening Day. Even the {mascot}.",
+        "Last year is in the books. The {mascot} would like to forget it.",
+        "Rebuilds end eventually. {city} hopes it’s this year.",
+        "Nowhere to go but up for the {mascot}.",
+        "A new season, a new chance. {city} is still watching.",
+    ),
+}
+STREAK_TAGLINES = {
+    "titles_2": "Back-to-back champions. Can the {mascot} make it three?",
+    "titles_3": "A dynasty in the making. {city} wants the next ring.",
+    "playoffs_2": "Another October for the {mascot}. {city} is getting used to this.",
+    "playoffs_3": "The {mascot} {have} been to October {n} straight years. The streak is on the line.",
+    "losing_3": "{n} losing seasons in a row. {city}’s patience has limits.",
+    "missed_by_1": "The {mascot} missed October by a game. {city} hasn’t forgotten.",
+    "missed_by_2": "Two games short last year. Every game counts this time.",
 }
 
 
@@ -321,8 +360,22 @@ def verbs(mascot: str) -> dict:
     """The verbs a tagline needs to agree with the team's name: the Titans
     are, but the Rain, the Weird and the Berlin Bear is."""
     if mascot.endswith("s"):
-        return {"are": "are", "Are": "Are", "do": "do"}
-    return {"are": "is", "Are": "Is", "do": "does"}
+        return {
+            "are": "are",
+            "Are": "Are",
+            "do": "do",
+            "have": "have",
+            "were": "were",
+            "s": "",
+        }
+    return {
+        "are": "is",
+        "Are": "Is",
+        "do": "does",
+        "have": "has",
+        "were": "was",
+        "s": "s",
+    }
 
 
 def team_colors(city: str, mascot: str) -> dict:
@@ -339,19 +392,49 @@ def team_colors(city: str, mascot: str) -> dict:
     }
 
 
-def return_tagline(city: str, mascot: str, history: dict | None) -> str:
-    """The season preview's tagline, from how the team's last season went."""
-    last = (history or {}).get("last")
-    champ = (history or {}).get("champion")
+def return_tagline(
+    city: str, mascot: str, history: dict | None, year: int | None = None
+) -> str:
+    """The season preview's tagline, from how the team's last season went:
+    a streak (two titles, two playoff trips, three losing seasons) or a
+    near miss first, else one of its outcome's lines, a new one each
+    season (by `year`)."""
+    history = history or {}
+    last = history.get("last")
+    champ = history.get("champion")
+    streak = history.get("streaks") or {}
+    games_out = history.get("games_out")
+    n = 1
+    line = None
     if champ and champ["is_mine"]:
         key = "champion"
-    elif last and last["playoffs"]:
+        n = streak.get("titles", 1)
+        if n >= 3:
+            line = STREAK_TAGLINES["titles_3"]
+        elif n == 2:
+            line = STREAK_TAGLINES["titles_2"]
+    elif last and last["playoffs"] and last["playoffs"] != "missed the playoffs":
         key = "playoffs"
+        n = streak.get("playoffs", 1)
+        if n >= 3:
+            line = STREAK_TAGLINES["playoffs_3"]
+        elif n == 2:
+            line = STREAK_TAGLINES["playoffs_2"]
     elif last and last["w"] > last["l"]:
         key = "winning"
+        if games_out is not None and games_out <= 1:
+            line = STREAK_TAGLINES["missed_by_1"]
+        elif games_out is not None and games_out <= 2:
+            line = STREAK_TAGLINES["missed_by_2"]
     else:
         key = "losing"
-    return RETURN_TAGLINES[key].format(city=city, City=city, mascot=mascot)
+        n = streak.get("losing", 1)
+        if n >= 3:
+            line = STREAK_TAGLINES["losing_3"]
+    if line is None:
+        lines = RETURN_TAGLINES[key]
+        line = lines[(year or 0) % len(lines)]
+    return line.format(city=city, City=city, mascot=mascot, n=n, **verbs(mascot))
 
 
 def movers(db, players: list[PlayerRecord], season_id: str | None) -> dict | None:
@@ -478,7 +561,53 @@ def history(db, league_id: str, team_id: str, draft_season_id: str) -> dict | No
         "seasons": len(past),
         "titles": titles,
         "playoffs": playoffs,
+        **_streaks(db, league_id, team_id, past),
     }
+
+
+def _games_behind(a: dict, b: dict) -> float:
+    """How many games team `b` finished behind team `a`."""
+    return ((a["wins"] - b["wins"]) + (b["losses"] - a["losses"])) / 2
+
+
+def _streaks(db, league_id: str, team_id: str, past: list[dict]) -> dict:
+    """The team's streaks going into the season, counted back from last
+    season: {streaks: {titles, playoffs, losing}, games_out}, where
+    games_out is how far last season's team finished behind the last
+    playoff spot when it missed (None when it made it, or with no
+    record). Stops reading seasons once every streak has ended."""
+    series = SeriesRepository(db)
+    standings = StandingsRepository(db)
+    counts = {"titles": 0, "playoffs": 0, "losing": 0}
+    alive = set(counts)
+    games_out = None
+    for i, s in enumerate(past):
+        records = standings.get_records(league_id, s["id"])
+        mine = next((r for r in records if r["team_id"] == team_id), None)
+        if mine is None or mine["wins"] + mine["losses"] == 0:
+            break
+        made = series.playoff_team_ids(s["id"])
+        champ = series.get_champion(s["id"]) if "titles" in alive else None
+        result = {
+            "titles": bool(champ and champ["team_id"] == team_id),
+            "playoffs": team_id in made,
+            "losing": mine["wins"] < mine["losses"],
+        }
+        for key in list(alive):
+            if result[key]:
+                counts[key] += 1
+            else:
+                alive.discard(key)
+        if i == 0 and made and team_id not in made:
+            last_in = [r for r in records if r["team_id"] in made]
+            if last_in:
+                worst = min(
+                    last_in, key=lambda r: r["wins"] / max(1, r["wins"] + r["losses"])
+                )
+                games_out = max(0.0, _games_behind(worst, mine))
+        if not alive:
+            break
+    return {"streaks": counts, "games_out": games_out}
 
 
 # How many of the team's biggest contracts the budget card lists.
@@ -707,7 +836,9 @@ def welcome(db, league: dict, gm: dict) -> dict | None:
     last_id = before[0] if before and not first else None
     colors = team_colors(team["city"], team["mascot"])
     if not first:
-        colors["tagline"] = return_tagline(team["city"], team["mascot"], past)
+        colors["tagline"] = return_tagline(
+            team["city"], team["mascot"], past, season["year"] if season else None
+        )
 
     return {
         "season_id": draft["season_id"],

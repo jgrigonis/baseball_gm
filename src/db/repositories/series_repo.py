@@ -90,3 +90,15 @@ class SeriesRepository:
                     round = ""
                 return f"Eliminated in {round}{series_name}"
         return None
+
+    def playoff_team_ids(self, season_id: str) -> set[str]:
+        """Every team that played a postseason game in the season."""
+        rows = self.conn.execute(
+            """SELECT DISTINCT t.team_id FROM games g
+               JOIN series s ON s.id = g.series_id
+               CROSS JOIN LATERAL (VALUES (g.home_team_id), (g.away_team_id))
+                 AS t(team_id)
+               WHERE s.season_id = %s""",
+            (season_id,),
+        ).fetchall()
+        return {r["team_id"] for r in rows}
