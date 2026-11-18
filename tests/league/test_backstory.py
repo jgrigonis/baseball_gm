@@ -388,6 +388,52 @@ def test_history_and_the_welcome_screen_show_the_past(db_conn, saved):
     assert 0 <= h["titles"] <= h["playoffs"] <= 3
 
 
+def test_history_counts_each_teams_streaks_going_into_the_season(db_conn, saved):
+    from src.api.view_models.welcome import history
+    from src.db.repositories.standings_repo import StandingsRepository
+
+    league, s, bs = saved.league, saved.season, saved.bs
+    series, standings = SeriesRepository(db_conn), StandingsRepository(db_conn)
+    newest_first = list(reversed(bs.season_ids))
+    made = {sid: series.playoff_team_ids(sid) for sid in newest_first}
+    champs = {sid: series.get_champion(sid)["team_id"] for sid in newest_first}
+    records = {
+        sid: {r["team_id"]: r for r in standings.get_records(league.id, sid)}
+        for sid in newest_first
+    }
+    assert all(len(m) == 8 for m in made.values())
+
+    def run(test):
+        n = 0
+        for sid in newest_first:
+            if not test(sid):
+                break
+            n += 1
+        return n
+
+    for tid in saved.team_ids:
+        h = history(db_conn, league.id, tid, s.id)
+        assert h["streaks"] == {
+            "titles": run(lambda sid: champs[sid] == tid),
+            "playoffs": run(lambda sid: tid in made[sid]),
+            "losing": run(
+                lambda sid: records[sid][tid]["wins"] < records[sid][tid]["losses"]
+            ),
+        }
+        last = newest_first[0]
+        if tid in made[last]:
+            assert h["games_out"] is None
+        else:
+            me = records[last][tid]
+            in_ = [records[last][t] for t in made[last]]
+            # Games behind the last team in (every team played 162).
+            behind = min(
+                ((r["wins"] - me["wins"]) + (me["losses"] - r["losses"])) / 2
+                for r in in_
+            )
+            assert h["games_out"] == max(0, behind)
+
+
 def test_no_years_means_no_backstory(db_conn, factory):
     league, s, _ = _seed_league(db_conn, factory, n_teams=8)
     bs = create_backstory(db_conn, league.id, s.id, 0, random.Random(4))
