@@ -38,6 +38,8 @@ from src.player.contracts import format_salary, minors_salary
 from src.player.face import face_url
 from src.league.league_modes import is_blitz_style
 from src.player.positions import is_pitcher
+from src.player.skill_map import SKILL_MIN
+from src.team.manager_profile import ManagerProfile
 from src.team.injured_list import InjuredList, kinds_for, league_today
 from src.team import playoff_eligibility
 from src.team.roster_limits import MIN_PLAYING_ROSTER, league_active_limits
@@ -60,6 +62,7 @@ def roster(
 ):
     ctx = _shell_ctx(request, db, gm, league_id, "roster", user)
     players = []
+    rows = {}
     team_id = gm["team_id"]
 
     if team_id:
@@ -67,6 +70,7 @@ def roster(
         team = TeamRepository(db).get_city_and_mascot(team_id) or {}
         for row in player_repo.get_team_roster_with_skills(team_id):
             card = roster_card(row)
+            rows[card["player_id"]] = row
             card["jersey_number"] = row.get("jersey_number")
             card["face_url"] = face_url(
                 card["player_id"], card.get("age"), team.get("city"), team.get("mascot")
@@ -90,12 +94,18 @@ def roster(
         attach_roster_stats(players, stats_map)
 
     inj = InjuryRepository(db, league_id)
+    rust = inj.get_rust([p["player_id"] for p in players])
     attach_injuries(
         players,
         inj.get_team_injuries(team_id),
         inj.get_team_injury_types(team_id),
-        inj.get_rust([p["player_id"] for p in players]),
+        rust,
     )
+    _attach_rusty_overall(players, rows, rust)
+    # Pick Top 40 and Pick Top 26 follow the Strategy tab's Rest rusty players.
+    ctx["rest_rusty"] = ManagerProfile.from_row(
+        GMRepository(db).get_profile(gm["id"])
+    ).rest_rusty
 
     # Contracts: each player's salary this season, and the team's payroll.
     ctx["payroll_text"] = None
@@ -147,6 +157,22 @@ def roster(
     return tab_response(request, htmx, "dashboard/partials/roster.html", ctx)
 
 
+def _attach_rusty_overall(players: list[dict], rows: dict, rust: dict) -> None:
+    """For each rusty player, the overall grade he plays at today with his
+    rust taken off his skills, as p["rusty_overall"]. Pick Top 26 rates him
+    by it, the way the sim sees him; the card still shows his real grade."""
+    for p in players:
+        r = rust.get(p["player_id"])
+        row = rows.get(p["player_id"])
+        if not r or not row:
+            continue
+        lowered = dict(row)
+        for skill, points in r["skills"].items():
+            if isinstance(lowered.get(skill), (int, float)):
+                lowered[skill] = max(SKILL_MIN, lowered[skill] - points)
+        p["rusty_overall"] = roster_card(lowered).get("overall")
+
+
 @router.get("/leagues/{league_id}/roster/trade-requests")
 def roster_trade_requests(league_id: str, db: DB, gm: GM):
     """How many of the GM's players have asked to be traded: the Roster tab's
@@ -186,8 +212,22 @@ def save_roster_put(
 
     league = LeagueRepository(db).get_by_id(league_id)
     long_form = bool(league) and not is_blitz_style(league.get("mode"))
-    # Long Form: the 60-day injured list doesn't count toward the 40.
-    sixty = InjuredList(db, league_id).sixty_ids(team_id) if long_form else set()
+    il = InjuredList(db, league_id)
+    # Long Form: healed players coming off the injured list with this save.
+    activating = set(body.activate) if long_form else set()
+    today = league_today(db, league_id) if activating else None
+    if activating:
+        ready = il.ready(team_id, today)
+        for pid in activating:
+            if pid not in ready:
+                problem = il.problem_activating(team_id, pid, today, True)
+                return JSONResponse(
+                    {"detail": problem or "He can't come off the injured list yet."},
+                    status_code=422,
+                )
+    # Long Form: the 60-day injured list doesn't count toward the 40 (a
+    # player coming off it does).
+    sixty = il.sixty_ids(team_id) - activating if long_form else set()
     if len(set(forty_man_ids) - sixty) > 40:
         return JSONResponse(
             {
@@ -218,9 +258,13 @@ def save_roster_put(
             )
 
     if long_form:
-        problem = _active_problem(db, dict(league), team_id, forty_man_ids, body.active)
+        problem = _active_problem(
+            db, dict(league), team_id, forty_man_ids, body.active, activating
+        )
         if problem:
             return JSONResponse({"detail": problem}, status_code=422)
+        for pid in activating:
+            il.activate(pid, today)
         status_repo.set_40man_roster(team_player_ids, forty_man_ids)
         status_repo.bulk_set({pid: "26man" for pid in body.active})
     else:
@@ -234,14 +278,20 @@ def save_roster_put(
 
 
 def _active_problem(
-    db, league: dict, team_id: str, forty_man_ids: list[str], active: list[str] | None
+    db,
+    league: dict,
+    team_id: str,
+    forty_man_ids: list[str],
+    active: list[str] | None,
+    activating: set[str] = frozenset(),
 ) -> str | None:
-    """Why a Long Form active roster can't be saved, or None if it can."""
+    """Why a Long Form active roster can't be saved, or None if it can.
+    Players in activating come off the injured list with the save."""
     limits = league_active_limits(db, league)
     active = active or []
     if len(set(active)) != len(active):
         return "A player is on the active roster twice."
-    il = InjuredList(db, league["id"]).for_team(team_id)
+    il = set(InjuredList(db, league["id"]).for_team(team_id)) - set(activating)
     if set(active) & set(il):
         return "Players on the injured list can't be on the active roster."
     if not set(il) <= set(forty_man_ids):
