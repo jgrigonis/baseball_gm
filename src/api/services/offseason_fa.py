@@ -195,8 +195,10 @@ def expiring(conn, league_id: str, year: int, team_ids=None) -> list[dict]:
         ask = deal
         agreed = bool(r["agreed_salary"]) and r["choice"] == "resign"
         if agreed:
-            deal = ct.Deal(r["agreed_salary"], r["agreed_years"], deal.kind)
-        arb_season = arb.get(p.id) if deal.kind == "arbitration" else None
+            # An arbitration player's extension is a standard deal.
+            kind = "standard" if r["agreed_years"] > 1 else deal.kind
+            deal = ct.Deal(r["agreed_salary"], r["agreed_years"], kind)
+        arb_season = arb.get(p.id) if ask.kind == "arbitration" else None
         mood = moods.get(p.id)
         if seasons.get(p.id, 0) >= MARKET_SEASONS:
             market = "veteran"
@@ -548,6 +550,23 @@ def close_window(conn, league_id: str) -> dict:
     humans = set(GMRepository(conn).get_human_team_ids(league_id))
     money = has_money(LeagueRepository(conn).get_by_id(league_id))
     keep = _keeps(conn, league_id, year, rows, humans, money)
+    # AI teams negotiate with the players they keep (Josh, 2026-11-18).
+    if money:
+        from src.api.services import resign_offers
+
+        deals, insulted = resign_offers.ai_negotiate(
+            conn, league_id, year, rows, keep, humans
+        )
+        for r in rows:
+            pid = r["player_id"]
+            if pid not in deals:
+                continue
+            if deals[pid] is None:
+                keep.discard(pid)
+                if pid in insulted:
+                    r["refuses"] = "insulted"
+            else:
+                r["deal"] = deals[pid]
     contracts = ContractRepository(conn)
     status = PlayerStatusRepository(conn)
     teams = TeamRepository(conn)
@@ -757,7 +776,7 @@ def expiring_view(conn, league_id: str, team_id: str) -> list[dict]:
                 "arb_of": MARKET_SEASONS,
                 "arb_share": (
                     round(ct.ARBITRATION_SHARE[r["arb_season"]] * 100)
-                    if r["arb_season"]
+                    if r["arb_season"] and d.kind == "arbitration"
                     else None
                 ),
                 "market_salary_text": (
@@ -783,14 +802,13 @@ def expiring_view(conn, league_id: str, team_id: str) -> list[dict]:
 
 def no_offer(r: dict) -> str | None:
     """Why a GM can't make an expiring player an offer (resign_offers.py),
-    or None: a refuser, an arbitration player (his price is set), one
-    asking the minimum, or talks he broke off."""
+    or None: a refuser, one asking the minimum (unless he's in arbitration:
+    he can be offered an extension), or talks he broke off."""
     if r["refuses"]:
         return hp.REFUSE_LINES.get(r["refuses"])
-    if r["arb_season"] is not None:
-        return "Arbitration sets his price. He re-signs at it or goes."
     minimum = ct.round_salary(ct.MIN_SALARY * r["scale"], r["scale"])
-    if r["ask"].salary <= minimum:
+    # An arbitration player can be offered an extension (resign_offers.py).
+    if r["arb_season"] is None and r["ask"].salary <= minimum:
         return "He asks the minimum. There's nothing to negotiate."
     if r["talks_closed"]:
         return "He's done talking. Re-sign him at his price or let him go."

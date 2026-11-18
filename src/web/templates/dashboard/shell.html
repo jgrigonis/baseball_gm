@@ -419,10 +419,16 @@ window.offerExpiring = async function(pid, name) {
     return;
   }
   const start = ask.agreed || c;
+  // An arbitration player: an extension of 2+ seasons (Josh, 2026-11-18).
+  const ext = ask.extension;
+  const first = start || (ext ? {salary: ext.salary, years: ext.years} : null);
   const vals = await gmConfirm({
-    title: `Offer ${name} a new deal?`,
+    title: ext ? `Offer ${name} an extension?` : `Offer ${name} a new deal?`,
     lines: [
-      `He asks ${term(ask.ask_text, ask.ask_years)}. Re-sign pays that. You can offer less money or a different number of seasons, and he answers right away.`,
+      ext
+        ? `Arbitration pays him ${term(ask.ask_text, 1)} (season ${ext.arb_season} of 6; his market price is ${ext.market_text}). ` +
+          `An extension of ${ext.min_years} seasons or more buys out his arbitration seasons and can run into his free agency. He takes less for the security, and he answers right away.`
+        : `He asks ${term(ask.ask_text, ask.ask_years)}. Re-sign pays that. You can offer less money or a different number of seasons, and he answers right away.`,
       ...ask.hints,
       ask.agreed ? `He's agreed to ${term(ask.agreed.salary_text, ask.agreed.years)}.` : '',
       c && !ask.agreed ? `He said he'd take ${term(c.salary_text, c.years)}.` : '',
@@ -432,9 +438,9 @@ window.offerExpiring = async function(pid, name) {
     ],
     caution: ask.warnings,
     fields: [
-      {name: 'salary', label: 'Salary a season ($M)', value: ((start ? start.salary : ask.ask_salary) / 1e6).toFixed(2),
+      {name: 'salary', label: 'Salary a season ($M)', value: ((first ? first.salary : ask.ask_salary) / 1e6).toFixed(2),
        min: (ask.min_salary / 1e6).toFixed(2), step: 0.05},
-      {name: 'years', label: 'Seasons', value: start ? start.years : ask.ask_years, min: 1, max: ask.max_years, step: 1},
+      {name: 'years', label: 'Seasons', value: first ? first.years : ask.ask_years, min: ext ? ext.min_years : 1, max: ask.max_years, step: 1},
     ],
     ok: 'Make offer', tone: 'go',
     cancel: 'Cancel',

@@ -283,7 +283,14 @@ def test_no_offer_reasons():
         talks_closed=False,
     )
     assert offseason_fa.no_offer(base) is None
-    assert "Arbitration" in offseason_fa.no_offer(base | {"arb_season": 4})
+    # An arbitration player can be offered an extension, even at the minimum.
+    assert offseason_fa.no_offer(base | {"arb_season": 4}) is None
+    assert (
+        offseason_fa.no_offer(
+            base | {"arb_season": 3, "ask": ct.Deal(ct.MIN_SALARY, 1, "standard")}
+        )
+        is None
+    )
     assert "minimum" in offseason_fa.no_offer(
         base | {"ask": ct.Deal(ct.MIN_SALARY, 1, "standard")}
     )
@@ -313,3 +320,153 @@ def test_a_grudge_takes_off_his_mood_and_fades():
         0.05
     )
     assert grudge_left(0.1, ng.GRUDGE_WEEKS, ng.GRUDGE_WEEKS) == 0
+
+
+# ── AI teams (Josh, 2026-11-18) ──────────────────────────────────────────────
+
+
+def test_ai_openings_follow_owner_gm_risk_and_loyalty():
+    assert resign_offers.ai_opening(100, 50, 50) == pytest.approx(1.0)
+    miser = resign_offers.ai_opening(0, 50, 50)
+    assert (
+        resign_offers.ai_opening(0, 50, 100)
+        > miser
+        > resign_offers.ai_opening(0, 50, 0)
+    )
+    assert resign_offers.ai_takes(50, 100, 0.7)
+    assert not resign_offers.ai_takes(50, 0, 0.7)
+
+
+def _ai_keeps(lg, pid):
+    rows = offseason_fa.expiring(lg.db, lg.league.id, 2026)
+    return rows, {pid}
+
+
+def test_an_ai_team_signs_its_player_for_less(lg, monkeypatch):
+    _person(monkeypatch)
+    monkeypatch.setattr(resign_offers, "ai_opening", lambda *a: 0.9)
+    monkeypatch.setattr(
+        ng.Stance, "takes", lambda self, s, y: s >= 0.85 * self.ask_salary
+    )
+    pid = _expiring(lg, 2021, 6, team=lg.ai)
+    rows, keep = _ai_keeps(lg, pid)
+    ask = next(r["ask"] for r in rows if r["player_id"] == pid)
+    deals, refused = resign_offers.ai_negotiate(
+        lg.db, lg.league.id, 2026, rows, keep, {lg.mine.id}
+    )
+    assert deals[pid].salary < ask.salary and not refused
+
+
+def test_an_ai_gm_who_walks_from_the_counter_loses_a_veteran_only(lg, monkeypatch):
+    _person(monkeypatch, easygoing=True)
+    monkeypatch.setattr(resign_offers, "ai_opening", lambda *a: 0.85)
+    monkeypatch.setattr(resign_offers, "ai_takes", lambda *a: False)
+    vet = _expiring(lg, 2021, 6, team=lg.ai)
+    young = _expiring(lg, 2024, 3, team=lg.ai)
+    rows = offseason_fa.expiring(lg.db, lg.league.id, 2026)
+    deals, _ = resign_offers.ai_negotiate(
+        lg.db, lg.league.id, 2026, rows, {vet, young}, {lg.mine.id}
+    )
+    assert deals[vet] is None
+    assert young not in deals  # tendered at his asking price
+    # And when the offseason runs, the veteran goes to market.
+    monkeypatch.setattr(offseason_fa, "_keeps", lambda *a, **k: {vet, young})
+    offseason_fa.close_window(lg.db, lg.league.id)
+    assert lg.status.get_status(vet) == "free_agent"
+    assert lg.contracts.active(young, 2027)["start_year"] == 2027
+
+
+def test_an_insulted_ai_veteran_can_refuse_his_team(lg, monkeypatch):
+    _person(monkeypatch, temper=95, loyalty=5)
+    _insulted(monkeypatch)
+    monkeypatch.setattr(ng.Stance, "refuse_chance", lambda self: 1.0)
+    monkeypatch.setattr(resign_offers, "ai_opening", lambda *a: 0.75)
+    pid = _expiring(lg, 2021, 6, team=lg.ai)
+    monkeypatch.setattr(offseason_fa, "_keeps", lambda *a, **k: {pid})
+    offseason_fa.close_window(lg.db, lg.league.id)
+    assert lg.status.get_status(pid) == "free_agent"
+    assert free_agents.refused(lg.db, lg.league.id, lg.ai.id, pid, 2027)
+    assert HappinessRepository(lg.db, lg.league.id).grudge(pid, lg.ai.id, 2026) > 0
+
+
+def test_people_and_arbitration_players_arent_in_ai_talks(lg, monkeypatch):
+    _person(monkeypatch)
+    mine = _expiring(lg, 2021, 6)
+    rows = offseason_fa.expiring(lg.db, lg.league.id, 2026)
+    deals, _ = resign_offers.ai_negotiate(
+        lg.db, lg.league.id, 2026, rows, {mine}, {lg.mine.id}
+    )
+    assert deals == {}
+
+
+# ── Arbitration extensions (Josh, 2026-11-18) ─────────────────────────────────
+
+
+def _arb(lg, team=None):
+    """Came up on a rookie deal 2024-2026: 2027 is his 4th season."""
+    team = team or lg.mine
+    pid = lg.factory.rated_player(team, lg.league, level=75, status="40man").id
+    lg.contracts.insert_deal(
+        pid, lg.league.id, team.id, ct.Deal(780_000, 3, "rookie"), 2024
+    )
+    return pid
+
+
+def test_an_extension_is_worth_its_arbitration_and_market_seasons():
+    m = 10_000_000
+    # Seasons 4, 5, 6 at 55/70/85%, then two at the market price.
+    assert ct.extension_salary(m, 4, 3) == ct.round_salary(m * (0.55 + 0.7 + 0.85) / 3)
+    assert ct.extension_salary(m, 4, 5) == ct.round_salary(m * (2.1 + 2) / 5)
+    assert ng.extension_security(1) == 0
+    assert ng.extension_security(3) == pytest.approx(0.06)
+    assert ng.extension_security(9) == ng.EXTENSION_MAX
+
+
+def test_an_arbitration_player_takes_an_extension_for_less(lg, monkeypatch):
+    _person(monkeypatch)
+    pid = _arb(lg)
+    p = resign_offers.preview(lg.db, lg.league.id, lg.mine.id, pid)
+    ext = p["extension"]
+    assert ext["arb_season"] == 4 and ext["arb_left"] == 3 and ext["years"] == 3
+    # One season is his arbitration price, not a negotiation.
+    with pytest.raises(ResignOfferError, match="extension"):
+        _offer(lg, pid, p["ask_salary"], 1)
+    # Worth: what the five seasons come to; he takes a little less for the
+    # security.
+    rows = offseason_fa.expiring(lg.db, lg.league.id, 2026)
+    row = next(r for r in rows if r["player_id"] == pid)
+    worth = resign_offers.extension_ask(row, 5).salary
+    r = _offer(lg, pid, int(worth * 0.93), 5)
+    assert r["result"] == "signed", r
+    view = _row(lg, pid)
+    assert view["agreed"] and view["years"] == 5 and view["kind"] == "standard"
+    assert view["arb_share"] is None
+    offseason_fa.close_window(lg.db, lg.league.id)
+    new = lg.contracts.active(pid, 2027)
+    assert (new["years"], new["kind"]) == (5, "standard")
+    # Five seasons from 2027: his arbitration seasons are bought out.
+    assert lg.contracts.arbitration_seasons([pid], 2032)[pid] == 9
+
+
+def test_a_lowball_extension_gets_a_counter_and_he_cant_walk(lg, monkeypatch):
+    _person(monkeypatch, temper=95)
+    _insulted(monkeypatch)
+    pid = _arb(lg)
+    rows = offseason_fa.expiring(lg.db, lg.league.id, 2026)
+    row = next(r for r in rows if r["player_id"] == pid)
+    worth = resign_offers.extension_ask(row, 3).salary
+    r = _offer(lg, pid, int(worth * 0.4), 3)
+    assert r["result"] == "insulted" and "can't leave" in r["line"]
+    offseason_fa.close_window(lg.db, lg.league.id)
+    # Still under team control: tendered at his arbitration price.
+    assert lg.contracts.active(pid, 2027)["kind"] == "arbitration"
+
+
+def test_ai_teams_dont_extend_arbitration_players(lg, monkeypatch):
+    _person(monkeypatch)
+    pid = _arb(lg, team=lg.ai)
+    rows = offseason_fa.expiring(lg.db, lg.league.id, 2026)
+    deals, _ = resign_offers.ai_negotiate(
+        lg.db, lg.league.id, 2026, rows, {pid}, {lg.mine.id}
+    )
+    assert deals == {}

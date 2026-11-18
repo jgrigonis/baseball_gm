@@ -49,6 +49,10 @@ src/api/services/resign_offers.py) uses the same Stance with home=True:
   then raises his price HOME_BUMP, or refuses to re-sign at all
   (refuses_after_insult), mostly when he's hot-tempered or disloyal.
 - An Easygoing player never holds a grudge or takes it personally.
+- An arbitration player can't be talked down from his one-season price, but
+  he can be offered an extension of EXTENSION_MIN_YEARS seasons or more:
+  his ask is what those seasons are worth (contracts.extension_salary), and
+  he takes less for the security (extension_security).
 """
 
 from __future__ import annotations
@@ -129,6 +133,20 @@ REFUSE_DISLOYAL = 0.35
 REFUSE_MAX = 0.6
 
 
+# Arbitration extensions (Josh, 2026-11-18): a player still under team
+# control gives a discount for guaranteed seasons, EXTENSION_SECURITY a
+# season past the first, up to EXTENSION_MAX, and never past EXTENSION_FLOOR
+# of what the seasons are worth.
+EXTENSION_SECURITY = 0.03
+EXTENSION_MAX = 0.12
+EXTENSION_FLOOR = 0.7
+EXTENSION_MIN_YEARS = 2
+
+
+def extension_security(years: int) -> float:
+    return min(EXTENSION_MAX, EXTENSION_SECURITY * max(0, years - 1))
+
+
 def money_lean(money: int) -> float:
     """0 to 1: how far past MONEY_START his money drive is."""
     return max(0.0, min(1.0, (money - MONEY_START) / (100 - MONEY_START)))
@@ -172,6 +190,7 @@ class Stance:
     money: int = 0  # his money drive, 0 to 100
     home: bool = False  # re-signing with his own club
     seasons: int = 0  # seasons with the league, for the home pull
+    security: float = 0.0  # an extension's guaranteed seasons, off his bar
 
     @property
     def home_pull(self) -> float:
@@ -199,6 +218,7 @@ class Stance:
         if self.released_by:
             b += RELEASED_PULL * (1 + self.temper / 100)
         b += MONEY_PULL * money_lean(self.money)
+        b -= self.security
         return b
 
     @property
@@ -218,6 +238,7 @@ class Stance:
         top, best = (HOME_FLOOR, HOME_BEST_FLOOR) if self.home else (FLOOR, BEST_FLOOR)
         share = top - (top - best) * self.favor
         share += MONEY_FLOOR * money_lean(self.money)
+        share = max(EXTENSION_FLOOR, share - self.security)
         return max(self.minimum, math.ceil(self.ask_salary * share))
 
     def value(self, salary: int, years: int) -> float:

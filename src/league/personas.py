@@ -367,6 +367,7 @@ class Leanings:
     stats_vs_scouting: int = 50
     youth: int = 50
     offense_defense: int = 50
+    loyalty: int = 50  # to his own players: re-sign talks (resign_offers.py)
 
     @classmethod
     def from_dials(cls, dials: dict | None) -> Leanings:
