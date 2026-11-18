@@ -55,6 +55,8 @@
     player you keep adds his new salary, so letting one go frees room for another.
     Re-signing players is allowed to go past the owner's hard limit, but the extra
     spending comes out of their bank, and they may not be happy.
+    Re-sign pays his asking price; Offer lets you try for less, or other seasons, and
+    he answers right away. A lowball can anger him.
   </div>
   <div class="fa-all" id="fa-resign-all-wrap" style="display:none;">
     <button type="button" class="btn btn-secondary as-btn-sm" id="fa-resign-all"
@@ -137,10 +139,11 @@ function expiringRow(p) {
       ${isPitcher ? `<div class="lu-skills">${pitcherGradesHtml(p)}</div>` : hitterGradesHtml(p, null)}
     </div>
     <div class="fa-right">
-      <div class="fa-ask" title="His new deal from next season (now ${p.old_salary_text})">${p.salary_text}<small>${p.years} yr${p.years === 1 ? '' : 's'}${p.arb_share ? ` · ${p.arb_share}% of ${p.market_salary_text}` : ''}</small>
+      <div class="fa-ask" title="${p.agreed ? `The deal he agreed to (he asked ${p.ask_text} for ${p.ask_years}; now ${p.old_salary_text})` : `His new deal from next season (now ${p.old_salary_text})`}">${p.salary_text}<small>${p.years} yr${p.years === 1 ? '' : 's'}${p.arb_share ? ` · ${p.arb_share}% of ${p.market_salary_text}` : ''}${p.agreed ? ' · <span class="fa-agreed">agreed</span>' : ''}</small>
         <div class="fa-fate ${p.fate}">${FATE[p.fate]}</div></div>
       <div class="fa-choice">
-        <button class="resign${on('resign')}" data-c="resign" ${p.refuses ? `disabled title="${p.refuses_text}"` : 'title="Re-sign him now at this price"'}>Re-sign</button>
+        <button class="resign${on('resign')}" data-c="resign" ${p.refuses ? `disabled title="${p.refuses_text}"` : p.agreed && p.choice === 'resign' ? 'title="Take back the deal he agreed to"' : 'title="Re-sign him now at his asking price"'}>Re-sign</button>
+        <button class="offer" data-c="offer" ${p.no_offer ? `disabled title="${p.no_offer}"` : 'title="Offer him a different deal; he answers right away"'}>Offer</button>
         <button class="go${on('go')}" data-c="let_go" title="Let him go to free agency">Let go</button>
       </div>
     </div>`;
@@ -149,6 +152,7 @@ function expiringRow(p) {
     if (b) {
       // Pressing the call already made takes it back.
       const c = b.dataset.c;
+      if (c === 'offer') { offerExpiring(p.player_id, `${p.first_name} ${p.last_name}`); return; }
       expiringChoice(p.player_id, p.choice === c ? null : c);
       return;
     }

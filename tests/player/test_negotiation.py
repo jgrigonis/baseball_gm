@@ -95,3 +95,53 @@ def test_hints_never_show_numbers():
     lines = ng.hints(_s(callers=2, fit=0.9, share=0.9, released_by=True))
     assert "Has other teams calling." in lines
     assert not any(ch.isdigit() for line in lines for ch in line)
+
+
+# ── Money and re-signing at home (Josh, 2026-11-18) ──────────────────────────
+
+
+def test_a_money_driven_player_has_a_higher_bar_and_floor():
+    assert _s(money=100).bar == pytest.approx(_s().bar + ng.MONEY_PULL)
+    assert _s(money=100).floor > _s().floor
+    # Under MONEY_START it changes nothing.
+    assert _s(money=40).bar == _s(money=0).bar
+
+
+def test_at_home_loyalty_counts_more_the_longer_he_has_been_there():
+    new = _s(home=True, loyalty=80, seasons=0)
+    old = _s(home=True, loyalty=80, seasons=6)
+    assert old.bar < new.bar < _s().bar
+    assert _s(home=True).floor == 8_500_000
+
+
+def test_a_grudge_follows_temper_money_and_loyalty():
+    s = _s(home=True, temper=80, loyalty=20, money=80)
+    assert s.grudge(9_500_000, 10_000_000) == 0  # a fair try
+    g = s.grudge(8_000_000, 10_000_000)
+    assert g > 0
+    assert s.grudge(8_000_000, 10_000_000, insulted=True) == pytest.approx(2 * g)
+    assert (
+        _s(home=True, temper=80, loyalty=90, money=80).grudge(8_000_000, 10_000_000) < g
+    )
+    assert _s(home=True, easygoing=True).grudge(5_000_000, 10_000_000) == 0
+
+
+def test_refusing_after_an_insult_is_mostly_for_the_hot_and_the_disloyal():
+    calm = _s(temper=50, loyalty=50).refuse_chance()
+    hot = _s(temper=90, loyalty=50).refuse_chance()
+    cold = _s(temper=50, loyalty=10).refuse_chance()
+    both = _s(temper=90, loyalty=10).refuse_chance()
+    assert calm == pytest.approx(ng.REFUSE_BASE)
+    assert hot == pytest.approx(cold) and 0.3 < hot < 0.35
+    assert both == ng.REFUSE_MAX
+    assert _s(temper=100, loyalty=0, easygoing=True).refuse_chance() == ng.REFUSE_BASE
+
+
+def test_home_insults_need_a_big_lowball_and_never_bother_the_easygoing():
+    s = _s(home=True, temper=50)
+    assert not s.home_insulted(8_000_000, 10_000_000, 0.0)
+    assert s.home_insulted(7_000_000, 10_000_000, 0.0)
+    assert not _s(home=True, easygoing=True).home_insulted(1_000_000, 10_000_000, 0.0)
+    # Hotter tempers take it personally more often.
+    assert _s(home=True, temper=100).home_insulted(7_000_000, 10_000_000, 0.95)
+    assert not _s(home=True, temper=30).home_insulted(7_000_000, 10_000_000, 0.6)

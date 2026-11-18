@@ -1815,6 +1815,8 @@ CREATE TABLE IF NOT EXISTS contract_choices ( -- migration 085 (src/api/services
     year        INTEGER NOT NULL,              -- the season his deal ends
     choice      TEXT NOT NULL CHECK (choice IN ('resign', 'let_go')),
     created_at  TEXT NOT NULL DEFAULT (NOW()),
+    salary      INTEGER,                       -- migration 142: an agreed deal (resign_offers.py), else his asking price
+    years       INTEGER,
     PRIMARY KEY (player_id, year)
 );
 CREATE INDEX IF NOT EXISTS idx_contract_choices_league ON contract_choices(league_id, year);
@@ -1845,6 +1847,32 @@ CREATE TABLE IF NOT EXISTS fa_talks (          -- migration 122: offers made to 
 );
 CREATE INDEX IF NOT EXISTS idx_fa_talks_player ON fa_talks(player_id);
 CREATE INDEX IF NOT EXISTS idx_fa_talks_team ON fa_talks(team_id);
+CREATE TABLE IF NOT EXISTS resign_talks (      -- migration 142: re-sign offers in the Expiring Deals window (src/api/services/resign_offers.py)
+    league_id      TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    player_id      TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    team_id        TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    year           INTEGER NOT NULL,              -- the season his deal ends
+    offers         INTEGER NOT NULL DEFAULT 0,
+    counter_salary INTEGER,                       -- what he said he'd take
+    counter_years  INTEGER,
+    closed         BOOLEAN NOT NULL DEFAULT FALSE, -- insulted: no more offers this window
+    bumped         BOOLEAN NOT NULL DEFAULT FALSE, -- insulted: his price went up
+    refused        BOOLEAN NOT NULL DEFAULT FALSE, -- insulted: he won't re-sign
+    PRIMARY KEY (player_id, year)
+);
+CREATE INDEX IF NOT EXISTS idx_resign_talks_league ON resign_talks(league_id, year);
+CREATE INDEX IF NOT EXISTS idx_resign_talks_team ON resign_talks(team_id);
+CREATE TABLE IF NOT EXISTS player_grudges (    -- migration 142: a lowball from his club, off his mood (happiness_repo)
+    league_id  TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    player_id  TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    team_id    TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    year       INTEGER NOT NULL,                  -- the re-sign window it came from
+    amount     REAL NOT NULL,                     -- taken off his mood target, fading
+    updates    INTEGER NOT NULL DEFAULT 0,        -- weekly mood updates it has been through
+    PRIMARY KEY (player_id, team_id)
+);
+CREATE INDEX IF NOT EXISTS idx_player_grudges_league ON player_grudges(league_id);
+CREATE INDEX IF NOT EXISTS idx_player_grudges_team ON player_grudges(team_id);
 
 CREATE TABLE IF NOT EXISTS team_budgets (     -- migration 074 (src/league/budget.py)
     league_id   TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
