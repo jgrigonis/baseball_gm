@@ -36,11 +36,23 @@ TYPICAL_POWER = 59
 TYPICAL_EYE = 62
 BAT_SPREAD = 2.0
 
+# Home-field edge (Josh, 2026-11-18: home teams won 49.8% in a 25-season
+# sim, MLB about 52-53%). Home hitters see a friendlier zone: this share of
+# their called strikes become balls. InPlayModifiers.HOME_HITS adds the
+# rest (familiar park, sleeping in their own beds).
+HOME_CALLED_STRIKES = 0.015
+
 
 def bat_term(skill: float, typical: float) -> float:
     """A batting skill's distance from 50, widened by BAT_SPREAD around a
     typical hitter."""
     return (skill - 50) + (BAT_SPREAD - 1) * (skill - typical)
+
+
+def batting_at_home(game) -> bool:
+    """Whether the home team is batting (the bottom of an inning)."""
+    inning = getattr(game, "inning", None)
+    return inning is not None and not inning.top
 
 
 def multiply_strikes(resolver, factor: float) -> None:
@@ -99,7 +111,18 @@ class PitchModifiers:
         PitchModifiers.modify_for_catcher(resolver, catcher)
         PitchModifiers.modify_for_platoon(resolver, batter, pitcher)
         PitchModifiers.modify_for_clutch(resolver, batter, pitcher, game)
+        PitchModifiers.modify_for_home(resolver, game)
         PitchModifiers.modify_strike_mix_for_count(resolver, game.count)
+
+    @staticmethod
+    def modify_for_home(resolver, game) -> None:
+        """Home hitters get a few more balls and a few fewer called strikes."""
+        if not batting_at_home(game):
+            return
+        po = resolver.pitch_outcome
+        moved = po.get(CALLED) * HOME_CALLED_STRIKES
+        po.set(CALLED, int(po.get(CALLED) - moved))
+        po.set("ball", int(po.get("ball") + moved))
 
     @staticmethod
     def modify_for_bases(resolver, bases: Bases) -> None:
