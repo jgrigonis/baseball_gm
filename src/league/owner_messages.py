@@ -796,11 +796,56 @@ _STREAK_WORDS = {
     20: "Twenty",
 }
 # One of the club's own set a league record (the record book's news).
+# {record} names it: "Ruiz's 5 home runs in one game" (record_what).
 RECORD_SET = (
+    "A league record: {record}! That's the kind of thing fans tell their kids about.",
+    "Our name in the record book: {record}. Good. Keep giving them reasons to buy tickets, {gm}.",
+    "I saw it. {Record}, a league record. Put it on the scoreboard, put it on a T-shirt. Nice work.",
+)
+# When the record can't be named (a story wording record_what doesn't know).
+RECORD_SET_PLAIN = (
     "A league record! That's the kind of thing fans tell their kids about.",
     "Our name in the record book. Good. Keep giving them reasons to buy tickets, {gm}.",
     "I saw the record. Put it on the scoreboard, put it on a T-shirt. Nice work.",
 )
+# The record news headlines (services/records/news.py), turned into what
+# the owner calls the record. Names are plain text here.
+_RECORD_WORDS = (
+    (re.compile(r"^(.+) sets a league record with (\S+) (.+)$"),
+     lambda m, b: f"{m[1]}'s {m[2]} {m[3]} in one game"),
+    (re.compile(r"^(.+) ties the league record with (\S+) (.+)$"),
+     lambda m, b: f"{m[1]}'s {m[2]} {m[3]} in one game, tied for the most ever"),
+    (re.compile(r"^The (.+) set a league record: (\d+) straight wins$"),
+     lambda m, b: f"our {m[2]} straight wins"),
+    (re.compile(r"^(.+)'s (.+) reaches a record (\d+) games$"),
+     lambda m, b: f"{m[1]}'s {m[3]}-game {m[2].lower()}"),
+    (re.compile(r"^(.+) sets the single-season record for (.+)$"),
+     lambda m, b: (f"{m[1]}'s {v[1]} {m[2]} this season"
+                   if (v := re.match(r"He's at (\S+),", b)) else None)),
+    (re.compile(r"^(.+) becomes the league's career leader in (.+)$"),
+     lambda m, b: (f"{m[1]}'s {v[1]} career {m[2]}"
+                   if (v := re.match(r"(\S+) and counting", b)) else None)),
+    (re.compile(r"^(.+) sets the league record: (.+)$"),
+     lambda m, b: f"{m[1]}'s {_lower_labels(m[2])}"),
+    (re.compile(r"^(.+) sets league records: (.+)$"),
+     lambda m, b: f"{m[1]}'s {_lower_labels(m[2])}"),
+)  # fmt: skip
+
+
+def _lower_labels(text: str) -> str:
+    """ ".371 Batting average and 1.85 ERA" -> ".371 batting average and 1.85 ERA"."""
+    return re.sub(r"(\S )([A-Z])(?=[a-z])", lambda x: x[1] + x[2].lower(), text)
+
+
+def record_what(headline: str, body: str = "") -> str | None:
+    """What a record story's record is, for the owner to name: "Ruiz's
+    5 home runs in one game", "our 14 straight wins". None for a wording
+    it doesn't know."""
+    for pattern, words in _RECORD_WORDS:
+        if m := pattern.match(headline):
+            return words(m, body or "")
+    return None
+
 
 WINNING_STREAK = (
     "{n} straight wins. Now that's what I like to see.",
@@ -1271,8 +1316,11 @@ def streak_reaction(won: bool, length: int, fields: dict, rng: random.Random) ->
     return _pick(rng, LOSING_STREAK[mark], {**fields, **n})
 
 
-def record_set(fields: dict, rng: random.Random) -> str:
-    return _pick(rng, RECORD_SET, fields)
+def record_set(fields: dict, rng: random.Random, record: str | None = None) -> str:
+    if not record:
+        return _pick(rng, RECORD_SET_PLAIN, fields)
+    named = {"record": record, "Record": record[:1].upper() + record[1:]}
+    return _pick(rng, RECORD_SET, {**fields, **named})
 
 
 def release_veto(icon: bool, fields: dict, rng: random.Random) -> str:

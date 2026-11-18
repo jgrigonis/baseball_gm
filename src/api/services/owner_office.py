@@ -29,6 +29,7 @@ from datetime import date
 from src.api.grade_curves import GRADES
 from src.api.services import icons, owner_review, sim_summary
 from src.api.services.news.moves import is_notable
+from src.api.services.news.names import plain
 from src.api.services import owners as owner_service
 from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.contract_repo import ContractRepository
@@ -778,11 +779,13 @@ def _record_reactions(
     conn, league_id, season_id, team_id, gm, owner, fields, today
 ) -> int:
     """A word (and a small lift) for each league record this season set by
-    the club's players or the club itself (services/records/news.py)."""
+    the club's players or the club itself (services/records/news.py),
+    naming the record. A single game's story lists the other club second
+    (team_ids[1] is the one that set it), so they don't cheer it too."""
     rows = conn.execute(
-        """SELECT key FROM league_news
+        """SELECT key, headline, body FROM league_news
            WHERE league_id = %s AND season_id = %s AND kind = 'record'
-             AND %s = ANY(team_ids)
+             AND team_ids[1] = %s
              AND headline NOT LIKE '%%losses%%'
            ORDER BY id""",
         (league_id, season_id, team_id),
@@ -792,7 +795,8 @@ def _record_reactions(
         key = f"record:{r['key']}"
         if _has(conn, league_id, team_id, key):
             continue
-        body = om.record_set(fields, _rng(season_id, team_id, key))
+        record = om.record_what(plain(r["headline"]), plain(r["body"]))
+        body = om.record_set(fields, _rng(season_id, team_id, key), record)
         if _write(
             conn, league_id, team_id, gm["id"], season_id, key, "record", body,
             today, None,
