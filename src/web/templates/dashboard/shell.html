@@ -21,6 +21,7 @@ function mountPanel(url) {
     .then(r => r.text())
     .then(html => {
       document.getElementById('player-panel-mount').innerHTML = html;
+      ppApplyRemembered();
       addBackdrop();
       const hint = document.getElementById('compare-hint');
       if (hint) hint.remove();
@@ -72,10 +73,22 @@ window.ppSyncTabs = function(body) {
 };
 // A ratings group (Hitting, Defense, Pitching) toggles together across
 // compared players so rows line up.
+// Season Stats and Injury History (data-remember) also keep their open or
+// closed state for the next panel you open (Josh, 2026-11-18).
 window.ppToggleOffRole = function(el) {
   document.querySelectorAll('#player-panel details.pd-group[data-group="' + el.dataset.group + '"]')
     .forEach(d => { if (d.open !== el.open) d.open = el.open; });
+  if (el.dataset.remember) {
+    try { localStorage.setItem('pp-open-' + el.dataset.group, el.open ? '1' : '0'); } catch (e) {}
+  }
 };
+function ppApplyRemembered() {
+  document.querySelectorAll('#player-panel details.pd-group[data-remember]').forEach(d => {
+    let v = null;
+    try { v = localStorage.getItem('pp-open-' + d.dataset.group); } catch (e) {}
+    if (v !== null) d.open = v === '1';
+  });
+}
 window.closePlayerPanel = function() {
   document.getElementById('player-panel-mount').innerHTML = '';
   removeBackdrop();
@@ -521,6 +534,7 @@ window.openCareerPage = function(playerId) {
     .then(r => r.text())
     .then(html => {
       document.getElementById('player-panel-mount').innerHTML = html;
+      ppApplyRemembered();
       addBackdrop();
     })
     .catch(err => console.error('Career page load failed:', err));
