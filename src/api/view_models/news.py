@@ -210,7 +210,7 @@ def _link(kind: str, ref: str, text: str, league_id: str, gms: dict) -> Markup:
             " openPlayerPanel('{}')\">{}</a>"
         ).format(ref, text)
     if kind == "t":
-        url = f"/leagues/{league_id}/stats?team_id={ref}"
+        url = f"/leagues/{league_id}/depth?team_id={ref}"
         return Markup(
             '<a class="news-link" href="{}" hx-get="{}" hx-target="#tab-content"'
             ' hx-push-url="true">{}</a>'

@@ -165,7 +165,18 @@ def test_standings_link_each_team_to_its_roster(client, db_conn, factory):
 
     html = client.get(f"/leagues/{league.id}/standings").text
 
-    assert f"/leagues/{league.id}/stats?team_id={home.id}" in html
+    assert f"/leagues/{league.id}/depth?team_id={home.id}" in html
+
+
+def test_viewer_opens_a_teams_depth_chart(client, db_conn, factory):
+    league, home = _league(db_conn, factory)
+
+    r = client.get(f"/leagues/{league.id}/depth?team_id={home.id}")
+    assert r.status_code == 200
+    assert "Depth Chart" in r.text
+    assert "No depth chart yet" not in r.text
+    # With no team of their own the tab starts on the first team.
+    assert "No depth chart yet" not in client.get(f"/leagues/{league.id}/depth").text
 
 
 def test_viewer_stats_start_on_a_team(client, db_conn, factory):
@@ -348,7 +359,7 @@ def test_game_panel_shows_both_team_badges(client, db_conn, factory):
     assert ">BOS</span>Boston Beans" in html
 
 
-def test_game_panel_links_each_team_to_its_season_stats(client, db_conn, factory):
+def test_game_panel_links_each_team_to_its_depth_chart(client, db_conn, factory):
     league, home = _league(db_conn, factory)
     game = db_conn.execute(
         "SELECT id, season_id, away_team_id FROM games WHERE home_team_id = %s",
@@ -359,10 +370,7 @@ def test_game_panel_links_each_team_to_its_season_stats(client, db_conn, factory
 
     header = html.split('id="game-panel-body-inner"')[0]
     for team_id in (home.id, game["away_team_id"]):
-        assert (
-            f"/leagues/{league.id}/stats?team_id={team_id}"
-            f"&season_id={game['season_id']}"
-        ) in header
+        assert f"/leagues/{league.id}/depth?team_id={team_id}" in header
 
 
 def test_game_panel_calls_out_standout_performances(client, db_conn, factory):
