@@ -678,6 +678,16 @@ CLIMATE_WORD = {
 }
 
 
+def climate_wish(personality: Personality) -> str | None:
+    """ "Wishes he played somewhere tropical.": the one line that's about him,
+    not his team, so it still fits once he's a free agent."""
+    if not personality.climate:
+        return None
+    return BAD_LINES[("location", "climate")].format(
+        climate=CLIMATE_WORD.get(personality.climate, "else")
+    )
+
+
 def on_his_mind(
     personality: Personality,
     age: int,

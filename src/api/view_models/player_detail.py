@@ -156,9 +156,11 @@ def _happiness(
     (src/player/happiness.py).
 
     Moods are only worked out for rostered players, so a free agent's newest
-    mood row is from his last team. Off a team he shows just his type: no
-    mood word or lines like "Happy with his contract." (Josh, 2026-11-18);
-    admins still see the old numbers, marked as from his last team."""
+    mood row is from his last team. Off a team he keeps what's about him (his
+    type, lean, mood word, and a wish for his kind of weather) but not lines
+    about the team he left, like "Happy with his contract." or "Enjoys being
+    the man here." (Josh, 2026-11-18). Admins still see the old numbers,
+    marked as from his last team."""
     repo = HappinessRepository(db, league_id)
     pers = repo.personalities([pid]).get(pid)
     if pers is None:
@@ -167,7 +169,9 @@ def _happiness(
     detail = (row or {}).get("detail") or {}
     drives = detail.get("drives") or {}
     today = league_current_date(db, league_id)
-    shown = row if on_team else None
+    lines = detail.get("lines") or []
+    if not on_team:
+        lines = [x for x in lines if x == hp.climate_wish(pers)]
     return {
         "wants_trade": on_team and pid in repo.trade_requests([pid]),
         "refusing": bool(on_team and today and pid in repo.refusing([pid], today)),
@@ -176,8 +180,8 @@ def _happiness(
         "cares": hp.type_cares(pers.type),
         "ruiner": pers.ruiner,
         "prefers": hp.ROLE_PREFERENCE.get((position or "").lower()),
-        "mood": hp.mood_word(shown["mood"]) if shown else None,
-        "lines": (detail.get("lines") or []) if shown else [],
+        "mood": hp.mood_word(row["mood"]) if row else None,
+        "lines": lines,
         "admin": {
             "last_team": bool(row) and not on_team,
             "mood": round(row["mood"], 2) if row else None,

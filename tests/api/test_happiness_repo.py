@@ -304,17 +304,32 @@ def test_a_pitchers_wish_to_start_or_relieve_shows_with_his_happiness(lg):
     assert prefers("ss") is None
 
 
-def test_a_free_agent_shows_no_mood_from_his_last_team(lg):
+def test_a_free_agent_keeps_what_is_about_him_not_his_last_team(lg):
     """Moods are only worked out on a roster, so his newest row is from his
-    old team: off a team, no mood word or "Happy with his contract." lines."""
+    old team: off a team he keeps his type, mood word and weather wish, but
+    not "Happy with his contract." or "Enjoys being the man here."."""
     from src.api.view_models.player_detail import _happiness
 
     _repo(lg).update(lg.season.id, date(2025, 4, 11))
     pid = lg.players[lg.a.id][0].id
-    on = _happiness(lg.db, lg.league.id, pid)
-    assert on["mood"] and on["lines"]
-    off = _happiness(lg.db, lg.league.id, pid, on_team=False)
-    assert off["mood"] is None and off["lines"] == []
+    repo = _repo(lg)
+    pers = repo.personalities([pid])[pid]
+    pers = replace(pers, climate="tropical")
+    wish = hp.climate_wish(pers)
+    assert wish == "Wishes he played somewhere tropical."
+    lg.db.execute(
+        """UPDATE player_moods SET detail = jsonb_set(detail, '{lines}', %s::jsonb)
+           WHERE player_id = %s""",
+        ('["Enjoys being the man here.", "' + wish + '"]', pid),
+    )
+    with patch.object(
+        HappinessRepository, "personalities", lambda self, ids: {pid: pers}
+    ):
+        on = _happiness(lg.db, lg.league.id, pid)
+        off = _happiness(lg.db, lg.league.id, pid, on_team=False)
+    assert on["lines"] == ["Enjoys being the man here.", wish]
+    assert off["lines"] == [wish]
+    assert off["mood"] == on["mood"] is not None
     assert not off["wants_trade"] and not off["refusing"]
     assert off["type"] == on["type"]
     assert off["admin"]["last_team"] and not on["admin"]["last_team"]
