@@ -640,6 +640,34 @@ def test_a_hot_tempered_owner_reacts_to_a_losing_streak(lg):
     assert owner_office.reactions(x.db, x.league.id) == 1
 
 
+def test_the_owner_names_the_record_and_the_other_club_doesnt_cheer(lg):
+    """Josh: "A league record!" should say what the record was."""
+    from src.api.services import owner_office
+    from src.api.services.news.names import token
+    from src.db.repositories.news_repo import NewsRepository
+
+    x = lg(n=2)
+    a, b = x.teams[0].id, x.teams[1].id
+    _make_owner(x, temper=50)
+    # A single-game record names the club that set it first, the other second.
+    NewsRepository(x.db).add(
+        x.league.id, x.season.id, "2026-04-20", "record", "rec:game:hr:1",
+        f"{token('p', 'p1', 'Joe Ruiz')} sets a league record with 5 home runs",
+        "5 home runs in one game. The old mark was 4.",
+        team_ids=[b, a], gm_ids=[x.gm.id],
+    )  # fmt: skip
+    assert owner_office.reactions(x.db, x.league.id) == 0
+    NewsRepository(x.db).add(
+        x.league.id, x.season.id, "2026-04-21", "record", "rec:game:hr:2",
+        f"{token('p', 'p2', 'Al Diaz')} sets a league record with 6 home runs",
+        "6 home runs in one game. The old mark was 5.",
+        team_ids=[a, b], gm_ids=[x.gm.id],
+    )  # fmt: skip
+    assert owner_office.reactions(x.db, x.league.id) == 1
+    (said,) = _said(x, "record")
+    assert "Al Diaz's 6 home runs in one game" in said
+
+
 def test_a_steady_owner_lets_a_streak_pass(lg):
     from src.api.services import owner_office
 
