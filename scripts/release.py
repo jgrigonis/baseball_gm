@@ -2,9 +2,13 @@
 
 """Cut a release: bump the version, record it in CHANGES.txt, commit, tag, push.
 
-    python scripts/release.py patch -m "Fix the box score" -m "Faster sims"
-    python scripts/release.py minor            # prompts for the change notes
-    python scripts/release.py 0.6.0 --dry-run  # show what would happen
+    uv run --locked python scripts/release.py patch -m "Fix the box score" -m "Faster sims"
+    uv run --locked python scripts/release.py minor            # prompts for the change notes
+    uv run --locked python scripts/release.py 0.6.0 --dry-run  # show what would happen
+
+It only needs the standard library, so plain `python` works too, but `uv run`
+matches every other script here and picks the project's Python 3.14. With
+`--locked` it stops before anything happens if uv.lock is already out of date.
 
 The new version goes into pyproject.toml, uv.lock (via `uv lock`) and on top
 of CHANGES.txt, all three are committed as "Release X.Y.Z" and pushed, then an
