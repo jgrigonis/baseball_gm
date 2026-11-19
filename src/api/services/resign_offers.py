@@ -15,6 +15,9 @@ a salary and a number of seasons. He answers right away, like a free agent
   insult him: talks close for the window. One who could walk (a veteran,
   or an unhappy player) then raises his price or refuses to re-sign; one
   under team control holds a bigger grudge.
+- A counter higher than his ask raises what Re-sign pays to match (Josh,
+  2026-11-19), so a GM can't get out of a higher answer by clicking
+  Re-sign. It never comes back down in the window.
 - No offers to a refuser, one asking the minimum for one season (an
   arbitration player can still be offered an extension), or in a league
   without money (offseason_fa.no_offer). One asking the minimum for more
@@ -88,19 +91,23 @@ def _save_talks(conn, league_id, team_id, player_id, year, **fields):
         "closed": talks.get("closed", False),
         "bumped": talks.get("bumped", False),
         "refused": talks.get("refused", False),
+        "resign_salary": talks.get("resign_salary"),
+        "resign_years": talks.get("resign_years"),
     }
     vals.update(fields)
     conn.execute(
         """INSERT INTO resign_talks (league_id, player_id, team_id, year, offers,
                                      counter_salary, counter_years, closed,
-                                     bumped, refused)
-           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                     bumped, refused, resign_salary, resign_years)
+           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
            ON CONFLICT (player_id, year) DO UPDATE
            SET team_id = excluded.team_id, offers = excluded.offers,
                counter_salary = excluded.counter_salary,
                counter_years = excluded.counter_years,
                closed = excluded.closed, bumped = excluded.bumped,
-               refused = excluded.refused""",
+               refused = excluded.refused,
+               resign_salary = excluded.resign_salary,
+               resign_years = excluded.resign_years""",
         (
             league_id,
             player_id,
@@ -112,6 +119,8 @@ def _save_talks(conn, league_id, team_id, player_id, year, **fields):
             vals["closed"],
             vals["bumped"],
             vals["refused"],
+            vals["resign_salary"],
+            vals["resign_years"],
         ),
     )
 
@@ -147,7 +156,10 @@ def stance(
     when already looked up (the AI teams' talks do them all at once).
     years: for an arbitration player, the length of the extension offered:
     his ask is then what those seasons are worth (extension_ask)."""
-    p, team_id, ask = row["player"], row["team_id"], row["ask"]
+    # Judged from what he asked before talks; a counter that raised his
+    # Re-sign price doesn't feed back into the next one.
+    p, team_id = row["player"], row["team_id"]
+    ask = row.get("renewal") or row["ask"]
     security = 0.0
     if row["arb_season"] is not None and years:
         ask = extension_ask(row, years)
@@ -184,6 +196,7 @@ def stance(
         home=True,
         seasons=row["seasons"],
         security=security,
+        raised=bool(row.get("raised")),
     )
 
 
@@ -237,6 +250,7 @@ def preview(conn, league_id: str, team_id: str, player_id: str) -> dict:
         "min_salary": s.minimum,
         "max_years": offseason_fa.MAX_BID_YEARS,
         "can_walk": can_walk,
+        "raised": bool(row.get("raised")),
         "extension": extension,
         "hints": ng.resign_hints(
             s, mood, _underpaid(conn, league_id, player_id), grudge
@@ -387,8 +401,10 @@ def offer(
                     "line": "He's insulted, and he won't re-sign with you. He'll test the market.",
                 }
             if can_walk:
-                bumped = ct.round_salary(
-                    row["ask"].salary * (1 + ng.HOME_BUMP), row["scale"]
+                renewal = row.get("renewal") or row["ask"]
+                bumped = max(
+                    ct.round_salary(renewal.salary * (1 + ng.HOME_BUMP), row["scale"]),
+                    row["ask"].salary if row.get("raised") else 0,
                 )
                 return {
                     "result": "insulted",
@@ -407,6 +423,14 @@ def offer(
                 ),
             }
         happy.add_grudge(player_id, team_id, year, s.grudge(salary, want))
+        # An answer above what Re-sign pays raises it to match (Josh,
+        # 2026-11-19), and it never comes back down in the window. Not for
+        # an arbitration player: his counter is for an extension.
+        raise_to = (
+            {"resign_salary": want, "resign_years": years}
+            if row["arb_season"] is None and want > row["ask"].salary
+            else {}
+        )
         _save_talks(
             conn,
             league_id,
@@ -416,6 +440,7 @@ def offer(
             offers=offers,
             counter_salary=want,
             counter_years=years,
+            **raise_to,
         )
         conn.commit()
         stung = salary < ng.GRUDGE_LINE * want and not s.easygoing
@@ -430,6 +455,8 @@ def offer(
                 s, mood, _underpaid(conn, league_id, player_id), grudge
             ),
             "stung": stung,
+            # His answer raised what Re-sign pays.
+            "raised": bool(raise_to),
             "offers_left": max(0, ng.OFFERS_PER_WINDOW - offers),
             "blocked": offseason_fa._resign_refusal(
                 conn, league_id, team_id, year, mine, row, want

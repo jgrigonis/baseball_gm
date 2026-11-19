@@ -475,3 +475,58 @@ def test_ai_teams_dont_extend_arbitration_players(lg, monkeypatch):
         lg.db, lg.league.id, 2026, rows, {pid}, {lg.mine.id}
     )
     assert deals == {}
+
+
+def _other_years(ask_years):
+    return ask_years + 1 if ask_years < offseason_fa.MAX_BID_YEARS else ask_years - 1
+
+
+def test_a_counter_above_his_ask_raises_what_re_sign_pays(lg, monkeypatch):
+    # Josh, 2026-11-19: a proud star with teams calling answers a different
+    # number of seasons with more than his ask. Re-sign then pays that, so
+    # you can't get out of it by clicking Re-sign.
+    _person(monkeypatch, ego=100, star=True, callers=3, temper=50)
+    pid = _expiring(lg, 2021, 6)
+    ask = _row(lg, pid)
+    years = _other_years(ask["ask_years"])
+    r = _offer(lg, pid, int(ask["ask_salary"] * 0.95), years)
+    assert r["result"] == "counter" and r["raised"]
+    c = r["counter"]
+    assert c["salary"] > ask["ask_salary"]
+    row = _row(lg, pid)
+    assert row["raised"] and not row["agreed"]
+    assert (row["ask_salary"], row["ask_years"]) == (c["salary"], c["years"])
+    assert row["first_ask_text"] == ct.format_salary(ask["ask_salary"])
+    assert (row["salary"], row["years"]) == (c["salary"], c["years"])
+    assert resign_offers.preview(lg.db, lg.league.id, lg.mine.id, pid)["raised"]
+    # His old ask is no longer a sure yes.
+    r = _offer(lg, pid, ask["ask_salary"], ask["ask_years"])
+    assert r["result"] == "counter" and r["counter"]["salary"] > ask["ask_salary"]
+    # Re-sign pays the raised price when the offseason runs.
+    offseason_fa.choose(lg.db, lg.league.id, lg.mine.id, pid, "resign")
+    offseason_fa.close_window(lg.db, lg.league.id)
+    new = lg.contracts.active(pid, 2027)
+    assert new["salary"] >= c["salary"]
+
+
+def test_the_raised_price_never_comes_back_down(lg, monkeypatch):
+    _person(monkeypatch, ego=100, star=True, callers=3, temper=50)
+    pid = _expiring(lg, 2021, 6)
+    ask = _row(lg, pid)
+    years = _other_years(ask["ask_years"])
+    first = _offer(lg, pid, int(ask["ask_salary"] * 0.95), years)["counter"]
+    # A calmer answer later (nobody else calling now) leaves it where it was.
+    _person(monkeypatch, ego=0, star=False, callers=0, temper=50)
+    r = _offer(lg, pid, int(ask["ask_salary"] * 0.8), ask["ask_years"])
+    assert r["result"] == "counter" and not r["raised"]
+    assert _row(lg, pid)["ask_salary"] == first["salary"]
+
+
+def test_a_counter_under_his_ask_leaves_re_sign_alone(lg, monkeypatch):
+    _person(monkeypatch, temper=50)
+    pid = _expiring(lg, 2021, 6)
+    ask = _row(lg, pid)
+    r = _offer(lg, pid, int(ask["ask_salary"] * 0.88), ask["ask_years"])
+    assert r["result"] == "counter" and not r["raised"]
+    row = _row(lg, pid)
+    assert not row["raised"] and row["ask_salary"] == ask["ask_salary"]

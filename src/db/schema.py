@@ -1860,6 +1860,8 @@ CREATE TABLE IF NOT EXISTS resign_talks (      -- migration 142: re-sign offers 
     closed         BOOLEAN NOT NULL DEFAULT FALSE, -- insulted: no more offers this window
     bumped         BOOLEAN NOT NULL DEFAULT FALSE, -- insulted: his price went up
     refused        BOOLEAN NOT NULL DEFAULT FALSE, -- insulted: he won't re-sign
+    resign_salary  INTEGER,                       -- migration 147: Re-sign price raised by a higher counter
+    resign_years   INTEGER,
     PRIMARY KEY (player_id, year)
 );
 CREATE INDEX IF NOT EXISTS idx_resign_talks_league ON resign_talks(league_id, year);
