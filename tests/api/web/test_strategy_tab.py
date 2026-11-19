@@ -182,9 +182,7 @@ def test_leash_and_bullpen_run_short_to_long(client, db_conn, gm):
     assert row["bullpen_pref"] == "starter-heavy"
 
 
-def test_skip_fifth_is_a_checkbox_that_greys_with_a_short_rotation(
-    client, db_conn, gm
-):
+def test_skip_fifth_is_a_checkbox_that_greys_with_a_short_rotation(client, db_conn, gm):
     GMRepository(db_conn).save_profile(gm.id, {"skip_fifth_starter": True})
     html = client.get(
         f"/leagues/{gm.league_id}/strategy", headers={"HX-Request": "true"}
@@ -196,9 +194,7 @@ def test_skip_fifth_is_a_checkbox_that_greys_with_a_short_rotation(
     assert 'name="skip_fifth_starter_keep"' in html
 
 
-def test_skip_fifth_unticked_saves_off_and_greyed_out_keeps_saved(
-    client, db_conn, gm
-):
+def test_skip_fifth_unticked_saves_off_and_greyed_out_keeps_saved(client, db_conn, gm):
     repo = GMRepository(db_conn)
     repo.save_profile(gm.id, {"skip_fifth_starter": True})
     # Greyed out (4-man): the box isn't posted, the keep marker is.
