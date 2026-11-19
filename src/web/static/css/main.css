@@ -1176,9 +1176,15 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.4; cursor: not-a
   overflow: hidden;
 }
 .player-panel.split { width: 720px; max-width: 75vw; }
-/* Three side by side: about 330px each, still leaving some page in view. */
-.player-panel.split3 { width: 1000px; max-width: 85vw; }
+/* Three or more side by side (--pp-n of them): about 333px each, still
+   leaving some page in view. compareFit (shell.html) only lets in as many
+   as keep each column at least 260px inside the 85vw. */
+.player-panel.split3 { width: calc(var(--pp-n, 3) * 333px); max-width: 85vw; }
 .player-panel.split3 .pp-slot { padding: 12px 14px; }
+/* Shrinking the window below what's open: columns stop at 240px and the
+   row scrolls sideways instead of crushing them. */
+.player-panel.split3 .pp-body { overflow-x: auto; }
+.player-panel.split3 .pp-slot { min-width: 240px; }
 
 @keyframes slideIn {
   from { transform: translateX(100%); opacity: 0; }

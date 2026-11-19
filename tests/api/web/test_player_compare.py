@@ -1,5 +1,6 @@
 # tests/api/web/test_player_compare.py
-"""The player panel compares up to three players side by side, tagging each
+"""The player panel compares players side by side (as many as the window
+fits, ?fit=, 3 without it), tagging each
 "You get" / "You give" when it's opened from a trade offer."""
 
 import pytest
@@ -37,8 +38,10 @@ def setup(db_conn, factory):
     app.dependency_overrides.clear()
 
 
-def _panel(client, league, first, *compare, **sides):
+def _panel(client, league, first, *compare, fit=None, **sides):
     q = [("compare", p.id) for p in compare]
+    if fit is not None:
+        q.append(("fit", fit))
     q += [(side, p.id) for side, ps in sides.items() for p in ps]
     return client.get(f"/leagues/{league.id}/players/{first.id}/panel", params=q).text
 
@@ -55,7 +58,7 @@ def test_two_players_can_add_a_third(setup):
     client, league, (a, b, *_) = setup
     html = _panel(client, league, a, b)
     assert 'class="player-panel split"' in html
-    assert "Player Comparison · 2 of 3" in html
+    assert 'Player Comparison · 2 of <span id="pp-fit-max">3</span>' in html
     assert html.count('class="pp-slot-remove"') == 2
     assert "+ Add player" in html
     assert "Remove a player to add another" not in html
@@ -65,17 +68,36 @@ def test_three_players_side_by_side_and_no_more(setup):
     client, league, (a, b, c, d) = setup
     html = _panel(client, league, a, b, c, d)
     assert 'class="player-panel split split3"' in html
-    assert "Player Comparison · 3 of 3" in html
+    assert 'Player Comparison · 3 of <span id="pp-fit-max">3</span>' in html
     for p in (a, b, c):
         assert f'data-player-id="{p.id}" data-side=""' in html
     assert d.id not in html
     assert "Remove a player to add another" in html
 
 
+def test_a_wide_window_fits_more(setup):
+    client, league, (a, b, c, d) = setup
+    html = _panel(client, league, a, b, c, d, fit=5)
+    assert 'class="player-panel split split3"' in html
+    assert 'style="--pp-n: 4"' in html
+    assert 'Player Comparison · 4 of <span id="pp-fit-max">5</span>' in html
+    assert d.id in html
+    assert "Remove a player to add another" not in html
+
+
+def test_fit_is_kept_in_range(setup):
+    client, league, (a, b, c, d) = setup
+    html = _panel(client, league, a, b, c, d, fit=1)
+    assert 'Player Comparison · 3 of <span id="pp-fit-max">3</span>' in html
+    assert d.id not in html
+    html = _panel(client, league, a, b, fit=99)
+    assert 'of <span id="pp-fit-max">10</span>' in html
+
+
 def test_the_same_player_twice_shows_once(setup):
     client, league, (a, b, *_) = setup
     html = _panel(client, league, a, a, b)
-    assert "Player Comparison · 2 of 3" in html
+    assert 'Player Comparison · 2 of <span id="pp-fit-max">3</span>' in html
 
 
 def test_players_from_a_trade_are_tagged(setup):
