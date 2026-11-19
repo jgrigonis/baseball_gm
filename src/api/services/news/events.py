@@ -973,6 +973,37 @@ def firings(conn, names: Names, league_id: str, season_id: str, on: str) -> None
             weight=3 if r["user_id"] else 2, team_ids=[team] if team else [],
             gm_ids=[g for g in (person, r["gm_id"]) if g],
         )  # fmt: skip
+        _hired(conn, news, names, league_id, season_id, on, r, who)
+
+
+def _hired(conn, news, names, league_id, season_id, on, r, fired) -> None:
+    """The team's new GM, the story after its firing: who they are, and for
+    an AI GM, the book on them (their persona's archetype and bio)."""
+    team = r["team_id"]
+    gm = names.gm_of(team)
+    if not team or not gm:
+        return
+    new_gm = names.gm_name(gm)
+    body = f"The {names.full_team(team)} have hired {new_gm} to replace {fired}."
+    persona = None
+    if gm["is_ai"]:
+        row = conn.execute(
+            """SELECT p.archetype, p.bio FROM gms g
+               JOIN gm_personas p ON p.id = g.persona_id WHERE g.id = %s""",
+            (gm["id"],),
+        ).fetchone()
+        persona = dict(row) if row else None
+    if persona and persona["bio"]:
+        arch = persona["archetype"]
+        arch = arch[0].lower() + arch[1:] if arch.startswith("The ") else arch
+        label = f"{new_gm}, {arch}" if arch else new_gm
+        body += f' The book on {label}: "{persona["bio"].strip()}"'
+    news.add(
+        league_id, season_id, on, "front_office", f"hired:{r['gm_id']}:{season_id}",
+        f"{names.team(team)} hire {new_gm}",
+        body,
+        weight=3 if not gm["is_ai"] else 2, team_ids=[team], gm_ids=[gm["id"]],
+    )  # fmt: skip
 
 
 RETIREMENT_MARKS = (

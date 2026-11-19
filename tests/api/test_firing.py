@@ -188,11 +188,49 @@ class TestAnAIGM:
             lg.db, Names(lg.db, lg.league.id), lg.league.id, lg.season.id, "2026-10-31"
         )
         story = lg.db.execute(
-            "SELECT headline, body FROM league_news WHERE league_id = %s",
+            "SELECT headline, body FROM league_news WHERE league_id = %s"
+            " AND key LIKE 'fired:%%'",
             (lg.league.id,),
         ).fetchone()
         assert plain(story["headline"]) == "Samurai fire GM Robo"
         assert "60-102" in plain(story["body"])
+
+    def test_the_new_gm_gets_a_story(self, lg):
+        lg.db.execute(
+            """INSERT INTO gm_personas (id, name, bio, archetype, dials, chance)
+               VALUES ('p-hire', 'Pat Hire', 'Never met a blockbuster they didn''t like.',
+                       'The Gambler', '{}', 100)"""
+        )
+        _fire(lg, lg.ai)
+        firing.carry_out(lg.db, lg.league.id, lg.season.id, 2026)
+        new = _gm(lg.db, lg.ai)
+        lg.db.execute(
+            "UPDATE gms SET persona_id = 'p-hire', display_name = 'Pat Hire' WHERE id = %s",
+            (lg.ai,),
+        )
+        firing_news(
+            lg.db, Names(lg.db, lg.league.id), lg.league.id, lg.season.id, "2026-10-31"
+        )
+        story = lg.db.execute(
+            "SELECT headline, body, kind FROM league_news WHERE league_id = %s AND key LIKE 'hired:%%'",
+            (lg.league.id,),
+        ).fetchone()
+        assert new["is_ai"] and story["kind"] == "front_office"
+        assert plain(story["headline"]) == "Samurai hire GM Pat Hire"
+        assert plain(story["body"]) == (
+            "The Tokyo Samurai have hired GM Pat Hire to replace GM Robo."
+            ' The book on GM Pat Hire, the Gambler: "Never met a blockbuster they'
+            " didn't like.\""
+        )
+        # Written once.
+        firing_news(
+            lg.db, Names(lg.db, lg.league.id), lg.league.id, lg.season.id, "2026-10-31"
+        )
+        n = lg.db.execute(
+            "SELECT COUNT(*) AS n FROM league_news WHERE league_id = %s AND key LIKE 'hired:%%'",
+            (lg.league.id,),
+        ).fetchone()["n"]
+        assert n == 1
 
 
 class TestAPerson:
