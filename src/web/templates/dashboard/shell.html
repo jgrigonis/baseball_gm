@@ -452,11 +452,13 @@ window.closeBidding = async function() {
     gmAlert(e.message);
     return;
   }
-  const lines = d.mine.length
-    ? d.mine.map(s => `${s.name}: ${s.salary_text} a season for ${s.years} season${s.years === 1 ? '' : 's'}. He's in your organization (minors).`)
-    : ['None of the free agents you bid for picked you.'];
+  // What you signed, then what happened to the bids that didn't win
+  // (offseason_fa.bid_results, Josh 2026-11-19).
+  const lines = d.mine.map(t => `${t} He's in your organization (minors).`);
+  if (!d.mine.length && d.lost.length) lines.push('None of the free agents you bid for picked you.');
+  lines.push(...d.lost);
   lines.push(`${d.signed} free agent${d.signed === 1 ? '' : 's'} signed around the league.`);
-  await gmConfirm({title: d.mine.length ? 'You signed' : 'Bidding closed', lines, ok: 'OK', cancel: null});
+  await gmConfirm({title: 'Bidding closed', lines, ok: 'OK', cancel: null});
   window.location.reload();
 };
 window.withdrawBid = async function(pid, name) {
@@ -1246,6 +1248,12 @@ function showInjuryNews(d) {
   (d.waivers || []).forEach(function (w) {
     items.push({ text: `✍️ ${w.text}`, dest: 'free-agents' });
     stops = true;
+  });
+  // What happened to each free agent bid when bidding closed
+  // (offseason_fa.close_bidding): signings lead to the Roster, the rest to
+  // Free Agents, where the unsigned can still be signed.
+  (d.bids || []).forEach(function (b) {
+    items.push({ text: `✍️ ${b.text}`, dest: b.won ? 'roster' : 'free-agents' });
   });
   setInjuryNews(items);  // adds to the sim card's news, if any
   return stops;

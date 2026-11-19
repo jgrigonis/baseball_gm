@@ -179,6 +179,9 @@ def take_injury_news(conn, gm_id: str) -> dict:
         "settings": [_fields(n) for n in news if n["kind"] == "settings"],
         # A person released a B- or better player (news/moves.py)
         "waivers": [_fields(n) for n in news if n["kind"] == "waivers"],
+        # What happened to each bid when free agent bidding closed
+        # (offseason_fa.close_bidding)
+        "bids": [_fields(n) for n in news if n["kind"] == "bids"],
     }
 
 

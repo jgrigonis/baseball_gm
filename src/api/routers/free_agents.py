@@ -438,34 +438,16 @@ def close_bidding(league_id: str, db: DB, gm: GM, _active: ActiveLeague):
             return JSONResponse(
                 {"detail": "Bidding closes when everyone's ready."}, status_code=422
             )
-        signed = offseason_fa.close_bidding(db, league_id)
+        results: dict = {}
+        signed = offseason_fa.close_bidding(db, league_id, results, notify=False)
         db.commit()
-    mine = [s for s in signed if s["team_id"] == gm["team_id"]]
-    names = {}
-    if mine:
-        from src.api.services.news.moves import shown_grade
-        from src.player.positions import display_position
-
-        repo = PlayerRepository(db)
-        for s in mine:
-            p = repo.look_up(s["player_id"])
-            if p:
-                # Name, then grade and position (Josh, 2026-11-13).
-                names[s["player_id"]] = (
-                    f"{p.first_name} {p.last_name} "
-                    f"({shown_grade(p)} {display_position(p.position)})"
-                )
+    lines = results.get(gm["team_id"], [])
     return JSONResponse(
         {
             "signed": len(signed),
-            "mine": [
-                {
-                    "name": names.get(s["player_id"], "A free agent"),
-                    "salary_text": format_salary(s["salary"]),
-                    "years": s["years"],
-                }
-                for s in mine
-            ],
+            "mine": [line["text"] for line in lines if line["won"]],
+            # Who went elsewhere or stayed unsigned, and why (Josh, 2026-11-19)
+            "lost": [line["text"] for line in lines if not line["won"]],
         }
     )
 
