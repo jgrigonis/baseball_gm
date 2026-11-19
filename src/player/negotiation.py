@@ -53,6 +53,10 @@ src/api/services/resign_offers.py) uses the same Stance with home=True:
   he can be offered an extension of EXTENSION_MIN_YEARS seasons or more:
   his ask is what those seasons are worth (contracts.extension_salary), and
   he takes less for the security (extension_security).
+- His counter can come back above his ask: his bar counts his ego, a star's
+  pride, other teams calling and money, and his ask (the renewal price) is a
+  sure yes only for the seasons he asked. When it does, Re-sign pays that
+  counter (Josh, 2026-11-19: raised), and his old ask is no longer a yes.
 """
 
 from __future__ import annotations
@@ -191,6 +195,10 @@ class Stance:
     home: bool = False  # re-signing with his own club
     seasons: int = 0  # seasons with the league, for the home pull
     security: float = 0.0  # an extension's guaranteed seasons, off his bar
+    # A counter higher than his ask raised his Re-sign price (Josh,
+    # 2026-11-19): his old asking deal is no longer a sure yes, nor the cap
+    # on a counter for those seasons.
+    raised: bool = False
 
     @property
     def home_pull(self) -> float:
@@ -250,7 +258,7 @@ class Stance:
     def takes(self, salary: int, years: int) -> bool:
         if salary < self.minimum:
             return False
-        if salary >= self.ask_salary and years == self.ask_years:
+        if not self.raised and salary >= self.ask_salary and years == self.ask_years:
             return True  # his asking deal: what Sign pays
         return salary >= self.floor and self.value(salary, years) >= self.bar - 1e-9
 
@@ -264,7 +272,7 @@ class Stance:
             + season_value(self.age, self.ask_years)
         ) * self.ask_salary
         salary = max(self.floor, self.minimum, need)
-        if years == self.ask_years:
+        if years == self.ask_years and not self.raised:
             salary = min(salary, self.ask_salary)
         salary = min(salary, self.ask_salary * MAX_COUNTER)
         out = round_up(salary)

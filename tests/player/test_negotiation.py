@@ -1,6 +1,8 @@
 # tests/player/test_negotiation.py
 """A free agent's answer to an offer (src/player/negotiation.py)."""
 
+import dataclasses
+
 import pytest
 
 from src.api.services.fa_offers import round_up
@@ -161,3 +163,17 @@ def test_a_veteran_asking_the_minimum_for_two_seasons_can_be_offered_one():
     assert low < want <= low * ng.MAX_COUNTER
     assert proud.grudge(low, want) == 0
     assert not proud.home_insulted(low, want, 0.0)
+
+
+def test_a_raised_ask_is_no_longer_a_sure_yes():
+    # Josh, 2026-11-19: once a counter raised his Re-sign price, his old
+    # asking deal isn't an automatic yes, nor the cap on a counter.
+    s = ng.Stance(
+        ask_salary=10_000_000, ask_years=5, age=26, fit=0.0, share=0.0,
+        ego=100, temper=50, loyalty=0, star=True, callers=3, home=True,
+    )  # fmt: skip
+    assert s.takes(10_000_000, 5)
+    assert s.counter(5, lambda x: int(x)) == 10_000_000
+    r = dataclasses.replace(s, raised=True)
+    assert not r.takes(10_000_000, 5)
+    assert r.counter(5, lambda x: int(x)) > 10_000_000

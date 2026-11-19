@@ -141,7 +141,8 @@ def expiring(conn, league_id: str, year: int, team_ids=None) -> list[dict]:
         """
         SELECT tp.team_id, tp.player_id, ps.status, c.salary AS old_salary,
                cc.choice, cc.salary AS agreed_salary, cc.years AS agreed_years,
-               rt.bumped, rt.refused, rt.closed
+               rt.bumped, rt.refused, rt.closed,
+               rt.resign_salary, rt.resign_years
         FROM team_players tp
         JOIN player_status ps ON ps.player_id = tp.player_id
         JOIN player_contracts c ON c.player_id = tp.player_id
@@ -192,6 +193,21 @@ def expiring(conn, league_id: str, year: int, team_ids=None) -> list[dict]:
                 deal.years,
                 deal.kind,
             )
+        # What he asked before talks: the negotiation is judged from it.
+        renewal = deal
+        # A counter higher than his ask raised what Re-sign pays (Josh,
+        # 2026-11-19): you can't dodge his answer by clicking Re-sign. Not
+        # for an arbitration player, whose counter is for an extension.
+        raised = (
+            deal.kind != "arbitration"
+            and bool(r["resign_salary"])
+            and r["resign_salary"] > deal.salary
+        )
+        if raised:
+            years = r["resign_years"]
+            deal = ct.Deal(
+                r["resign_salary"], years, "standard" if years > 1 else deal.kind
+            )
         ask = deal
         agreed = bool(r["agreed_salary"]) and r["choice"] == "resign"
         if agreed:
@@ -229,6 +245,8 @@ def expiring(conn, league_id: str, year: int, team_ids=None) -> list[dict]:
                 "old_salary": r["old_salary"],
                 "deal": deal,
                 "ask": ask,
+                "renewal": renewal,
+                "raised": raised,
                 "agreed": agreed,
                 "talks_closed": bool(r["closed"]),
                 "wants_out": wants_out,
@@ -795,6 +813,10 @@ def expiring_view(conn, league_id: str, team_id: str) -> list[dict]:
                 "ask_salary": r["ask"].salary,
                 "ask_text": ct.format_salary(r["ask"].salary),
                 "ask_years": r["ask"].years,
+                # His answer raised his price: what he first asked.
+                "raised": r["raised"],
+                "first_ask_text": ct.format_salary(r["renewal"].salary),
+                "first_ask_years": r["renewal"].years,
                 "agreed": r["agreed"],
                 "no_offer": no_offer(r),
             }

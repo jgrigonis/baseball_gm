@@ -139,7 +139,7 @@ function expiringRow(p) {
       ${isPitcher ? `<div class="lu-skills">${pitcherGradesHtml(p)}</div>` : hitterGradesHtml(p, null)}
     </div>
     <div class="fa-right">
-      <div class="fa-ask" title="${p.agreed ? `The deal he agreed to (he asked ${p.ask_text} for ${p.ask_years}; now ${p.old_salary_text})` : `His new deal from next season (now ${p.old_salary_text})`}">${p.salary_text}<small>${p.years} yr${p.years === 1 ? '' : 's'}${p.arb_share ? ` · ${p.arb_share}% of ${p.market_salary_text}` : ''}${p.agreed ? ' · <span class="fa-agreed">agreed</span>' : ''}</small>
+      <div class="fa-ask" title="${p.agreed ? `The deal he agreed to (he asked ${p.ask_text} for ${p.ask_years}; now ${p.old_salary_text})` : p.raised ? `His answer to your offer raised his price (he first asked ${p.first_ask_text} for ${p.first_ask_years}; now ${p.old_salary_text})` : `His new deal from next season (now ${p.old_salary_text})`}">${p.salary_text}<small>${p.years} yr${p.years === 1 ? '' : 's'}${p.arb_share ? ` · ${p.arb_share}% of ${p.market_salary_text}` : ''}${p.agreed ? ' · <span class="fa-agreed">agreed</span>' : p.raised ? ' · <span class="fa-raised">raised</span>' : ''}</small>
         <div class="fa-fate ${p.fate}">${FATE[p.fate]}</div></div>
       <div class="fa-choice">
         <button class="resign${on('resign')}" data-c="resign" ${p.refuses ? `disabled title="${p.refuses_text}"` : p.agreed && p.choice === 'resign' ? 'title="Take back the deal he agreed to"' : 'title="Re-sign him now at his asking price"'}>Re-sign</button>
