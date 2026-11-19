@@ -40,12 +40,13 @@
   <div class="card-body table-scroll">
     <table class="data-table" data-phone-clip>
       <thead>
-        <tr><th>GM</th><th>Team</th><th><span class="setting-tip" tabindex="0" data-tip="The team's owner: the boss its GM answers to once the league starts. Hover a name to see what owners of that kind want.">Owner</span></th><th>Type</th></tr>
+        <tr><th>GM</th><th>Team</th><th><span class="setting-tip" tabindex="0" data-tip="The team's owner: the boss its GM answers to once the league starts. Hover a name to see what owners of that kind want.">Owner</span></th></tr>
       </thead>
       <tbody>
         {% for gm in gms %}
         <tr {% if gm.id == current_gm_id %}class="my-team"{% endif %}>
-          <td class="team-name">{% if gm.username %}<a href="/gms/{{ gm.username|urlencode }}" class="gm-link" title="GM profile">{{ gm.display_name }}</a>{% else %}{{ gm.display_name }}{% endif %}</td>
+          <td class="team-name">{% if gm.username %}<a href="/gms/{{ gm.username|urlencode }}" class="gm-link" title="GM profile">{{ gm.display_name }}</a>{% else %}{{ gm.display_name }}{% endif %}
+            <div class="lobby-gm-kind">{{ 'You' if gm.id == current_gm_id else 'Human GM' }}</div></td>
           <td>
             {% if gm.id == current_gm_id and league_state == "lobby" and not starting and gm.lobby_city %}
             <span style="white-space:nowrap;">{{ team_badge(gm.lobby_city, gm.lobby_mascot) }}
@@ -75,13 +76,6 @@
             {% endif %}
           </td>
           <td>{{ lobby_owner(gm.lobby_city, gm.lobby_mascot) }}</td>
-          <td>
-            {% if gm.is_ai %}
-              <span class="badge badge-pill badge-40man">AI</span>
-            {% else %}
-              <span class="badge badge-pill badge-human">Human</span>
-            {% endif %}
-          </td>
         </tr>
         {% endfor %}
         {% for ai in ai_gms %}
@@ -90,8 +84,8 @@
             <div class="lobby-pick-row"><div>
             {% if ai.persona_id %}
             <a href="/leagues/{{ league_id }}/personas/{{ ai.persona_id }}" style="color:inherit;">{{ ai.display_name }}</a>
-            {% if ai.archetype %}<div style="color:var(--text-dim);font-size:11px;">{{ ai.archetype }}</div>{% endif %}
-            {% else %}{{ ai.display_name }}{% endif %}
+            <div class="lobby-gm-kind">{{ ai.archetype or "AI GM" }}</div>
+            {% else %}{{ ai.display_name }}<div class="lobby-gm-kind">AI GM</div>{% endif %}
             </div>
             {% if is_commissioner and not starting %}
             <button type="button" class="lobby-reroll reroll-btn"
@@ -103,7 +97,6 @@
           </td>
           <td>{{ lobby_team(ai.lobby_city, ai.lobby_mascot) }}</td>
           <td>{{ lobby_owner(ai.lobby_city, ai.lobby_mascot) }}</td>
-          <td><span class="badge badge-pill badge-40man">AI</span></td>
         </tr>
         {% endfor %}
         {% for _ in range(ai_slots) %}
@@ -111,7 +104,6 @@
           <td class="team-name" style="color:var(--text-dim);" title="Each open team gets an AI GM persona when the league starts">AI GM (picked at start)</td>
           <td style="color:var(--text-dim);">—</td>
           <td style="color:var(--text-dim);">—</td>
-          <td><span class="badge badge-pill badge-40man">AI</span></td>
         </tr>
         {% endfor %}
       </tbody>
