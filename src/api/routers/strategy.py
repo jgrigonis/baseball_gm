@@ -96,10 +96,11 @@ SETTINGS: tuple[tuple[str, tuple[Setting | Checkbox, ...]], ...] = (
                 "sac_bunt",
                 "Sacrifice Bunt Usage",
                 mp.SAC_BUNT,
-                ("Never", "Situational", "Frequent"),
+                ("Never", "Rarely", "Situational", "Frequent"),
                 ("Never bunt", "Bunt often"),
                 "How often the manager calls a sacrifice bunt with a runner on and "
-                "fewer than two outs. Frequent bunts about twice as often.",
+                "fewer than two outs. Rarely bunts about 40% as often as "
+                "Situational, Frequent about twice as often.",
             ),
             Setting(
                 "rest_days",

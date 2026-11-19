@@ -1049,7 +1049,7 @@ CREATE TABLE IF NOT EXISTS gm_profiles (
     rest_days        TEXT NOT NULL DEFAULT 'standard'
                          CHECK (rest_days IN ('iron-man', 'standard', 'rest-often')),
     sac_bunt         TEXT NOT NULL DEFAULT 'situational'
-                         CHECK (sac_bunt         IN ('never', 'situational', 'frequent')),
+                         CHECK (sac_bunt         IN ('never', 'rarely', 'situational', 'frequent')),
 
     -- Pitching tendencies
     starter_usage TEXT NOT NULL DEFAULT '85'   -- pitches (migrations 129, 130)

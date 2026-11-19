@@ -162,6 +162,13 @@ def test_saves_the_defensive_lineup_style(client, db_conn, gm):
     assert GMRepository(db_conn).get_profile(gm.id)["lineup_style"] == "defensive"
 
 
+def test_saves_rarely_bunt(client, db_conn, gm):
+    # Never, Rarely, Situational, Frequent: Rarely is the second step.
+    r = client.post(f"/leagues/{gm.league_id}/strategy", data={"sac_bunt": 1})
+    assert r.status_code == 200
+    assert GMRepository(db_conn).get_profile(gm.id)["sac_bunt"] == "rarely"
+
+
 def test_leash_and_bullpen_run_short_to_long(client, db_conn, gm):
     # Starter Leash: 75 on the left, 115 on the right. Bullpen Shape: Deep pen
     # on the left, Starter-heavy on the right.

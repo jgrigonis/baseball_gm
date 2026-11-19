@@ -304,6 +304,12 @@ def _band(value: int, low: int = 34, high: int = 67) -> int:
     return 0 if value < low else 2 if value >= high else 1
 
 
+def _bunt_band(small: int) -> int:
+    """Index into SAC_BUNT: Never below 15, Rarely 15-29, Situational 30-70,
+    Frequent 71 and up."""
+    return 0 if small < 15 else 1 if small < 30 else 2 if small < 71 else 3
+
+
 def profile(dials: dict) -> dict:
     """The gm_profiles settings an AI team with these dials plays by. The
     tactical dials (small ball, bullpen hook, analytics, loyalty, time
@@ -342,7 +348,7 @@ def profile(dials: dict) -> dict:
     return {
         "lineup_style": style,
         "baserunning": mp.BASERUNNING[min(4, small // 20)],
-        "sac_bunt": mp.SAC_BUNT[_band(small, 30, 71)],
+        "sac_bunt": mp.SAC_BUNT[_bunt_band(small)],
         "starter_usage": starter,
         "closer_usage": mp.CLOSER_USAGE[_band(modern, 60, 85)],
         "bullpen_pref": mp.BULLPEN_PREF[_band(hook)],
