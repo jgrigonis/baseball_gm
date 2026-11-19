@@ -1749,7 +1749,8 @@ CREATE TABLE IF NOT EXISTS player_contracts (
     released_year    INTEGER,                    -- season a team released him; the deal ends for him then
     released_team_id TEXT REFERENCES teams(id) ON DELETE SET NULL, -- who still owes the rest, if guaranteed
     offset_salary    INTEGER NOT NULL DEFAULT 0,  -- off the old team's bill a season, once he signs elsewhere (migration 084)
-    offset_through   INTEGER                      -- last season the offset covers
+    offset_through   INTEGER,                     -- last season the offset covers
+    signed_by_gm     TEXT                         -- the person GM running the team when it was signed (migration 146)
 );
 CREATE INDEX IF NOT EXISTS idx_player_contracts_league ON player_contracts(league_id);
 CREATE INDEX IF NOT EXISTS idx_player_contracts_team ON player_contracts(team_id);

@@ -285,6 +285,13 @@ def _owner_reacts(conn, league_id: str, team_id: str, season_id: str) -> None:
         log.exception("League %s: owner reaction to a release failed", league_id)
 
 
+def _owner_on_signing(conn, league_id: str, team_id: str) -> None:
+    """The owner's word on an overpaid signing, right away."""
+    from src.api.services import owner_office
+
+    owner_office.after_signings(conn, league_id, [team_id])
+
+
 def sign_preview(conn, league_id: str, team_id: str, player_id: str) -> dict:
     """What signing him would cost, for the confirm: his asking deal, and a
     warning when it takes the team over budget (src/league/budget.py)."""
@@ -413,6 +420,7 @@ def sign(
         # Full offset: his new salary comes off what old teams still owe.
         contracts.apply_offset(player_id, year, deal.salary, year + deal.years - 1)
         move_news.signed(conn, league_id, season_id, player, team_id, deal, released_by)
+        _owner_on_signing(conn, league_id, team_id)
         conn.commit()
     return {
         "name": player.name,

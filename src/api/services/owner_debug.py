@@ -26,7 +26,7 @@ from src.player.contracts import format_salary
 
 # Owner messages that move the mood the moment they're written (the rest
 # only say what the weekly reading already counts).
-EVENT_KINDS = ("trade", "release", "streak", "veto", "budget")
+EVENT_KINDS = ("trade", "release", "streak", "veto", "budget", "overpay")
 
 
 def _pct(x: float) -> str:

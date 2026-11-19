@@ -413,12 +413,18 @@ class ContractRepository:
         pick=None,
         guaranteed=False,
     ) -> None:
+        # signed_by_gm: the person running the team now, if any (migration
+        # 146), for the owner's word on overpaid players (owner_office).
         self.conn.execute(
             """
             INSERT INTO player_contracts (
                 player_id, league_id, team_id, kind, salary, start_year, years,
-                pick_number, guaranteed, signing_bonus
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                pick_number, guaranteed, signing_bonus, signed_by_gm
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                (SELECT g.id FROM gms g
+                 WHERE g.league_id = %s AND g.team_id = %s
+                   AND NOT g.is_ai AND g.fired_at IS NULL
+                 ORDER BY g.id LIMIT 1))
             ON CONFLICT (player_id, start_year) WHERE released_year IS NULL
             DO NOTHING
             """,
@@ -433,6 +439,8 @@ class ContractRepository:
                 pick,
                 guaranteed,
                 deal.signing_bonus,
+                league_id,
+                team_id,
             ),
         )
 

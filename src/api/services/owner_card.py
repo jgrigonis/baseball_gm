@@ -117,6 +117,7 @@ EVENT_WORDS = {
     "release": "a release",
     "streak": "a streak",
     "veto": "a release they refused",
+    "overpay": "an overpaid player",
     "budget": "the payroll",
 }
 

@@ -345,10 +345,26 @@ window.offerFreeAgent = async function(pid, name) {
   }
   await sendOffer(url, name, salary, years);
 };
-async function sendOffer(url, name, salary, years) {
+// An offer or bid well past his price (src/league/overpay.py): the server
+// answers "overpay" first, and it goes in only once the GM confirms.
+async function confirmOverpay(name, warning, budget) {
+  return gmConfirm({
+    title: `Overpay ${name}?`,
+    lines: ['Your owner pays this contract, and they read every one.', budget || ''].filter(Boolean),
+    warn: warning,
+    ok: 'Offer it anyway', tone: 'danger',
+    cancel: 'Go back',
+  });
+}
+window.confirmOverpay = confirmOverpay;
+async function sendOffer(url, name, salary, years, overpaidOk) {
   let d;
-  try { d = await postJson(url, {salary, years}); }
+  try { d = await postJson(url, {salary, years, overpaid_ok: !!overpaidOk}); }
   catch (e) { gmAlert(e.message); return; }
+  if (d.result === 'overpay') {
+    if (await confirmOverpay(name, d.warning, d.budget_warning)) await sendOffer(url, name, salary, years, true);
+    return;
+  }
   if (d.result === 'signed') {
     gmToast(`${name} signs: ${d.salary_text} a season for ${d.years}`, 'ok');
     closePlayerPanel();
@@ -404,8 +420,13 @@ window.bidFreeAgent = async function(pid, name, ask) {
     cancel: 'Cancel',
   });
   if (!vals) return;
+  const bid = {salary: Math.round(vals.salary * 1e6), years: Math.round(vals.years)};
   try {
-    await postJson(`${url}/bid`, {salary: Math.round(vals.salary * 1e6), years: Math.round(vals.years)});
+    const d = await postJson(`${url}/bid`, bid);
+    if (d.result === 'overpay') {
+      if (!(await confirmOverpay(name, d.warning, d.budget_warning))) return;
+      await postJson(`${url}/bid`, {...bid, overpaid_ok: true});
+    }
   } catch (e) { gmAlert(e.message); return; }
   gmToast(`Bid in for ${name}`, 'ok');
   closePlayerPanel();
@@ -498,10 +519,14 @@ window.offerExpiring = async function(pid, name) {
   }
   await sendResignOffer(url, name, salary, years);
 };
-async function sendResignOffer(url, name, salary, years) {
+async function sendResignOffer(url, name, salary, years, overpaidOk) {
   let d;
-  try { d = await postJson(url, {salary, years}); }
+  try { d = await postJson(url, {salary, years, overpaid_ok: !!overpaidOk}); }
   catch (e) { gmAlert(e.message); return; }
+  if (d.result === 'overpay') {
+    if (await confirmOverpay(name, d.warning, d.budget_warning)) await sendResignOffer(url, name, salary, years, true);
+    return;
+  }
   if (!(window.faExpiringUpdate && window.faExpiringUpdate(d))) reloadTab();
   if (d.result === 'signed') {
     gmToast(`${name} agrees: ${d.salary_text} a season for ${d.years}`, 'ok');

@@ -619,6 +619,8 @@ def close_window(conn, league_id: str) -> dict:
         "DELETE FROM resign_talks WHERE league_id = %s AND year <= %s",
         (league_id, year),
     )
+    if money:
+        _owners_on_signings(conn, league_id)
     return {"resigned": resigned, "to_market": len(gone)}
 
 
@@ -893,13 +895,19 @@ def bid_preview(conn, league_id: str, team_id: str, player_id: str) -> dict:
 
 
 def place_bid(
-    conn, league_id: str, team_id: str, player_id: str, salary: int, years: int
+    conn,
+    league_id: str,
+    team_id: str,
+    player_id: str,
+    salary: int,
+    years: int,
+    overpaid_ok: bool = False,
 ) -> dict:
     with league_lock(conn, league_id):
         if not bidding_open_for(_league(conn, league_id)):
             raise OffseasonFAError(CLOSED)
         year = _year(conn, league_id)
-        _biddable(conn, league_id, player_id)
+        p = _biddable(conn, league_id, player_id)
         if free_agents.refused(conn, league_id, team_id, player_id, year):
             raise OffseasonFAError(free_agents.REFUSED)
         try:
@@ -915,6 +923,18 @@ def place_bid(
         refusal = BudgetRepository(conn).refusal(league_id, team_id, year, salary)
         if refusal:
             raise OffseasonFAError(refusal)
+        # Well past his price: a meddler's veto, else a warning to confirm
+        # first (src/league/overpay.py, Josh 2026-11-19).
+        from src.api.services import owner_office
+
+        check = owner_office.overpay_check(
+            conn, league_id, team_id, player_id, salary,
+            asking(conn, league_id, p, year).salary, year, overpaid_ok, p.name,
+        )  # fmt: skip
+        if check and check.get("vetoed"):
+            raise OffseasonFAError(check["vetoed"])
+        if check:
+            return check
         conn.execute(
             """INSERT INTO fa_bids (league_id, player_id, team_id, year, salary, years)
                VALUES (%s, %s, %s, %s, %s, %s)
@@ -1283,4 +1303,12 @@ def settle(conn, league_id: str) -> list[dict]:
     conn.execute(
         "DELETE FROM fa_bids WHERE league_id = %s AND year <= %s", (league_id, year)
     )
+    _owners_on_signings(conn, league_id)
     return signed
+
+
+def _owners_on_signings(conn, league_id: str) -> None:
+    """The owners' word on overpaid deals, right away (owner_office)."""
+    from src.api.services import owner_office
+
+    owner_office.after_signings(conn, league_id)

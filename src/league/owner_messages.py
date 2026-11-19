@@ -1325,3 +1325,89 @@ def record_set(fields: dict, rng: random.Random, record: str | None = None) -> s
 
 def release_veto(icon: bool, fields: dict, rng: random.Random) -> str:
     return _pick(rng, RELEASE_VETO["icons" if icon else "talent"], fields)
+
+
+# A reaction to overpaying a player (Josh, 2026-11-19: "Signing an F rated
+# 19 year old for 30 million didn't even make the Owner flinch";
+# src/league/overpay.py), by the owner's voice and how far over it was.
+# {player}: who signed; {salary}: his salary a season; {price}: his market
+# price a season; {term}: "for 5 seasons" or "for one season".
+OVERPAID_SIGNING = {
+    "plain": {
+        "egregious": (
+            "{salary} a season for {player}? His price was {price}. What were you thinking, {gm}?",
+            "I saw what we're paying {player}: {salary} a season {term}. Nobody else would have paid half that.",
+            "{player} at {salary} a season. I've seen bad contracts, {gm}, but that one's going on the wall.",
+        ),
+        "over": (
+            "{salary} a season for {player} is a lot more than he's worth. I hope you know something I don't.",
+            "We paid {player} well over his price. I'll be watching to see if he earns it.",
+        ),
+    },
+    "money": {
+        "egregious": (
+            "{salary} a season for {player}, {term}. His price was {price}. That's my money you're throwing around, {gm}.",
+            "I went over the {player} contract three times. {salary} a season for a {price} player. Explain it to me.",
+            "Do you know what {salary} a season buys, {gm}? Not {player}. Not at that price. I want this money spent better.",
+        ),
+        "over": (
+            "{salary} a season for {player}? His price was {price}. Every dollar counts here, {gm}.",
+            "We overpaid {player}, and I noticed. I'd rather not notice again.",
+            "{player} at {salary} a season is more than I'd have paid. Spend like it's your own money.",
+        ),
+    },
+    "spender": {
+        "egregious": (
+            "I don't mind spending, {gm}, but {salary} a season for {player}? He'd better turn out to be something.",
+            "I'll pay for winners. {player} at {salary} a season {term} doesn't look like one yet.",
+        ),
+        "over": (
+            "We paid {player} more than we had to. I'll live with it if he helps us win.",
+        ),
+    },
+}
+
+# The rare word about a player already on the roster who's paid far past
+# what he's worth now (a deal this GM signed). {player}, {salary}, {price}
+# (what he'd be paid on the market today), {left}: "this season" or "for
+# 3 more seasons".
+OVERPAID_ROSTER = {
+    "plain": (
+        "We're paying {player} {salary} a season, {left}. He's not playing anything like it.",
+        "I keep looking at {player}'s contract, {gm}. {salary} a season for a {price} player.",
+    ),
+    "money": (
+        "{player} costs us {salary} a season, {left}, and the market says he's worth {price}. That's money I'd like back.",
+        "Every time I see {player}'s salary I wince, {gm}. {salary} a season for what he's giving us.",
+    ),
+    "spender": (
+        "I pay for wins, {gm}. {player} at {salary} a season isn't bringing many.",
+    ),
+}
+
+
+def overpaid_signing(
+    voice: str, how: str, fields: dict, rng: random.Random, avoid=()
+) -> str:
+    lines = OVERPAID_SIGNING.get(voice, OVERPAID_SIGNING["plain"])
+    return _pick(rng, lines.get(how) or lines["egregious"], fields, avoid)
+
+
+def overpaid_roster(voice: str, fields: dict, rng: random.Random, avoid=()) -> str:
+    return _pick(
+        rng, OVERPAID_ROSTER.get(voice, OVERPAID_ROSTER["plain"]), fields, avoid
+    )
+
+
+# A meddler refusing an egregious offer or bid (Josh, 2026-11-19: "Yes,
+# they should be able to veto"). Shown as the offer's error and kept in the
+# owner's office.
+OVERPAY_VETO = (
+    "No. I'm not paying {player} {salary} a season. His price is {price}.",
+    "{salary} a season for {player}? Not with my money, {gm}.",
+    "You're not offering {player} {salary} a season. Not while I own this team.",
+)
+
+
+def overpay_veto(fields: dict, rng: random.Random) -> str:
+    return _pick(rng, OVERPAY_VETO, fields)

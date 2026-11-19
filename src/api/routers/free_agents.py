@@ -256,6 +256,7 @@ def sign_free_agent(
 class OfferBody(BaseModel):
     salary: int
     years: int
+    overpaid_ok: bool = False  # confirmed past the overpay warning
 
 
 @router.get("/leagues/{league_id}/free-agents/{player_id}/offer")
@@ -280,7 +281,13 @@ def make_offer(
 ):
     try:
         result = fa_offers.offer(
-            db, league_id, gm["team_id"], player_id, body.salary, body.years
+            db,
+            league_id,
+            gm["team_id"],
+            player_id,
+            body.salary,
+            body.years,
+            overpaid_ok=body.overpaid_ok,
         )
     except (fa_offers.OfferError, free_agents.FreeAgentError) as e:
         return JSONResponse({"detail": str(e)}, status_code=422)
@@ -394,6 +401,7 @@ def _expiring_result(db, league_id: str, team_id: str, result: dict) -> dict:
 class BidBody(BaseModel):
     salary: int
     years: int
+    overpaid_ok: bool = False  # confirmed past the overpay warning
 
 
 @router.post("/leagues/{league_id}/free-agents/{player_id}/bid")
@@ -402,7 +410,13 @@ def place_bid(
 ):
     try:
         result = offseason_fa.place_bid(
-            db, league_id, gm["team_id"], player_id, body.salary, body.years
+            db,
+            league_id,
+            gm["team_id"],
+            player_id,
+            body.salary,
+            body.years,
+            overpaid_ok=body.overpaid_ok,
         )
     except offseason_fa.OffseasonFAError as e:
         return JSONResponse({"detail": str(e)}, status_code=422)
@@ -517,7 +531,13 @@ def make_resign_offer(
     """Offer an expiring player a new deal; he answers right away."""
     try:
         result = resign_offers.offer(
-            db, league_id, gm["team_id"], player_id, body.salary, body.years
+            db,
+            league_id,
+            gm["team_id"],
+            player_id,
+            body.salary,
+            body.years,
+            overpaid_ok=body.overpaid_ok,
         )
     except resign_offers.ResignOfferError as e:
         return JSONResponse({"detail": str(e)}, status_code=422)
