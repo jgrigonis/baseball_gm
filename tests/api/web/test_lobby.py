@@ -13,6 +13,7 @@ from src.api.database import get_db
 from src.api.dependencies import get_current_gm, get_current_user, get_gm_or_viewer
 from src.api.main import app
 from src.api.services import personas
+from src.api.services import owners as owner_service
 
 
 @pytest.fixture
@@ -215,7 +216,40 @@ def test_only_the_commissioner_sees_reroll(client, db_conn, lobby):
     db_conn.execute(
         "UPDATE leagues SET commissioner_gm_id = %s WHERE id = %s", (gm.id, league.id)
     )
-    assert _gms(client, league).text.count("reroll-btn") == 3
+    page = _gms(client, league).text
+    assert page.count(" reroll-btn") == 3
+    assert page.count("owner-reroll-btn") >= 3  # every dealt team's owner
+
+
+def test_commissioner_rerolls_an_owner(client, db_conn, lobby):
+    league, gm = lobby
+    db_conn.execute(
+        "UPDATE leagues SET commissioner_gm_id = %s WHERE id = %s", (gm.id, league.id)
+    )
+    _fill(db_conn, league)
+    ai = personas.lobby_ai_gms(db_conn, league.id)
+    key = f"{ai[0]['lobby_city']}|{ai[0]['lobby_mascot']}"
+    before = owner_service.lobby_owners(db_conn, league.id)
+
+    r = client.post(f"/leagues/{league.id}/lobby/owner/reroll", data={"team": key})
+
+    assert r.status_code == 200
+    after = owner_service.lobby_owners(db_conn, league.id)
+    assert after[key]["name"] != before[key]["name"]
+    assert after[key]["name"] in r.text
+    assert len({o["name"] for o in after.values()}) == len(after)
+    assert all(after[k] == before[k] for k in before if k != key)
+
+
+def test_others_cannot_reroll_an_owner(client, db_conn, lobby):
+    league, _ = lobby
+    _fill(db_conn, league)
+    before = owner_service.lobby_owners(db_conn, league.id)
+    r = client.post(
+        f"/leagues/{league.id}/lobby/owner/reroll", data={"team": next(iter(before))}
+    )
+    assert r.status_code == 403
+    assert owner_service.lobby_owners(db_conn, league.id) == before
 
 
 def test_commissioner_rerolls_an_ai_gm(client, db_conn, lobby):

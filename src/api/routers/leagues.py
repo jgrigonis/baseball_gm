@@ -1167,6 +1167,34 @@ def reroll_lobby_gm(
     )
 
 
+@router.post("/leagues/{league_id}/lobby/owner/reroll", response_class=HTMLResponse)
+def reroll_lobby_owner(
+    request: Request,
+    league_id: str,
+    db: DB,
+    gm: GM,
+    team: str = Form(...),
+):
+    """The commissioner swaps a lobby team's owner, given as "City|Mascot",
+    for another from the library. Answers with the GM list."""
+    league = LeagueRepository(db).get_by_id(league_id)
+    if not league or league["state"] != "lobby":
+        return HTMLResponse("", headers={"HX-Redirect": f"/leagues/{league_id}/"})
+    if league["commissioner_gm_id"] != gm["id"]:
+        return HTMLResponse("Only the commissioner can do that.", status_code=403)
+    city, _, mascot = team.partition("|")
+    if sim_jobs.league_has_job(db, league_id):
+        pass  # the league is starting: the list shows the owners as they stand
+    elif not owner_service.reroll_lobby_owner(db, league_id, city, mascot):
+        return HTMLResponse("No such team in the lobby.", status_code=404)
+    db.commit()
+    return templates.TemplateResponse(
+        request,
+        "dashboard/partials/_lobby_gms.html",
+        _lobby_gms_context(GMRepository(db), league, gm),
+    )
+
+
 @router.post("/leagues/{league_id}/lobby/team", response_class=HTMLResponse)
 def pick_lobby_team(
     request: Request,
