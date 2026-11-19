@@ -59,6 +59,8 @@ PITCHER_POSITIONS = ["sp", "rp"]
 # how much teams select for each skill (power most, catching and infield
 # not at all), and more spread out, so mature leagues keep year one's level
 # and its spread between teams, with more stars and more busts per class.
+# Retuned 2026-11-19: long leagues still drifted toward pitchers (accuracy
+# and strikes up, hitters' power, contact and eye down), so offense sank.
 # Retune with scripts/talent_drift_sim.py.
 
 # Each skill's distance from 50 is stretched by this much...
@@ -68,12 +70,12 @@ DRAFT_OFFSET = 4.7
 # ...and this off each skill, for position players and for pitchers.
 DRAFT_SKILL_OFFSETS: dict[str, dict[str, float]] = {
     "hitter": {
-        "power": 21,
+        "power": 18.5,
         "speed": 15.5,
-        "contact": 13,
+        "contact": 11,
         "base_running": 10,
         "outfield": 10,
-        "eye": 9,
+        "eye": 6.5,
         "arm": 7,
         "clutch": 6,
         "catching": 4,
@@ -82,12 +84,12 @@ DRAFT_SKILL_OFFSETS: dict[str, dict[str, float]] = {
         "bunting": 1.5,
     },
     "pitcher": {
-        "accuracy": 12,
+        "accuracy": 14.5,
         "clutch": 14,
-        "strikes": 9,
-        "ground_balls": 8.5,
+        "strikes": 11,
+        "ground_balls": 11,
         "recovery": 7.5,
-        "stamina": 10,
+        "stamina": 8.5,
     },
 }
 # Skills below this are a player's non-skills (a pitcher's catching, a
