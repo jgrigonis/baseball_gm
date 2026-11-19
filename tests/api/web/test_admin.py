@@ -1120,6 +1120,78 @@ class TestOwners:
         assert self._get(db_conn, name) is None
 
 
+class TestChangeOwner:
+    """The admin League page hands a team a different owner."""
+
+    def _seat(self, db, league, team, owner_id):
+        db.execute(
+            """INSERT INTO team_owners (league_id, team_id, owner_id, since_year)
+               VALUES (%s, %s, %s, 2026)""",
+            (league.id, team.id, owner_id),
+        )
+
+    def _owner_of(self, db, league, team):
+        return db.execute(
+            "SELECT owner_id FROM team_owners WHERE league_id = %s AND team_id = %s",
+            (league.id, team.id),
+        ).fetchone()["owner_id"]
+
+    def _pool(self, db, n):
+        return [
+            r["id"]
+            for r in db.execute(
+                "SELECT id FROM owner_personas ORDER BY name LIMIT %s", (n,)
+            ).fetchall()
+        ]
+
+    def test_change_to_a_new_owner_resets_the_mood(
+        self, client, db_conn, factory, admin
+    ):
+        league = _league(db_conn, factory)
+        team = factory.team()
+        old, new = self._pool(db_conn, 2)
+        self._seat(db_conn, league, team, old)
+        season = factory.season()
+        db_conn.execute(
+            """INSERT INTO owner_moods (league_id, team_id, season_id, mood)
+               VALUES (%s, %s, %s, -0.8)""",
+            (league.id, team.id, season.id),
+        )
+        r = client.post(
+            f"/admin/leagues/{league.id}/teams/{team.id}/owner",
+            data={"owner_id": new},
+        )
+        assert r.headers["location"].endswith("?done=owner_changed")
+        assert self._owner_of(db_conn, league, team) == new
+        assert not db_conn.execute(
+            "SELECT 1 FROM owner_moods WHERE league_id = %s AND team_id = %s",
+            (league.id, team.id),
+        ).fetchone()
+
+    def test_an_owner_in_the_league_swaps_teams(self, client, db_conn, factory, admin):
+        league = _league(db_conn, factory)
+        a, b = factory.team(), factory.team()
+        oa, ob = self._pool(db_conn, 2)
+        self._seat(db_conn, league, a, oa)
+        self._seat(db_conn, league, b, ob)
+        page = client.get(f"/admin/leagues/{league.id}").text
+        assert "Change owner" in page and "(swap with" in page
+        client.post(
+            f"/admin/leagues/{league.id}/teams/{a.id}/owner", data={"owner_id": ob}
+        )
+        assert self._owner_of(db_conn, league, a) == ob
+        assert self._owner_of(db_conn, league, b) == oa
+
+    def test_a_team_without_an_owner_says_so(self, client, db_conn, factory, admin):
+        league = _league(db_conn, factory)
+        team = factory.team()
+        (o,) = self._pool(db_conn, 1)
+        r = client.post(
+            f"/admin/leagues/{league.id}/teams/{team.id}/owner", data={"owner_id": o}
+        )
+        assert r.status_code == 400 and "no owner yet" in r.text
+
+
 class TestSoloSettingsToo:
     """The admin changes what a solo commissioner can (league_settings.py)."""
 

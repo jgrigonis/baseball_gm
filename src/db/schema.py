@@ -826,6 +826,7 @@ CREATE TABLE IF NOT EXISTS league_lobby_teams (
     league_id TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
     city      TEXT NOT NULL,
     mascot    TEXT NOT NULL,
+    owner_id  TEXT,                         -- the owner drawn for it in the lobby, seated at the start (migration 144)
     PRIMARY KEY (league_id, city, mascot)
 );
 

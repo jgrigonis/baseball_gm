@@ -6,6 +6,7 @@ GM they replace, and the start hands each GM the team they were dealt."""
 import random
 
 from src.api.services import lobby_teams
+from src.api.services import owners as owner_service
 from src.api.services import personas as persona_service
 from src.db.repositories.gm_repo import GMRepository
 
@@ -296,3 +297,55 @@ def test_the_choices_show_market_and_climate(db_conn, factory):
 
     assert choices[("New York", "Titans")]["facts"] == "Huge · Mild"
     assert choices[("Cairo", "Pharaohs")]["facts"] == "Mid-size · Desert"
+
+
+# ── Owners in the lobby (owners.lobby_owners) ────────────────────────────────
+
+
+def test_each_lobby_team_is_drawn_its_own_owner_once(db_conn, factory):
+    league, _ = _lobby(db_conn, factory)
+    first = owner_service.lobby_owners(db_conn, league.id)
+    teams = lobby_teams.league_teams(db_conn, league.id)
+    assert set(first) == {f"{c}|{m}" for c, m in teams}
+    assert len({o["name"] for o in first.values()}) == len(teams)
+    assert all(o["archetype"] for o in first.values())
+    assert owner_service.lobby_owners(db_conn, league.id) == first
+
+
+def test_a_team_brought_in_gets_a_fresh_owner(db_conn, factory):
+    league, me = _lobby(db_conn, factory)
+    _set_league(
+        db_conn,
+        league.id,
+        me.id,
+        ("New York", "Titans"),
+        [("London", "Lions"), ("Tokyo", "Samurai"), ("Sydney", "Sharks")],
+    )
+    before = owner_service.lobby_owners(db_conn, league.id)
+    assert lobby_teams.pick(db_conn, league.id, me.id, "Paris", "Musketeers")
+    after = owner_service.lobby_owners(db_conn, league.id)
+    assert "London|Lions" not in after and "Paris|Musketeers" in after
+    assert after["Tokyo|Samurai"] == before["Tokyo|Samurai"]
+    assert len({o["name"] for o in after.values()}) == 4
+
+
+def test_the_start_seats_the_lobby_owners(db_conn, factory):
+    league, _ = _lobby(db_conn, factory)
+    drawn = owner_service.lobby_owners(db_conn, league.id)
+    season = factory.season(year=2026)
+    factory.league_season(league, season)
+    for key in drawn:
+        city, mascot = key.split("|")
+        factory.league_season_team(
+            league, season, factory.team(city=city, mascot=mascot)
+        )
+    seated = owner_service.ensure(db_conn, league.id)
+    names = {
+        r["id"]: f"{r['city']}|{r['mascot']}"
+        for r in db_conn.execute(
+            "SELECT id, city, mascot FROM teams WHERE id = ANY(%s)", (list(seated),)
+        ).fetchall()
+    }
+    assert {names[t]: o["name"] for t, o in seated.items()} == {
+        k: o["name"] for k, o in drawn.items()
+    }

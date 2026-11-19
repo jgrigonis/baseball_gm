@@ -10,9 +10,15 @@
    picked, and keeps it at the start. Each person can pick another team
    from the drop down in their row: one an AI GM holds swaps with theirs. The poll waits
    while that picker has focus, so it isn't swapped out from under them. Leagues made before AI GMs were picked
-   in the lobby show open slots instead, filled at the start. #}
+   in the lobby show open slots instead, filled at the start. Each team's
+   owner is drawn in the lobby too (owners.lobby_owners) and is the one the
+   GM works for once the league starts. #}
 {% macro lobby_team(city, mascot) -%}
   {% if city %}<span style="white-space:nowrap;">{{ team_badge(city, mascot) }} {{ city }} {{ mascot }}</span>{% else %}<span style="color:var(--text-dim);">—</span>{% endif %}
+{%- endmacro %}
+{% macro lobby_owner(city, mascot) -%}
+  {% set o = lobby_owners.get(city ~ '|' ~ mascot) if city else none %}
+  {% if o %}<span class="lobby-owner"{% if o.wants %} title="{{ o.archetype }}: {{ o.wants }}"{% endif %}>{{ o.name }}{% if o.archetype %}<span class="lobby-owner-kind">{{ o.archetype }}</span>{% endif %}</span>{% else %}<span style="color:var(--text-dim);">—</span>{% endif %}
 {%- endmacro %}
 <div class="card" id="lobby-gms" data-humans="{{ gms|length }}"
      {% if league_state == "lobby" %}
@@ -30,7 +36,7 @@
   <div class="card-body table-scroll">
     <table class="data-table" data-phone-clip>
       <thead>
-        <tr><th>GM</th><th>Team</th><th>Type</th></tr>
+        <tr><th>GM</th><th>Team</th><th><span class="setting-tip" tabindex="0" data-tip="The team's owner: the boss its GM answers to once the league starts. Hover a name to see what owners of that kind want.">Owner</span></th><th>Type</th></tr>
       </thead>
       <tbody>
         {% for gm in gms %}
@@ -64,6 +70,7 @@
             {{ lobby_team(gm.lobby_city, gm.lobby_mascot) }}
             {% endif %}
           </td>
+          <td>{{ lobby_owner(gm.lobby_city, gm.lobby_mascot) }}</td>
           <td>
             {% if gm.is_ai %}
               <span class="badge badge-pill badge-40man">AI</span>
@@ -82,6 +89,7 @@
             {% else %}{{ ai.display_name }}{% endif %}
           </td>
           <td>{{ lobby_team(ai.lobby_city, ai.lobby_mascot) }}</td>
+          <td>{{ lobby_owner(ai.lobby_city, ai.lobby_mascot) }}</td>
           <td style="white-space:nowrap;">
             <span class="badge badge-pill badge-40man">AI</span>
             {% if is_commissioner and not starting %}
@@ -97,6 +105,7 @@
         {% for _ in range(ai_slots) %}
         <tr class="ai-slot">
           <td class="team-name" style="color:var(--text-dim);" title="Each open team gets an AI GM persona when the league starts">AI GM (picked at start)</td>
+          <td style="color:var(--text-dim);">—</td>
           <td style="color:var(--text-dim);">—</td>
           <td><span class="badge badge-pill badge-40man">AI</span></td>
         </tr>

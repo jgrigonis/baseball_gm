@@ -37,6 +37,7 @@ from src.api.services import (
     takeover,
 )
 from src.api.services import admin as admin_service
+from src.api.services import owners as owner_service
 from src.api.services.coach import coach_ctx
 from src.api.services.leave_league import leave_league
 from src.api.view_models.league_info import league_info
@@ -1128,6 +1129,12 @@ def _lobby_gms_context(gm_repo: GMRepository, league, gm) -> dict:
         "late_joins": bool(league.get("late_joins")),
         "current_gm_id": str(gm["id"]),
         "team_choices": lobby_teams.choices(gm_repo.conn, league["id"]),
+        # Each lobby team's owner, drawn now and seated at the start.
+        "lobby_owners": (
+            owner_service.lobby_owners(gm_repo.conn, league["id"])
+            if league["state"] == "lobby"
+            else {}
+        ),
     }
 
 

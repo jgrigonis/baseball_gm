@@ -166,8 +166,11 @@
           <th class="num">Patience</th><th class="num">Spending</th><th class="num">Judges from</th>
           <th class="num">Fans</th><th class="num">Revenue</th><th class="num" title="The owner's budget{% if owner_cap %}, from the league's {{ owner_cap }} payroll cap{% endif %}">Budget</th><th class="num">Last profit</th>
           <th class="num" title="The owner's verdict on the last season, -1 to 1">Score</th>
-          <th class="num" title="Job security 0-100: hot seat under 30, fired under 15">Job</th></tr></thead>
+          <th class="num" title="Job security 0-100: hot seat under 30, fired under 15">Job</th>
+          <th title="Hand the team a different owner. One already in this league swaps teams with this one. The GM starts over with the new owner and their mood starts fresh.">Change owner</th></tr></thead>
         <tbody>
+          {% set seated = {} %}
+          {% for o in owners %}{% set _ = seated.update({o.owner_id: o.team}) %}{% endfor %}
           {% for o in owners %}
           <tr>
             <td class="team-name">{{ o.team }}</td>
@@ -186,9 +189,19 @@
             <td class="num" {% if r and r.score < 0 %}style="color:var(--red);"{% endif %}>{{ '%+.2f' | format(r.score) if r else '—' }}</td>
             <td class="num" {% if r and r.verdict != 'retained' %}style="color:var(--red);"{% endif %}
                 title="{% if r %}{{ r.year }}: {{ r.before }} → {{ r.security }}, {{ r.verdict }}{% endif %}">{{ r.security if r else '—' }}</td>
+            <td style="white-space:nowrap;">
+              <form method="POST" action="/admin/leagues/{{ league.id }}/teams/{{ o.team_id }}/owner" class="owner-change">
+                <select name="owner_id" aria-label="New owner for the {{ o.team }}">
+                  {% for c in owner_choices %}
+                  <option value="{{ c.id }}" {% if c.id == o.owner_id %}selected{% endif %}>{{ c.name }}{% if c.archetype %} · {{ c.archetype }}{% endif %}{% if c.id != o.owner_id and c.id in seated %} (swap with {{ seated[c.id] }}){% endif %}</option>
+                  {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-secondary admin-small">Change</button>
+              </form>
+            </td>
           </tr>
           {% if r %}
-          <tr class="admin-dim"><td colspan="14" style="font-size:10px;line-height:1.7;padding-top:0;">
+          <tr class="admin-dim"><td colspan="15" style="font-size:10px;line-height:1.7;padding-top:0;">
             {{ r.year }} scorecard{% if r.win_target %} · win target .{{ '%03d' | format((r.win_target * 1000) | round | int) }}{% endif %} ·
             {% for d in r.dimensions if d.score is not none %}{{ d.label }} <span style="color:{{ 'var(--green)' if d.score > 0.05 else ('var(--red)' if d.score < -0.05 else 'var(--muted)') }};">{{ '%+.1f' | format(d.score) }}</span>{% if not loop.last %} · {% endif %}{% endfor %}
           </td></tr>

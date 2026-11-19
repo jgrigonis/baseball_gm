@@ -1,9 +1,10 @@
 # src/api/services/owners.py
 #
 # Team owners in a league (src/league/owners.py): every team gets one, drawn
-# from the site-wide library, the first time the league needs them: when it
-# starts, or, for a league that was already running when owners came in, the
-# first time anything asks. An owner stays with the team for the whole league;
+# from the site-wide library. Teams in the lobby are drawn theirs as soon as
+# the lobby shows them (lobby_owners), and the start seats those; a team with
+# no lobby draw (a league that was already running when owners came in) is
+# drawn one the first time anything asks. An owner stays with the team for the whole league;
 # the GM can change under them.
 #
 # The draw is weighted by each owner's chance and tilted by the team's market
@@ -23,6 +24,7 @@ import random
 from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.owner_repo import OwnerRepository
+from src.api.services import lobby_teams
 from src.league import budget as bg
 from src.league import divisions, money_state, owners, team_pool
 from src.league.trades import ai_evaluator
@@ -92,14 +94,106 @@ def ensure(conn, league_id: str, rng: random.Random | None = None) -> dict[str, 
             for t in div.team_ids:
                 mates[t] = div.team_ids
     all_ids = [t["id"] for t in teams]
+    lobby = _lobby_draws(conn, league_id)
+    known = {o["id"] for o in pool}
     for team in missing:
-        owner = owners.choose(pool, taken, _market(team), rng)
+        drawn = lobby.get((team["city"], team["mascot"]))
+        if drawn in known and drawn not in taken:
+            owner = {"id": drawn}
+        else:
+            owner = owners.choose(pool, taken, _market(team), rng)
         if owner is None:
             break
         taken.add(owner["id"])
         rival = owners.choose_rival(team["id"], mates.get(team["id"], []), all_ids, rng)
         repo.seat(league_id, team["id"], owner["id"], rival, since)
     return repo.in_league(league_id)
+
+
+def _lobby_draws(conn, league_id: str) -> dict[tuple[str, str], str]:
+    """The owner drawn for each lobby team, as (city, mascot) -> owner id."""
+    rows = conn.execute(
+        """SELECT city, mascot, owner_id FROM league_lobby_teams
+           WHERE league_id = %s AND owner_id IS NOT NULL""",
+        (league_id,),
+    ).fetchall()
+    return {(r["city"], r["mascot"]): r["owner_id"] for r in rows}
+
+
+def lobby_owners(conn, league_id: str) -> dict[str, dict]:
+    """The owner of each team in this league's lobby, keyed "City|Mascot":
+    name, archetype and what owners of that kind want. Teams without one yet
+    (new to the lobby, or their owner left the library) are drawn one, the
+    same way the start would, with no repeats; the start seats these owners
+    (ensure)."""
+    repo = OwnerRepository(conn)
+    pool = repo.pool()
+    by_id = {o["id"]: o for o in pool}
+    draws = _lobby_draws(conn, league_id)
+    taken = {o for o in draws.values() if o in by_id}
+    for city, mascot in lobby_teams.league_teams(conn, league_id):
+        if draws.get((city, mascot)) in by_id:
+            continue
+        rng = random.Random(f"{league_id}-lobby-owner-{city}-{mascot}")
+        owner = owners.choose(
+            pool, taken, _market({"city": city, "mascot": mascot}), rng
+        )
+        if owner is None:
+            break
+        conn.execute(
+            """UPDATE league_lobby_teams SET owner_id = %s
+               WHERE league_id = %s AND city = %s AND mascot = %s""",
+            (owner["id"], league_id, city, mascot),
+        )
+        draws[(city, mascot)] = owner["id"]
+        taken.add(owner["id"])
+    out = {}
+    for (city, mascot), owner_id in draws.items():
+        o = by_id.get(owner_id)
+        if o:
+            out[f"{city}|{mascot}"] = {
+                "name": o["name"],
+                "archetype": o["archetype"],
+                "wants": owners.wants(o["archetype"]),
+            }
+    return out
+
+
+def change(conn, league_id: str, team_id: str, owner_id: str) -> str | None:
+    """An admin hands a team a different owner from the library (the admin
+    League page). The team keeps its rival, its bank and the season the
+    owner started judging; the GM starts over with the new owner (job
+    security from their grace level, src/api/services/owner_review.py
+    _tenure) and their mood starts fresh. An owner already with another team
+    in the league swaps places with this team's. Budgets already set this
+    season stay; the new owner's spending sets the next ones. Returns an
+    error, or None."""
+    repo = OwnerRepository(conn)
+    seats = repo.in_league(league_id)
+    mine = seats.get(team_id)
+    if not mine:
+        return "That team has no owner yet."
+    if not repo.get(owner_id):
+        return "No such owner."
+    if mine["owner_id"] == owner_id:
+        return None
+    other = next(
+        (t for t, o in seats.items() if o["owner_id"] == owner_id and t != team_id),
+        None,
+    )
+    swaps = [(team_id, owner_id)]
+    if other:
+        swaps.append((other, mine["owner_id"]))
+    for team, owner in swaps:
+        conn.execute(
+            "UPDATE team_owners SET owner_id = %s WHERE league_id = %s AND team_id = %s",
+            (owner, league_id, team),
+        )
+        conn.execute(
+            "DELETE FROM owner_moods WHERE league_id = %s AND team_id = %s",
+            (league_id, team),
+        )
+    return None
 
 
 def card(conn, league_id: str, team_id: str) -> dict | None:
