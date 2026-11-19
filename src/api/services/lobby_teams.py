@@ -13,6 +13,9 @@
 # swap with its AI GM; one that isn't comes in in place of the closest team
 # (same region first) that no other person holds, so the league keeps its
 # size and its mix of regions.
+#
+# Each lobby team is also drawn its owner (owner_id, src/api/services/owners.py
+# lobby_owners); a team brought in gets a fresh draw.
 
 from __future__ import annotations
 
@@ -226,7 +229,7 @@ def _bring_in(conn, league_id: str, me, rows, teams, new: PoolTeam) -> bool:
     if out is None:
         return False  # people hold every team
     conn.execute(
-        """UPDATE league_lobby_teams SET city = %s, mascot = %s
+        """UPDATE league_lobby_teams SET city = %s, mascot = %s, owner_id = NULL
            WHERE league_id = %s AND city = %s AND mascot = %s""",
         (new.city, new.mascot, league_id, out.city, out.mascot),
     )
