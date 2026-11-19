@@ -604,9 +604,18 @@ function removeBackdrop() { const b = document.getElementById('panel-backdrop');
 // Before a tab reloads in place: save the Lineup tab's unsaved edits so its
 // init restores them, and note the Leaders tab's open pane (defense,
 // rookies...). Returns what to run once the new tab has settled.
-function _keepTabState() {
+function _keepTabState(live) {
   if (document.getElementById('pane-batting') && window.saveLineupToStorage) {
     window.saveLineupToStorage();
+  }
+  // A sim day's reload keeps a drop-down the GM has open (the News tab's
+  // Filter) open, scrolled where it was (Josh, 2026-11-19).
+  var openDetails = [];
+  if (live) {
+    document.querySelectorAll('#tab-content details[open][id]').forEach(function(d) {
+      var inner = d.lastElementChild;
+      openDetails.push({id: d.id, top: inner ? inner.scrollTop : 0});
+    });
   }
   var lbPane = null;
   ['batting', 'pitching', 'defense', 'rookies'].forEach(function(c) {
@@ -615,6 +624,12 @@ function _keepTabState() {
   });
   return function() {
     if (lbPane && lbPane !== 'batting' && window.lbSwitch) window.lbSwitch(lbPane);
+    openDetails.forEach(function(o) {
+      var d = document.getElementById(o.id);
+      if (!d || d.tagName !== 'DETAILS') return;
+      d.open = true;
+      if (d.lastElementChild) d.lastElementChild.scrollTop = o.top;
+    });
   };
 }
 // Swap url into the tab through htmx, so the tab's inline script runs again
@@ -622,7 +637,7 @@ function _keepTabState() {
 // Lineup and Stats empty). Resolves once the new tab has settled.
 function _reloadTab(url, quiet) {
   if (!window.htmx || !document.getElementById('tab-content')) return Promise.resolve();
-  var restore = _keepTabState();
+  var restore = _keepTabState(quiet);
   return new Promise(function(resolve) {
     function done(e) {
       if (e && e.detail && e.detail.target && e.detail.target.id !== 'tab-content') return;
