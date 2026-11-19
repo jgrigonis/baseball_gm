@@ -705,3 +705,36 @@ def test_speed_blitz_never_opens_bidding(lg):
     assert free_agents.sign_preview(lg.db, lg.league.id, lg.mine.id, _free_agent(lg))[
         "no_money"
     ]
+
+
+def test_an_overpaid_bid_warns_first_and_the_owner_writes_when_he_signs(
+    lg, monkeypatch
+):
+    """Josh, 2026-11-19: an F-rated 19-year-old signed for $30M and the
+    owner didn't flinch (src/league/overpay.py)."""
+    import json
+
+    from src.api.services import owners as owner_service
+    from src.db.repositories.owner_repo import OwnerRepository
+
+    monkeypatch.setattr(offseason_fa, "_ai_bids", lambda *a: 0)
+    owner_service.ensure(lg.db, lg.league.id)
+    owner_id = OwnerRepository(lg.db).in_league(lg.league.id)[lg.mine.id]["owner_id"]
+    lg.db.execute(
+        "UPDATE owner_personas SET weights = '{}', traits = %s WHERE id = %s",
+        (json.dumps({"meddling": 10}), owner_id),
+    )
+    _set_state(lg, "draft")
+    pid = _free_agent(lg, level=10, name="Kid")
+    r = offseason_fa.place_bid(lg.db, lg.league.id, lg.mine.id, pid, 30_000_000, 5)
+    assert r["result"] == "overpay" and "$30M" in r["warning"]
+    assert offseason_fa.bid_counts(lg.db, lg.league.id, 2026) == {}
+    offseason_fa.place_bid(
+        lg.db, lg.league.id, lg.mine.id, pid, 30_000_000, 5, overpaid_ok=True
+    )
+    offseason_fa.settle(lg.db, lg.league.id)
+    said = lg.db.execute(
+        "SELECT body FROM owner_messages WHERE team_id = %s AND kind = 'overpay'",
+        (lg.mine.id,),
+    ).fetchall()
+    assert len(said) == 1 and "Test Kid" in said[0]["body"]

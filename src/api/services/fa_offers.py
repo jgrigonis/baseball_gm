@@ -346,6 +346,7 @@ def offer(
     years,
     n_callers: int | None = None,
     before_sign=None,
+    overpaid_ok: bool = False,
 ) -> dict:
     """Offer him a salary and seasons. He signs ("signed"), says what he'd
     take ("counter"), or stops taking the club's calls ("insulted"). Taking
@@ -378,6 +379,19 @@ def offer(
         if refusal:
             raise OfferError(refusal)
         ask = asking(conn, league_id, p, year)
+        # Well past his price: a meddler's veto, else a warning to confirm
+        # first (src/league/overpay.py, Josh 2026-11-19).
+        from src.api.services import owner_office
+
+        check = owner_office.overpay_check(
+            conn, league_id, team_id, player_id, salary,
+            owner_office.market_price(conn, league_id, p, year), year,
+            overpaid_ok, p.name,
+        )  # fmt: skip
+        if check and check.get("vetoed"):
+            raise OfferError(check["vetoed"])
+        if check:
+            return check
         s = stance(conn, league_id, season_id, year, team_id, p, ask, n_callers)
         taking_counter = (
             counter is not None and salary >= counter[0] and years == counter[1]

@@ -254,7 +254,15 @@ def preview(conn, league_id: str, team_id: str, player_id: str) -> dict:
     }
 
 
-def offer(conn, league_id: str, team_id: str, player_id: str, salary, years) -> dict:
+def offer(
+    conn,
+    league_id: str,
+    team_id: str,
+    player_id: str,
+    salary,
+    years,
+    overpaid_ok: bool = False,
+) -> dict:
     """Offer an expiring player a salary and seasons. He agrees ("signed":
     the deal is kept as the team's re-sign call), says what he'd take
     ("counter"), breaks off talks ("insulted": his price goes up, or a
@@ -290,6 +298,19 @@ def offer(conn, league_id: str, team_id: str, player_id: str, salary, years) -> 
         )
         if refusal:
             raise ResignOfferError(refusal)
+        # Well past both his ask and his market price: a meddler's veto,
+        # else a warning to confirm first (src/league/overpay.py).
+        from src.api.services import owner_office
+
+        check = owner_office.overpay_check(
+            conn, league_id, team_id, player_id, salary,
+            max(row["ask"].salary, row.get("market_salary") or 0), year + 1,
+            overpaid_ok, row["player"].name,
+        )  # fmt: skip
+        if check and check.get("vetoed"):
+            raise ResignOfferError(check["vetoed"])
+        if check:
+            return check
         talks = _talks(conn, player_id, year) or {}
         offers = talks.get("offers", 0)
         counter = talks.get("counter_salary"), talks.get("counter_years")

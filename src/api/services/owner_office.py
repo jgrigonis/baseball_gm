@@ -11,6 +11,9 @@
 #                           every release since they last looked), by deal id
 #   streak:<start>:<n>      a reaction to a winning or losing streak in the news
 #   veto:<player>:<year>    a meddler refusing to let the GM release him
+#   signing:<deal>          a reaction to overpaying a player (src/league/overpay.py)
+#   overpaid:<season>       the rare word on an overpaid player on the roster
+#   veto-sign:<player>:<year> a meddler refusing an egregious offer or bid
 #   over:<season>           payroll went over budget
 #   review:<season>         the end-of-season review and how safe the job is
 #
@@ -37,6 +40,7 @@ from src.db.repositories.owner_repo import OwnerRepository
 from src.league import budget as bg
 from src.league import owner_messages as om
 from src.league import owner_scoring as sc
+from src.league import overpay
 from src.league import owners
 from src.league.league_modes import get_mode
 from src.player.contracts import format_salary
@@ -421,6 +425,7 @@ def reactions(conn, league_id: str, today: str | None = None, team_ids=None) -> 
         by_team = {t: o for t, o in by_team.items() if t in set(team_ids)}
     gms = _gms(conn, league_id)
     names = _team_names(conn, by_team) if by_team else {}
+    money = get_mode(league["mode"]).budgets
     written = 0
     for team_id, owner in by_team.items():
         gm = gms.get(team_id)
@@ -441,6 +446,14 @@ def reactions(conn, league_id: str, today: str | None = None, team_ids=None) -> 
         written += _record_reactions(
             conn, league_id, season["id"], team_id, gm, owner, fields, today
         )
+        if money:
+            written += _signing_reactions(
+                conn, league_id, season, team_id, gm, owner, fields, today
+            )
+            if league["state"] == "season":
+                written += _overpaid_complaint(
+                    conn, league_id, season, team_id, gm, owner, fields, today
+                )
     return written
 
 
@@ -806,15 +819,318 @@ def _record_reactions(
     return written
 
 
-def _nudge_mood(conn, league_id, team_id, season_id, owner, delta: float) -> None:
+# ── Overpaying players (Josh, 2026-11-19; src/league/overpay.py) ────────────
+
+
+def market_price(conn, league_id: str, player, year: int) -> int:
+    """What he'd ask on the open market for a deal from `year`, at full
+    price (no in-season discount): what an overpay is measured against."""
+    from src.api.services import free_agents
+
+    return free_agents.asking_deal(
+        player,
+        year,
+        free_agents.price_scale(conn, league_id, year),
+        1.0,
+        free_agents.price_shifts(conn, league_id, year),
+    ).salary
+
+
+def _scale(conn, league_id: str, year: int) -> float:
+    return BudgetRepository(conn).salary_scale(league_id, year)
+
+
+def _term(years: int) -> str:
+    return "for one season" if years == 1 else f"for {years} seasons"
+
+
+def _player_name(conn, player_id: str) -> str:
+    row = conn.execute(
+        "SELECT first_name, last_name FROM players WHERE id = %s", (player_id,)
+    ).fetchone()
+    return f"{row['first_name']} {row['last_name']}" if row else "him"
+
+
+def signing_veto(
+    conn,
+    league_id: str,
+    team_id: str,
+    player_id: str,
+    salary: int,
+    fair: int,
+    year: int,
+) -> str | None:
+    """A meddling owner's refusal to let a person's team make an egregious
+    offer or bid (Josh, 2026-11-19: "Yes, they should be able to veto"),
+    in their words; None when it can go ahead. Kept in the owner's office
+    once per player a season, and committed, since the caller raises it
+    as an error. fair: his market price a season."""
+    season = _season(conn, league_id)
+    league = _league(conn, league_id)
+    if not season or not league or league["state"] in ("lobby", "complete"):
+        return None
+    if not get_mode(league["mode"]).budgets:
+        return None
+    owner = OwnerRepository(conn).in_league(league_id).get(team_id)
+    gm = _gms(conn, league_id).get(team_id)
+    if not owner or not gm or gm["is_ai"] or season["year"] < owner["since_year"]:
+        return None
+    if owners.clean_traits(owner["traits"])["meddling"] < om.MEDDLES:
+        return None
+    if overpay.level(salary, fair, _scale(conn, league_id, year)) != "egregious":
+        return None
+    fields = {
+        **_fields(owner, gm, _team_names(conn, [team_id]), None),
+        "player": _player_name(conn, player_id),
+        "salary": format_salary(salary),
+        "price": format_salary(fair),
+    }
+    key = f"veto-sign:{player_id}:{year}"
+    said = conn.execute(
+        """SELECT body FROM owner_messages
+           WHERE league_id = %s AND team_id = %s AND key = %s""",
+        (league_id, team_id, key),
+    ).fetchone()
+    if said:
+        return said["body"]
+    body = om.overpay_veto(fields, _rng(key, team_id))
+    from src.api.services.news.moves import today as league_today
+
+    _write(
+        conn, league_id, team_id, gm["id"], season["id"], key, "overpay_veto",
+        body, league_today(conn, season["id"]), None,
+    )  # fmt: skip
+    conn.commit()
+    return body
+
+
+def overpay_check(
+    conn,
+    league_id: str,
+    team_id: str,
+    player_id: str,
+    salary: int,
+    fair: int,
+    year: int,
+    confirmed: bool,
+    name: str,
+) -> dict | None:
+    """Before a person's offer or bid goes in: the owner's veto (as
+    {"vetoed": words}), or, until they confirm it, the overpay warning to
+    show ({"result": "overpay", ...}). None when it can go ahead."""
+    veto = signing_veto(conn, league_id, team_id, player_id, salary, fair, year)
+    if veto:
+        return {"vetoed": veto}
+    gm = _gms(conn, league_id).get(team_id)
+    if confirmed or not gm or gm["is_ai"]:
+        return None
+    line = overpay.warning(salary, fair, _scale(conn, league_id, year))
+    if not line:
+        return None
+    from src.api.services import free_agents
+
+    return {
+        "result": "overpay",
+        "name": name,
+        "warning": line,
+        # The budget warning at this salary, not his asking price.
+        "budget_warning": free_agents.budget_warning(
+            conn, league_id, team_id, year, salary
+        ),
+    }
+
+
+def after_signings(conn, league_id: str, team_ids=None) -> None:
+    """The owners' word on signings right away (reactions), for teams in
+    team_ids if given. In a savepoint, so a problem here never undoes the
+    signing; the caller commits."""
+    import logging
+
+    from src.api.services.news.moves import today as league_today
+
+    try:
+        with conn.transaction():
+            season = _season(conn, league_id)
+            reactions(
+                conn,
+                league_id,
+                league_today(conn, season["id"] if season else None),
+                team_ids,
+            )
+    except Exception:
+        logging.getLogger(__name__).exception(
+            "League %s: owner reaction to a signing failed", league_id
+        )
+
+
+# A deal made within this long (real time) is still news to the owner. The
+# reaction runs right after the signing; this is the backstop from the sim.
+SIGNING_FRESH = "2 days"
+
+
+def _signing_reactions(
+    conn, league_id, season, team_id, gm, owner, fields, today
+) -> int:
+    """A word, and a mood drop, on each fresh deal this GM signed that pays
+    a player well past his market price: every owner at egregious, owners
+    who watch the money and meddlers at over (src/league/overpay.py)."""
+    rows = conn.execute(
+        """SELECT c.id, c.player_id, c.salary, c.years, c.start_year
+           FROM player_contracts c
+           WHERE c.league_id = %s AND c.team_id = %s AND c.signed_by_gm = %s
+             AND c.kind = 'standard' AND c.released_year IS NULL
+             AND c.start_year >= %s
+             AND c.created_at::timestamptz > NOW() - %s::interval
+             AND NOT EXISTS (
+                 SELECT 1 FROM owner_messages m
+                 WHERE m.league_id = c.league_id AND m.team_id = %s
+                   AND m.key = 'signing:' || c.id)
+           ORDER BY c.id""",
+        (league_id, team_id, gm["id"], season["year"], SIGNING_FRESH, team_id),
+    ).fetchall()
+    if not rows:
+        return 0
+    from src.db.repositories.player_repo import PlayerRepository
+
+    repo = PlayerRepository(conn)
+    voice = overpay.voice(owner)
+    earlier = _season_bodies(conn, league_id, team_id, season["id"], "overpay")
+    written = 0
+    for r in rows:
+        p = repo.look_up(r["player_id"])
+        if p is None:
+            continue
+        fair = market_price(conn, league_id, p, r["start_year"])
+        how = overpay.level(r["salary"], fair, _scale(conn, league_id, r["start_year"]))
+        if not overpay.cares(owner, how):
+            continue
+        key = f"signing:{r['id']}"
+        body = om.overpaid_signing(
+            voice,
+            how,
+            {
+                **fields,
+                "player": p.name,
+                "salary": format_salary(r["salary"]),
+                "price": format_salary(fair),
+                "term": _term(r["years"]),
+            },
+            _rng(season["id"], team_id, key),
+            earlier,
+        )
+        if _write(
+            conn, league_id, team_id, gm["id"], season["id"], key, "overpay", body,
+            today, None,
+        ):  # fmt: skip
+            written += 1
+            earlier.append(body)
+            _nudge_mood(
+                conn, league_id, team_id, season["id"], owner,
+                overpay.mood(owner, how, r["years"]), today,
+            )  # fmt: skip
+    return written
+
+
+# The rare word on an overpaid player already on the roster comes once a
+# season at most, on a day between these many games played (drawn per team
+# and season), so it doesn't land with the first check-in.
+COMPLAINT_GAMES = (30, 120)
+
+
+def _overpaid_complaint(
+    conn, league_id, season, team_id, gm, owner, fields, today
+) -> int:
+    """At most once a season: a word on the most overpaid player on the
+    roster, judged on what he'd be worth on the market now, on a deal this
+    GM signed in an earlier season (nobody's blamed for the last GM's
+    deals, and a fresh signing already got its word). Every owner at
+    egregious, money owners and meddlers at over."""
+    key = f"overpaid:{season['id']}"
+    if _has(conn, league_id, team_id, key):
+        return 0
+    rng = _rng(key, team_id)
+    if _played(conn, season["id"]).get(team_id, 0) < rng.randint(*COMPLAINT_GAMES):
+        return 0
+    year = season["year"]
+    rows = conn.execute(
+        """SELECT c.player_id, c.salary, c.start_year + c.years - %s AS left_
+           FROM player_contracts c
+           JOIN team_players tp ON tp.player_id = c.player_id AND tp.team_id = %s
+           WHERE c.league_id = %s AND c.team_id = %s AND c.signed_by_gm = %s
+             AND c.kind = 'standard' AND c.released_year IS NULL
+             AND c.start_year < %s AND c.start_year + c.years > %s""",
+        (year, team_id, league_id, team_id, gm["id"], year, year),
+    ).fetchall()
+    if not rows:
+        return 0
+    from src.db.repositories.player_repo import PlayerRepository
+
+    repo = PlayerRepository(conn)
+    scale = _scale(conn, league_id, year)
+    worst = None
+    for r in rows:
+        p = repo.look_up(r["player_id"])
+        if p is None:
+            continue
+        fair = market_price(conn, league_id, p, year)
+        how = overpay.level(r["salary"], fair, scale)
+        if not overpay.cares(owner, how):
+            continue
+        extra = r["salary"] - fair
+        if worst is None or extra > worst[0]:
+            worst = (extra, p, r, fair)
+    if worst is None:
+        return 0
+    _, p, r, fair = worst
+    left = r["left_"]
+    body = om.overpaid_roster(
+        overpay.voice(owner),
+        {
+            **fields,
+            "player": p.name,
+            "salary": format_salary(r["salary"]),
+            "price": format_salary(fair),
+            "left": "this season" if left <= 1 else f"for {left} more seasons",
+        },
+        rng,
+    )
+    wrote = _write(
+        conn, league_id, team_id, gm["id"], season["id"], key, "overpay", body,
+        today, None,
+    )  # fmt: skip
+    if wrote:
+        _nudge_mood(
+            conn, league_id, team_id, season["id"], owner, overpay.COMPLAINT_MOOD
+        )
+    return int(wrote)
+
+
+def _nudge_mood(
+    conn, league_id, team_id, season_id, owner, delta: float, on: str | None = None
+) -> None:
     """Move this season's mood by delta right away, more for a hot temper.
-    Until the season's first weekly reading there's no mood to move."""
+    Until the season's first weekly reading there's no mood to move, unless
+    on (the league date) is given: then the season's mood starts from the
+    one carried from last season, moved by delta (an overpaid signing in
+    the offseason still counts)."""
     temper = owners.clean_traits(owner["traits"])["temper"]
-    conn.execute(
+    step = round(delta * (0.5 + temper / 100), 4)
+    cur = conn.execute(
         """UPDATE owner_moods
            SET mood = GREATEST(-1, LEAST(1, mood + %s))
            WHERE league_id = %s AND team_id = %s AND season_id = %s""",
-        (round(delta * (0.5 + temper / 100), 4), league_id, team_id, season_id),
+        (step, league_id, team_id, season_id),
+    )
+    if cur.rowcount or not on:
+        return
+    year = conn.execute(
+        "SELECT year FROM seasons WHERE id = %s", (season_id,)
+    ).fetchone()
+    carried = latest_moods(conn, league_id, year["year"] if year else None).get(
+        team_id, 0.0
+    )
+    _set_mood(
+        conn, league_id, team_id, season_id, max(-1.0, min(1.0, carried + step)), on
     )
 
 
