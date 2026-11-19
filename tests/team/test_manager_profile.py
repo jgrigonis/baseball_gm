@@ -153,6 +153,22 @@ def test_never_bunt():
     assert not GameStrategy.should_bunt(**kwargs, bunt_factor=0.0)
 
 
+def test_rarely_bunts_less_than_situational():
+    assert ManagerProfile(sac_bunt="rarely").bunt_factor == 0.4
+    kwargs = dict(
+        bases=bases(first=runner()),
+        outs=0,
+        strikes=0,
+        balls=0,
+        batter_bunting_skill=50,
+        batter_power=50,
+    )
+    # Runner on first in a tied game: 0.018 * 2.0 * 1.5 = 0.054; Rarely 0.0216.
+    assert GameStrategy.should_bunt(**kwargs, rng=FixedRng(0.03))
+    assert not GameStrategy.should_bunt(**kwargs, rng=FixedRng(0.03), bunt_factor=0.4)
+    assert GameStrategy.should_bunt(**kwargs, rng=FixedRng(0.01), bunt_factor=0.4)
+
+
 def starter(pitch_count, outs=0, hits=0, runs=0):
     p = MagicMock()
     p.is_starter = True
