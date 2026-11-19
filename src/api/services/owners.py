@@ -159,6 +159,35 @@ def lobby_owners(conn, league_id: str) -> dict[str, dict]:
     return out
 
 
+def reroll_lobby_owner(
+    conn, league_id: str, city: str, mascot: str, rng: random.Random | None = None
+) -> bool:
+    """The commissioner swaps a lobby team's owner for one not yet in the
+    league, drawn the usual way (market tilt, chance). False if the team
+    isn't in this league's lobby."""
+    if (city, mascot) not in lobby_teams.league_teams(conn, league_id):
+        return False
+    pool = OwnerRepository(conn).pool()
+    draws = _lobby_draws(conn, league_id)
+    taken = set(draws.values())
+    current = draws.get((city, mascot))
+    # Leave out the current owner even when everyone else is taken.
+    owner = owners.choose(
+        [o for o in pool if o["id"] != current],
+        taken,
+        _market({"city": city, "mascot": mascot}),
+        rng or random.Random(),
+    )
+    if owner is None:
+        return False
+    conn.execute(
+        """UPDATE league_lobby_teams SET owner_id = %s
+           WHERE league_id = %s AND city = %s AND mascot = %s""",
+        (owner["id"], league_id, city, mascot),
+    )
+    return True
+
+
 def change(conn, league_id: str, team_id: str, owner_id: str) -> str | None:
     """An admin hands a team a different owner from the library (the admin
     League page). The team keeps its rival, its bank and the season the
