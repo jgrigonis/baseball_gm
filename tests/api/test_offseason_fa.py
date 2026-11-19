@@ -325,6 +325,34 @@ def test_a_signing_names_the_team_he_left(lg, monkeypatch):
     assert set(story["team_ids"]) == {lg.ai.id, lg.mine.id}
 
 
+def _team_signs(lg, monkeypatch, n):
+    monkeypatch.setattr(offseason_fa, "_ai_bids", lambda *a: 0)
+    _set_state(lg, "draft")
+    pids = [_free_agent(lg) for _ in range(n)]
+    for pid in pids:
+        ask = _ask(lg, pid).salary
+        offseason_fa.place_bid(lg.db, lg.league.id, lg.ai.id, pid, ask, 2)
+    offseason_fa.settle(lg.db, lg.league.id)
+    return pids
+
+
+def test_two_signings_by_one_team_share_a_story(lg, monkeypatch):
+    pids = _team_signs(lg, monkeypatch, 2)
+    assert _news(lg, "fa-sign:") == []
+    [story] = _news(lg, "fa-sign-team:")
+    assert plain(story["headline"]).endswith("sign Test Player and Test Player")
+    assert plain(story["body"]).count("Test Player gets ") == 2
+    assert set(story["player_ids"]) == set(pids)
+    assert story["team_ids"] == [lg.ai.id]
+
+
+def test_three_or_more_signings_count_in_the_headline(lg, monkeypatch):
+    pids = _team_signs(lg, monkeypatch, 3)
+    [story] = _news(lg, "fa-sign-team:")
+    assert plain(story["headline"]).endswith(" sign 3 free agents")
+    assert set(story["player_ids"]) == set(pids)
+
+
 def test_choices_only_in_the_offseason(lg):
     pid = _expiring(lg, lg.mine, 2024, 3)
     _set_state(lg, "draft")

@@ -59,7 +59,7 @@ from src.api.services import (
     waivers,
 )
 from src.api.services.news.moves import shown_grade
-from src.api.services.news.names import Names
+from src.api.services.news.names import Names, and_list
 from src.db.locks import league_lock
 from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.contract_repo import (
@@ -1129,6 +1129,66 @@ def close_bidding(conn, league_id: str) -> list[dict]:
     return signed
 
 
+# A team signing this many free agents at once gets the count in the headline.
+SIGNING_COUNT_HEADLINE = 3
+
+
+def _news_signings(
+    conn, league_id: str, season_id: str, year: int,
+    stories: dict[str, list[tuple]], names: dict[str, str], nm: Names,
+):  # fmt: skip
+    """One story per team when bidding closes (Josh, 2026-11-19): a single
+    signing keeps its own story; a team that lands two or more shares one,
+    with the count in the headline from SIGNING_COUNT_HEADLINE up."""
+    news = NewsRepository(conn)
+    for team_id, signings in stories.items():
+        team = names.get(team_id, "a new team")
+
+        def detail(deal, offers, was):
+            if was == team_id:
+                former = f" He's back with the {nm.team(was)}."
+            elif was:
+                former = f" He leaves the {nm.team(was)}."
+            else:
+                former = ""
+            return (
+                f"{ct.format_salary(deal.salary)} a season for {deal.years} "
+                f"season{'s' if deal.years != 1 else ''}"
+                + (f", picked from {offers} offers." if offers > 1 else ".")
+                + former
+            )
+
+        if len(signings) == 1:
+            pid, deal, offers, was, _ = signings[0]
+            key = f"fa-sign:{year}:{pid}"
+            headline = f"{nm.player(pid)} signs with {team}"
+            body = detail(deal, offers, was)
+        else:
+            pids = [s[0] for s in signings]
+            key = f"fa-sign-team:{year}:{team_id}:{pids[0]}"
+            if len(signings) >= SIGNING_COUNT_HEADLINE:
+                headline = f"{team} sign {len(signings)} free agents"
+            else:
+                headline = f"{team} sign {and_list([nm.player(x) for x in pids])}"
+            body = " ".join(
+                f"{nm.player(pid)} gets {detail(deal, offers, was)}"
+                for pid, deal, offers, was, _ in signings
+            )
+        olds = [s[3] for s in signings if s[3] and s[3] != team_id]
+        news.add(
+            league_id,
+            season_id,
+            date(year, 3, 31).isoformat(),
+            "free_agency",
+            key,
+            headline,
+            body,
+            weight=2 if max(s[4] for s in signings) >= 60 else 1,
+            team_ids=[team_id] + list(dict.fromkeys(olds)),
+            player_ids=[s[0] for s in signings],
+        )
+
+
 def settle(conn, league_id: str) -> list[dict]:
     """Bidding closes: AI teams bid, then each free agent with bids signs
     with the one he likes best. Returns the signings."""
@@ -1166,6 +1226,8 @@ def settle(conn, league_id: str) -> list[dict]:
     names = TeamRepository(conn).get_names(teams)
     nm = Names(conn, league_id)
     signed = []
+    # Each team's signings, best first, for the news (one story per team).
+    stories: dict[str, list[tuple]] = {}
     minors = {t: len(status.get_by_team_and_status(t, "minors")) for t in teams}
     order = sorted(
         (pid for pid in by_player if players.get(pid)),
@@ -1214,31 +1276,10 @@ def settle(conn, league_id: str) -> list[dict]:
                 "bids": len(by_player[pid]),
             }
         )
-        if was == b["team_id"]:
-            former = f" He's back with the {nm.team(was)}."
-        elif was:
-            former = f" He leaves the {nm.team(was)}."
-        else:
-            former = ""
-        NewsRepository(conn).add(
-            league_id,
-            season_id,
-            date(year, 3, 31).isoformat(),
-            "free_agency",
-            f"fa-sign:{year}:{pid}",
-            f"{nm.player(pid)} signs with {names.get(b['team_id'], 'a new team')}",
-            f"{ct.format_salary(deal.salary)} a season for {deal.years} "
-            f"season{'s' if deal.years != 1 else ''}"
-            + (
-                f", picked from {len(by_player[pid])} offers."
-                if len(by_player[pid]) > 1
-                else "."
-            )
-            + former,
-            weight=2 if role_rating(p) >= 60 else 1,
-            team_ids=[b["team_id"]] + ([was] if was and was != b["team_id"] else []),
-            player_ids=[pid],
+        stories.setdefault(b["team_id"], []).append(
+            (pid, deal, len(by_player[pid]), was, role_rating(p))
         )
+    _news_signings(conn, league_id, season_id, year, stories, names, nm)
     conn.execute(
         "DELETE FROM fa_bids WHERE league_id = %s AND year <= %s", (league_id, year)
     )
