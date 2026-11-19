@@ -2,7 +2,7 @@
 #
 # Strategy tab: the GM's managerial tendencies, stored in gm_profiles and read
 # by the game engine every game (src/team/manager_profile.py). Each setting is
-# a slider; SETTINGS below drives both the page and the save.
+# a slider or a checkbox; SETTINGS below drives both the page and the save.
 
 from __future__ import annotations
 
@@ -29,7 +29,18 @@ class Setting:
     hint: str
 
 
-SETTINGS: tuple[tuple[str, tuple[Setting, ...]], ...] = (
+@dataclass(frozen=True)
+class Checkbox:
+    name: str  # gm_profiles column, a boolean
+    label: str
+    hint: str
+    # Greyed out while the Rotation Size slider is below this many starters
+    # (0 = always open). A greyed-out box keeps its saved value.
+    needs_rotation: int = 0
+
+
+# A card's items are sliders (Setting) or checkboxes (Checkbox), in page order.
+SETTINGS: tuple[tuple[str, tuple[Setting | Checkbox, ...]], ...] = (
     (
         "Batting",
         (
@@ -197,14 +208,13 @@ SETTINGS: tuple[tuple[str, tuple[Setting, ...]], ...] = (
                 "How many starters Fill and Rebuild put in your rotation on the Lineup "
                 "tab. Whoever is in your saved rotation is who pitches.",
             ),
-            Setting(
+            Checkbox(
                 "skip_fifth_starter",
                 "Skip the 5th Starter",
-                (False, True),
-                ("Off", "On"),
-                ("Off", "On"),
                 "After an off day, skip the last starter in a rotation of five or "
-                "more, so your ace pitches again on normal rest.",
+                "more, so your ace pitches again on normal rest. Greyed out with a "
+                "4-man rotation, which has no 5th starter to skip.",
+                needs_rotation=5,
             ),
             Setting(
                 "playoff_rotation",
@@ -227,13 +237,6 @@ SETTINGS: tuple[tuple[str, tuple[Setting, ...]], ...] = (
         ),
     ),
 )
-
-
-@dataclass(frozen=True)
-class Checkbox:
-    name: str  # gm_profiles column, a boolean
-    label: str
-    hint: str
 
 
 # Settings shown in a checkbox panel, above its checkboxes, by panel title.
@@ -297,8 +300,32 @@ def _index(values: tuple, current) -> int:
     return min(range(len(values)), key=lambda i: abs(values[i] - current))
 
 
+def _checkbox(c: Checkbox, current: dict) -> dict:
+    return {
+        "kind": "checkbox",
+        "name": c.name,
+        "label": c.label,
+        "hint": c.hint,
+        "checked": bool(current[c.name]),
+        # The Rotation Size slider step that first opens the box.
+        "needs_step": (
+            mp.ROTATION_SIZE.index(c.needs_rotation) if c.needs_rotation else 0
+        ),
+    }
+
+
+def _item(s: Setting | Checkbox, current: dict) -> dict:
+    return _checkbox(s, current) if isinstance(s, Checkbox) else _slider(s, current)
+
+
+def _all_checkboxes() -> list[Checkbox]:
+    out = [s for _, items in SETTINGS for s in items if isinstance(s, Checkbox)]
+    return out + [c for _, boxes in CHECKBOXES for c in boxes]
+
+
 def _slider(s: Setting, current: dict) -> dict:
     return {
+        "kind": "slider",
         "name": s.name,
         "label": s.label,
         "labels": s.labels,
@@ -322,20 +349,12 @@ def strategy(
     row = GMRepository(db).get_profile(gm["id"]) if gm else None
     current = vars(mp.ManagerProfile.from_row(row))
     ctx["cards"] = [
-        (title, [_slider(s, current) for s in settings]) for title, settings in SETTINGS
+        (title, [_item(s, current) for s in settings]) for title, settings in SETTINGS
     ]
     ctx["checkbox_cards"] = [
         (
             title,
-            [
-                {
-                    "name": c.name,
-                    "label": c.label,
-                    "hint": c.hint,
-                    "checked": bool(current[c.name]),
-                }
-                for c in boxes
-            ],
+            [_checkbox(c, current) for c in boxes],
             [_slider(s, current) for s in PANEL_SETTINGS.get(title, ())],
         )
         for title, boxes in CHECKBOXES
@@ -362,15 +381,19 @@ async def save_strategy(
     all_settings = [*SETTINGS, *PANEL_SETTINGS.items()]
     for _, settings in all_settings:
         for s in settings:
+            if isinstance(s, Checkbox):
+                continue
             if s.name in form:
                 try:
                     i = int(form[s.name])
                 except ValueError:
                     continue
                 updates[s.name] = s.values[max(0, min(i, len(s.values) - 1))]
-    for _, boxes in CHECKBOXES:
-        for c in boxes:
-            updates[c.name] = c.name in form
+    for c in _all_checkboxes():
+        # A greyed-out box isn't posted; its "keep" marker says leave it be.
+        if f"{c.name}_keep" in form:
+            continue
+        updates[c.name] = c.name in form
 
     repo = GMRepository(db)
     saved = repo.get_profile(gm["id"]) or {}
