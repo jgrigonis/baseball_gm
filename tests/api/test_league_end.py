@@ -87,7 +87,7 @@ class TestCompleteLeagueIsReadOnly:
             ).router.routes
         ]
         # Leaving stays open so GMs can clear a finished league off their
-        # list; starting, joining, rerolling an AI GM and picking a team need
+        # list; starting, joining, rerolling an AI GM or owner and picking a team need
         # the lobby anyway, and taking over a team checks for between seasons.
         # Hiding news and the News filter only change what the GM sees.
         exempt = {
@@ -98,6 +98,7 @@ class TestCompleteLeagueIsReadOnly:
             "/leagues/{league_id}/join",
             "/leagues/{league_id}/take-over",
             "/leagues/{league_id}/lobby/gms/{ai_gm_id}/reroll",
+            "/leagues/{league_id}/lobby/owner/reroll",
             "/leagues/{league_id}/lobby/team",
             "/leagues/{league_id}/lobby/custom",
         }

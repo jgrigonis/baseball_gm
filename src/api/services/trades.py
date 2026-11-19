@@ -1197,6 +1197,14 @@ def execute(
             # button sends the GM to the Roster tab (services/next_move).
             gm_repo.mark_trade_roster_due(gm_id, season_id)
 
+    # Their happiness follows them now, not at the next weekly update:
+    # what's on their mind is about the new team (Josh, 2026-11-18).
+    from src.db.repositories.happiness_repo import HappinessRepository
+
+    HappinessRepository(conn, league_id).refresh_traded(
+        season_id, [i for i in give_a + give_b if not draft_picks.parse(i)], since
+    )
+
     trade_repo = TradeRepository(conn)
     for offer_id in trade_repo.open_offers_with_players(league_id, give_a + give_b):
         _void(

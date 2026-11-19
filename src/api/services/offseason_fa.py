@@ -800,16 +800,23 @@ def expiring_view(conn, league_id: str, team_id: str) -> list[dict]:
     return out
 
 
+def room_to_talk(ask: ct.Deal, scale: float) -> bool:
+    """Whether an asking deal leaves anything to offer: a salary over the
+    minimum, or more than one season (fewer can be offered)."""
+    minimum = ct.round_salary(ct.MIN_SALARY * scale, scale)
+    return ask.salary > minimum or ask.years > 1
+
+
 def no_offer(r: dict) -> str | None:
     """Why a GM can't make an expiring player an offer (resign_offers.py),
-    or None: a refuser, one asking the minimum (unless he's in arbitration:
-    he can be offered an extension), or talks he broke off."""
+    or None: a refuser, one asking the minimum for one season (unless he's
+    in arbitration: he can be offered an extension), or talks he broke off.
+    One asking the minimum for more seasons can still be offered fewer
+    (Josh, 2026-11-18: a 39-year-old asking the minimum for 2)."""
     if r["refuses"]:
         return hp.REFUSE_LINES.get(r["refuses"])
-    minimum = ct.round_salary(ct.MIN_SALARY * r["scale"], r["scale"])
-    # An arbitration player can be offered an extension (resign_offers.py).
-    if r["arb_season"] is None and r["ask"].salary <= minimum:
-        return "He asks the minimum. There's nothing to negotiate."
+    if r["arb_season"] is None and not room_to_talk(r["ask"], r["scale"]):
+        return "He asks the minimum for one season. There's nothing to negotiate."
     if r["talks_closed"]:
         return "He's done talking. Re-sign him at his price or let him go."
     return None

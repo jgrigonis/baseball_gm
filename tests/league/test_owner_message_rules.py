@@ -278,3 +278,42 @@ def test_a_losing_team_beating_its_target_isnt_called_a_winner():
     )
     assert not _lines_in(body, {"w": om.NOTES["wins"]["good"]}), body
     assert _lines_in(body, {"w": om.WINS_BY_RECORD["losing"]["notes"]["good"]})
+
+
+# The record news headlines (services/records/news.py) and what the owner
+# calls each record.
+RECORDS = [
+    ("Joe Ruiz sets a league record with 5 home runs", "",
+     "Joe Ruiz's 5 home runs in one game"),
+    ("Joe Ruiz ties the league record with 17 strikeouts", "",
+     "Joe Ruiz's 17 strikeouts in one game, tied for the most ever"),
+    ("The Boston Beacons set a league record: 14 straight wins", "",
+     "our 14 straight wins"),
+    ("Joe Ruiz's Hitting streak reaches a record 31 games", "",
+     "Joe Ruiz's 31-game hitting streak"),
+    ("Joe Ruiz sets the single-season record for home runs",
+     "He's at 62, past the old mark of 61, with games still to play.",
+     "Joe Ruiz's 62 home runs this season"),
+    ("Joe Ruiz becomes the league's career leader in hits",
+     "3,100 and counting, past the old record of 3,099.",
+     "Joe Ruiz's 3,100 career hits"),
+    ("Joe Ruiz sets the league record: .371 Batting average", "",
+     "Joe Ruiz's .371 batting average"),
+    ("Joe Ruiz sets league records: .371 Batting average and 1.85 ERA", "",
+     "Joe Ruiz's .371 batting average and 1.85 ERA"),
+]  # fmt: skip
+
+
+def test_the_owner_names_the_record():
+    for headline, body, what in RECORDS:
+        assert om.record_what(headline, body) == what
+        for seed in range(6):
+            line = om.record_set(FIELDS, random.Random(seed), what)
+            assert what in line or what[0].upper() + what[1:] in line
+            assert "{" not in line
+
+
+def test_a_record_it_cant_name_still_gets_a_word():
+    assert om.record_what("Something else happened") is None
+    line = om.record_set(FIELDS, random.Random(1), None)
+    assert line in [om._fill(t, FIELDS) for t in om.RECORD_SET_PLAIN]

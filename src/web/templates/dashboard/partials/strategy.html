@@ -17,12 +17,13 @@
 </div>
 {% endmacro %}
 {% macro checkbox(c) %}
-<div class="strategy-check">
+<div class="strategy-check"{% if c.needs_step %} data-needs-rotation="{{ c.needs_step }}"{% endif %}>
   <label class="sc-row">
     <input type="checkbox" name="{{ c.name }}" value="1"{% if c.checked %} checked{% endif %}
            onchange="strategyChanged()">
     <span class="ss-label">{{ c.label }}</span>
   </label>
+  {% if c.needs_step %}<input type="hidden" name="{{ c.name }}_keep" value="1" disabled>{% endif %}
   <p class="ss-hint" onclick="this.classList.toggle('open')">{{ c.hint }}</p>
 </div>
 {% endmacro %}
@@ -43,7 +44,7 @@
     <span class="card-title">{{ title }}</span>
   </div>
   <div class="card-body" style="display: flex; flex-direction: column; gap: 20px;">
-    {% for s in settings %}{{ slider(s) }}{% endfor %}
+    {% for s in settings %}{% if s.kind == "checkbox" %}{{ checkbox(s) }}{% else %}{{ slider(s) }}{% endif %}{% endfor %}
   </div>
 </div>
 {% endmacro %}
@@ -123,6 +124,8 @@
 .sc-row .ss-label { color: var(--text); }
 .strategy-check { display: flex; flex-direction: column; gap: 6px; }
 .strategy-check input[type=checkbox] { width: 16px; height: 16px; margin: 0; accent-color: var(--amber); cursor: pointer; }
+.strategy-check.off .sc-row { cursor: not-allowed; opacity: .45; }
+.strategy-check.off input[type=checkbox] { cursor: not-allowed; }
 .ss-hint { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); line-height: 1.7; }
 /* The not-saved bar stays in view at the top while you scroll the sliders. */
 #strategy-unsaved-banner { position: sticky; top: 0; z-index: 10; margin: 0 0 16px; }
@@ -217,8 +220,21 @@ input[type=range]::-moz-range-thumb {
     var labels = JSON.parse(input.dataset.labels);
     document.getElementById('val-' + input.name).textContent = labels[parseInt(input.value)];
   }
+  // A box that needs a longer rotation (Skip the 5th Starter) greys out while
+  // the Rotation Size slider is short. It keeps its ticked state, and the
+  // hidden "keep" input tells the save to leave the saved value alone.
+  function gate() {
+    var size = form.querySelector('input[name=rotation_size]');
+    form.querySelectorAll('[data-needs-rotation]').forEach(function(w) {
+      var off = !!size && +size.value < +w.dataset.needsRotation;
+      w.classList.toggle('off', off);
+      w.querySelector('input[type=checkbox]').disabled = off;
+      w.querySelector('input[type=hidden]').disabled = !off;
+    });
+  }
   var saved = values();
   function check() {
+    gate();
     var now = values();
     var dirty = Object.keys(now).some(function(k) { return now[k] !== saved[k]; });
     try {

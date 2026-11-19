@@ -45,7 +45,7 @@
      {% elif h.wants_trade %}<div class="pd-mood-alert">Has asked to be traded.</div>{% endif %}
      {% if h.lines %}<div class="pd-mood-lines">{{ h.lines | join(' ') }}</div>{% endif %}
      {% if is_admin %}
-     <details class="pd-mood-admin"><summary>Happiness (admin)</summary>
+     <details class="pd-mood-admin"><summary>Happiness (admin){% if h.admin.last_team %} · from his last team{% endif %}</summary>
        <div>ego {{ h.admin.traits.ego }} · temper {{ h.admin.traits.temper }} · loyalty {{ h.admin.traits.loyalty }}{% if h.admin.climate %} · likes {{ h.admin.climate }}{% endif %}{% if h.admin.clubhouse %} · clubhouse −{{ h.admin.clubhouse[0] }}{% endif %}{% if h.admin.coaching %} · coaching {{ '%+.2f'|format(h.admin.coaching) }}{% endif %}</div>
        <table>
          <tr><th>Drive</th><th>Weight</th><th>Sat</th><th>Why</th></tr>
@@ -195,8 +195,10 @@
 {% endif %}
 
 {# ── Season Stats ──────────────────────────────────────────────────────────── #}
-<div class="pd-section">
- <div class="pd-section-title">Season Stats</div>
+{# Season Stats and Injury History each fold up on their own; the choice is
+   remembered (ppToggleOffRole / ppApplyRemembered in shell.html). #}
+<details class="pd-offrole pd-group" data-group="stats" data-remember="1" ontoggle="ppToggleOffRole(this)" open>
+ <summary>Season Stats</summary>
  {% if player.pitch_stats or player.bat_stats %}
    {% for stat_block in [(player.pitch_stats, 'Pitching'), (player.bat_stats, 'Hitting')] %}
      {% if stat_block[0] %}
@@ -224,12 +226,12 @@
  {% else %}
    <span class="pd-empty">No stats yet this season</span>
  {% endif %}
-</div>
+</details>
 
 {# ── Injury log ────────────────────────────────────────────────────────────── #}
 {% if player.injury_log %}
-<div class="pd-section">
- <div class="pd-section-title">Injury History</div>
+<details class="pd-offrole pd-group" data-group="injuries" data-remember="1" ontoggle="ppToggleOffRole(this)" open>
+ <summary>Injury History</summary>
  {% for inj in player.injury_log %}
  <div class="pd-injury-row">
    <span class="pd-skill-label">{{ inj.injury_date }}</span>
@@ -239,7 +241,7 @@
    {% if eff %}<span class="inj-effect inj-effect-{{ eff.dir }}" title="{{ eff.title }}">{{ eff.text or eff.label }}{% if inj.cap_drop %} ▾{% endif %}</span>{% endif %}
  </div>
  {% endfor %}
-</div>
+</details>
 {% endif %}
 
 {# ── History: draft, trades, deals, releases (view_models/player_history.py).

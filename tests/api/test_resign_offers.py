@@ -294,6 +294,11 @@ def test_no_offer_reasons():
     assert "minimum" in offseason_fa.no_offer(
         base | {"ask": ct.Deal(ct.MIN_SALARY, 1, "standard")}
     )
+    # The minimum for two seasons: he can still be offered one.
+    assert (
+        offseason_fa.no_offer(base | {"ask": ct.Deal(ct.MIN_SALARY, 2, "standard")})
+        is None
+    )
     assert "any price" in offseason_fa.no_offer(base | {"refuses": "fame"})
 
 

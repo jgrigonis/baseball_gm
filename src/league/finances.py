@@ -188,8 +188,15 @@ TICKET_FANS = (12, 9, 6, 3, 0, -3, -6, -10, -14, -19)
 # raising regular season revenue and fan interest more, and taking seasons
 # to build (build): ordered between seasons, it opens that many seasons
 # later, and the owner pays for it a season at a time while it goes up
-# (installments). A team gets one new stadium; it replaces a renovation
-# (replaces), while club seats, suites and the plaza move in with it.
+# (installments).
+#
+# A new stadium comes with everything (Josh, 2026-11-18): club seats,
+# suites, the plaza and a renovation are all part of it (UPGRADES), so once
+# it opens the old park's upgrades are gone and can't be bought again; the
+# stadium earns what they would have on top of its own boost (included).
+# Each tier then unlocks two add-ons of its own (Project.tier), from the
+# offseason after it opens, and a higher tier comes with the lower tiers'
+# add-ons built in. A replacement stadium wipes the old park's add-ons too.
 @dataclass(frozen=True)
 class Project:
     key: str
@@ -209,7 +216,14 @@ class Project:
     upfront: float = 1.0
     # Seats once it's open (0: it doesn't change the park's CROWD_CAPACITY).
     capacity: int = 0
+    # A stadium add-on: the stadium tier that unlocks it (that tier or one
+    # above it has to be open), and seats it adds to the park.
+    tier: str = ""
+    seats: int = 0
 
+
+# The old park's upgrades, which every new stadium includes.
+UPGRADES = ("club_seats", "suites", "plaza", "renovation")
 
 BALLPARK = (
     Project(
@@ -232,28 +246,65 @@ BALLPARK = (
         "New concourses, food and seats all round. Every regular season ticket earns more. Two seasons of work.",
         cost=1.5, revenue=0.10, build=2,
     ),
+    # A stadium's own revenue and fans come on top of what it includes:
+    # a renovation's +10% makes the +50/75/100% Josh set, and the plaza's
+    # +3 fans (and the lower tiers' add-on fans) make +5/8/12; club seat,
+    # suite and lower-tier add-on money comes on top.
     Project(
         "stadium_basic", "New stadium: Basic",
         "A plain, modern park with more good seats. Takes three seasons to build.",
-        cost=6.25, revenue=0.50, fans=5, build=3, group="stadium", upfront=0.5,
-        capacity=45_000, replaces=("renovation",),
+        cost=6.25, revenue=0.40, fans=2, build=3, group="stadium", upfront=0.5,
+        capacity=45_000, replaces=UPGRADES,
     ),
     Project(
         "stadium_modern", "New stadium: Modern",
         "Wide concourses, great sight lines and food worth the trip. Four seasons to build.",
-        cost=9.375, revenue=0.75, fans=8, build=4, group="stadium", upfront=0.5,
-        capacity=48_000, replaces=("renovation",),
+        cost=9.375, revenue=0.65, fans=3, build=4, group="stadium", upfront=0.5,
+        capacity=48_000, replaces=UPGRADES,
     ),
     Project(
         "stadium_showpiece", "New stadium: Showpiece",
-        "A landmark the whole city shows off: a roof, a skyline view, the works. Four seasons to build.",
-        cost=12.5, revenue=1.00, fans=12, build=4, group="stadium", upfront=0.5,
-        capacity=52_000, replaces=("renovation",),
+        "A landmark the whole city shows off: a retractable roof, a skyline view, the works. Four seasons to build.",
+        cost=12.5, revenue=0.90, fans=3, build=4, group="stadium", upfront=0.5,
+        capacity=52_000, replaces=UPGRADES,
+    ),
+    # Stadium add-ons (Josh, 2026-11-18), two a tier, paying back in about
+    # 5 to 8 seasons.
+    Project(
+        "party_deck", "Outfield party deck",
+        "A standing-room deck with a bar beyond the outfield wall. Fans warm to the team, and it sells a few more tickets.",
+        cost=0.25, earns=0.012, fans=2, tier="stadium_basic",
+    ),
+    Project(
+        "upper_deck", "Upper deck expansion",
+        "Another ring of seats up top. A season to build.",
+        cost=0.5, earns=0.03, build=1, tier="stadium_basic", seats=3_000,
+    ),
+    Project(
+        "premium_club", "Field-level premium club",
+        "Seats right behind the plate with their own lounge. Keen fans pay the most. A season to build.",
+        cost=0.625, earns=0.06, by_fans=True, build=1, tier="stadium_modern",
+    ),
+    Project(
+        "hall_kids", "Team hall of fame and kids' zone",
+        "A museum of the club's history and a play area for the youngest fans. Fans warm to the team every season. A season to build.",
+        cost=0.375, earns=0.015, fans=4, build=1, tier="stadium_modern",
+    ),
+    Project(
+        "village", "Ballpark village",
+        "Shops, bars and a hotel around the park, busy all year. Big markets pay the most. Two seasons to build.",
+        cost=1.25, earns=0.12, build=2, tier="stadium_showpiece",
+    ),
+    Project(
+        "events", "Year-round events",
+        "Concerts and festivals in the months the team is away. A season to get going.",
+        cost=0.75, earns=0.065, build=1, tier="stadium_showpiece",
     ),
 )  # fmt: skip
 BALLPARK_KEYS = tuple(p.key for p in BALLPARK)
 # New stadiums cheapest first; a replacement has to be this tier or higher.
 STADIUM_TIERS = tuple(p.key for p in BALLPARK if p.group == "stadium")
+ADDONS = tuple(p.key for p in BALLPARK if p.tier)
 # A stadium can be replaced once it's this many seasons old (Josh,
 # 2026-11-11), by one of the same tier or higher, priced at today's cap.
 # Each stadium after the first earns STADIUM_REBUILD times its tier's
@@ -394,15 +445,70 @@ def project_money(
     if p.by_fans:
         value *= fan_mult(fans)
     value += ticket_revenue(revenue, ticket_price) * p.revenue
-    return _round(value * rebuild_mult(key))
+    own = _round(value * rebuild_mult(key))
+    return own + sum(
+        project_money(k, average_revenue, market, fans, revenue, ticket_price)
+        for k in included(key)
+    )
+
+
+def project_fans(key) -> int:
+    """Points a project adds to the fans' target every season, with what
+    it includes."""
+    return round(_fans(key))
+
+
+def _fans(key) -> float:
+    p = project(key)
+    if p is None:
+        return 0.0
+    return p.fans * rebuild_mult(key) + sum(_fans(k) for k in included(key))
+
+
+def tier_index(key) -> int:
+    """Where a stadium sits among the tiers (-1 for anything else)."""
+    base = split_key(key)[0] if key is not None else None
+    return STADIUM_TIERS.index(base) if base in STADIUM_TIERS else -1
+
+
+def included(key) -> tuple[str, ...]:
+    """What a new stadium comes with, as this stadium's keys: the old
+    park's upgrades and the add-ons of every tier below it."""
+    base, generation = split_key(key)
+    tier = tier_index(base)
+    if tier < 0:
+        return ()
+    below = tuple(a for a in ADDONS if tier_index(project(a).tier) < tier)
+    return tuple(built_key(k, generation) for k in UPGRADES + below)
+
+
+def _stadium(built) -> str | None:
+    """The team's stadium among these keys (the newest, if more than one)."""
+    stadiums = [k for k in built if tier_index(k) >= 0]
+    return max(stadiums, key=lambda k: split_key(k)[1]) if stadiums else None
 
 
 def open_projects(built) -> set[str]:
     """The projects that count among these open ones: a new stadium does
-    away with a renovation."""
+    away with the old park's upgrades (it includes them) and with an older
+    stadium's add-ons; add-ons only count in the stadium they were built
+    for (same generation)."""
     built = set(built)
-    gone = {r for k in built if (p := project(k)) for r in p.replaces}
-    return {k for k in built if split_key(k)[0] not in gone}
+    stadium = _stadium(built)
+    out = set()
+    for k in built:
+        p = project(k)
+        if p is None:
+            continue
+        if p.group == "stadium":
+            if k == stadium:
+                out.add(k)
+        elif p.tier:
+            if stadium and split_key(k)[1] == split_key(stadium)[1]:
+                out.add(k)
+        elif not stadium:
+            out.add(k)
+    return out
 
 
 def blocked_by(key, built) -> str | None:
@@ -447,11 +553,7 @@ def ballpark_money(
 
 def ballpark_fans(built) -> int:
     """Points the open ballpark projects add to the fans' target."""
-    return sum(
-        round(p.fans * rebuild_mult(k))
-        for k in open_projects(built)
-        if (p := project(k))
-    )
+    return sum(project_fans(k) for k in open_projects(built))
 
 
 def project_value(
@@ -469,9 +571,7 @@ def project_value(
         return 0.0
     return project_money(
         key, average_revenue, market, fans, revenue, ticket_price
-    ) + p.fans * rebuild_mult(key) * FAN_POINT_VALUE * ticket_revenue(
-        revenue, ticket_price
-    )
+    ) + project_fans(key) * FAN_POINT_VALUE * ticket_revenue(revenue, ticket_price)
 
 
 def payback(cost: int, per_season: float) -> float | None:
@@ -491,12 +591,13 @@ def can_build(bank: int | None, cost: int, cap: int, key=None) -> int:
 
 
 def capacity(built=()) -> int:
-    """Seats in the team's park, with these projects open: a new stadium's,
-    or CROWD_CAPACITY."""
-    seats = [
-        p.capacity for k in open_projects(built) if (p := project(k)) and p.capacity
-    ]
-    return max(seats) if seats else CROWD_CAPACITY
+    """Seats in the team's park, with these projects open: a new stadium's
+    (or CROWD_CAPACITY), plus the seats its add-ons built (the ones a higher
+    tier includes come with its own count)."""
+    parks = open_projects(built)
+    seats = [p.capacity for k in parks if (p := project(k)) and p.capacity]
+    added = sum(p.seats for k in parks if (p := project(k)))
+    return (max(seats) if seats else CROWD_CAPACITY) + added
 
 
 def crowd_tickets(level) -> float:

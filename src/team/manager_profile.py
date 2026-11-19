@@ -23,7 +23,7 @@ BASERUNNING = (
     "aggressive",
     "very-aggressive",
 )
-SAC_BUNT = ("never", "situational", "frequent")
+SAC_BUNT = ("never", "rarely", "situational", "frequent")
 # Starter Leash: the pitch count a starter is usually pulled at, longest
 # first (Josh, 2026-11-13: 75 to 115 in steps of 10; 2026-11-14: 85 the
 # default, close to the old standard target of 88).
@@ -58,7 +58,8 @@ REBUILD_AFTER_DAYS = {
 STEAL_FACTOR = dict(zip(BASERUNNING, (0.4, 0.7, 1.0, 1.35, 1.75)))
 EXTRA_BASE_FACTOR = dict(zip(BASERUNNING, (0.8, 0.9, 1.0, 1.1, 1.2)))
 
-BUNT_FACTOR = {"never": 0.0, "situational": 1.0, "frequent": 2.0}
+# Sac bunts per team season in sims (2026-11-19): about 0 / 3-4 / 9 / 16.
+BUNT_FACTOR = {"never": 0.0, "rarely": 0.4, "situational": 1.0, "frequent": 2.0}
 
 # The short leash (75) also pulls a starter sooner the third time through
 # the order.

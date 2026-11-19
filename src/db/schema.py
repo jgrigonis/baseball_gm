@@ -826,6 +826,7 @@ CREATE TABLE IF NOT EXISTS league_lobby_teams (
     league_id TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
     city      TEXT NOT NULL,
     mascot    TEXT NOT NULL,
+    owner_id  TEXT,                         -- the owner drawn for it in the lobby, seated at the start (migration 144)
     PRIMARY KEY (league_id, city, mascot)
 );
 
@@ -1048,7 +1049,7 @@ CREATE TABLE IF NOT EXISTS gm_profiles (
     rest_days        TEXT NOT NULL DEFAULT 'standard'
                          CHECK (rest_days IN ('iron-man', 'standard', 'rest-often')),
     sac_bunt         TEXT NOT NULL DEFAULT 'situational'
-                         CHECK (sac_bunt         IN ('never', 'situational', 'frequent')),
+                         CHECK (sac_bunt         IN ('never', 'rarely', 'situational', 'frequent')),
 
     -- Pitching tendencies
     starter_usage TEXT NOT NULL DEFAULT '85'   -- pitches (migrations 129, 130)
@@ -1900,6 +1901,7 @@ CREATE TABLE IF NOT EXISTS team_budgets (     -- migration 074 (src/league/budge
     minor_league BIGINT,                      -- what its never-guaranteed minor leaguers cost, set when the season ends (migration 089)
     ticket_price SMALLINT,                    -- ticket prices 1 to 10, NULL the default 5; revenue is before them (migration 090)
     budget_seen BOOLEAN,                      -- the GM opened the Budget tab between seasons, before it locked (migration 102)
+    fo_undo_spend BIGINT,                     -- total spending just before this season's front office cuts; raising back to Standard past the limit must stay within it (migration 143)
     fans_before INTEGER,                      -- fan interest coming into the season (0-100)
     fans_after  INTEGER,                      -- and after it
     attendance  BIGINT,                       -- home crowds, set when the season ends (migration 116)

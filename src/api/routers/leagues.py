@@ -37,6 +37,7 @@ from src.api.services import (
     takeover,
 )
 from src.api.services import admin as admin_service
+from src.api.services import owners as owner_service
 from src.api.services.coach import coach_ctx
 from src.api.services.leave_league import leave_league
 from src.api.view_models.league_info import league_info
@@ -1128,6 +1129,12 @@ def _lobby_gms_context(gm_repo: GMRepository, league, gm) -> dict:
         "late_joins": bool(league.get("late_joins")),
         "current_gm_id": str(gm["id"]),
         "team_choices": lobby_teams.choices(gm_repo.conn, league["id"]),
+        # Each lobby team's owner, drawn now and seated at the start.
+        "lobby_owners": (
+            owner_service.lobby_owners(gm_repo.conn, league["id"])
+            if league["state"] == "lobby"
+            else {}
+        ),
     }
 
 
@@ -1152,6 +1159,34 @@ def reroll_lobby_gm(
         pass  # the league is starting: the list shows the GMs as they stand
     elif not personas.reroll(db, league_id, ai_gm_id):
         return HTMLResponse("No such AI GM in the lobby.", status_code=404)
+    db.commit()
+    return templates.TemplateResponse(
+        request,
+        "dashboard/partials/_lobby_gms.html",
+        _lobby_gms_context(GMRepository(db), league, gm),
+    )
+
+
+@router.post("/leagues/{league_id}/lobby/owner/reroll", response_class=HTMLResponse)
+def reroll_lobby_owner(
+    request: Request,
+    league_id: str,
+    db: DB,
+    gm: GM,
+    team: str = Form(...),
+):
+    """The commissioner swaps a lobby team's owner, given as "City|Mascot",
+    for another from the library. Answers with the GM list."""
+    league = LeagueRepository(db).get_by_id(league_id)
+    if not league or league["state"] != "lobby":
+        return HTMLResponse("", headers={"HX-Redirect": f"/leagues/{league_id}/"})
+    if league["commissioner_gm_id"] != gm["id"]:
+        return HTMLResponse("Only the commissioner can do that.", status_code=403)
+    city, _, mascot = team.partition("|")
+    if sim_jobs.league_has_job(db, league_id):
+        pass  # the league is starting: the list shows the owners as they stand
+    elif not owner_service.reroll_lobby_owner(db, league_id, city, mascot):
+        return HTMLResponse("No such team in the lobby.", status_code=404)
     db.commit()
     return templates.TemplateResponse(
         request,

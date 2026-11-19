@@ -345,13 +345,29 @@ def set_front_office(
         elif league["state"] not in FRONT_OFFICE_STATES:
             error = "The front office is set between seasons, from the draft to Opening Day."
         else:
-            # Standard or less is always allowed, even past the owner's hard
-            # limit (Josh, 2026-11-09); only funding above Standard has to
-            # fit inside it.
+            # Funding above Standard has to fit inside the owner's hard
+            # limit. Back up to Standard is allowed past it (Josh,
+            # 2026-11-09) only as an undo: spending can't end up higher than
+            # it was before the cuts, so a GM can't cut, spend the freed room
+            # on a signing or trade, then raise it all back (Josh, 2026-11-18).
             cap = budgets.cap(league_id, year)
             added = bg.level_cost(cap, level) - bg.level_cost(cap, levels[department])
-            if bg.clean_level(level) > bg.STANDARD:
+            standing = budgets.standing(league_id, team_id, year)
+            if added > 0:
                 error = budgets.refusal(league_id, team_id, year, added, payroll=False)
+                undo = budgets.undo_spend(league_id, team_id, year)
+                if error and bg.clean_level(level) <= bg.STANDARD:
+                    if standing is None or (
+                        undo is not None and standing["spend"] + added <= undo
+                    ):
+                        error = None
+                    elif undo is not None:
+                        error += (
+                            " The room your front office cuts freed has been"
+                            " spent, so they stay cut this season."
+                        )
+            elif added < 0 and standing is not None:
+                budgets.note_cut(league_id, team_id, year, standing["spend"])
             if not error:
                 budgets.set_level(league_id, team_id, year, department, level)
         db.commit()
@@ -571,7 +587,11 @@ def _crowds_view(now: dict | None, past: list[dict], year: int, seats: int) -> d
 
 
 def _ballpark_view(
-    offers: list[dict], year: int, open_: bool, seats: int | None = None
+    offers: list[dict],
+    year: int,
+    open_: bool,
+    seats: int | None = None,
+    stadium: str | None = None,
 ) -> dict:
     rows = []
     for o in offers:
@@ -594,6 +614,13 @@ def _ballpark_view(
                 status += ", old enough to replace"
         else:
             status = None
+        can = (
+            open_
+            and (o["built"] is None or o["rebuild"])
+            and not o["short"]
+            and not o["waiting"]
+            and not o["blocked"]
+        )
         rows.append(
             {
                 **o,
@@ -601,15 +628,24 @@ def _ballpark_view(
                 "earns_text": _money(o["earns"]) if o["earns"] else None,
                 "payback_text": payback,
                 "short_text": _money(o["short"]) if o["short"] else None,
-                "can": open_
-                and (o["built"] is None or o["rebuild"])
-                and not o["short"]
-                and not o["waiting"]
-                and not o["blocked"],
+                "can": can,
                 "new": o["built"] == year,
                 "status": status,
+                # A higher tier comes with the lower tiers' add-ons.
+                "includes_addons": _and(
+                    [
+                        fn.project(k).name.lower()
+                        for k in fn.included(o["key"])
+                        if fn.project(k).tier
+                    ]
+                )
+                if o["stadium"]
+                else None,
+                # Only a project that can be ordered now says when it
+                # would open (Josh, 2026-11-18).
                 "build_text": (
-                    f"{_seasons(o['build'])} to build, opens {o['opens']}"
+                    f"{_seasons(o['build'])} to build"
+                    + (f", opens {o['opens']}" if can else "")
                     if o["build"]
                     else None
                 ),
@@ -622,8 +658,16 @@ def _ballpark_view(
         "floor_caps": fn.BALLPARK_FLOOR,
         "life": fn.STADIUM_LIFE,
         "rebuild_pct": round((fn.STADIUM_REBUILD - 1) * 100),
-        "seats": seats,
+        "seats": seats if seats is not None else fn.CROWD_CAPACITY,
+        "stadium": fn.project(stadium).name.split(": ")[-1] if stadium else None,
     }
+
+
+def _and(names: list[str]) -> str:
+    """ "a, b and c" """
+    if len(names) < 2:
+        return "".join(names)
+    return ", ".join(names[:-1]) + " and " + names[-1]
 
 
 def _broadcast_view(deal: dict, year: int, open_: bool) -> dict:
@@ -884,9 +928,13 @@ def _render(
         sponsor = budgets.sponsors(league_id, year, [team_id]).get(team_id)
         ctx["sponsor"] = _sponsor_view(sponsor, ctx["fo_open"]) if sponsor else None
         offers = budgets.ballpark_offers(league_id, team_id, year)
-        seats = fn.capacity(budgets.ballparks(league_id, year).get(team_id, ()))
+        park = budgets.ballparks(league_id, year).get(team_id, ())
+        seats = fn.capacity(park)
+        stadium = next(
+            (k for k in fn.open_projects(park) if fn.tier_index(k) >= 0), None
+        )
         ctx["ballpark"] = (
-            _ballpark_view(offers, year, ctx["fo_open"], seats)
+            _ballpark_view(offers, year, ctx["fo_open"], seats, stadium)
             if offers and bank
             else None
         )

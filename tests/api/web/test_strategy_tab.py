@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from src.api.database import get_db
 from src.api.dependencies import get_current_gm, get_current_user
 from src.api.main import app
-from src.api.routers.strategy import PANEL_SETTINGS, SETTINGS
+from src.api.routers.strategy import PANEL_SETTINGS, SETTINGS, Checkbox
 from src.db.repositories.gm_repo import GMRepository
 
 
@@ -88,6 +88,9 @@ def test_every_setting_is_a_profile_column(db_conn, gm):
     row = GMRepository(db_conn).get_profile(gm.id)
     for _, settings in SETTINGS:
         for s in settings:
+            if isinstance(s, Checkbox):
+                assert isinstance(row[s.name], bool)
+                continue
             assert s.name in row
             assert row[s.name] in s.values
             assert len(s.labels) == len(s.values)
@@ -159,6 +162,13 @@ def test_saves_the_defensive_lineup_style(client, db_conn, gm):
     assert GMRepository(db_conn).get_profile(gm.id)["lineup_style"] == "defensive"
 
 
+def test_saves_rarely_bunt(client, db_conn, gm):
+    # Never, Rarely, Situational, Frequent: Rarely is the second step.
+    r = client.post(f"/leagues/{gm.league_id}/strategy", data={"sac_bunt": 1})
+    assert r.status_code == 200
+    assert GMRepository(db_conn).get_profile(gm.id)["sac_bunt"] == "rarely"
+
+
 def test_leash_and_bullpen_run_short_to_long(client, db_conn, gm):
     # Starter Leash: 75 on the left, 115 on the right. Bullpen Shape: Deep pen
     # on the left, Starter-heavy on the right.
@@ -177,3 +187,31 @@ def test_leash_and_bullpen_run_short_to_long(client, db_conn, gm):
     row = GMRepository(db_conn).get_profile(gm.id)
     assert row["starter_usage"] == "115"
     assert row["bullpen_pref"] == "starter-heavy"
+
+
+def test_skip_fifth_is_a_checkbox_that_greys_with_a_short_rotation(client, db_conn, gm):
+    GMRepository(db_conn).save_profile(gm.id, {"skip_fifth_starter": True})
+    html = client.get(
+        f"/leagues/{gm.league_id}/strategy", headers={"HX-Request": "true"}
+    ).text
+    assert 'type="checkbox" name="skip_fifth_starter" value="1" checked' in html
+    assert 'name="skip_fifth_starter" min=' not in html  # no slider any more
+    # Greyed out below a 5-man rotation (slider step 1).
+    assert 'data-needs-rotation="1"' in html
+    assert 'name="skip_fifth_starter_keep"' in html
+
+
+def test_skip_fifth_unticked_saves_off_and_greyed_out_keeps_saved(client, db_conn, gm):
+    repo = GMRepository(db_conn)
+    repo.save_profile(gm.id, {"skip_fifth_starter": True})
+    # Greyed out (4-man): the box isn't posted, the keep marker is.
+    client.post(
+        f"/leagues/{gm.league_id}/strategy",
+        data={"rotation_size": 0, "skip_fifth_starter_keep": 1},
+    )
+    row = repo.get_profile(gm.id)
+    assert row["rotation_size"] == 4
+    assert row["skip_fifth_starter"] is True
+    # Open and unticked: saved as off.
+    client.post(f"/leagues/{gm.league_id}/strategy", data={"rotation_size": 1})
+    assert repo.get_profile(gm.id)["skip_fifth_starter"] is False
