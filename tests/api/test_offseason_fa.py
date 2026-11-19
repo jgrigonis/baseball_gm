@@ -602,6 +602,110 @@ def test_a_full_minors_skips_the_bid(lg, monkeypatch):
     assert offseason_fa.settle(lg.db, lg.league.id) == []
 
 
+# ── What happened to each bid (Josh, 2026-11-19) ─────────────────────────────
+
+
+def _results(lg):
+    out = {}
+    offseason_fa.settle(lg.db, lg.league.id, out)
+    return {line["player_id"]: line for line in out.get(lg.mine.id, [])}
+
+
+def test_bid_results_say_who_got_him_and_why(lg, monkeypatch):
+    monkeypatch.setattr(offseason_fa, "_ai_bids", lambda *a: 0)
+    monkeypatch.setattr(offseason_fa, "team_fit_for", lambda *a: (0.0, 0.5))
+    _set_state(lg, "draft")
+    won, outbid, low, alone = (_free_agent(lg, level=70) for _ in range(4))
+    for pid in (won, outbid):
+        ask = _ask(lg, pid).salary
+        offseason_fa.place_bid(lg.db, lg.league.id, lg.mine.id, pid, ask, 2)
+    offseason_fa.place_bid(
+        lg.db, lg.league.id, lg.ai.id, outbid, int(_ask(lg, outbid).salary * 1.3), 3
+    )
+    # Under his floor, against a fair AI bid, and alone.
+    for pid in (low, alone):
+        cheap = ct.round_salary(_ask(lg, pid).salary * 0.5)
+        offseason_fa.place_bid(lg.db, lg.league.id, lg.mine.id, pid, cheap, 2)
+    offseason_fa.place_bid(
+        lg.db, lg.league.id, lg.other.id, low, _ask(lg, low).salary, 2
+    )
+
+    lines = _results(lg)
+
+    assert lines[won]["won"] and lines[won]["text"].startswith("You signed ")
+    assert not lines[outbid]["won"]
+    assert "signed with the Ai Club" in lines[outbid]["text"]
+    assert "for 3 seasons" in lines[outbid]["text"]
+    assert "Their offer paid more." in lines[outbid]["text"]
+    assert "signed with the Other Club" in lines[low]["text"]
+    assert "under the least he'd take" in lines[low]["text"]
+    assert "didn't sign with anyone" in lines[alone]["text"]
+    assert "under the least he'd take" in lines[alone]["text"]
+    assert lg.status.get_status(alone) == "free_agent"
+
+
+def test_a_bid_the_owner_no_longer_allows_says_so(lg, monkeypatch):
+    monkeypatch.setattr(offseason_fa, "_ai_bids", lambda *a: 0)
+    _set_state(lg, "draft")
+    first, second = _free_agent(lg, level=80), _free_agent(lg, level=50)
+    for pid in (first, second):
+        ask = _ask(lg, pid).salary
+        offseason_fa.place_bid(lg.db, lg.league.id, lg.mine.id, pid, ask, 2)
+    # Room for one signing only: the second bid no longer fits.
+    room = {"left": 1}
+
+    def refusal(self, league_id, team_id, year, added, payroll=True):
+        if team_id != lg.mine.id:
+            return None
+        room["left"] -= 1
+        return None if room["left"] >= 0 else "Over the limit."
+
+    monkeypatch.setattr(BudgetRepository, "refusal", refusal)
+    lines = _results(lg)
+    assert lines[first]["won"]
+    assert "After your other signings" in lines[second]["text"]
+
+
+def test_bid_results_reach_people_on_the_sim_card(lg, monkeypatch):
+    from src.api.services.injury_news import take_injury_news
+    from src.db.repositories.league_repo import LeagueRepository
+
+    monkeypatch.setattr(offseason_fa, "_ai_bids", lambda *a: 0)
+    LeagueRepository(lg.db).set_state(lg.league.id, "draft")
+    pid = _free_agent(lg, level=70)
+    cheap = ct.round_salary(_ask(lg, pid).salary * 0.5)
+    offseason_fa.place_bid(lg.db, lg.league.id, lg.mine.id, pid, cheap, 2)
+    gm_id = lg.db.execute(
+        "SELECT id FROM gms WHERE team_id = %s", (lg.mine.id,)
+    ).fetchone()["id"]
+
+    results = {}
+    offseason_fa.close_bidding(lg.db, lg.league.id, results)
+
+    [line] = results[lg.mine.id]
+    [note] = take_injury_news(lg.db, gm_id)["bids"]
+    assert note == line and not note["won"]
+
+
+def test_a_solo_close_shows_the_results_itself(lg, monkeypatch):
+    from src.api.services.injury_news import take_injury_news
+    from src.db.repositories.league_repo import LeagueRepository
+
+    monkeypatch.setattr(offseason_fa, "_ai_bids", lambda *a: 0)
+    LeagueRepository(lg.db).set_state(lg.league.id, "draft")
+    pid = _free_agent(lg, level=70)
+    offseason_fa.place_bid(
+        lg.db, lg.league.id, lg.mine.id, pid, _ask(lg, pid).salary, 2
+    )
+    gm_id = lg.db.execute(
+        "SELECT id FROM gms WHERE team_id = %s", (lg.mine.id,)
+    ).fetchone()["id"]
+    results = {}
+    offseason_fa.close_bidding(lg.db, lg.league.id, results, notify=False)
+    assert results[lg.mine.id][0]["won"]
+    assert take_injury_news(lg.db, gm_id)["bids"] == []
+
+
 # ── Veterans who won't re-sign (Josh, 2026-11-13) ─────────────────────────────
 
 

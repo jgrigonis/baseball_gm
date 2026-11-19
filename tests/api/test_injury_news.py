@@ -58,6 +58,7 @@ def test_every_human_gm_gets_their_own_news(db_conn, factory):
         "trades": [],
         "settings": [],
         "waivers": [],
+        "bids": [],
     }
     assert b == {
         "new_injuries": [],
@@ -76,6 +77,7 @@ def test_every_human_gm_gets_their_own_news(db_conn, factory):
         "trades": [],
         "settings": [],
         "waivers": [],
+        "bids": [],
     }
 
 
@@ -112,6 +114,7 @@ def test_news_is_shown_once(db_conn, factory):
         "trades": [],
         "settings": [],
         "waivers": [],
+        "bids": [],
     }
 
 

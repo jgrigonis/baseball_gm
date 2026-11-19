@@ -71,6 +71,7 @@ from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.happiness_repo import HappinessRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.news_repo import NewsRepository
+from src.db.repositories.notification_repo import NotificationRepository
 from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.season_repo import SeasonRepository
@@ -84,6 +85,7 @@ from src.player import happiness as hp
 from src.player import negotiation as ng
 from src.player.player_evaluator import PlayerEvaluator
 from src.player.player_value import role_rating
+from src.player.positions import display_position
 
 # Seasons under contract in the league that make a player a free agent when
 # his deal ends (MLB's six years of service).
@@ -1139,15 +1141,25 @@ def _last_team(conn, league_id: str, player_id: str) -> str | None:
     return row["team_id"] if row else None
 
 
-def close_bidding(conn, league_id: str) -> list[dict]:
+def close_bidding(
+    conn, league_id: str, results: dict | None = None, notify: bool = True
+) -> list[dict]:
     """Bids settle (settle) and bidding closes for the year. AI teams that
     signed someone re-pick their rosters around him; a GM who did gets the
-    Roster tab in their preseason next moves again. The caller holds the
-    league lock and commits. Returns the signings."""
+    Roster tab in their preseason next moves again. Each person hears what
+    happened to their bids (bid_results) on the sim card, unless notify is
+    off because the caller shows them (a solo GM's Close Bidding step), and
+    results gets them by team either way. The caller holds the league lock
+    and commits. Returns the signings."""
     league = LeagueRepository(conn).get_by_id(league_id)
     if not bidding_open_for(league):
         return []
-    signed = settle(conn, league_id)
+    lines: dict[str, list[dict]] = {}
+    signed = settle(conn, league_id, lines)
+    if results is not None:
+        results.update(lines)
+    if notify and lines:
+        _tell_bidders(conn, league_id, lines)
     conn.execute("UPDATE leagues SET fa_bidding = FALSE WHERE id = %s", (league_id,))
     season_id = SeasonRepository(conn).get_current_id_for_league(league_id)
     year = ContractRepository(conn).current_year(league_id)
@@ -1169,6 +1181,89 @@ def close_bidding(conn, league_id: str) -> list[dict]:
         (league_id, sorted(teams & humans)),
     )
     return signed
+
+
+def _outcome(
+    bid: dict, player, why: str, won: dict | None = None, floor: int | None = None
+) -> dict:
+    return {
+        "team_id": bid["team_id"],
+        "player": player,
+        "salary": bid["salary"],
+        "years": bid["years"],
+        "why": why,
+        "winner": won["team_id"] if won else None,
+        "winner_salary": won["salary"] if won else None,
+        "winner_years": won["years"] if won else None,
+        "floor": floor,
+    }
+
+
+def player_label(p) -> str:
+    """Name, then grade and position (Josh, 2026-11-13)."""
+    return f"{p.first_name} {p.last_name} ({shown_grade(p)} {display_position(p.position)})"
+
+
+def _terms(salary: int, years: int) -> str:
+    return f"{ct.format_salary(salary)} a season for {years} season{'s' if years != 1 else ''}"
+
+
+# Why a person's bid lost (Josh, 2026-11-19: say what happened to the bids
+# that didn't win, not only the ones that did).
+LOST_WHY = {
+    "outbid": "Their offer paid more.",
+    "fit": "Your offer paid as much or more, but he liked their team better.",
+    "low": "Your {bid} bid was under the least he'd take, about {floor}.",
+    "refused": "He won't sign with you after refusing to re-sign with you.",
+    "budget": "Your bid no longer fit under your owner's spending limit.",
+    "budget-after": (
+        "After your other signings, your bid no longer fit under your "
+        "owner's spending limit."
+    ),
+    "minors": "Your minor league roster was full.",
+}
+
+
+def bid_results(outcomes: list[dict], names: dict[str, str]) -> dict[str, list[dict]]:
+    """Each person's bids as lines to show them, by team: what they signed,
+    then who went elsewhere or stayed unsigned, and why."""
+    out: dict[str, list[dict]] = {}
+    for o in sorted(outcomes, key=lambda o: o["why"] != "won"):
+        p = o["player"]
+        who = player_label(p)
+        if o["why"] == "won":
+            text = f"You signed {who}: {_terms(o['salary'], o['years'])}."
+        elif o["why"] == "gone":
+            text = f"{who} was no longer a free agent when bidding closed."
+        else:
+            why = LOST_WHY[o["why"]].format(
+                bid=ct.format_salary(o["salary"]),
+                floor=ct.format_salary(o["floor"]),
+            )
+            if o["winner"]:
+                team = names.get(o["winner"], "another team")
+                text = (
+                    f"{who} signed with the {team} "
+                    f"({_terms(o['winner_salary'], o['winner_years'])}). {why}"
+                )
+            else:
+                text = (
+                    f"{who} didn't sign with anyone. {why} He's still a free "
+                    "agent, at his asking price."
+                )
+        out.setdefault(o["team_id"], []).append(
+            {"text": text, "player_id": p.id, "won": o["why"] == "won"}
+        )
+    return out
+
+
+def _tell_bidders(conn, league_id: str, lines: dict[str, list[dict]]) -> None:
+    """A sim card note for each bid a person made (gm_notifications kind
+    'bids')."""
+    notes = NotificationRepository(conn)
+    for gm_id, team_id in GMRepository(conn).get_human_gm_teams(league_id).items():
+        for line in lines.get(team_id, []):
+            notes.add(gm_id, "bids", line)
 
 
 # A team signing this many free agents at once gets the count in the headline.
@@ -1231,9 +1326,11 @@ def _news_signings(
         )
 
 
-def settle(conn, league_id: str) -> list[dict]:
+def settle(conn, league_id: str, results: dict | None = None) -> list[dict]:
     """Bidding closes: AI teams bid, then each free agent with bids signs
-    with the one he likes best. Returns the signings."""
+    with the one he likes best. Returns the signings. With results, fills
+    it with what happened to each bid a person's team made, won or lost
+    (bid_results), by team."""
     season_id = SeasonRepository(conn).get_current_id_for_league(league_id)
     year = ContractRepository(conn).current_year(league_id)
     if not season_id or year is None:
@@ -1271,36 +1368,68 @@ def settle(conn, league_id: str) -> list[dict]:
     # Each team's signings, best first, for the news (one story per team).
     stories: dict[str, list[tuple]] = {}
     minors = {t: len(status.get_by_team_and_status(t, "minors")) for t in teams}
+    humans = GMRepository(conn).get_human_team_ids(league_id)
+    # What happened to each bid from a person's team, for bid_results.
+    outcomes: list[dict] = []
+    signers: set[str] = set()
     order = sorted(
         (pid for pid in by_player if players.get(pid)),
         key=lambda pid: -role_rating(players[pid]),
     )
     for pid in order:
         p = players[pid]
+        mine = [b for b in by_player[pid] if b["team_id"] in humans]
         if status.get_status(pid) != "free_agent":
+            outcomes += [_outcome(b, p, "gone") for b in mine]
             continue
         person = pers.get(pid) or hp.personality_for(pid)
         ask = asking(conn, league_id, p, year)
         best = None
         # A player driven by money won't come down as far (Josh, 2026-11-18).
         floor = MIN_BID_SHARE + ng.MONEY_FLOOR * ng.money_lean(person.drives["money"])
+        why: dict[str, str] = {}
         for b in by_player[pid]:
-            if b["salary"] < floor * ask.salary:
-                continue
             if free_agents.refused(conn, league_id, b["team_id"], pid, year):
+                why[b["team_id"]] = "refused"
+                continue
+            if b["salary"] < floor * ask.salary:
+                why[b["team_id"]] = "low"
                 continue
             if budgets.refusal(league_id, b["team_id"], year, b["salary"]):
+                why[b["team_id"]] = (
+                    "budget-after" if b["team_id"] in signers else "budget"
+                )
                 continue
             if minors.get(b["team_id"], 0) >= MINORS_LIMIT:
+                why[b["team_id"]] = "minors"
                 continue
             fit, share = team_fit_for(person, p, homes.get(pid), fits[b["team_id"]])
             value = bid_value(b["salary"], b["years"], ask, p.age, fit, share)
             value += random.Random(f"fa-tie:{pid}:{b['team_id']}").random() * 1e-6
             if best is None or value > best[0]:
                 best = (value, b)
-        if best is None:
+        won = best[1] if best else None
+        for b in mine:
+            if b is won:
+                outcomes.append(_outcome(b, p, "won"))
+                continue
+            reason = why.get(b["team_id"])
+            if reason is None:
+                # A bid he could take, beaten: by money, or by the team.
+                theirs = ng.money_value(
+                    won["salary"], won["years"], ask.salary, ask.years, p.age
+                )
+                yours = ng.money_value(
+                    b["salary"], b["years"], ask.salary, ask.years, p.age
+                )
+                reason = "outbid" if theirs > yours else "fit"
+            outcomes.append(
+                _outcome(b, p, reason, won, ct.round_salary(floor * ask.salary))
+            )  # fmt: skip
+        if won is None:
             continue
-        b = best[1]
+        b = won
+        signers.add(b["team_id"])
         deal = ct.Deal(b["salary"], b["years"], "standard")
         was = _last_team(conn, league_id, pid)
         team_repo.add_player(b["team_id"], pid)
@@ -1322,6 +1451,8 @@ def settle(conn, league_id: str) -> list[dict]:
             (pid, deal, len(by_player[pid]), was, role_rating(p))
         )
     _news_signings(conn, league_id, season_id, year, stories, names, nm)
+    if results is not None:
+        results.update(bid_results(outcomes, names))
     conn.execute(
         "DELETE FROM fa_bids WHERE league_id = %s AND year <= %s", (league_id, year)
     )
