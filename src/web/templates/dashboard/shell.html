@@ -15,7 +15,35 @@ var LEAGUE_ID = "{{ league_id }}";
 // Players waiting to be compared with the next one clicked: [{id, side}],
 // side being 'give' / 'get' when they came from a trade offer.
 var _pinned = [];
-var MAX_COMPARE = 3;
+// How many players fit side by side in this window (Josh, 2026-11-19):
+// each column needs COMPARE_COL_MIN px inside the 85vw the panel may cover
+// (main.css .split3); columns still read fine at 240px. Never fewer than
+// the 3 it always allowed. Phones (700px and under) show one player at a
+// time and swipe, so they keep 3. Rechecked on resize (ppRefit).
+var COMPARE_COL_MIN = 260, COMPARE_HARD_MAX = 10;  // routers/players.py MAX_COMPARE
+function compareFit() {
+  const w = window.innerWidth;
+  if (w <= 700) return 3;
+  return Math.max(3, Math.min(COMPARE_HARD_MAX, Math.floor(w * 0.85 / COMPARE_COL_MIN)));
+}
+// The open comparison's "N of M" and + Add player follow the window.
+function ppRefit() {
+  const fit = compareFit();
+  const max = document.getElementById('pp-fit-max');
+  if (max) max.textContent = fit;
+  const add = document.getElementById('pp-add');
+  if (add) {
+    const full = document.querySelectorAll('#player-panel .pp-slot').length >= fit;
+    add.disabled = full;
+    if (full) add.title = 'Remove a player to add another'; else add.removeAttribute('title');
+  }
+  if (window.trCompareFit && document.getElementById('tr-compare')) window.trCompareFit();
+}
+var _refitTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(_refitTimer);
+  _refitTimer = setTimeout(ppRefit, 150);
+});
 function mountPanel(url) {
   fetch(url)
     .then(r => r.text())
@@ -37,8 +65,12 @@ window.openPlayerPanel = function(pid) {
 };
 // Opens the panel with these players side by side, in this order.
 window.openCompare = function(players) {
-  players = players.slice(0, MAX_COMPARE);
-  const q = new URLSearchParams();
+  const fit = compareFit();
+  if (players.length > fit)
+    gmToast(`Showing ${fit} of ${players.length} players: that's all that fit side by side. ` +
+            'Use ✕ and + Add player to swap.');
+  players = players.slice(0, fit);
+  const q = new URLSearchParams({fit});
   players.slice(1).forEach(p => q.append('compare', p.id));
   players.forEach(p => { if (p.side) q.append(p.side, p.id); });
   mountPanel(`/leagues/{{ league_id }}/players/${players[0].id}/panel?${q}`);

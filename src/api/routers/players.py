@@ -23,8 +23,11 @@ from src.web.utils import _shell_ctx, templates
 
 router = APIRouter(tags=["web"])
 
-# The panel shows at most this many players side by side.
-MAX_COMPARE = 3
+# How many players the panel shows side by side depends on the window: the
+# page works out how many columns fit (shell.html, compareFit) and sends it
+# as ?fit=. Without it, 3. Never fewer than 3 or more than MAX_COMPARE.
+DEFAULT_COMPARE = 3
+MAX_COMPARE = 10
 
 
 @router.get(
@@ -40,15 +43,17 @@ def player_panel(
     compare: list[str] = Query(default=[]),
     give: list[str] = Query(default=[]),
     get: list[str] = Query(default=[]),
+    fit: int = Query(default=DEFAULT_COMPARE),
 ):
     current_date = league_current_date(db, league_id)
+    max_compare = max(DEFAULT_COMPARE, min(fit, MAX_COMPARE))
     ctx = _shell_ctx(request, db, gm, league_id, user=user)
     ctx["player"] = player_panel_data(db, league_id, player_id, current_date)
     # The first player, then the others in order, without repeats.
-    ids = list(dict.fromkeys([player_id, *compare]))[:MAX_COMPARE]
+    ids = list(dict.fromkeys([player_id, *compare]))[:max_compare]
     others = (player_panel_data(db, league_id, i, current_date) for i in ids[1:])
     ctx["compare_players"] = [p for p in others if p]
-    ctx["max_compare"] = MAX_COMPARE
+    ctx["max_compare"] = max_compare
     # From a trade offer: which players you'd give and which you'd get.
     ctx["sides"] = {**{i: "give" for i in give}, **{i: "get" for i in get}}
     # Your own players can be released, and free agents signed.

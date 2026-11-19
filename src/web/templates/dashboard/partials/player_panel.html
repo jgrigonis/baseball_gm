@@ -1,5 +1,6 @@
 {# templates/dashboard/partials/player_panel.html
-  Slide-in player detail panel. Shows one player, or up to three side by side.
+  Slide-in player detail panel. Shows one player, or several side by side
+  (as many as fit the window, see compareFit in shell.html).
 
   Usage:
     Single:  hx-get="/leagues/{id}/players/{player_id}/panel"
@@ -19,12 +20,13 @@
 {% set n = shown | length %}
 <div id="player-panel"
     class="player-panel {% if n == 2 %}split{% elif n > 2 %}split split3{% endif %}"
+    {% if n > 2 %}style="--pp-n: {{ n }}"{% endif %}
     data-player-id="{{ player.player_id }}">
 
  <div class="pp-header">
    <button class="pp-close" onclick="closePlayerPanel()" title="Close">✕</button>
    <span class="pp-title">
-     {% if n > 1 %}Player Comparison · {{ n }} of {{ max_compare }}{% else %}Player Detail{% endif %}
+     {% if n > 1 %}Player Comparison · {{ n }} of <span id="pp-fit-max">{{ max_compare }}</span>{% else %}Player Detail{% endif %}
    </span>
    <div class="pp-header-actions">
      {% if n == 1 %}
@@ -87,7 +89,7 @@
          Compare ↔
        </button>
      {% else %}
-       <button class="btn btn-secondary pp-action" onclick="addToCompare()"
+       <button class="btn btn-secondary pp-action" id="pp-add" onclick="addToCompare()"
                {% if n >= max_compare %}disabled title="Remove a player to add another"{% endif %}>
          + Add player
        </button>

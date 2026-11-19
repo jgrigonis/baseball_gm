@@ -431,14 +431,20 @@ function summarize() {
   btn.disabled = !give.length || !get.length || !SIDES.theirs.team;
   btn.textContent = COUNTER ? 'Send counter' : 'Propose trade';
   // Compare the picked players (not picks) once there are two; the compare
-  // view holds MAX_COMPARE (shell.html) at a time.
-  var n = pickedIds('mine').length + pickedIds('theirs').length;
-  var cmp = document.getElementById('tr-compare');
-  cmp.style.display = n > 1 ? '' : 'none';
-  cmp.disabled = n > window.MAX_COMPARE;
-  cmp.textContent = n > window.MAX_COMPARE ? 'Compare (' + window.MAX_COMPARE + ' max)' : 'Compare ↔';
+  // view holds as many as fit the window (compareFit, shell.html).
+  compareButton();
   document.getElementById('tr-cancel-counter').style.display = COUNTER ? '' : 'none';
 }
+function compareButton() {
+  var n = pickedIds('mine').length + pickedIds('theirs').length;
+  var fit = window.compareFit();
+  var cmp = document.getElementById('tr-compare');
+  cmp.style.display = n > 1 ? '' : 'none';
+  cmp.disabled = n > fit;
+  cmp.textContent = n > fit ? 'Compare (' + fit + ' max)' : 'Compare ↔';
+}
+// Resizing the window changes how many fit (ppRefit, shell.html).
+window.trCompareFit = compareButton;
 
 // Picked players on one side, in list order, leaving out draft picks.
 function pickedIds(key) {
