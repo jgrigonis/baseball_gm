@@ -102,6 +102,43 @@ def ensure(conn, league_id: str, rng: random.Random | None = None) -> dict[str, 
     return repo.in_league(league_id)
 
 
+def change(conn, league_id: str, team_id: str, owner_id: str) -> str | None:
+    """An admin hands a team a different owner from the library (the admin
+    League page). The team keeps its rival, its bank and the season the
+    owner started judging; the GM starts over with the new owner (job
+    security from their grace level, src/api/services/owner_review.py
+    _tenure) and their mood starts fresh. An owner already with another team
+    in the league swaps places with this team's. Budgets already set this
+    season stay; the new owner's spending sets the next ones. Returns an
+    error, or None."""
+    repo = OwnerRepository(conn)
+    seats = repo.in_league(league_id)
+    mine = seats.get(team_id)
+    if not mine:
+        return "That team has no owner yet."
+    if not repo.get(owner_id):
+        return "No such owner."
+    if mine["owner_id"] == owner_id:
+        return None
+    other = next(
+        (t for t, o in seats.items() if o["owner_id"] == owner_id and t != team_id),
+        None,
+    )
+    swaps = [(team_id, owner_id)]
+    if other:
+        swaps.append((other, mine["owner_id"]))
+    for team, owner in swaps:
+        conn.execute(
+            "UPDATE team_owners SET owner_id = %s WHERE league_id = %s AND team_id = %s",
+            (owner, league_id, team),
+        )
+        conn.execute(
+            "DELETE FROM owner_moods WHERE league_id = %s AND team_id = %s",
+            (league_id, team),
+        )
+    return None
+
+
 def card(conn, league_id: str, team_id: str) -> dict | None:
     """What anyone can see of a team's owner: name, bio, archetype, what
     owners of that kind want, the rival if they're known for one, and

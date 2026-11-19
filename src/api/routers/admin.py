@@ -63,6 +63,7 @@ NOTES = {
     "persona_deleted": "Persona deleted.",
     "owner_created": "Owner created.",
     "owner_deleted": "Owner deleted.",
+    "owner_changed": "Owner changed.",
 }
 
 
@@ -133,6 +134,10 @@ def _league_page(request, db, user, league_id: str, status_code=200, **ctx):
             ),
             "trades_on": trades_enabled_for(league),
             "owners": _league_owners(db, league),
+            "owner_choices": [
+                {"id": o["id"], "name": o["name"], "archetype": o["archetype"]}
+                for o in OwnerRepository(db).all()
+            ],
             "owner_cap": _league_cap(db, league),
             **ctx,
         },
@@ -179,6 +184,7 @@ def _league_owners(db, league: dict) -> list[dict]:
         rows.append(
             {
                 "team": names.get(team_id, team_id),
+                "team_id": team_id,
                 "owner_id": o["owner_id"],
                 "name": o["name"],
                 "archetype": o["archetype"],
@@ -315,6 +321,23 @@ def league_settings(
     if error:
         return _league_page(request, db, user, league_id, 400, error=error)
     return _done(f"/admin/leagues/{league_id}", "settings")
+
+
+@router.post("/leagues/{league_id}/teams/{team_id}/owner")
+def change_owner(
+    request: Request,
+    league_id: str,
+    team_id: str,
+    db: DB,
+    user: Admin,
+    owner_id: str = Form(...),
+):
+    _league_or_404(db, league_id)
+    error = owner_service.change(db, league_id, team_id, owner_id)
+    if error:  # nothing written
+        return _league_page(request, db, user, league_id, 400, error=error)
+    db.commit()
+    return _done(f"/admin/leagues/{league_id}", "owner_changed")
 
 
 @router.post("/leagues/{league_id}/pause")
