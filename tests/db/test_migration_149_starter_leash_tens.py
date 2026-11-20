@@ -29,5 +29,5 @@ def test_old_leashes_move_one_step_longer(db_conn, factory):
     m.upgrade(db_conn)
 
     got = [GMRepository(db_conn).get_profile(g.id)["starter_usage"] for g in gms]
-    assert got == ["90", "100", "110", "120", "120"]
-    assert GMRepository(db_conn).pitcher_leashes(teams[0].id) == {arm_id: "90"}
+    assert got == ["80", "90", "100", "110", "110"]
+    assert GMRepository(db_conn).pitcher_leashes(teams[0].id) == {arm_id: "80"}

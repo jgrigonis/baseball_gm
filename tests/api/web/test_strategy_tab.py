@@ -55,7 +55,7 @@ def test_saves_every_setting(client, db_conn, gm):
     assert row["sac_bunt"] == "never"
     assert row["rest_days"] == "rest-often"
     assert row["closer_usage"] == "high-leverage"
-    assert row["starter_usage"] == "100"
+    assert row["starter_usage"] == "90"
     assert row["rotation_size"] == 4
     assert row["skip_fifth_starter"] is True
     assert row["playoff_rotation"] == "3"
@@ -170,14 +170,14 @@ def test_saves_rarely_bunt(client, db_conn, gm):
 
 
 def test_leash_and_bullpen_run_short_to_long(client, db_conn, gm):
-    # Starter Leash: 80 on the left, 120 on the right. Bullpen Shape: Deep pen
+    # Starter Leash: 70 on the left, 110 on the right. Bullpen Shape: Deep pen
     # on the left, Starter-heavy on the right.
     client.post(
         f"/leagues/{gm.league_id}/strategy",
         data={"starter_usage": 0, "bullpen_pref": 0},
     )
     row = GMRepository(db_conn).get_profile(gm.id)
-    assert row["starter_usage"] == "80"
+    assert row["starter_usage"] == "70"
     assert row["bullpen_pref"] == "deep-pen"
 
     client.post(
@@ -185,7 +185,7 @@ def test_leash_and_bullpen_run_short_to_long(client, db_conn, gm):
         data={"starter_usage": 4, "bullpen_pref": 2},
     )
     row = GMRepository(db_conn).get_profile(gm.id)
-    assert row["starter_usage"] == "120"
+    assert row["starter_usage"] == "110"
     assert row["bullpen_pref"] == "starter-heavy"
 
 

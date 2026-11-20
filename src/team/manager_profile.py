@@ -29,7 +29,7 @@ SAC_BUNT = ("never", "rarely", "situational", "frequent")
 # use (Josh, 2026-11-20; was 75-115 with 85 the default). A starter who's
 # dealing goes a few pitches past it and one getting hit comes out before
 # it (DEALING_EXTRA, SHELLED_PULL).
-STARTER_USAGE = ("120", "110", "100", "90", "80")
+STARTER_USAGE = ("110", "100", "90", "80", "70")
 DEFAULT_LEASH = STARTER_USAGE[2]
 CLOSER_USAGE = ("saves-only", "high-leverage", "best-available")
 BULLPEN_PREF = ("starter-heavy", "balanced", "deep-pen")
