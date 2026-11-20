@@ -26,9 +26,7 @@ def upgrade(conn):
     conn.execute(
         f"UPDATE gm_profiles SET starter_usage = {MOVE.format(col='starter_usage')}"
     )
-    conn.execute(
-        "ALTER TABLE gm_profiles ALTER COLUMN starter_usage SET DEFAULT '100'"
-    )
+    conn.execute("ALTER TABLE gm_profiles ALTER COLUMN starter_usage SET DEFAULT '100'")
     conn.execute(
         "ALTER TABLE gm_profiles ADD CONSTRAINT gm_profiles_starter_usage_check"
         f" CHECK (starter_usage IN {STEPS})"
