@@ -88,9 +88,9 @@ POPULARITY_SHARE = 0.15
 # average revenue, the same for every team (Josh, 2026-11-07: up from 20%
 # to trim the average team's profit to about +$25M a season; 26% still left
 # about +$42M in a 6-season sim, so 32%). Josh, 2026-11-20: owners still
-# made about +$110M a team in year one once the playoff gate was cut, so
-# 50%, for about +$50M on average with about 1 team in 4 losing money.
-FIXED_COSTS = 0.50
+# made about +$110M a team in year one once the playoff gate was cut (50%
+# made +$50M), and Josh picked about +$80M with 1 team in 6 losing: 41%.
+FIXED_COSTS = 0.41
 
 ROUNDING = 100_000
 
