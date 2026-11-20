@@ -150,13 +150,13 @@ def _books_view(b: dict, names: dict | None = None) -> dict:
                 else None
             ),
             "note": (
-                f"{round(fn.GATE_SHARE * 100)}% of the gate follows the crowds:"
+                "Every ticket counts: crowds"
                 + (" bigger" if b["crowds"] > 0 else " smaller")
                 + " than your fans were expected to bring"
                 + (" so far" if b["projected"] else "")
                 if b["crowds"]
-                else f"{round(fn.GATE_SHARE * 100)}% of the gate follows the crowds,"
-                " against what your fans are expected to bring"
+                else "Every ticket counts, against the crowds your fans are"
+                " expected to bring"
             ),
             "bad": b["crowds"] < 0,
         },
@@ -195,10 +195,13 @@ def _books_view(b: dict, names: dict | None = None) -> dict:
             "label": "Ballpark",
             "amount": _money(b["ballpark"]) if b["ballpark"] else None,
             "note": (
-                "What your ballpark upgrades earn"
+                "What your ballpark upgrades earn, less their upkeep: premium"
+                " seats only sell when the park fills up"
                 if b["ballpark"]
-                else "Upgrades your owner pays for earn money every season"
+                else "Upgrades your owner pays for earn money every season,"
+                " when the park fills up"
             ),
+            "bad": b["ballpark"] < 0,
         },
         {
             "label": "Luxury tax share",
@@ -625,7 +628,9 @@ def _ballpark_view(
             {
                 **o,
                 "cost_text": _money(o["cost"]),
-                "earns_text": _money(o["earns"]) if o["earns"] else None,
+                "earns_text": _money(o["earns"]) if o["earns"] > 0 else None,
+                # Upkeep more than it brings in at today's crowds.
+                "loses_text": _money(-o["earns"]) if o["earns"] < 0 else None,
                 "payback_text": payback,
                 "short_text": _money(o["short"]) if o["short"] else None,
                 "can": can,

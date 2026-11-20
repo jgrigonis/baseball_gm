@@ -63,7 +63,38 @@ def test_fans_follow_winning():
 def test_profit_takes_off_payroll_tax_and_costs():
     assert fn.profit(250 * M, 160 * M, 5 * M, 50 * M) == 35 * M
     assert fn.playoff_gate(250 * M, 0) == 0
-    assert fn.playoff_gate(250 * M, 4) == 144 * M
+    assert fn.playoff_gate(250 * M, 4) == 30 * M
+
+
+def test_ballpark_projects_earn_by_demand_and_cost_upkeep():
+    """Josh, 2026-11-20: you can't milk a dead cow. Premium seats sell when
+    the park fills, and every project costs upkeep, so in an empty park a
+    project costs money."""
+    cap = 160 * M
+    avg = cap * 2.08
+    empty = fn.project_money("club_seats", avg, 3, 5, round(avg), cap=cap)
+    middle = fn.project_money("club_seats", avg, 3, 50, round(avg), cap=cap)
+    full = fn.project_money("club_seats", avg, 3, 90, round(avg), cap=cap)
+    assert empty < 0 < middle < full
+    assert (
+        fn.project_upkeep("club_seats", cap)
+        == round(cap * 0.375 * fn.UPKEEP / 100_000) * 100_000
+    )
+    # A real crowd counts over what the fans would draw.
+    assert (
+        fn.project_money("club_seats", avg, 3, 50, round(avg), cap=cap, crowd=15_000)
+        < 0
+    )
+    # Suites leased to companies keep half their money in an empty park.
+    assert fn.project_money("suites", avg, 3, 5, round(avg)) > 0
+    assert fn.demand(0, 3) == 0 and fn.demand(100, 5) == fn.DEMAND_MAX
+
+
+def test_ticket_revenue_follows_the_crowds():
+    """Josh, 2026-11-20: a team nobody comes to see sells about half the
+    tickets of an average one."""
+    assert fn.fan_mult(0) == 0.5 and fn.fan_mult(50) == 1.0
+    assert fn.GATE_SHARE == 1.0
 
 
 def test_only_keen_fans_bring_in_popularity_money():
@@ -130,9 +161,9 @@ def test_broadcast_deals_pay_popular_winners_in_big_markets():
     worst = fn.broadcast_base(avg, 1, 0, 0.30)
     middle = fn.broadcast_base(avg, 3, 50, 0.50)
     best = fn.broadcast_base(avg, 5, 100, 0.70)
-    assert worst == round(avg * 0.06 * 0.8 / 100_000) * 100_000
+    assert worst == round(avg * 0.03 * 0.8 / 100_000) * 100_000
     assert worst < middle < best
-    assert 12 * M < worst < 15 * M and 50 * M < best < 55 * M
+    assert 6 * M < worst < 7 * M and 40 * M < best < 45 * M
     assert fn.broadcast_amount(middle, 5) > fn.broadcast_amount(middle, 3)
     assert fn.broadcast_amount(middle, 2) < middle == fn.broadcast_amount(middle, 3)
     assert fn.broadcast_years(4) == fn.BROADCAST_DEFAULT_YEARS
@@ -166,7 +197,7 @@ def test_hall_of_famers_sell_retro_jerseys_most_after_induction():
 def test_steady_sponsors_pay_the_same_and_grow_with_the_market():
     small = fn.sponsor_steady(333 * M, 1)
     huge = fn.sponsor_steady(333 * M, 5)
-    assert 10 * M < small < huge < 18 * M
+    assert 7 * M < small < huge < 13 * M
     bad = fn.sponsor_money(small, "steady", 0.35)
     good = fn.sponsor_money(small, "steady", 0.65, True, 3)
     assert bad["total"] == good["total"] == small

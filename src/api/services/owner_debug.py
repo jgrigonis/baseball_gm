@@ -76,14 +76,20 @@ def _why(
     if key == "profit":
         if s.profit is None or not s.revenue:
             return "No money numbers this season"
-        par = (
-            f", par {_money(s.profit_par)}"
-            if s.profit_par is not None
-            else f", target margin {sc.PROFIT_TARGET:.0%}"
+        if s.spend_over_par is not None:
+            par = f", par {_money(s.profit + s.spend_over_par)}"
+        elif s.profit_par is not None:
+            par = f", par {_money(s.profit_par)}"
+        else:
+            par = f", target margin {sc.PROFIT_TARGET:.0%}"
+        loss = (
+            f"; a loss: -1 per {sc.LOSS_SCALE_PROFIT:.0%} of revenue lost"
+            if s.profit < 0
+            else ""
         )
         return (
             f"Profit {_money(s.profit)} on revenue {_money(s.revenue)}{par};"
-            f" ±{sc.PROFIT_SCALE:.0%} of revenue = ±1"
+            f" ±{sc.PROFIT_SCALE:.0%} of revenue = ±1{loss}"
         )
     if key == "attendance":
         if s.crowd_score is not None and s.crowd_expected:

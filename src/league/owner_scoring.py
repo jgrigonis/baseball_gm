@@ -59,6 +59,10 @@ class TeamSeason:
     # under the league's cap: profit is judged against it, so a small market
     # isn't marked down for being small (None: against PROFIT_TARGET).
     profit_par: int | None = None
+    # Or how much more than a middle owner's payroll and tax the GM spent
+    # (Josh, 2026-11-20): par is the profit plus this, so with the same
+    # money in only the spending is judged against it.
+    spend_over_par: int | None = None
     fans_before: int | None = None
     fans_after: int | None = None
     # The season's home crowds as an Attendance reading, -1 to 1
@@ -117,6 +121,10 @@ PLAYOFF_RANK = 0.34
 # Profit margin (profit / revenue) that's "met", and how far off scores 1.
 PROFIT_TARGET = 0.15
 PROFIT_SCALE = 0.15
+# Money lost (Josh, 2026-11-20: every owner cares about money at some
+# level): a loss this share of revenue takes a further 1 off the profit
+# score, whatever the par, since it comes out of the owner's own bank.
+LOSS_SCALE_PROFIT = 0.10
 
 
 def win_target(rank_before: float, ambition: int) -> float:
@@ -151,12 +159,18 @@ def score_dimensions(
 
     has_money = money and s.budget is not None and s.payroll is not None
     if has_money and s.revenue and s.profit is not None:
-        if s.profit_par is not None:
+        if s.spend_over_par is not None:
+            margin = -s.spend_over_par / s.revenue
+            value = margin / PROFIT_SCALE
+        elif s.profit_par is not None:
             margin = (s.profit - s.profit_par) / s.revenue
-            out["profit"] = _clamp(margin / PROFIT_SCALE)
+            value = margin / PROFIT_SCALE
         else:
             margin = s.profit / s.revenue
-            out["profit"] = _clamp((margin - PROFIT_TARGET) / PROFIT_SCALE)
+            value = (margin - PROFIT_TARGET) / PROFIT_SCALE
+        if s.profit < 0:
+            value -= -s.profit / s.revenue / LOSS_SCALE_PROFIT
+        out["profit"] = _clamp(value)
     else:
         out["profit"] = None
     if has_money and s.crowd_score is not None:

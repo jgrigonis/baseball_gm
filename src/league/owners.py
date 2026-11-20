@@ -117,7 +117,8 @@ ARCHETYPES = (
         "The Tycoon",
         "Money's no object. Rings are.",
         "Tycoon owners want titles and stars, and will pay for them.",
-        (80, 95, 5, 30, 30, 20, 10, 60, 20, 20, 30),
+        # Profit 20 (Josh, 2026-11-20: every owner minds money some; was 5).
+        (80, 95, 20, 30, 30, 20, 10, 60, 20, 20, 30),
         (20, 95, 85, 60, 70, 65, 95),
         1.0,
     ),
@@ -172,7 +173,7 @@ ARCHETYPES = (
         "The People's Owner",
         "Fans first, last and always.",
         "People's Owners want the fans happy and the park full.",
-        (50, 40, 15, 85, 95, 30, 50, 50, 70, 40, 50),
+        (50, 40, 25, 85, 95, 30, 50, 50, 70, 40, 50),
         (60, 50, 50, 30, 40, 55, 55),
     ),
     Archetype(
