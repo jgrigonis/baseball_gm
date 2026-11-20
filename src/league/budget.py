@@ -158,7 +158,9 @@ def about_counter(text: str | None) -> str | None:
     lowball the owner's "won't allow it" read as if it meant his offer)."""
     if not text:
         return text
-    return text.replace("Your owner won't allow it:", "Your owner won't allow his counter:", 1)
+    return text.replace(
+        "Your owner won't allow it:", "Your owner won't allow his counter:", 1
+    )
 
 
 def luxury_tax(payroll: int, cap: int) -> int:
