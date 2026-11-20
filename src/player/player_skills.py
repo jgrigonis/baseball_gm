@@ -87,6 +87,35 @@ SWING_SIZE = (4.0, 8.0)
 SWING_FLOOR_SKILL = 25
 
 
+# One-skill breakouts (Josh, 2026-11-18): some young hitters hit the gym
+# and some young pitchers build up their arms. skill: (first age, last age,
+# chance a winter, size range). Power kept sliding over long leagues (home
+# runs fell below MLB after season 10) and starters tire too early. The
+# chance scales with coaching (FOCUS_COACHING_POWER), so a good staff
+# finds more of them. The skill's ceiling moves with it.
+FOCUS_BREAKOUTS: dict[str, tuple[int, int, float, tuple[float, float]]] = {
+    "power": (20, 27, 0.05, (3.0, 7.0)),
+    "stamina": (20, 24, 0.06, (3.0, 7.0)),
+}
+# chance x coaching ** this: Elite coaching (1.15) about 1.5x, Bare bones
+# (0.85) about 0.6x.
+FOCUS_COACHING_POWER = 3.0
+
+
+def focus_breakouts(
+    age: int, skills: dict[str, float], rng: random.Random, coaching: float = 1.0
+) -> dict[str, float]:
+    """Points a one-skill breakout adds this winter, by skill (usually
+    none). Only real skills (at or above SWING_FLOOR_SKILL) break out."""
+    out = {}
+    for skill, (first, last, chance, size) in FOCUS_BREAKOUTS.items():
+        if not first <= age <= last or skills.get(skill, 0) < SWING_FLOOR_SKILL:
+            continue
+        if rng.random() < chance * max(0.0, coaching) ** FOCUS_COACHING_POWER:
+            out[skill] = rng.uniform(*size)
+    return out
+
+
 def winter_swing(age: int, rng: random.Random) -> float:
     """Points every real skill moves this winter: positive for a breakout,
     negative for a crashout, usually 0."""
@@ -506,6 +535,7 @@ class PlayerSkills:
         rng: random.Random | None = None,
         caps: dict[str, int] | None = None,
         swings: bool = False,
+        staff: float = 1.0,
     ) -> PlayerSkills:
         """
         Simulate skill progression from START_AGE to the given age.
@@ -523,6 +553,9 @@ class PlayerSkills:
             swings:   Roll for breakout and crashout winters. Only real
                       offseasons do; generated players (opening rosters,
                       draft classes, backstory) keep year one's spread.
+            staff:    The team's coaching staff alone (budget.coaching_growth,
+                      without the workload penalties in coaching): scales
+                      the chance of a one-skill breakout (focus_breakouts).
         """
         if age <= from_age:
             return self
@@ -588,6 +621,11 @@ class PlayerSkills:
                         # of eating into the growth he had left.
                         if caps and k in caps:
                             caps[k] = int(clamp(round(caps[k] + swing), 1, 100))
+            if swings:
+                for k, gain in focus_breakouts(current_age, s, rng, staff).items():
+                    s[k] += gain
+                    if caps and k in caps:
+                        caps[k] = int(clamp(round(caps[k] + gain), 1, 100))
 
             for k in s:
                 s[k] = float(clamp(s[k], 1, 100))

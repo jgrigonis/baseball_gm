@@ -330,3 +330,34 @@ def test_a_pitcher_who_pinch_ran_leaves_the_field_and_cant_pitch():
     sub = team.lineup[1].player
     assert sub is not arm and sub.pitcher_fatigue is None
     assert sub.current_position == position and arm.id in team.removed_ids
+
+
+def test_pinch_hitter_from_the_sixth():
+    game = _game(inning=6)
+    game.current_batter.player.ratings["overall_offense"] = 30
+    sub, _ = _make_bench_bat(game, 60)
+    assert bench.pinch_hitter(game) is sub
+
+
+def _rest_spot(energy: float, bench_bat: float, regular: float = 60):
+    """8th, batting team up 7: a regular at this energy, one bench bat."""
+    game = _game(inning=8, away=10, home=3)
+    batter = game.current_batter.player
+    batter.ratings["overall_offense"] = regular
+    sub, _ = _make_bench_bat(game, bench_bat)
+    game._live_energy = lambda p: energy if p is batter else 1.0
+    return game, sub
+
+
+def test_tired_regular_rests_in_a_blowout():
+    game, sub = _rest_spot(energy=0.6, bench_bat=55)
+    assert bench.pinch_hitter(game) is sub
+    # Once a game per team.
+    assert bench.pinch_hitter(game) is None
+
+
+def test_no_rest_for_a_fresh_regular_or_a_much_worse_bat():
+    game, _ = _rest_spot(energy=0.95, bench_bat=55)
+    assert bench.pinch_hitter(game) is None
+    game, _ = _rest_spot(energy=0.6, bench_bat=40)
+    assert bench.pinch_hitter(game) is None

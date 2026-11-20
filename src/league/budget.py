@@ -176,7 +176,11 @@ def tax_shares(payrolls: dict[str, int], cap: int) -> dict[str, int]:
 # five levels, set once each offseason (draft and preseason) and locked for
 # the season. Scouting waits for grade fog. Department levels are private.
 DEPARTMENTS = (
-    ("coaching", "Coaching", "How fast players grow, and how they like the staff"),
+    (
+        "coaching",
+        "Coaching",
+        "How fast players grow, how often young ones break out, and how they like the staff",
+    ),
     (
         "facilities",
         "Facilities",
@@ -225,7 +229,9 @@ def standard_front_office(cap: int) -> int:
 
 # What each level does (Bare bones .. Elite).
 # Coaching: how fast young players' coachable skills grow toward their
-# ceilings (src/player/player_skill_aging.py; the cap doesn't move). Full
+# ceilings (src/player/player_skill_aging.py), and how often a young hitter
+# breaks out in power or a young pitcher in stamina, which raises that
+# skill's ceiling (player_skills.focus_breakouts). Full
 # effect at COACHING_FULL_AGE and under, none by COACHING_NO_AGE. It also
 # nudges every player's mood, young ones most (src/player/happiness.py).
 COACHING_GROWTH = (0.85, 0.93, 1.0, 1.08, 1.15)

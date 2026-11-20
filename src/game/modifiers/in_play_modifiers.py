@@ -11,6 +11,7 @@ from src.game.modifiers.pitch_modifiers import (
     TYPICAL_POWER,
     TYPICAL_STRIKES,
     bat_term,
+    batting_at_home,
 )
 
 # Share of hits on balls in play a pitcher takes away per point of strikes
@@ -20,6 +21,10 @@ WEAK_CONTACT = 0.006
 # A typical starting outfield's range, (speed + outfield) / 2 averaged over
 # lf, cf and rf, in league play.
 TYPICAL_OF_RANGE = 70
+
+# Home-field edge on balls in play: home hitters' hits are multiplied by
+# this (see pitch_modifiers.HOME_CALLED_STRIKES for the rest of it).
+HOME_HITS = 1.05
 
 
 class InPlayModifiers:
@@ -42,6 +47,9 @@ class InPlayModifiers:
         InPlayModifiers.modify_for_platoon(
             resolver, game.current_batter.player, game.pos("p")
         )
+        if batting_at_home(game):
+            for hit in ("single", "double", "triple"):
+                resolver.in_play_outcome.multiply(hit, HOME_HITS)
         InPlayModifiers.apply_constraints(resolver, game.bases, game.inning.outs)
 
     @staticmethod
@@ -145,8 +153,11 @@ class InPlayModifiers:
 
         clutch = batter.get_effective_stat(batter.skills["clutch"])
         if -2 < score.differential < 2:
-            resolver.in_play_outcome.add("fly_out", 2 * (clutch - 50))
-            resolver.in_play_outcome.add("ground_out", 2 * (clutch - 50))
+            # A clutch hitter turns outs into hits in a close game (the out
+            # weights used to go up with his clutch too, so a clutch hitter
+            # made more outs on contact than an unclutch one).
+            resolver.in_play_outcome.add("fly_out", -2 * (clutch - 50))
+            resolver.in_play_outcome.add("ground_out", -2 * (clutch - 50))
             resolver.in_play_outcome.add("single", (clutch - 50))
             resolver.in_play_outcome.add("double", 0.5 * (clutch - 50))
             resolver.in_play_outcome.add("triple", 0.12 * (clutch - 50))

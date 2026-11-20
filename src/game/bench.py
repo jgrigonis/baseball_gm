@@ -2,12 +2,15 @@
 """
 In-game bench moves: pinch hitters, pinch runners and defensive replacements.
 
-Before each plate appearance late in a close game, the batting team's manager
-looks down his bench for a better bat against the pitcher on the mound. A bench
+Before each plate appearance from the 6th on in a close game, the batting
+team's manager looks down his bench for a better bat against the pitcher on the mound. A bench
 hitter goes in when his bat (after the platoon edge, his fatigue and the GM's
 view of his season) beats the man due up by enough for the spot. The bigger
 the spot (later inning, runners in scoring position), the smaller the edge he
 needs.
+
+In a lopsided game late, a regular who isn't fresh can also sit for a bench
+bat who isn't much worse (rest), once a game.
 
 A pinch hitter stays in the game: he takes over the replaced hitter's batting
 slot and his position in the field, so a weak glove counts against him
@@ -36,7 +39,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from src.player.player_constants import TIRED_THRESHOLD
+from src.player.player_constants import FRESH_THRESHOLD, TIRED_THRESHOLD
 from src.player.player_evaluator import LEFT_HAND_CAPPED_POSITIONS
 from src.team.lineup_optimizer import DEFENSE_IMPORTANCE, LineupOptimizer
 
@@ -45,8 +48,11 @@ if TYPE_CHECKING:
     from src.player.player_in_game import PlayerInGame
     from src.team.team_in_game import TeamInGame
 
-# Pinch hitting starts in this inning.
+# Pinch runners and defensive replacements start in this inning...
 FIRST_INNING = 7
+# ...pinch hitters an inning sooner (Josh, 2026-11-18: MLB sends up about
+# 0.78 a team game, 2% of plate appearances; the sim managed 0.25-0.36).
+PH_FIRST_INNING = 6
 # The batting team must be within this many runs ahead (a tie is 0)...
 MAX_LEAD = 1
 # ...or this many behind, with the tying run no further away than on deck.
@@ -54,24 +60,32 @@ MAX_DEFICIT = 4
 # Rating points of offense a pinch hitter must add in an ordinary late spot
 # (the 7th, nobody in scoring position). PLATOON_PENALTY (7) is the same-side
 # edge, so a platoon swap needs a bench bat close to the regular's.
-MIN_GAIN = 6.0
+MIN_GAIN = 5.0
 # How much bigger a spot is, which shrinks the edge needed.
-INNING_LEVERAGE = {7: 1.0, 8: 1.2}
+INNING_LEVERAGE = {6: 0.85, 7: 1.0, 8: 1.2}
 LATE_LEVERAGE = 1.45  # 9th and extra innings
 RISP_LEVERAGE = 1.25  # a runner on second or third
 # Share of a position's glove value a pinch hitter's weaker glove costs, by
 # inning: the fewer innings left to play in the field, the less it matters.
-DEFENSE_COST_SHARE = {7: 0.35, 8: 0.25}
+DEFENSE_COST_SHARE = {6: 0.45, 7: 0.35, 8: 0.25}
 LATE_DEFENSE_COST_SHARE = 0.15  # 9th and extra innings
 # A bench hitter this tired doesn't bat.
 MIN_ENERGY = TIRED_THRESHOLD
+# In a lopsided game (this many runs either way) from REST_FIRST_INNING on,
+# a regular who isn't fresh sits for a bench bat no more than REST_MAX_DROP
+# rating points worse, up to REST_MAX_PER_GAME times a game per team.
+REST_MARGIN = 5
+REST_FIRST_INNING = 7
+REST_ENERGY = FRESH_THRESHOLD
+REST_MAX_DROP = 8.0
+REST_MAX_PER_GAME = 1
 
 
 def leverage(game: Game) -> float:
     """How big the coming plate appearance is for the batting team, 0 when
     it's not a pinch hitting spot at all."""
     inning = game.inning.number
-    if inning < FIRST_INNING:
+    if inning < PH_FIRST_INNING:
         return 0.0
     if game.inning.top:
         diff = game.score.away - game.score.home
@@ -139,11 +153,18 @@ def _is_catcher(player: PlayerInGame) -> bool:
     return (player.record.position or "").lower() == "c"
 
 
+def _margin(game: Game) -> int:
+    """The batting team's lead (negative when behind)."""
+    if game.inning.top:
+        return game.score.away - game.score.home
+    return game.score.home - game.score.away
+
+
 def pinch_hitter(game: Game) -> PlayerInGame | None:
     """The bench hitter who should bat for the man due up, or None."""
     lev = leverage(game)
     if not lev:
-        return None
+        return _rest_hitter(game)
     team = game.bat_team
     slot = game.current_batter
     pitcher = game.current_pitcher
@@ -163,6 +184,40 @@ def pinch_hitter(game: Game) -> PlayerInGame | None:
         edge = bat_value(team, p, hand) - base - cost
         if edge >= best_edge:
             best, best_edge = p, edge
+    return best
+
+
+def _rest_hitter(game: Game) -> PlayerInGame | None:
+    """In a lopsided game late, a bench bat for a regular who could use the
+    rest, if he isn't much worse."""
+    team = game.bat_team
+    if (
+        game.inning.number < REST_FIRST_INNING
+        or abs(_margin(game)) < REST_MARGIN
+        or getattr(team, "rest_subs", 0) >= REST_MAX_PER_GAME
+    ):
+        return None
+    slot = game.current_batter
+    pitcher = game.current_pitcher
+    if slot is None or pitcher is None:
+        return None
+    batter = slot.player
+    energy = game._live_energy(batter)
+    if energy is None or energy >= REST_ENERGY:
+        return None
+    hand = (pitcher.throws or "R").upper()
+    base = bat_value(team, batter, hand)
+    position = batter.current_position or slot.position
+    best, best_edge = None, -REST_MAX_DROP
+    for p in _available(game, team):
+        cost = defense_cost(team, batter, p, position, game.inning.number)
+        if cost is None:
+            continue
+        edge = bat_value(team, p, hand) - base - cost
+        if edge >= best_edge:
+            best, best_edge = p, edge
+    if best is not None:
+        team.rest_subs = getattr(team, "rest_subs", 0) + 1
     return best
 
 

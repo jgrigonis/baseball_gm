@@ -769,3 +769,51 @@ def test_age_to_swings_only_when_asked():
     # Non-skills don't swing; caps move with the skills.
     assert swung["catching"] == plain["catching"]
     assert moved_caps["contact"] == 81
+
+
+def test_focus_breakouts_by_age_skill_and_coaching():
+    import random
+
+    from src.player.player_skills import FOCUS_BREAKOUTS, focus_breakouts
+
+    hitter = {"power": 55, "stamina": 10}
+    pitcher = {"power": 10, "stamina": 55}
+    rng = random.Random(5)
+    n = 20000
+    young = [focus_breakouts(22, hitter, rng) for _ in range(n)]
+    rate = sum("power" in b for b in young) / n
+    base = FOCUS_BREAKOUTS["power"][2]
+    assert base * 0.8 < rate < base * 1.2
+    # A hitter's stamina and a pitcher's power are non-skills: they never break out.
+    assert not any("stamina" in b for b in young)
+    assert not any("power" in focus_breakouts(22, pitcher, rng) for _ in range(2000))
+    # Only young players.
+    assert not any(focus_breakouts(30, hitter, rng) for _ in range(2000))
+    assert not any(focus_breakouts(26, pitcher, rng) for _ in range(2000))
+    lo, hi = FOCUS_BREAKOUTS["power"][3]
+    assert all(lo <= b["power"] <= hi for b in young if b)
+    # Good coaching finds more of them.
+    elite = sum(bool(focus_breakouts(22, hitter, rng, 1.15)) for _ in range(n)) / n
+    bare = sum(bool(focus_breakouts(22, hitter, rng, 0.85)) for _ in range(n)) / n
+    assert elite > rate > bare
+
+
+def test_focus_breakout_moves_the_cap():
+    from src.player import player_skills as ps_mod
+
+    skills = PlayerSkills({k: 60 for k in SKILLS} | {"catching": 10}, age=22)
+    caps = {k: 75 for k in SKILLS}
+    orig_swing, orig_focus = ps_mod.winter_swing, ps_mod.focus_breakouts
+    ps_mod.winter_swing = lambda age, rng: 0.0
+    ps_mod.focus_breakouts = lambda age, s, rng, staff=1.0: {"power": 5.0}
+    try:
+        plain = skills.age_to(23, from_age=22, rng=random.Random(1), caps=dict(caps))
+        moved = dict(caps)
+        broke = skills.age_to(
+            23, from_age=22, rng=random.Random(1), caps=moved, swings=True
+        )
+    finally:
+        ps_mod.winter_swing, ps_mod.focus_breakouts = orig_swing, orig_focus
+    assert broke["power"] - plain["power"] in (4, 5, 6)
+    assert moved["power"] == 80
+    assert broke["contact"] == plain["contact"]
