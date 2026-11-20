@@ -711,9 +711,9 @@ const SAVED_ROT     = {{ saved_rotation | tojson }};
 const SAVED_BP      = {{ saved_bullpen  | tojson }};
 const SAVED_POINTER = {{ saved_rotation_pointer | tojson }};
 // Starter Leash: the team's, and starters with their own (saved right away).
-const TEAM_LEASH = {{ (team_leash or '85') | tojson }};
+const TEAM_LEASH = {{ (team_leash or '100') | tojson }};
 const PITCHER_LEASHES = {{ (pitcher_leashes or {}) | tojson }};
-const LEASH_STEPS = ['75', '85', '95', '105', '115'];
+const LEASH_STEPS = ['80', '90', '100', '110', '120'];
 const STORAGE_KEY   = `lineup3_${LEAGUE_ID}`;
 
 const POSITIONS = ['c','1b','2b','3b','ss','lf','cf','rf','dh'];
@@ -1456,7 +1456,7 @@ function _makeInsertLine(insertIdx) {
   return line;
 }
 
-// "Leash: Team (85) ▾" under a starter: his own pitch count, or the team's.
+// "Leash: Team (100) ▾" under a starter: his own pitch count, or the team's.
 function leashSelectHtml(pid) {
   const own = PITCHER_LEASHES[pid] || '';
   const opts = [`<option value=""${own ? '' : ' selected'}>Team (${TEAM_LEASH})</option>`]

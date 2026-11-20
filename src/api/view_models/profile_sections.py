@@ -15,6 +15,7 @@ from collections import Counter
 
 from src.db.repositories.career_repo import CareerRepository
 from src.player.positions import display_position
+from src.team.manager_profile import STARTER_USAGE as LEASH_STEPS
 
 PITCHER_POSITIONS = ("p", "sp", "rp")
 # About 39% of a draft class are pitchers (draft_generator.PITCHER_SHARE).
@@ -41,7 +42,7 @@ BASERUNNING = {
     "aggressive": "Aggressive on the bases",
     "very-aggressive": "Very aggressive on the bases",
 }
-STARTER_USAGE = {u: f"{u}-pitch leash" for u in ("115", "105", "95", "85", "75")}
+STARTER_USAGE = {u: f"{u}-pitch leash" for u in LEASH_STEPS}
 CLOSER_USAGE = {
     "saves-only": "closer for saves",
     "high-leverage": "closer in big spots",

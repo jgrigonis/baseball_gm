@@ -25,10 +25,12 @@ BASERUNNING = (
 )
 SAC_BUNT = ("never", "rarely", "situational", "frequent")
 # Starter Leash: the pitch count a starter is usually pulled at, longest
-# first (Josh, 2026-11-13: 75 to 115 in steps of 10; 2026-11-14: 85 the
-# default, close to the old standard target of 88).
-STARTER_USAGE = ("115", "105", "95", "85", "75")
-DEFAULT_LEASH = "85"
+# first. Round 10s centered on the default, the setting most AI managers
+# use (Josh, 2026-11-20; was 75-115 with 85 the default). A starter who's
+# dealing goes a few pitches past it and one getting hit comes out before
+# it (DEALING_EXTRA, SHELLED_PULL).
+STARTER_USAGE = ("120", "110", "100", "90", "80")
+DEFAULT_LEASH = STARTER_USAGE[2]
 CLOSER_USAGE = ("saves-only", "high-leverage", "best-available")
 BULLPEN_PREF = ("starter-heavy", "balanced", "deep-pen")
 PLATOON_USAGE = ("none", "vs-handedness", "aggressive")
@@ -61,9 +63,9 @@ EXTRA_BASE_FACTOR = dict(zip(BASERUNNING, (0.8, 0.9, 1.0, 1.1, 1.2)))
 # Sac bunts per team season in sims (2026-11-19): about 0 / 3-4 / 9 / 16.
 BUNT_FACTOR = {"never": 0.0, "rarely": 0.4, "situational": 1.0, "frequent": 2.0}
 
-# The short leash (75) also pulls a starter sooner the third time through
+# The shortest leash also pulls a starter sooner the third time through
 # the order.
-SHORT_LEASHES = ("75",)
+SHORT_LEASHES = (STARTER_USAGE[-1],)
 THIRD_TIME_BATTERS = 18
 THIRD_TIME_HOOK = 1.5
 
@@ -73,6 +75,16 @@ THIRD_TIME_HOOK = 1.5
 TROUBLE_HOOK = {"starter-heavy": 0.3, "balanced": 1.0, "deep-pen": 1.6}
 # The least chance of pulling a starter who has reached his pitch count, at
 # each check: a starter-heavy manager lets him finish a few more batters.
+# Pitches past his leash a starter goes when he's allowed only this many
+# runs: a manager lets a starter who's dealing finish another batter or two.
+DEALING_EXTRA = {0: 5, 1: 3}
+# The least chance, at each check, of pulling a starter who has allowed
+# this many runs (the last for more), before he reaches his pitch count:
+# a starter getting hit comes out early. SHELLED_SHAPE scales it by the
+# bullpen shape, and a lead of SHELLED_LEAD_RUNS or more halves it.
+SHELLED_PULL = {4: 0.25, 5: 0.45, 6: 0.7}
+SHELLED_SHAPE = {"starter-heavy": 0.7, "balanced": 1.0, "deep-pen": 1.3}
+SHELLED_LEAD_RUNS = 3
 AT_TARGET_PULL = {"starter-heavy": 0.45, "balanced": 0.72, "deep-pen": 0.72}
 # The chance a reliever who has done his inning (two for a long man) sits
 # before the next one starts.
@@ -186,8 +198,22 @@ class ManagerProfile:
                     return leash
         return self.starter_usage
 
-    def leash_pitches_for(self, player_id: str | None) -> int:
-        return int(self.leash_for(player_id))
+    def leash_pitches_for(self, player_id: str | None, runs: int | None = None) -> int:
+        """His pitch count leash; given the runs he's allowed, a few pitches
+        longer while he's dealing."""
+        extra = DEALING_EXTRA.get(runs, 0) if runs is not None else 0
+        return int(self.leash_for(player_id)) + extra
+
+    def shelled_pull(self, runs: int, score_differential: int = 0) -> float:
+        """Least chance of pulling a starter short of his pitch count who has
+        allowed this many runs; 0 when he hasn't been hit hard."""
+        if runs < min(SHELLED_PULL):
+            return 0.0
+        pull = SHELLED_PULL[min(runs, max(SHELLED_PULL))]
+        pull *= SHELLED_SHAPE[self.bullpen_pref]
+        if score_differential >= SHELLED_LEAD_RUNS:
+            pull *= 0.5
+        return min(1.0, pull)
 
     def starter_hook(self, batters_faced: int, player_id: str | None = None) -> float:
         """Multiplier on the chance of pulling a starter: a short leash pulls

@@ -15,6 +15,7 @@ from src.game.resolvers import hits
 from src.game.strategy import GameStrategy
 from src.player.fatigue import FatigueLevel
 from src.team.manager_profile import (
+    DEALING_EXTRA,
     DEFAULT_PROFILE,
     ManagerProfile,
     profile_of,
@@ -73,7 +74,7 @@ def test_no_row_is_the_default():
 def test_default_changes_nothing():
     p = DEFAULT_PROFILE
     assert p.steal_factor == p.extra_base_factor == p.bunt_factor == 1.0
-    assert p.leash_pitches == 85
+    assert p.leash_pitches == 100
     assert p.starter_hook(batters_faced=30) == 1.0
     assert p.trouble_hook == 1.0
     assert p.playoff_rotation_size is None
@@ -94,14 +95,14 @@ def test_baserunning_steps_rise():
 
 
 def test_a_short_leash_pulls_sooner_third_time_through():
-    p = ManagerProfile(starter_usage="75")
+    p = ManagerProfile(starter_usage="80")
     assert p.starter_hook(batters_faced=10) == 1.0
     assert p.starter_hook(batters_faced=19) > 1.0
-    assert ManagerProfile(starter_usage="85").starter_hook(batters_faced=19) == 1.0
+    assert ManagerProfile(starter_usage="90").starter_hook(batters_faced=19) == 1.0
 
 
 def test_old_leash_values_fall_back_to_the_default():
-    assert ManagerProfile.from_row({"starter_usage": "long"}).starter_usage == "85"
+    assert ManagerProfile.from_row({"starter_usage": "long"}).starter_usage == "100"
 
 
 def test_catchers_rest_sooner_but_iron_men_never_rest():
@@ -189,17 +190,17 @@ def starter(pitch_count, outs=0, hits=0, runs=0):
 def test_leash_sets_the_pitch_target():
     counts = [
         ManagerProfile(starter_usage=u).leash_pitches
-        for u in ("75", "85", "95", "105", "115")
+        for u in ("80", "90", "100", "110", "120")
     ]
-    assert counts == [75, 85, 95, 105, 115]
+    assert counts == [80, 90, 100, 110, 120]
 
 
 def test_long_leash_lets_him_work_past_the_standard_target():
     inning = SimpleNamespace(number=7)
-    tired = starter(pitch_count=95, outs=18, hits=5, runs=3)
+    tired = starter(pitch_count=105, outs=18, hits=5, runs=3)
     standard = GameStrategy.should_consider_pitching_change(tired, inning, 0)
     patient = GameStrategy.should_consider_pitching_change(
-        tired, inning, 0, ManagerProfile(starter_usage="105")
+        tired, inning, 0, ManagerProfile(starter_usage="120")
     )
     assert standard >= 0.72
     assert patient < standard
@@ -219,12 +220,41 @@ def test_bullpen_shape_sets_the_trouble_hook():
 
 def test_starter_heavy_lets_him_finish_a_batter_at_his_target():
     inning = SimpleNamespace(number=7)
-    done = starter(pitch_count=90, outs=18, hits=3, runs=0)
+    done = starter(pitch_count=110, outs=18, hits=3, runs=0)
     balanced = GameStrategy.should_consider_pitching_change(done, inning, 0)
     heavy = GameStrategy.should_consider_pitching_change(
         done, inning, 0, ManagerProfile(bullpen_pref="starter-heavy")
     )
     assert heavy < balanced
+
+
+def test_a_starter_who_is_dealing_goes_a_few_pitches_past_his_leash():
+    p = ManagerProfile(starter_usage="100")
+    assert p.leash_pitches_for(None, runs=0) == 100 + DEALING_EXTRA[0]
+    assert p.leash_pitches_for(None, runs=1) == 100 + DEALING_EXTRA[1]
+    assert p.leash_pitches_for(None, runs=2) == 100
+    inning = SimpleNamespace(number=7)
+    at_leash = 100 + DEALING_EXTRA[0] - 1
+    dealing = starter(pitch_count=at_leash, outs=21, hits=3, runs=0)
+    hit = starter(pitch_count=at_leash, outs=21, hits=6, runs=2)
+    assert GameStrategy.should_consider_pitching_change(dealing, inning, 0) < 0.2
+    assert GameStrategy.should_consider_pitching_change(hit, inning, 0) >= 0.72
+
+
+def test_a_starter_getting_hit_comes_out_before_his_leash():
+    inning = SimpleNamespace(number=4)
+    pulls = [
+        GameStrategy.should_consider_pitching_change(
+            starter(pitch_count=65, outs=10, hits=8, runs=r), inning, 0
+        )
+        for r in (3, 4, 5, 6, 9)
+    ]
+    assert pulls[0] < 0.2 <= pulls[1] < pulls[2] < pulls[3] == pulls[4]
+    p = ManagerProfile()
+    assert p.shelled_pull(5, score_differential=4) < p.shelled_pull(5)
+    heavy = ManagerProfile(bullpen_pref="starter-heavy").shelled_pull(5)
+    deep = ManagerProfile(bullpen_pref="deep-pen").shelled_pull(5)
+    assert heavy < p.shelled_pull(5) < deep
 
 
 def test_relievers_go_longer_for_a_starter_heavy_manager():

@@ -336,14 +336,17 @@ def profile(dials: dict) -> dict:
     else:
         platoon = "vs-handedness"
 
+    # Most managers use the middle (default) leash; the shortest is left to
+    # people.
+    leash = mp.STARTER_USAGE
     if hook < 15:
-        starter = "105"
+        starter = leash[0]
     elif hook < 34:
-        starter = "95"
+        starter = leash[1]
     elif hook >= 67 and modern >= 50:
-        starter = "75"
+        starter = leash[3]
     else:
-        starter = "85"
+        starter = leash[2]
 
     return {
         "lineup_style": style,

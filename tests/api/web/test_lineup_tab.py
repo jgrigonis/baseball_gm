@@ -105,13 +105,13 @@ def test_a_starter_gets_his_own_leash_and_can_go_back(client, db_conn, setup, fa
     league, team, gm, _ = setup
     arm = factory.rated_player(team, league, 60, pitcher=True, status="26man")
     url = f"/leagues/{league.id}/rotation/leash"
-    r = client.put(url, json={"player_id": arm.id, "pitches": "105"})
+    r = client.put(url, json={"player_id": arm.id, "pitches": "110"})
     assert r.status_code == 200
     from src.db.repositories.gm_repo import GMRepository
 
-    assert GMRepository(db_conn).pitcher_leashes(team.id) == {arm.id: "105"}
+    assert GMRepository(db_conn).pitcher_leashes(team.id) == {arm.id: "110"}
     page = client.get(f"/leagues/{league.id}/lineup").text
-    assert f'const PITCHER_LEASHES = {{"{arm.id}": "105"}}' in page
+    assert f'const PITCHER_LEASHES = {{"{arm.id}": "110"}}' in page
     assert (
         client.put(url, json={"player_id": arm.id, "pitches": "200"}).status_code == 400
     )
@@ -120,7 +120,7 @@ def test_a_starter_gets_his_own_leash_and_can_go_back(client, db_conn, setup, fa
     # Not his player: refused.
     other = factory.rated_player(factory.team(), league, 60, pitcher=True)
     assert (
-        client.put(url, json={"player_id": other.id, "pitches": "95"}).status_code
+        client.put(url, json={"player_id": other.id, "pitches": "100"}).status_code
         == 400
     )
 

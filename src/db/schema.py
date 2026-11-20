@@ -1052,8 +1052,8 @@ CREATE TABLE IF NOT EXISTS gm_profiles (
                          CHECK (sac_bunt         IN ('never', 'rarely', 'situational', 'frequent')),
 
     -- Pitching tendencies
-    starter_usage TEXT NOT NULL DEFAULT '85'   -- pitches (migrations 129, 130)
-                      CHECK (starter_usage IN ('75', '85', '95', '105', '115')),
+    starter_usage TEXT NOT NULL DEFAULT '100'  -- pitches (migrations 129, 130, 149)
+                      CHECK (starter_usage IN ('80', '90', '100', '110', '120')),
     closer_usage  TEXT NOT NULL DEFAULT 'saves-only'
                       CHECK (closer_usage  IN ('saves-only', 'high-leverage', 'best-available')),
     bullpen_pref  TEXT NOT NULL DEFAULT 'balanced'
@@ -1252,7 +1252,7 @@ CREATE INDEX IF NOT EXISTS idx_game_plays_season_id ON game_plays(season_id);
 CREATE TABLE IF NOT EXISTS pitcher_leashes (
     team_id    TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     player_id  TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
-    pitches    TEXT NOT NULL CHECK (pitches IN ('75', '85', '95', '105', '115')),
+    pitches    TEXT NOT NULL CHECK (pitches IN ('80', '90', '100', '110', '120')),
     PRIMARY KEY (team_id, player_id)
 );
 CREATE INDEX IF NOT EXISTS idx_pitcher_leashes_player ON pitcher_leashes(player_id);

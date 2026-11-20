@@ -164,13 +164,14 @@ SETTINGS: tuple[tuple[str, tuple[Setting | Checkbox, ...]], ...] = (
                 "starter_usage",
                 "Starter Leash",
                 mp.STARTER_USAGE[::-1],
-                ("75", "85", "95", "105", "115"),
+                mp.STARTER_USAGE[::-1],
                 ("Short leash", "Long leash"),
-                "The pitch count a starter is usually pulled at on a normal "
-                "day; 85 is standard. One who's getting hit can come out "
-                "sooner, and at 75 he's pulled sooner the third time through "
-                "the order. A starter can have his own on the Lineup tab's "
-                "rotation.",
+                f"The pitch count a starter is usually pulled at on a normal "
+                f"day; {mp.DEFAULT_LEASH} is standard. One who's dealing goes "
+                f"a few pitches longer, one who's getting hit comes out "
+                f"sooner, and at {mp.STARTER_USAGE[-1]} he's pulled sooner "
+                f"the third time through the order. A starter can have his "
+                f"own on the Lineup tab's rotation.",
             ),
             Setting(
                 "closer_usage",
