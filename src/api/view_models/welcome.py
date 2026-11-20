@@ -27,6 +27,7 @@ from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.contract_repo import SIGNED_STATUSES, ContractRepository
 from src.db.repositories.draft_repo import DraftRepository
 from src.db.repositories.games_repo import GameRepository
+from src.db.repositories.happiness_repo import HappinessRepository
 from src.db.repositories.league_repo import LeagueRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.series_repo import SeriesRepository
@@ -41,6 +42,7 @@ from src.league.power_rankings import (
 )
 from src.league import budget as bg
 from src.league import team_facts
+from src.player import happiness as hp
 from src.player.contracts import format_salary
 from src.player.player_record import PlayerRecord
 from src.player.player_skills import PlayerSkills
@@ -736,6 +738,46 @@ EXPECTED_PICKS = 3
 _expected_cache: dict[tuple, list[dict]] = {}
 
 
+def clubhouse(
+    db, league_id: str, players: list[tuple[PlayerRecord, str]]
+) -> dict | None:
+    """Who in the organization wants a trade, and who else is unhappy or
+    miserable, each with the first thing on his mind. None when nobody is."""
+    by_id = {p.id: (p, status) for p, status in players}
+    happy = HappinessRepository(db, league_id)
+    moods = happy.latest_lines(by_id)
+    asks = happy.trade_requests(by_id)
+
+    def row(pid: str) -> dict:
+        p, status = by_id[pid]
+        m = moods.get(pid) or {}
+        mood = m.get("mood")
+        return {
+            **_named(p),
+            "position": p.position,
+            "minors": status not in MAJORS,
+            "mood": hp.mood_word(mood) if mood is not None else None,
+            "line": (m.get("lines") or [None])[0],
+            "_sort": mood if mood is not None else 0.0,
+        }
+
+    def ordered(ids) -> list[dict]:
+        rows = sorted((row(pid) for pid in ids), key=lambda r: (r["_sort"], r["name"]))
+        for r in rows:
+            del r["_sort"]
+        return rows
+
+    trade = ordered(asks)
+    unhappy = ordered(
+        pid
+        for pid, m in moods.items()
+        if pid not in asks and m["mood"] is not None and m["mood"] < hp.UNHAPPY
+    )
+    if not trade and not unhappy:
+        return None
+    return {"trade": trade, "unhappy": unhappy}
+
+
 def expected_picks(db, league_id: str, draft_id: str, team_id: str) -> list[dict]:
     """[{pick, round, name, position}] for the team's first picks."""
     from src.api.services.draft_needs import draft_strategies
@@ -871,6 +913,7 @@ def welcome(db, league: dict, gm: dict) -> dict | None:
         "history": past,
         "movers": movers(db, [p for p, _ in mine], last_id),
         "retirees": retirees(db, team_id, last_id),
+        "clubhouse": clubhouse(db, league["id"], rosters.get(team_id, [])),
         "budget": budget_card(db, league["id"], team_id, rosters),
         "owner": owner_card(db, league["id"], team_id, gm["id"], draft["season_id"]),
     }

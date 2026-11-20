@@ -151,6 +151,61 @@ def test_the_season_preview_shows_who_changed_over_the_winter(
     assert f"{faller['first_name']} {faller['last_name']}" in winter.split("Slipped")[1]
 
 
+def test_the_season_preview_calls_out_trade_requests_and_unhappy_players(
+    client, db_conn, factory, league
+):
+    lg, gm, team = league
+    old = db_conn.execute(
+        "SELECT season_id FROM league_seasons WHERE league_id = %s", (lg.id,)
+    ).fetchone()["season_id"]
+    players = db_conn.execute(
+        """SELECT p.id, p.first_name, p.last_name FROM players p
+           JOIN team_players tp ON tp.player_id = p.id
+           WHERE tp.team_id = %s ORDER BY p.last_name, p.first_name""",
+        (team.id,),
+    ).fetchall()
+    asks, sulks, fine = players[0], players[1], players[2]
+    for p, mood, request, line in (
+        (asks, -0.7, "2025-06-01", "Wants to play for a winner."),
+        (sulks, -0.5, None, "Wants more playing time."),
+        (fine, 0.1, None, "Likes it here."),
+    ):
+        db_conn.execute(
+            """INSERT INTO player_moods (player_id, season_id, league_id, team_id,
+                                         mood, target, detail, updated_on,
+                                         trade_request_on)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, '2025-09-01', %s)""",
+            (
+                p["id"],
+                old,
+                lg.id,
+                team.id,
+                mood,
+                mood,
+                f'{{"lines": ["{line}"]}}',
+                request,
+            ),
+        )
+    db_conn.execute("UPDATE games SET completed = 1 WHERE season_id = %s", (old,))
+    season = factory.season(year=2026)
+    factory.draft_order(factory.draft(league=lg, season=season), [team])
+
+    html = client.get(f"/leagues/{lg.id}/welcome").text
+
+    card = html.split("In the clubhouse")[1].split("Open the Roster tab")[0]
+    wants, unhappy = card.split("Unhappy</div>")
+    assert f"{asks['first_name']} {asks['last_name']}" in wants
+    assert "miserable" in wants and "Wants to play for a winner." in wants
+    assert f"{sulks['first_name']} {sulks['last_name']}" in unhappy
+    assert "unhappy" in unhappy and "Wants more playing time." in unhappy
+    assert f"{fine['first_name']} {fine['last_name']}" not in card
+
+
+def test_no_clubhouse_card_when_everyone_is_happy(client, league):
+    lg, _, _ = league
+    assert "In the clubhouse" not in client.get(f"/leagues/{lg.id}/welcome").text
+
+
 def test_the_roster_links_back_to_it(client, db_conn, league):
     lg, gm, _ = league
     GMRepository(db_conn).mark_welcomed(gm.id)
