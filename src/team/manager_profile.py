@@ -77,7 +77,7 @@ TROUBLE_HOOK = {"starter-heavy": 0.3, "balanced": 1.0, "deep-pen": 1.6}
 # each check: a starter-heavy manager lets him finish a few more batters.
 # Pitches past his leash a starter goes when he's allowed only this many
 # runs: a manager lets a starter who's dealing finish another batter or two.
-DEALING_EXTRA = {0: 5, 1: 3}
+DEALING_EXTRA = {0: 10, 1: 7, 2: 3}
 # The least chance, at each check, of pulling a starter who has allowed
 # this many runs (the last for more), before he reaches his pitch count:
 # a starter getting hit comes out early. SHELLED_SHAPE scales it by the

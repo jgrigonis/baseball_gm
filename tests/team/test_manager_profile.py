@@ -232,11 +232,12 @@ def test_a_starter_who_is_dealing_goes_a_few_pitches_past_his_leash():
     p = ManagerProfile(starter_usage="90")
     assert p.leash_pitches_for(None, runs=0) == 90 + DEALING_EXTRA[0]
     assert p.leash_pitches_for(None, runs=1) == 90 + DEALING_EXTRA[1]
-    assert p.leash_pitches_for(None, runs=2) == 90
+    assert p.leash_pitches_for(None, runs=2) == 90 + DEALING_EXTRA[2]
+    assert p.leash_pitches_for(None, runs=3) == 90
     inning = SimpleNamespace(number=7)
     at_leash = 90 + DEALING_EXTRA[0] - 1
     dealing = starter(pitch_count=at_leash, outs=21, hits=3, runs=0)
-    hit = starter(pitch_count=at_leash, outs=21, hits=6, runs=2)
+    hit = starter(pitch_count=at_leash, outs=21, hits=6, runs=3)
     assert GameStrategy.should_consider_pitching_change(dealing, inning, 0) < 0.2
     assert GameStrategy.should_consider_pitching_change(hit, inning, 0) >= 0.72
 
