@@ -67,6 +67,9 @@
   .wl-sub { font-family:var(--font-mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-dim); margin:10px 0 2px; }
   .wl-move { display:flex; align-items:baseline; gap:8px; padding:5px 0; font-size:13px; }
   .wl-move .wl-meta { margin-left:auto; white-space:nowrap; }
+  .wl-gripe { padding:5px 0; }
+  .wl-gripe .wl-move { padding:0; }
+  .wl-gripe-line { font-size:12px; color:var(--text-dim); margin-top:2px; }
   .wl-up { color:var(--green); }
   .wl-down { color:var(--red); }
   .wl-rival { display:flex; align-items:center; gap:8px; padding:5px 0; font-size:13px; }
@@ -218,6 +221,35 @@
       {% endfor %}
       {% endif %}
       <p class="wl-meta" style="margin-top:10px;">Overall rating at the end of last season and now.</p>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if w.clubhouse %}
+  {% set c = w.clubhouse %}
+  {% macro gripe(p) -%}
+  <div class="wl-gripe">
+    <div class="wl-move">
+      <span class="wl-link" onclick="openPlayerPanel('{{ p.player_id }}')">{{ p.name }}</span>
+      <span class="wl-meta" style="margin-left:0;">{{ p.position|pos_label }} · {{ p.age }}{% if p.minors %} · minors{% endif %}</span>
+      {% if p.mood %}<span class="wl-meta"><b class="{{ 'wl-down' if p.mood in ('unhappy', 'miserable') }}">{{ p.mood }}</b></span>{% endif %}
+    </div>
+    {% if p.line %}<div class="wl-gripe-line">{{ p.line }}</div>{% endif %}
+  </div>
+  {%- endmacro %}
+  <div class="card">
+    <div class="card-header"><span class="card-title">In the clubhouse</span></div>
+    <div class="card-body">
+      {% if c.trade %}
+      <div class="wl-sub" style="margin-top:0;">Wants a trade</div>
+      {% for p in c.trade %}{{ gripe(p) }}{% endfor %}
+      {% endif %}
+      {% if c.unhappy %}
+      <div class="wl-sub"{% if not c.trade %} style="margin-top:0;"{% endif %}>Unhappy</div>
+      {% for p in c.unhappy %}{{ gripe(p) }}{% endfor %}
+      {% endif %}
+      <a href="/leagues/{{ league_id }}/roster" hx-get="/leagues/{{ league_id }}/roster" hx-target="#tab-content" hx-push-url="true"
+         class="wl-meta wl-link" style="display:inline-block;margin-top:8px;">Open the Roster tab →</a>
     </div>
   </div>
   {% endif %}

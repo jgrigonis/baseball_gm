@@ -930,6 +930,27 @@ class HappinessRepository:
         ).fetchall()
         return {r["player_id"]: r["mood"] for r in rows}
 
+    def latest_lines(self, player_ids) -> dict[str, dict]:
+        """Each player's newest mood in this league with what's on his mind:
+        {player_id: {"mood": float, "lines": [str]}}."""
+        ids = list(player_ids)
+        if not ids:
+            return {}
+        rows = self.conn.execute(
+            """SELECT DISTINCT ON (m.player_id) m.player_id, m.mood, m.detail
+               FROM player_moods m JOIN seasons s ON s.id = m.season_id
+               WHERE m.player_id = ANY(%s) AND m.league_id = %s
+               ORDER BY m.player_id, s.year DESC""",
+            (ids, self.league_id),
+        ).fetchall()
+        return {
+            r["player_id"]: {
+                "mood": r["mood"],
+                "lines": list((r["detail"] or {}).get("lines") or []),
+            }
+            for r in rows
+        }
+
     def badges(self, player_ids, as_of: date | None = None) -> dict[str, dict]:
         """What the Roster and Lineup rows show: the mood word for anyone
         unhappy or worse, a trade request, and sitting out."""
