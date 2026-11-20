@@ -793,6 +793,7 @@ class BudgetRepository:
             broadcast = deals[team_id]["amount"] if team_id in deals else 0
             sold = merch[team_id]["total"] if team_id in merch else 0
             sponsor = sponsors[team_id]["total"] if team_id in sponsors else 0
+            seen = crowds.get(team_id)
             park = fn.ballpark_money(
                 parks.get(team_id, ()),
                 average,
@@ -800,8 +801,9 @@ class BudgetRepository:
                 before,
                 revenue[team_id],
                 rows[team_id]["ticket_price"],
+                cap=cap,
+                crowd=seen["average"] if seen else None,
             )
-            seen = crowds.get(team_id)
             crowd = self._crowd_money(seen, tickets)
             total = tickets + crowd + gate + popular + broadcast + sold + sponsor + park
             self.conn.execute(
@@ -1288,8 +1290,9 @@ class BudgetRepository:
             if mine and not rebuild:
                 key = fn.built_key(p.key, mine["generation"])
             earns = fn.project_money(
-                key, average, money.market, fans, revenue, row["ticket_price"]
-            )
+                key, average, money.market, fans, revenue, row["ticket_price"],
+                cap=cap,
+            )  # fmt: skip
             blocked = None
             if not mine or rebuild:
                 if is_stadium and current:
@@ -1339,8 +1342,14 @@ class BudgetRepository:
                     "tier": _tier_name(p.tier) if p.tier else None,
                     "upgrade": p.key in fn.UPGRADES,
                     "value": fn.project_value(
-                        key, average, money.market, fans, revenue, row["ticket_price"]
-                    ),
+                        key,
+                        average,
+                        money.market,
+                        fans,
+                        revenue,
+                        row["ticket_price"],
+                        cap=cap,
+                    ),  # fmt: skip
                     "payback": fn.payback(cost, earns),
                     "built": mine["year"] if mine else None,
                     "build": p.build,
@@ -1812,6 +1821,7 @@ class BudgetRepository:
                     "sellers": sold["sellers"] if sold else [],
                     "sponsor_deal": sponsor,
                 }
+                seen = self.crowds(league_id, y, [team_id]).get(team_id)
                 line = dict(
                     ballpark=fn.ballpark_money(
                         self.ballparks(league_id, y).get(team_id, ()),
@@ -1820,10 +1830,12 @@ class BudgetRepository:
                         fans,
                         revenue[team_id],
                         mine["ticket_price"],
+                        cap=int(mine["cap"]) if mine["cap"] else self.cap(league_id, y),
+                        crowd=seen["average"] if seen else None,
                     ),
                     sponsor=sponsor["total"] if sponsor else 0,
                     crowds=self._crowd_money(
-                        self.crowds(league_id, y, [team_id]).get(team_id),
+                        seen,
                         fn.ticket_revenue(revenue[team_id], mine["ticket_price"]),
                     ),
                     broadcast=deal["amount"] if deal else 0,
@@ -1921,6 +1933,8 @@ class BudgetRepository:
                     fans,
                     revenue[t],
                     r["ticket_price"],
+                    cap=cap,
+                    crowd=crowds.get(t, {}).get("average"),
                 ),  # fmt: skip
                 tax_share=shares.get(t, 0),
                 payroll=payrolls[t],

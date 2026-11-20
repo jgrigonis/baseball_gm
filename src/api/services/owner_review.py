@@ -219,7 +219,9 @@ def gather(
         for r in conn.execute(
             """SELECT team_id, cap, budget, payroll, revenue, playoff_revenue,
                       profit, fans_before, fans_after, attendance, crowd_games,
-                      crowd_in_park, capacity
+                      crowd_in_park, capacity, ticket_price, crowd_revenue,
+                      popularity_revenue, broadcast_revenue, merch_revenue,
+                      sponsor_revenue, ballpark_revenue, luxury_tax
                FROM team_budgets WHERE league_id = %s AND year = %s""",
             (league_id, year),
         ).fetchall()
@@ -277,11 +279,7 @@ def gather(
         p = playoffs.get(team_id, {})
         rival = owner.get("rival_team_id")
         rw, rl = _vs(conn, season_id, team_id, rival) if rival else (0, 0)
-        revenue = (
-            (m.get("revenue") or 0) + (m.get("playoff_revenue") or 0)
-            if m.get("revenue") is not None
-            else None
-        )
+        revenue = _money_in(m) if m.get("revenue") is not None else None
         out[team_id] = sc.TeamSeason(
             wins=w,
             losses=l,
@@ -297,7 +295,7 @@ def gather(
             budget=m.get("budget"),
             revenue=revenue,
             profit=m.get("profit"),
-            profit_par=par.get(team_id),
+            spend_over_par=par.get(team_id),
             fans_before=m.get("fans_before"),
             fans_after=m.get("fans_after"),
             crowd_score=_crowd_score(m),
@@ -344,21 +342,42 @@ def _crowd_detail(m: dict) -> dict:
     }
 
 
+def _money_in(m: dict) -> int:
+    """All the season's money in (src/league/finances.py books): tickets at
+    its prices, the crowds, the playoff gate, popularity, broadcast,
+    merchandise, sponsors and the ballpark."""
+    return fn.ticket_revenue(m["revenue"], m.get("ticket_price")) + sum(
+        m.get(k) or 0
+        for k in (
+            "crowd_revenue",
+            "playoff_revenue",
+            "popularity_revenue",
+            "broadcast_revenue",
+            "merch_revenue",
+            "sponsor_revenue",
+            "ballpark_revenue",
+        )
+    )
+
+
 def _profit_par(money: dict[str, dict]) -> dict[str, int]:
-    """Each team's par profit: its regular-season revenue less what a middle
-    owner (Spending 50) would pay under the league's cap, the tax on it and
-    fixed costs (src/league/budget.py, src/league/finances.py)."""
-    revenues = [m["revenue"] for m in money.values() if m.get("revenue")]
-    if not revenues:
-        return {}
-    costs = fn.fixed_costs(sum(revenues) / len(revenues))
+    """How much more each team's GM spent on payroll and tax than a middle
+    owner (Spending 50) would under the league's cap (src/league/budget.py):
+    its par profit is its profit plus this, what it would have made with the
+    same money in (owner_scoring spend_over_par). A bad season at the gate
+    still costs the GM (owner_scoring LOSS_SCALE_PROFIT on a loss); par
+    only sets what the spending was worth."""
     out = {}
     for team_id, m in money.items():
-        if not m.get("revenue") or not m.get("cap"):
+        if not m.get("revenue") or not m.get("cap") or m.get("payroll") is None:
             continue
         payroll = bg.owner_budget(m["cap"], 50)
         tax = bg.luxury_tax(payroll, m["cap"])
-        out[team_id] = fn.profit(m["revenue"], payroll, tax, costs)
+        paid = m.get("luxury_tax")
+        if paid is None:
+            paid = bg.luxury_tax(m["payroll"], m["cap"])
+        spent = m["payroll"] + paid
+        out[team_id] = spent - payroll - tax
     return out
 
 

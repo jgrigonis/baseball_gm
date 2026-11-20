@@ -212,8 +212,8 @@
         {% if p.tier %}<span class="admin-dim" style="font-size:11px;">· {{ p.tier }} stadium</span>{% endif %}
         <div class="bud-note">{{ p.what }}</div>
         <div class="bud-note">
-          {%- if p.earns_text %}About {{ p.earns_text }} a season for you{% if p.payback_text %} · {{ p.payback_text }}{% endif %}{% endif %}
-          {%- if p.fans %}{% if p.earns_text %} · {% endif %}+{{ p.fans }} fan interest a season{% endif %}
+          {%- if p.earns_text %}About {{ p.earns_text }} a season for you{% if p.payback_text %} · {{ p.payback_text }}{% endif %}{% elif p.loses_text %}Costs about {{ p.loses_text }} a season more than it brings in at today's crowds{% endif %}
+          {%- if p.fans %}{% if p.earns_text or p.loses_text %} · {% endif %}+{{ p.fans }} fan interest a season{% endif %}
           {%- if p.seats %} · {{ "{:,}".format(p.seats) }} seats{% if ballpark.seats and p.seats > ballpark.seats %} ({{ "{:+,}".format(p.seats - ballpark.seats) }}){% endif %}{% endif %}
           {%- if p.adds_seats %} · {{ "{:+,}".format(p.adds_seats) }} seats{% endif %}
         </div>
@@ -342,7 +342,7 @@
       {% endif %}
     </div>
     <div class="bud-line">
-      Every home game draws a crowd from your fan interest, your market, who's visiting, how you're playing, the day of the week and your ticket prices, up to the seats you have. Cheap tickets fill seats, and the home opener sells out. {{ rules.gate_pct }}% of your regular season gate follows the crowds: draw more than your fans were expected to and you earn more, draw fewer and you earn less. A park that's full turns the rest away. Owners who care about attendance watch how full the park is and whether you beat what was expected.
+      Every home game draws a crowd from your fan interest, your market, who's visiting, how you're playing, the day of the week and your ticket prices, up to the seats you have. Cheap tickets fill seats, and the home opener sells out. Your regular season gate is the tickets you sell: draw more than your fans were expected to and you earn more, draw fewer and you earn less. Fans who lose interest stop coming, and so does their money. A park that's full turns the rest away. Owners who care about attendance watch how full the park is and whether you beat what was expected.
     </div>
   </div>
 </div>
