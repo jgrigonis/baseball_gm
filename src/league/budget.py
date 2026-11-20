@@ -148,8 +148,18 @@ def refusal(spend: int, limit: int, added: int) -> str | None:
         return None
     return (
         f"Your owner won't allow it: that takes spending (payroll, luxury "
-        f"tax, front office and minor leagues) to {format_salary(spend + added)}, past their "
-        f"{format_salary(limit)} limit."
+        f"tax, front office and minor leagues) to {format_salary(spend + added, 'up')}, past their "
+        f"{format_salary(limit, 'down')} limit."
+    )
+
+
+def about_counter(text: str | None) -> str | None:
+    """A refusal reworded for a player's counter (Josh, 2026-11-20: after a
+    lowball the owner's "won't allow it" read as if it meant his offer)."""
+    if not text:
+        return text
+    return text.replace(
+        "Your owner won't allow it:", "Your owner won't allow his counter:", 1
     )
 
 
@@ -412,16 +422,20 @@ def standing(
         "cap_text": format_salary(cap),
         "budget_text": format_salary(budget),
         "payroll_budget": payroll_budget,
-        "payroll_budget_text": format_salary(payroll_budget),
-        "room_text": format_salary(cap - payroll) if payroll < cap else None,
+        "payroll_budget_text": format_salary(payroll_budget, "down"),
+        "room_text": format_salary(cap - payroll, "down") if payroll < cap else None,
         "over_text": format_salary(over) if over else None,
         "over_budget_text": format_salary(over_budget) if over_budget else None,
-        "budget_room_text": format_salary(budget - spend) if spend < budget else None,
+        "budget_room_text": (
+            format_salary(budget - spend, "down") if spend < budget else None
+        ),
         "tax_text": format_salary(tax) if tax else None,
         "tax_rate": LUXURY_TAX_RATE,
         "limit": limit,
         "limit_text": format_salary(limit),
-        "limit_room_text": format_salary(limit - spend) if spend < limit else None,
+        "limit_room_text": (
+            format_salary(limit - spend, "down") if spend < limit else None
+        ),
         "at_limit": spend >= limit,
         # Past the limit by at least $100K (less reads as "at the limit").
         "over_limit": max(0, spend - limit),

@@ -362,13 +362,15 @@ def _resign_refusal(
     mine: list[dict],
     row: dict,
     salary: int | None = None,
+    counter: bool = False,
 ) -> str | None:
     """Why the owner won't let a person re-sign him now, or None: his new
     salary, with the re-signs already called, has to fit next season's room.
     A person re-signing their own player may go past the limit as far as the
     owner's bank reaches (Josh, 2026-11-09, like the NBA's Bird rights): the
     owner pays it from the bank, and the losses show in their mood. salary:
-    what he'd be paid (an offer), else his deal."""
+    what he'd be paid (an offer), else his deal. counter: salary is his
+    counter, not the GM's offer."""
     offer = salary is not None
     salary = row["deal"].salary if salary is None else salary
     room = _next_room(conn, league_id, team_id, year, True, mine)
@@ -382,10 +384,11 @@ def _resign_refusal(
     left = room - called + _bank(conn, league_id, team_id)
     if salary <= left:
         return None
-    have = ct.format_salary(int(left)) if left >= 1 else "nothing"
+    have = ct.format_salary(int(left), "down") if left >= 1 else "nothing"
+    what = "his counter is" if counter else "that offer is" if offer else "he wants"
     return (
-        f"Your owner won't allow it: even dipping into their bank, next season "
-        f"has {have} left, and {'that offer is' if offer else 'he wants'} "
+        f"Your owner won't allow {'his counter' if counter else 'it'}: even"
+        f" dipping into their bank, next season has {have} left, and {what} "
         f"{ct.format_salary(salary)}. Let someone else go to make room."
     )
 
@@ -413,7 +416,7 @@ def next_season_money(conn, league_id: str, team_id: str) -> dict | None:
         "let_go": sum(1 for r in rows if r["choice"] == "let_go"),
         "bank_text": ct.format_salary(bank),
         "left": left,
-        "left_text": ct.format_salary(abs(left)),
+        "left_text": ct.format_salary(abs(left), "up" if left < 0 else "down"),
         "over": left < 0,
         "bank_left_text": (
             ct.format_salary(bank + min(left, 0)) if bank + min(left, 0) > 0 else "$0"

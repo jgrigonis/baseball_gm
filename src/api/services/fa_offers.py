@@ -37,6 +37,7 @@ from src.db.repositories.player_repo import PlayerRepository
 from src.db.repositories.player_status_repo import PlayerStatusRepository
 from src.db.repositories.season_repo import SeasonRepository
 from src.db.repositories.team_repo import TeamRepository
+from src.league import budget as bg
 from src.league import money_state
 from src.player import contracts as ct
 from src.player import happiness as hp
@@ -448,7 +449,9 @@ def offer(
             "hints": ng.hints(s),
             "offers_left": max(0, ng.OFFERS_PER_WEEK - offers),
             "warning": free_agents.budget_warning(conn, league_id, team_id, year, want),
-            "blocked": BudgetRepository(conn).refusal(league_id, team_id, year, want),
+            "blocked": bg.about_counter(
+                BudgetRepository(conn).refusal(league_id, team_id, year, want)
+            ),
         }
 
 

@@ -134,7 +134,7 @@ def room_text(room: int | None) -> str | None:
     if room is None:
         return None
     if room >= 0:
-        return f"{format_salary(room)} under the cap"
+        return f"{format_salary(room, 'down')} under the cap"
     return f"{format_salary(-room)} over the cap"
 
 
@@ -149,7 +149,7 @@ def cap_side(payroll: int, cap: int) -> dict:
         "room_text": (
             f"{format_salary(payroll - cap)} over"
             if payroll > cap
-            else f"{format_salary(cap - payroll)} under"
+            else f"{format_salary(cap - payroll, 'down')} under"
         ),
         "tax_text": format_salary(tax) if tax else None,
     }
