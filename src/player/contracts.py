@@ -300,10 +300,18 @@ def years_already_served(years: int, rng: random.Random) -> int:
     return rng.randint(0, years - 1)
 
 
-def format_salary(amount: int | None) -> str:
-    """$780K, $4.5M, $32M."""
+def format_salary(amount: int | None, how: str = "nearest") -> str:
+    """$780K, $4.5M, $32M. how="down" floors to the shown step ($100K over
+    $1M, $1K under), for room lines: the amount shown must always fit
+    (Josh, 2026-11-20: "$2M fits" but a $2M offer was refused). how="up"
+    ceils, for a total that went past a limit."""
     if amount is None:
         return "—"
+    step = 100_000 if amount >= 1_000_000 else 1000
+    if how == "down":
+        amount = amount // step * step
+    elif how == "up":
+        amount = -(-amount // step) * step
     if amount >= 1_000_000:
         text = f"{amount / 1_000_000:.1f}".removesuffix(".0")
         return f"${text}M"

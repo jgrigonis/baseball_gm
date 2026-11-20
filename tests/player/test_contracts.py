@@ -112,3 +112,14 @@ def test_owed_prices_deal_then_arbitration_then_market():
     assert later == round(expected)
     # A veteran with no deal is owed his market price.
     assert ct.owed([], 2025, fair, None, 3) == (10_000_000, 10_000_000)
+
+
+def test_format_salary_floors_and_ceils():
+    """Josh, 2026-11-20: "$2M fits" was really $1.96M, so a $2M offer was
+    refused. Room lines floor; a total past a limit ceils."""
+    assert ct.format_salary(1_960_000) == "$2M"
+    assert ct.format_salary(1_960_000, "down") == "$1.9M"
+    assert ct.format_salary(2_000_000, "down") == "$2M"
+    assert ct.format_salary(999_999, "down") == "$999K"
+    assert ct.format_salary(187_120_000, "up") == "$187.2M"
+    assert ct.format_salary(187_100_000, "up") == "$187.1M"

@@ -129,8 +129,13 @@ def _words(value: int, levels) -> str:
     return levels[-1][1]
 
 
-def _money(n: int) -> str:
-    return format_salary(max(0, int(n)))
+def _money(n: int, how: str = "nearest") -> str:
+    return format_salary(max(0, int(n)), how)
+
+
+def _room(n: int) -> str:
+    """Room under a line, floored so the amount shown always fits."""
+    return _money(n, "down")
 
 
 def wants_a_say(weights: dict, traits: dict) -> list[str]:
@@ -325,7 +330,7 @@ def money(standing: dict, state: str, year: int) -> dict:
             "tone": "warn",
             "head": "Past their budget, inside their limit.",
             "text": (
-                f"{_money(limit - spend)} more before they stop approving moves."
+                f"{_room(limit - spend)} more before they stop approving moves."
                 " Every dollar past the budget comes out of their profit."
             ),
         }
@@ -334,8 +339,8 @@ def money(standing: dict, state: str, year: int) -> dict:
             "tone": "ok",
             "head": "Under their budget.",
             "text": (
-                f"{_money(budget - spend)} of room before you cut into their"
-                f" profit, {_money(limit - spend)} before they stop approving moves."
+                f"{_room(budget - spend)} of room before you cut into their"
+                f" profit, {_room(limit - spend)} before they stop approving moves."
             ),
         }
     return {
@@ -421,8 +426,8 @@ def fa_room(standing: dict, share: float = 1.0) -> dict:
             "tone": "bad",
             "head": "Your owner won't approve a signing.",
             "text": (
-                f"You're {_money(standing['spend'] - standing['limit'])} past"
-                f" their limit. Cut {_money(-standing['limit_payroll_room'])} of"
+                f"You're {_money(standing['spend'] - standing['limit'], 'up')} past"
+                f" their limit. Cut {_money(-standing['limit_payroll_room'], 'up')} of"
                 " payroll to get back under."
                 if standing["over_limit_text"]
                 else "You're at their limit."
@@ -432,11 +437,11 @@ def fa_room(standing: dict, share: float = 1.0) -> dict:
     salary = room / share
     if salary < MIN_SALARY:
         fits = (
-            f"No free agent fits under your owner's limit: {_money(salary)} of"
+            f"No free agent fits under your owner's limit: {_room(salary)} of"
             f" salary, and the minimum is {_money(MIN_SALARY)}."
         )
     else:
-        fits = f"{_money(salary)} of salary fits under your owner's limit."
+        fits = f"{_room(salary)} of salary fits under your owner's limit."
     tip = None
     if share < 0.999:
         # Josh, 2026-11-17: the proration note read as if the tax were
@@ -444,7 +449,7 @@ def fa_room(standing: dict, share: float = 1.0) -> dict:
         tip = (
             "Mid-season, a player you sign is paid only the part of his"
             f" salary left this season (about {round(share * 100)}%). So a"
-            f" {_money(salary)} salary uses {_money(room)} of the room"
+            f" {_room(salary)} salary uses about {_room(room)} of the room"
             " under your owner's limit this year."
         )
     cap_room = standing["cap"] - standing["payroll"]
@@ -456,7 +461,7 @@ def fa_room(standing: dict, share: float = 1.0) -> dict:
             "fits": fits,
             "tip": tip,
         }
-    under = _money(cap_room / share)
+    under = _room(cap_room / share)
     if room <= cap_room:
         return {
             "tone": "ok",

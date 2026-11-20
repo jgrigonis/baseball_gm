@@ -832,3 +832,39 @@ def test_free_agents_room_line_short_with_mid_season_hover():
     tight = fa_room(s)
     assert tight["fits"].startswith("No free agent fits")
     assert "$780K" in tight["fits"]
+
+
+def test_free_agents_room_line_rounds_down():
+    """Josh, 2026-11-20: the line said $2M fits, but a $2M offer went past
+    the owner's limit ($1.95M worked). The amount shown must fit."""
+    from src.api.services.owner_card import fa_room
+    from src.league import budget as bg
+
+    s = bg.standing(110_000_000, 100_000_000, 110_000_000, limit=117_940_000)
+    assert s["limit_payroll_room"] == 1_960_000
+    line = fa_room(s)
+    assert line["fits"].startswith("$1.9M of salary fits")
+    added = bg.added_cost(s["payroll"], s["cap"], 1_900_000)
+    assert bg.refusal(s["spend"], s["limit"], added) is None
+    added = bg.added_cost(s["payroll"], s["cap"], 2_000_000)
+    assert bg.refusal(s["spend"], s["limit"], added)
+
+
+def test_refusal_totals_never_read_equal():
+    """Spend just past the limit shows a higher number than the limit."""
+    from src.league import budget as bg
+
+    text = bg.refusal(187_000_000, 187_150_000, 160_000)
+    assert "to $187.2M, past their $187.1M limit" in text
+    text = bg.refusal(187_090_000, 187_100_000, 20_000)
+    assert "to $187.2M, past their $187.1M limit" in text
+
+
+def test_counter_refusal_names_the_counter():
+    """Josh, 2026-11-20: after a lowball, "won't allow it" read as if it
+    meant the offer, not his counter."""
+    from src.league import budget as bg
+
+    text = bg.about_counter(bg.refusal(180_000_000, 187_100_000, 21_000_000))
+    assert text.startswith("Your owner won't allow his counter: that takes")
+    assert bg.about_counter(None) is None

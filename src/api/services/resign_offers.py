@@ -459,7 +459,7 @@ def offer(
             "raised": bool(raise_to),
             "offers_left": max(0, ng.OFFERS_PER_WINDOW - offers),
             "blocked": offseason_fa._resign_refusal(
-                conn, league_id, team_id, year, mine, row, want
+                conn, league_id, team_id, year, mine, row, want, counter=True
             ),
         }
 
