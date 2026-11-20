@@ -1,6 +1,8 @@
 # tests/league/test_owner_scoring.py
 """How owners judge a season (src/league/owner_scoring.py)."""
 
+import pytest
+
 from src.league import owner_scoring as sc
 from src.league import owners
 
@@ -89,15 +91,23 @@ def test_job_security():
 
 
 def test_profit_is_judged_against_the_markets_par():
-    # A small market making what a middle owner would there is on par, even
-    # at a loss; a big market with a fat margin under its par isn't.
+    # A small market making what a middle owner would there is on par; a
+    # big market with a fat margin under its par isn't.
     small = sc.score_dimensions(
-        season(payroll=100, budget=100, revenue=200, profit=-10, profit_par=-10), MID
+        season(payroll=100, budget=100, revenue=200, profit=10, profit_par=10), MID
     )["profit"]
     big = sc.score_dimensions(
         season(payroll=100, budget=100, revenue=300, profit=60, profit_par=90), MID
     )["profit"]
     assert small == 0 and big < 0
+
+
+def test_a_loss_counts_against_the_gm_even_on_par():
+    # Money lost comes out of the owner's bank (Josh, 2026-11-20).
+    on_par = sc.score_dimensions(
+        season(payroll=100, budget=100, revenue=200, profit=-10, profit_par=-10), MID
+    )["profit"]
+    assert on_par == pytest.approx(-10 / 200 / sc.LOSS_SCALE_PROFIT)
 
 
 # ── Firing rules ─────────────────────────────────────────────────────────────

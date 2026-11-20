@@ -1862,15 +1862,19 @@ def test_a_new_stadium_includes_the_upgrades_and_lower_tier_add_ons():
     cap, m = 160_000_000, 1_000_000
     average = cap * 2.08
     args = (average, 3, 50, round(average))
-    upgrades = sum(fn.project_money(k, *args) for k in fn.UPGRADES)
+    upgrades = sum(fn.project_money(k, *args, cap=cap) for k in fn.UPGRADES)
     for k in fn.STADIUM_TIERS:
         # Never earns less than the upgrades it does away with, and still
         # pays back inside a league.
-        assert fn.project_money(k, *args) > upgrades + 100 * m
-        assert 4 <= fn.payback(fn.project_cost(k, cap), fn.project_value(k, *args)) <= 7
+        assert fn.project_money(k, *args, cap=cap) > upgrades + 100 * m
+        value = fn.project_value(k, *args, cap=cap)
+        assert 4 <= fn.payback(fn.project_cost(k, cap), value) <= 7
     for k in fn.ADDONS:
-        seasons = fn.payback(fn.project_cost(k, cap), fn.project_value(k, *args))
-        assert 4.5 <= seasons <= 8.5, k
+        seasons = fn.payback(
+            fn.project_cost(k, cap), fn.project_value(k, *args, cap=cap)
+        )
+        # Added seats pay slowest: only when people come to sit in them.
+        assert 3.5 <= seasons <= 12, k
     # The old park's upgrades stop counting once a stadium opens.
     park = ["club_seats", "suites", "plaza", "renovation", "stadium_basic"]
     assert fn.open_projects(park) == {"stadium_basic"}

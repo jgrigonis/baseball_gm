@@ -59,8 +59,11 @@ FAN_DRIFT = 7
 MARKET_MULT = {1: 0.80, 2: 0.90, 3: 1.00, 4: 1.12, 5: 1.25}
 MARKET_NAMES = {1: "Small", 2: "Modest", 3: "Mid-size", 4: "Big", 5: "Huge"}
 # Fan interest 0 is FAN_MULT_LOW x revenue, 100 is FAN_MULT_LOW + FAN_MULT_SPAN.
-FAN_MULT_LOW = 0.80
-FAN_MULT_SPAN = 0.40
+# (Josh, 2026-11-20: fans have to drag ticket sales, so this follows the
+# crowds: a team nobody wants to see sells about half the tickets of an
+# average one. Was 0.80 to 1.20.)
+FAN_MULT_LOW = 0.50
+FAN_MULT_SPAN = 1.00
 # Share of revenue an owner spends on payroll: Spending 0 to 100.
 SHARE_LOW = 0.45
 SHARE_SPAN = 0.30
@@ -72,7 +75,9 @@ REGULAR_SEASON_BOOST = 1.25
 # Each home playoff game earns this share of the league's average revenue
 # (Josh, 2026-11-07: tripled from 1.2%, so October pays; 2026-11-09: five
 # times that, 18% of the base before REGULAR_SEASON_BOOST).
-PLAYOFF_GATE = 0.18 / REGULAR_SEASON_BOOST
+# Josh, 2026-11-20: that was way too high (a title run paid $250-530M), so
+# 3% of the average revenue: about $10M a home game.
+PLAYOFF_GATE = 0.03
 # Popularity money (Josh, 2026-11-07): fan interest above POPULARITY_FROM
 # earns extra revenue, rising evenly to POPULARITY_SHARE of the league's
 # average revenue at 100, so a popular team can carry a tax bill. It goes by
@@ -82,8 +87,10 @@ POPULARITY_SHARE = 0.15
 # Fixed costs (staff, the ballpark, travel): this share of the league's
 # average revenue, the same for every team (Josh, 2026-11-07: up from 20%
 # to trim the average team's profit to about +$25M a season; 26% still left
-# about +$42M in a 6-season sim, so 32%).
-FIXED_COSTS = 0.32
+# about +$42M in a 6-season sim, so 32%). Josh, 2026-11-20: owners still
+# made about +$110M a team in year one once the playoff gate was cut, so
+# 50%, for about +$50M on average with about 1 team in 4 losing money.
+FIXED_COSTS = 0.50
 
 ROUNDING = 100_000
 
@@ -121,7 +128,7 @@ MERCH_MARKETING = (0.8, 0.9, 1.0, 1.1, 1.2)
 # half each; win % runs from BROADCAST_WIN_LOW (nothing) to BROADCAST_WIN_LOW +
 # BROADCAST_WIN_SPAN (all of it). A GM picks the length of a new deal;
 # a long one pays a little more for locking the price in.
-BROADCAST_FLOOR = 0.06
+BROADCAST_FLOOR = 0.03  # Josh, 2026-11-20: was 0.06, too generous
 BROADCAST_SPAN = 0.10
 BROADCAST_SEASONS = 3
 BROADCAST_WIN_LOW = 0.35
@@ -145,7 +152,7 @@ BROADCAST_LENGTH_MULT = {2: 0.97, 3: 1.0, 5: 1.05}
 # season over SPONSOR_AI_FROM, Steady otherwise.
 SPONSOR_KINDS = ("steady", "incentive")
 SPONSOR_NAMES = {"steady": "Steady", "incentive": "Incentive"}
-SPONSOR_SHARE = 0.04
+SPONSOR_SHARE = 0.03  # Josh, 2026-11-20: was 0.04, too generous
 SPONSOR_BASE = 0.6
 # The win bonus, in Steady deals, at .100 over .500; it's this times the
 # square of (win % - .500) / .100.
@@ -311,13 +318,25 @@ ADDONS = tuple(p.key for p in BALLPARK if p.tier)
 # money and fans for every one before it.
 STADIUM_LIFE = 25
 STADIUM_REBUILD = 1.10
+# Upkeep (Josh, 2026-11-20: a project nobody uses costs money): every open
+# project costs this share of its price, at this season's cap, every season.
+UPKEEP = 0.025
+# Demand for a project's seats and boxes, from the home crowds (the average
+# crowd as a share of CROWD_CAPACITY, or the crowd the fans would draw):
+# none at DEMAND_FROM, 1 (what the project is priced at) at DEMAND_FROM +
+# DEMAND_SPAN, up to DEMAND_MAX. Projects that earn by fans (club seats,
+# the premium club) go by it all; the rest (suites leased to companies,
+# shops, concerts) half by it and half not (Josh: you can't milk a dead cow).
+DEMAND_FROM = 0.45
+DEMAND_SPAN = 0.35
+DEMAND_MAX = 1.5
 # The owner only builds with savings to spare: their bank has to hold at
 # least this many caps after paying.
 BALLPARK_FLOOR = 1.0
 # One project ordered a season, between seasons.
 BALLPARK_PER_SEASON = 1
 # What the AI reckons a point of fan interest is worth a season, as a share
-# of its regular season revenue (fan_mult: 0.4 of revenue over 100 points).
+# of its regular season revenue (fan_mult: FAN_MULT_SPAN over 100 points).
 FAN_POINT_VALUE = FAN_MULT_SPAN / 100
 
 
@@ -351,8 +370,9 @@ CROWD_PLAYOFFS = 1.4
 # The share of regular season ticket revenue (before the ballpark's own
 # money) that follows the crowds: drawing what the fans predicted earns what
 # it earns today, more people earn more and fewer less. A park that's full
-# turns the rest away, which is what a bigger stadium fixes.
-GATE_SHARE = 0.40
+# turns the rest away, which is what a bigger stadium fixes. (Josh,
+# 2026-11-20: every ticket counts; was 0.40.)
+GATE_SHARE = 1.0
 # The owner's Attendance score: crowds against what the team was expected
 # to draw (in its park), and how full the park is.
 CROWD_FULL_MARK = 0.70  # % full that's neither good nor bad (about an average team)
@@ -428,6 +448,25 @@ def project_cost(key, cap: int) -> int:
     return _round(cap * p.cost) if p else 0
 
 
+def demand(fans: float, market: int, ticket_price=None, crowd=None) -> float:
+    """Demand for a ballpark project's seats, 0 to DEMAND_MAX: from the
+    average home crowd when there is one, else the crowd the fans would
+    draw (expected_crowd), as a share of CROWD_CAPACITY."""
+    if crowd is None:
+        crowd = expected_crowd(fans, market, ticket_price)
+    full = crowd / CROWD_CAPACITY
+    return max(0.0, min(DEMAND_MAX, (full - DEMAND_FROM) / DEMAND_SPAN))
+
+
+def project_upkeep(key, cap: int) -> int:
+    """What an open project costs to keep up for a season, with what it
+    includes (a stadium's own price covers them)."""
+    p = project(key)
+    if p is None or not cap:
+        return 0
+    return _round(cap * p.cost * UPKEEP)
+
+
 def project_money(
     key,
     average_revenue: float,
@@ -435,19 +474,26 @@ def project_money(
     fans: float,
     revenue: int,
     ticket_price=None,
+    *,
+    cap: int = 0,
+    crowd=None,
 ) -> int:
-    """What one ballpark project earns in a season for this team: revenue
-    is its regular season revenue before ticket prices."""
+    """What one ballpark project earns in a season for this team, less its
+    upkeep at this cap (none without one): revenue is its regular season
+    revenue before ticket prices, crowd its average home crowd (None: the
+    crowd its fans would draw)."""
     p = project(key)
     if p is None:
         return 0
+    want = demand(fans, market, ticket_price, crowd)
     value = average_revenue * p.earns * market_mult(market)
-    if p.by_fans:
-        value *= fan_mult(fans)
+    value *= want if p.by_fans else 0.5 + 0.5 * want
     value += ticket_revenue(revenue, ticket_price) * p.revenue
-    own = _round(value * rebuild_mult(key))
+    own = _round(value * rebuild_mult(key)) - project_upkeep(key, cap)
     return own + sum(
-        project_money(k, average_revenue, market, fans, revenue, ticket_price)
+        project_money(
+            k, average_revenue, market, fans, revenue, ticket_price, crowd=crowd
+        )
         for k in included(key)
     )
 
@@ -543,10 +589,23 @@ def ballpark_money(
     fans: float,
     revenue: int,
     ticket_price=None,
+    *,
+    cap: int = 0,
+    crowd=None,
 ) -> int:
-    """What the team's open ballpark projects earn this season."""
+    """What the team's open ballpark projects earn this season, less their
+    upkeep (project_money): below zero when nobody comes."""
     return sum(
-        project_money(k, average_revenue, market, fans, revenue, ticket_price)
+        project_money(
+            k,
+            average_revenue,
+            market,
+            fans,
+            revenue,
+            ticket_price,
+            cap=cap,
+            crowd=crowd,
+        )
         for k in open_projects(built)
     )
 
@@ -563,14 +622,16 @@ def project_value(
     fans: float,
     revenue: int,
     ticket_price=None,
+    *,
+    cap: int = 0,
 ) -> float:
-    """A season of the project as money, fan interest at FAN_POINT_VALUE a
-    point (what AI owners weigh)."""
+    """A season of the project as money (after upkeep at this cap), fan
+    interest at FAN_POINT_VALUE a point (what AI owners weigh)."""
     p = project(key)
     if p is None:
         return 0.0
     return project_money(
-        key, average_revenue, market, fans, revenue, ticket_price
+        key, average_revenue, market, fans, revenue, ticket_price, cap=cap
     ) + project_fans(key) * FAN_POINT_VALUE * ticket_revenue(revenue, ticket_price)
 
 
