@@ -35,6 +35,12 @@ TYPICAL_CONTACT = 63
 TYPICAL_POWER = 59
 TYPICAL_EYE = 62
 BAT_SPREAD = 2.0
+# Eye's foul balls cancel most of its walks, so below the elite bonus (75)
+# +10 eye did almost nothing while +10 contact was worth a third of a run a
+# game. Per point of eye above typical: ball weight added, strike weight
+# taken. Centered on TYPICAL_EYE, so a typical lineup walks as often as before.
+EYE_BALLS = 40
+EYE_STRIKES = 25
 
 
 def bat_term(skill: float, typical: float) -> float:
@@ -182,6 +188,9 @@ class PitchModifiers:
         add_strikes(resolver, -21 * eye_term, called_share=0.25)
         resolver.pitch_outcome.add("foul", 8 * eye_term)
         resolver.pitch_outcome.add("ball", 12 * eye_term)
+        eye_gap = eye - TYPICAL_EYE
+        resolver.pitch_outcome.add("ball", int(EYE_BALLS * eye_gap))
+        add_strikes(resolver, -EYE_STRIKES * eye_gap, called_share=0.5)
         if eye > 75:
             elite_bonus = (eye - 75) ** 1.6
             resolver.pitch_outcome.add("ball", int(6 * elite_bonus))
