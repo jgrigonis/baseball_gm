@@ -19,7 +19,7 @@ import psycopg
 from src.api.services import waivers
 from src.api.services.injury_news import InjuryNews
 from src.db.connection import rollback_quietly
-from src.api.services import firing, owner_office, owner_review, owners
+from src.api.services import firing, owner_office, owner_review, owner_sales, owners
 from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.contract_repo import ContractRepository
 from src.db.repositories.games_repo import GameRepository
@@ -213,6 +213,8 @@ def end_playoffs(conn, league: dict, season_id: str) -> None:
         owner_office.review(conn, league["id"], season_id)
         # The GMs the owners just let go (when the league fires).
         firing.carry_out(conn, league["id"], season_id, year)
+        # Owners deep in the red sell the team; the rest in the red warn.
+        owner_sales.settle(conn, league["id"], season_id, year)
         # One and done, and every person has been fired: nobody can run a
         # team, so the league ends here.
         over = firing.nobody_left(conn, league["id"])

@@ -634,12 +634,16 @@ class BudgetRepository:
         payments = self.ballpark_payments(league_id)
         out = {}
         for r in rows:
-            spent = sum(
-                amount
+            # Payments made before this owner's bank started were an earlier
+            # owner's, who sold the team (owner_sales); what's still owed
+            # on a stadium going up comes with it.
+            mine = [
+                (y, amount)
                 for y, amount in payments.get(r["team_id"], [])
-                if upto is None or y <= upto
-            )
-            owed = sum(amount for _, amount in payments.get(r["team_id"], [])) - spent
+                if r["bank_year"] is None or y >= r["bank_year"]
+            ]
+            spent = sum(amount for y, amount in mine if upto is None or y <= upto)
+            owed = sum(amount for _, amount in mine) - spent
             out[r["team_id"]] = {
                 "start": int(r["bank_start"]),
                 "since": r["bank_year"],
@@ -650,6 +654,21 @@ class BudgetRepository:
                 "owed": owed,
             }
         return out
+
+    def sales(self, league_id: str, team_id: str | None = None) -> list[dict]:
+        """Owners who sold the team (src/api/services/owner_sales.py),
+        oldest first, for one team or (team_id None) the league."""
+        return [
+            dict(r)
+            for r in self.conn.execute(
+                """SELECT team_id, year, old_owner_id, new_owner_id,
+                          old_bank_start, old_bank_year, debt, new_bank
+                   FROM owner_sales
+                   WHERE league_id = %s AND (%s::TEXT IS NULL OR team_id = %s)
+                   ORDER BY year, team_id""",
+                (league_id, team_id, team_id),
+            ).fetchall()
+        ]
 
     def budget(self, league_id: str, team_id: str, year: int) -> int | None:
         return self.for_league(league_id, year).get(team_id)
@@ -715,13 +734,20 @@ class BudgetRepository:
         spent: dict[int, int] = {}
         for y, amount in self.ballpark_payments(league_id).get(team_id, []):
             spent[y] = spent.get(y, 0) + amount
+        # An owner who sold the team (owner_sales): their bank runs from its
+        # own start to the sale, then the buyer's from theirs.
+        sales = self.sales(league_id, team_id)
+        since = sales[0]["old_bank_year"] if sales else bank["since"] if bank else None
         balance = None
         if bank:
-            balance = bank["start"]
+            balance = sales[0]["old_bank_start"] if sales else bank["start"]
+        restart = {s["year"] + 1: s["new_bank"] for s in sales}
         for r in rows:
             r["bank_before"] = r["bank_spent"] = r["bank_after"] = None
-            if not bank or r["year"] < bank["since"]:
+            if not bank or r["year"] < since:
                 continue
+            if r["year"] in restart:
+                balance = restart[r["year"]]
             # The season's ballpark payments come out of the bank too; this
             # season's are already out while its profit is still to come.
             r["bank_before"] = balance

@@ -178,8 +178,13 @@
       </div>
     </details>
     {% endif %}
+    {% if bank.empty or bank.after_red %}
+    <div class="bud-line bud-bad" style="margin-top:8px;">
+      Your owner is in the red. If a season ends with the bank more than {{ bank.sale_text }} in the red, they'll have to sell the team: a new owner takes over with a fresh bank and judges you from scratch.
+    </div>
+    {% endif %}
     <div class="bud-line" style="margin-top:8px;">
-      The owner's own savings, not money you spend. Each season's profit or loss goes in, and a bank that's grown since {{ bank.since }} loosens next season's budget (a shrinking one tightens it) by up to {{ rules.swing_pct }}% of the cap.{% if bank.spent_text %} {{ bank.spent_text }} of it has gone into the ballpark.{% endif %}
+      The owner's own savings, not money you spend. Each season's profit or loss goes in, and a bank that's grown since {{ bank.since }} loosens next season's budget (a shrinking one tightens it) by up to {{ rules.swing_pct }}% of the cap. An owner more than {{ bank.sale_text }} in the red after a season sells the team.{% if bank.spent_text %} {{ bank.spent_text }} of it has gone into the ballpark.{% endif %}
     </div>
   </div>
 </div>

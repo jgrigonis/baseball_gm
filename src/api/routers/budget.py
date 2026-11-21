@@ -889,6 +889,9 @@ def _render(
             ),
             "owed_text": _money(bank["owed"]) if bank["owed"] else None,
             "floor_text": _money(round(standing["cap"] * fn.BALLPARK_FLOOR)),
+            # Past this far in the red at a season's end, the owner sells
+            # the team (src/api/services/owner_sales.py).
+            "sale_text": _money(-bg.sale_line(standing["cap"])),
         }
     if standing and ctx.get("league_state") == "offseason":
         # Next season so far, while the expiring deals are being called
@@ -969,6 +972,7 @@ def _render(
         ctx["bank"]["profit_loss"] = profit < 0
         ctx["bank"]["after_text"] = _money(bank["balance"] + profit)
         ctx["bank"]["year"] = books[0]["year"]
+        ctx["bank"]["after_red"] = bank["balance"] + profit < 0
     if bank:
         ctx["bank"]["seasons"] = _bank_seasons(
             past, books[0] if books and books[0]["projected"] else None

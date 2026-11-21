@@ -20,6 +20,7 @@ from src.db.repositories.news_repo import NewsRepository
 from src.league import awards as awards_mod
 from src.league import divisions, swing_off
 from src.player.positions import display_position
+from src.player.contracts import format_salary
 
 # ── Trades ────────────────────────────────────────────────────────────────────
 
@@ -1012,6 +1013,45 @@ RETIREMENT_MARKS = (
     ("pitch_wins", 100, "wins"),
     ("pitch_strike_outs", 1500, "strikeouts"),
 )
+
+
+def owner_sales(conn, names: Names, league_id: str, season_id: str, on: str) -> None:
+    """Owners whose bank finished the season too deep in the red, who sold
+    the team (src/api/services/owner_sales.py)."""
+    news = NewsRepository(conn)
+    year = conn.execute("SELECT year FROM seasons WHERE id = %s", (season_id,)).fetchone()
+    if not year:
+        return
+    for r in conn.execute(
+        """SELECT s.team_id, s.debt, s.new_bank, s.year,
+                  old.name AS old_name, new.name AS new_name, new.archetype
+           FROM owner_sales s
+           LEFT JOIN owner_personas old ON old.id = s.old_owner_id
+           LEFT JOIN owner_personas new ON new.id = s.new_owner_id
+           WHERE s.league_id = %s AND s.year = %s""",
+        (league_id, year["year"]),
+    ).fetchall():
+        team = r["team_id"]
+        debt = format_salary(abs(r["debt"]), "down")
+        seller = r["old_name"] or "The owner"
+        buyer = r["new_name"] or "a new owner"
+        arch = r["archetype"] or ""
+        if arch:
+            arch = ", " + (arch[0].lower() + arch[1:] if arch.startswith("The ") else arch)
+        body = (
+            f"With the books {debt} in the red, {seller} has sold the "
+            f"{names.full_team(team)} to {buyer}{arch}. The debt leaves with "
+            f"the old owner; the new one puts "
+            f"{format_salary(r['new_bank'], 'down')} in the bank and starts "
+            f"fresh in {r['year'] + 1}."
+        )
+        human = names.is_human(team)
+        news.add(
+            league_id, season_id, on, "front_office", f"sold:{team}:{season_id}",
+            f"{names.team(team)} sold to {buyer}",
+            body,
+            weight=3 if human else 2, team_ids=[team], gm_ids=names.gm_ids(team),
+        )  # fmt: skip
 
 
 def retirements(conn, names: Names, league_id: str, season_id: str, on: str) -> None:

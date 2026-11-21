@@ -2004,6 +2004,25 @@ CREATE TABLE IF NOT EXISTS owner_messages (
     seen_at    TIMESTAMPTZ,
     UNIQUE (league_id, team_id, key)
 );
+-- owner_sales: an owner whose bank ended a season too far in the red sold
+--   the team (src/api/services/owner_sales.py, migration 150). year is
+--   their last season; the buyer's bank starts the next one. The old
+--   owner's bank start and season are kept so the Budget tab's bank history
+--   still adds up.
+CREATE TABLE IF NOT EXISTS owner_sales (
+    league_id      TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    team_id        TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    year           INTEGER NOT NULL,
+    old_owner_id   TEXT NOT NULL,
+    new_owner_id   TEXT NOT NULL,
+    old_bank_start BIGINT NOT NULL,
+    old_bank_year  INTEGER NOT NULL,
+    debt           BIGINT NOT NULL,         -- the old bank's balance at the sale (negative)
+    new_bank       BIGINT NOT NULL,
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (league_id, team_id, year)
+);
+CREATE INDEX IF NOT EXISTS idx_owner_sales_team ON owner_sales(team_id);
 -- owner_moods: each owner's mood (-1 to 1) through a season, updated weekly.
 CREATE TABLE IF NOT EXISTS owner_moods (
     league_id TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
