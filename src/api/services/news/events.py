@@ -1019,7 +1019,9 @@ def owner_sales(conn, names: Names, league_id: str, season_id: str, on: str) -> 
     """Owners whose bank finished the season too deep in the red, who sold
     the team (src/api/services/owner_sales.py)."""
     news = NewsRepository(conn)
-    year = conn.execute("SELECT year FROM seasons WHERE id = %s", (season_id,)).fetchone()
+    year = conn.execute(
+        "SELECT year FROM seasons WHERE id = %s", (season_id,)
+    ).fetchone()
     if not year:
         return
     for r in conn.execute(
@@ -1037,7 +1039,9 @@ def owner_sales(conn, names: Names, league_id: str, season_id: str, on: str) -> 
         buyer = r["new_name"] or "a new owner"
         arch = r["archetype"] or ""
         if arch:
-            arch = ", " + (arch[0].lower() + arch[1:] if arch.startswith("The ") else arch)
+            arch = ", " + (
+                arch[0].lower() + arch[1:] if arch.startswith("The ") else arch
+            )
         body = (
             f"With the books {debt} in the red, {seller} has sold the "
             f"{names.full_team(team)} to {buyer}{arch}. The debt leaves with "
