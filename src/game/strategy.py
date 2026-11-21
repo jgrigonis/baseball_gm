@@ -689,7 +689,7 @@ class GameStrategy:
 
         if pitcher.is_starter:
             pid = getattr(pitcher, "id", None)
-            threshold = profile.leash_pitches_for(pid)
+            threshold = profile.leash_pitches_for(pid, stats.runs)
             if stats.runs == 0:
                 prob *= PITCHER_CHANGE_MULTIPLIERS.get("runs_0", 0.21)
             elif stats.runs == 1:
@@ -710,6 +710,7 @@ class GameStrategy:
                 # Short of his pitch count: the bullpen shape decides how
                 # quickly a starter who's getting hit comes out.
                 prob *= profile.trouble_hook
+                prob = max(prob, profile.shelled_pull(stats.runs, score_differential))
             batters_faced = stats.outs + stats.hits + stats.walks + stats.hb
             prob = min(1.0, prob * profile.starter_hook(batters_faced, pid))
 
