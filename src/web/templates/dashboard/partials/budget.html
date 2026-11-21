@@ -180,7 +180,7 @@
     {% endif %}
     {% if bank.empty or bank.after_red %}
     <div class="bud-line bud-bad" style="margin-top:8px;">
-      Your owner is in the red. If a season ends with the bank more than {{ bank.sale_text }} in the red, they'll have to sell the team: a new owner takes over with a fresh bank and judges you from scratch.
+      Your owner is in the red. If a season ends with the bank more than {{ bank.sale_text }} in the red, they'll have to sell the team: a new owner takes over with a fresh bank and brings in a GM of their own{% if not bank.sale_fires %} (with owner firing off, you keep your job){% endif %}.
     </div>
     {% endif %}
     <div class="bud-line" style="margin-top:8px;">

@@ -177,3 +177,50 @@ def test_the_budget_tab_warns_when_the_bank_is_in_the_red(x):
         app.dependency_overrides.clear()
     assert "Your owner is in the red" in html
     assert f"more than {bg.format_salary(-bg.sale_line(x.cap))} in the red" in html
+
+
+def _firing_on(x):
+    x.db.execute("UPDATE leagues SET owner_firing = TRUE WHERE id = %s", (x.league.id,))
+    x.db.execute(
+        "UPDATE owner_personas SET chance = CASE id WHEN 'buy1' THEN 50 ELSE 0 END"
+    )
+    _set_balance(x, bg.sale_line(x.cap) - M)
+
+
+def test_the_buyer_brings_in_their_own_gm(x):
+    _firing_on(x)
+    owner_sales.settle(x.db, x.league.id, x.season.id, 2026)
+    fired = x.db.execute(
+        "SELECT gm_id, user_id, owner_id, message FROM gm_firings WHERE league_id = %s",
+        (x.league.id,),
+    ).fetchall()
+    assert len(fired) == 1
+    assert fired[0]["gm_id"] == x.gm.id and fired[0]["owner_id"] == "buy1"
+    assert "bringing in my own people" in fired[0]["message"]
+    assert "sold" not in _messages(x)
+
+    events.firings(
+        x.db, Names(x.db, x.league.id), x.league.id, x.season.id, "2026-10-31"
+    )
+    story = x.db.execute(
+        "SELECT body FROM league_news WHERE league_id = %s AND key LIKE 'fired:%%'",
+        (x.league.id,),
+    ).fetchone()
+    assert "new owner, New Money" in story["body"]
+    assert "a GM of their own" in story["body"]
+
+
+def test_a_gm_the_old_owner_just_fired_stays_on(x):
+    _firing_on(x)
+    x.db.execute(
+        """INSERT INTO gm_firings (league_id, season_id, year, team_id, gm_id,
+                                   display_name, owner_id)
+           VALUES (%s, %s, 2026, %s, %s, 'Old GM', 'sell1')""",
+        (x.league.id, x.season.id, x.mine.id, x.gm.id),
+    )
+    owner_sales.settle(x.db, x.league.id, x.season.id, 2026)
+    n = x.db.execute(
+        "SELECT COUNT(*) AS n FROM gm_firings WHERE league_id = %s", (x.league.id,)
+    ).fetchone()["n"]
+    assert n == 1
+    assert "You keep your job" in _messages(x)["sold"]["body"]

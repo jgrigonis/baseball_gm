@@ -11,9 +11,11 @@
 #   sells the team. A buyer is drawn from the owner library like any owner
 #   (owners.choose, tilted by market, never one already in the league or
 #   one who sold out of it), brings a fresh bank (budget.starting_bank by
-#   their Spending) and starts judging the next season. The GM keeps the job
-#   and starts over with them at their grace level, like an admin's owner
-#   change (owners.change). The debt goes with the old owner; payments still
+#   their Spending) and starts judging the next season. They bring in their
+#   own GM (Josh, 2026-11-21): the GM is fired (firing.py), unless the old
+#   owner fired them already this season or the league has owner firing
+#   off, when the GM keeps the job and starts over with the buyer at their
+#   grace level, like an admin's owner change (owners.change). The debt goes with the old owner; payments still
 #   owed on a stadium going up come with the team. owner_sales remembers it
 #   for the news and the Budget tab's bank history.
 #
@@ -24,7 +26,7 @@ from __future__ import annotations
 
 import random
 
-from src.api.services import owner_office
+from src.api.services import firing, owner_office, owner_review
 from src.db.repositories.budget_repo import BudgetRepository
 from src.db.repositories.owner_repo import OwnerRepository
 from src.api.services import owners as owner_service
@@ -51,6 +53,11 @@ def settle(conn, league_id: str, season_id: str, year: int) -> list[dict]:
     names = owner_office._team_names(conn, seats)
     done = {s["team_id"] for s in budgets.sales(league_id) if s["year"] == year}
     line = bg.sale_line(cap)
+    league = conn.execute(
+        "SELECT mode, owner_firing, is_practice FROM leagues WHERE id = %s",
+        (league_id,),
+    ).fetchone()
+    fire = owner_review.firing_on(dict(league))
     sales = []
     for team_id, bank in sorted(budgets.banks(league_id).items()):
         seat = seats.get(team_id)
@@ -73,17 +80,23 @@ def settle(conn, league_id: str, season_id: str, year: int) -> list[dict]:
         if sale is None:
             continue
         sales.append(sale)
-        if gm:
-            owner_office._write(
-                conn, league_id, team_id, gm["id"], season_id,
-                f"sold:{season_id}", "sale",
-                f"{sale['old_name']} has sold me the {names.get(team_id, 'club')}, "
-                f"{_red(sale['debt'])} in the red. That debt leaves with them: "
-                f"I'm putting {format_salary(sale['new_bank'], 'down')} in the "
-                f"bank to start fresh. You keep your job, but you work for me "
-                f"now, and I'll judge you on what you do from {year + 1} on.",
-                None, None,
-            )  # fmt: skip
+        if not gm:
+            continue
+        if fire and not _fired_this_season(conn, team_id, season_id):
+            # The buyer brings in their own GM (Josh, 2026-11-21), unless the
+            # old owner just let the last one go and hired this one.
+            _fire(conn, league_id, season_id, year, gm, sale)
+            continue
+        owner_office._write(
+            conn, league_id, team_id, gm["id"], season_id,
+            f"sold:{season_id}", "sale",
+            f"{sale['old_name']} has sold me the {names.get(team_id, 'club')}, "
+            f"{_red(sale['debt'])} in the red. That debt leaves with them: "
+            f"I'm putting {format_salary(sale['new_bank'], 'down')} in the "
+            f"bank to start fresh. You keep your job, but you work for me "
+            f"now, and I'll judge you on what you do from {year + 1} on.",
+            None, None,
+        )  # fmt: skip
     return sales
 
 
@@ -134,3 +147,43 @@ def _sell(conn, league_id, team_id, year, seat, bank, cap) -> dict | None:
         "debt": bank["balance"],
         "new_bank": new_bank,
     }
+
+
+def _fired_this_season(conn, team_id: str, season_id: str) -> bool:
+    return bool(
+        conn.execute(
+            "SELECT 1 FROM gm_firings WHERE team_id = %s AND season_id = %s",
+            (team_id, season_id),
+        ).fetchone()
+    )
+
+
+def _fire(conn, league_id, season_id, year, gm, sale) -> None:
+    """The new owner lets the team's GM go (src/api/services/firing.py), with
+    the season's record from the old owner's review and their own words for
+    the fired banner."""
+    row = conn.execute(
+        """SELECT g.id AS gm_id, g.team_id, g.user_id, g.persona_id,
+                  g.display_name, g.is_ai, t.city, t.mascot,
+                  COALESCE(e.wins, 0) AS wins, COALESCE(e.losses, 0) AS losses
+           FROM gms g
+           JOIN teams t ON t.id = g.team_id
+           LEFT JOIN gm_season_evaluations e
+             ON e.gm_id = g.id AND e.season_id = %s
+           WHERE g.id = %s""",
+        (season_id, gm["id"]),
+    ).fetchone()
+    if not row:
+        return
+    r = dict(row) | {"owner_id": sale["new_owner_id"]}
+    done = firing._fire(conn, league_id, season_id, year, r)
+    conn.execute(
+        """UPDATE gm_firings SET message = %s
+           WHERE league_id = %s AND gm_id = %s AND season_id = %s""",
+        (
+            f"I've bought the club from {sale['old_name']}, "
+            f"{_red(sale['debt'])} in the red, and I'm bringing in my own "
+            f"people. Thank you for your work.",
+            league_id, done["gm_id"], season_id,
+        ),
+    )  # fmt: skip

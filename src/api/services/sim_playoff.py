@@ -213,7 +213,8 @@ def end_playoffs(conn, league: dict, season_id: str) -> None:
         owner_office.review(conn, league["id"], season_id)
         # The GMs the owners just let go (when the league fires).
         firing.carry_out(conn, league["id"], season_id, year)
-        # Owners deep in the red sell the team; the rest in the red warn.
+        # Owners deep in the red sell the team, and the buyer brings in a GM
+        # of their own; the rest in the red warn.
         owner_sales.settle(conn, league["id"], season_id, year)
         # One and done, and every person has been fired: nobody can run a
         # team, so the league ends here.

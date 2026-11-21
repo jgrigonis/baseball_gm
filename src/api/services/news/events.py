@@ -942,9 +942,12 @@ def firings(conn, names: Names, league_id: str, season_id: str, on: str) -> None
     news = NewsRepository(conn)
     for r in conn.execute(
         """SELECT f.id, f.gm_id, f.team_id, f.user_id, f.display_name, f.wins,
-                  f.losses, o.archetype,
+                  f.losses, o.archetype, o.name AS owner_name,
                   (SELECT g.id FROM gms g WHERE g.league_id = f.league_id
-                     AND g.user_id = f.user_id) AS person_gm_id
+                     AND g.user_id = f.user_id) AS person_gm_id,
+                  EXISTS (SELECT 1 FROM owner_sales s
+                          WHERE s.league_id = f.league_id AND s.team_id = f.team_id
+                            AND s.year = f.year AND s.new_owner_id = f.owner_id) AS sold
            FROM gm_firings f LEFT JOIN owner_personas o ON o.id = f.owner_id
            WHERE f.season_id = %s AND f.league_id = %s
            ORDER BY f.user_id IS NULL, f.id""",
@@ -963,7 +966,14 @@ def firings(conn, names: Names, league_id: str, season_id: str, on: str) -> None
             f"After a {r['wins']}-{r['losses']} season, the {names.full_team(team)}"
             f" have let {who} go."
         )
-        if boss:
+        if r["sold"]:
+            # A buyer bringing in their own GM (owner_sales.py).
+            body = (
+                f"The {names.full_team(team)}' new owner, {r['owner_name']}, has "
+                f"let {who} go after a {r['wins']}-{r['losses']} season, to "
+                f"bring in a GM of their own."
+            )
+        elif boss:
             body += f" The owner,{boss}, had seen enough."
         if new_gm:
             body += f" {new_gm} takes over."
