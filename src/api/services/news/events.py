@@ -969,7 +969,7 @@ def firings(conn, names: Names, league_id: str, season_id: str, on: str) -> None
         if r["sold"]:
             # A buyer bringing in their own GM (owner_sales.py).
             body = (
-                f"The {names.full_team(team)}' new owner, {r['owner_name']}, has "
+                f"The new owner of the {names.full_team(team)}, {r['owner_name']}, has "
                 f"let {who} go after a {r['wins']}-{r['losses']} season, to "
                 f"bring in a GM of their own."
             )

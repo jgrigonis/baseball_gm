@@ -206,7 +206,7 @@ def test_the_buyer_brings_in_their_own_gm(x):
         "SELECT body FROM league_news WHERE league_id = %s AND key LIKE 'fired:%%'",
         (x.league.id,),
     ).fetchone()
-    assert "new owner, New Money" in story["body"]
+    assert "new owner of the" in story["body"] and "New Money, has let" in story["body"]
     assert "a GM of their own" in story["body"]
 
 
