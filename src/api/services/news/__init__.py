@@ -67,6 +67,7 @@ def update_league(conn, league_id: str) -> None:
             # Over: the offseason that fired GMs and retired players has run.
             on = dates["last"] or f"{season['year']}-10-31"
             events.firings(conn, names, league_id, sid, on)
+            events.owner_sales(conn, names, league_id, sid, on)
             events.retirements(conn, names, league_id, sid, on)
             repo.close(league_id, sid)
 

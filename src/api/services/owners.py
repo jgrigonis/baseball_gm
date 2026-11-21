@@ -4,7 +4,8 @@
 # from the site-wide library. Teams in the lobby are drawn theirs as soon as
 # the lobby shows them (lobby_owners), and the start seats those; a team with
 # no lobby draw (a league that was already running when owners came in) is
-# drawn one the first time anything asks. An owner stays with the team for the whole league;
+# drawn one the first time anything asks. An owner stays with the team for the whole league
+# unless their bank sinks too far into the red and they sell (owner_sales.py);
 # the GM can change under them.
 #
 # The draw is weighted by each owner's chance and tilted by the team's market

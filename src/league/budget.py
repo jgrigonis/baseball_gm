@@ -63,6 +63,12 @@ BANK_SWING = 0.10
 # The owner's hard limit: they refuse moves that add money past their budget
 # plus this share of the cap. With the bank empty, the budget is the limit.
 HARD_MARGIN = 0.10
+# A bank in the red (Josh, 2026-11-21: "big negative banks should trigger
+# some kind of event"): once a season ends with it below zero the owner warns
+# the GM, and once it's more than SALE_DEBT of the cap in the red the owner
+# has to sell the team (src/api/services/owner_sales.py). The buyer brings a
+# fresh bank (starting_bank) and judges the GM from scratch.
+SALE_DEBT = 0.5
 
 
 def first_cap(payrolls: list[int]) -> int:
@@ -137,6 +143,18 @@ def hard_limit(cap: int, budget: int, bank: int | None) -> int:
         return budget
     margin = round(cap * HARD_MARGIN / LEASH_ROUNDING) * LEASH_ROUNDING
     return budget + margin
+
+
+def sale_line(cap: int) -> int:
+    """How far in the red (a negative balance) an owner's bank can end a
+    season before they have to sell the team."""
+    value = -cap * SALE_DEBT
+    return round(value / LEASH_ROUNDING) * LEASH_ROUNDING
+
+
+def must_sell(balance: int, cap: int) -> bool:
+    """Whether a bank ending a season at this balance forces a sale."""
+    return cap > 0 and balance < sale_line(cap)
 
 
 def refusal(spend: int, limit: int, added: int) -> str | None:
