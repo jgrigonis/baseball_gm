@@ -37,10 +37,11 @@
      "Every club's 40 players from the real " ~ info.real_season ~ " season, rated from their stats, playing as the league's teams."),
   ] %}
 {% endif %}
-{% if info.single_player %}
+{% if info.custom_league %}
   {% set settings = settings + [
-    ("Single player", "Custom teams",
-     "The commissioner put custom teams in this league, so nobody else can join it."),
+    ("Custom league", (info.custom_teams | length) ~ " custom team" ~ ("" if info.custom_teams | length == 1 else "s"),
+     "A custom league: teams can play with custom rosters (real player-seasons, made-up players, edited ratings), and only paid contributors can run a team in it. It earns no badges."
+     ~ (" Custom teams: " ~ (info.custom_teams | join("; ")) ~ "." if info.custom_teams else " No custom teams are in yet.")),
   ] %}
 {% endif %}
 {% if started %}
@@ -127,12 +128,11 @@
   ] %}
 {% endif %}
 {# The commissioner can flip these two from the lobby and the League page
-   (can_edit_settings), with a small button beside the value. Not in a
-   single-player league (custom teams): it stays private and closed. #}
+   (can_edit_settings), with a small button beside the value. #}
 {% set editable = {
   "Visibility": ("is_public", info.is_public, "Make private" if info.is_public else "Make public"),
   "Late joiners": ("late_joins", info.late_joins, "Turn off" if info.late_joins else "Allow"),
-} if can_edit_settings and not info.is_practice and not info.single_player else {} %}
+} if can_edit_settings and not info.is_practice else {} %}
 {% if info.mode.key == "longform" %}
 {% set settings = settings + [
   ("Draft pick timer", info.pick_timer_sec ~ "s",

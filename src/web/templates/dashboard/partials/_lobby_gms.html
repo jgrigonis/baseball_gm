@@ -14,8 +14,12 @@
    in the lobby show open slots instead, filled at the start. Each team's
    owner is drawn in the lobby too (owners.lobby_owners) and is the one the
    GM works for once the league starts. #}
+{% macro custom_tag(city, mascot) -%}
+  {% set c = custom_names.get(city ~ '|' ~ mascot) if city and custom_names else none %}
+  {% if c %} <span class="custom-tag" title="Plays as the custom team {{ c }}">Custom</span>{% endif %}
+{%- endmacro %}
 {% macro lobby_team(city, mascot) -%}
-  {% if city %}<span style="white-space:nowrap;">{{ team_badge(city, mascot) }} {{ city }} {{ mascot }}</span>{% else %}<span style="color:var(--text-dim);">—</span>{% endif %}
+  {% if city %}<span style="white-space:nowrap;">{{ team_badge(city, mascot) }} {{ city }} {{ mascot }}{{ custom_tag(city, mascot) }}</span>{% else %}<span style="color:var(--text-dim);">—</span>{% endif %}
 {%- endmacro %}
 {% macro lobby_owner(city, mascot) -%}
   {% set o = lobby_owners.get(city ~ '|' ~ mascot) if city else none %}
@@ -65,7 +69,7 @@
               <option value="{{ t.city }}|{{ t.mascot }}"
                       {% if mine %}selected{% endif %}
                       {% if t.holder_id and not t.is_ai and not mine %}disabled{% endif %}>
-                {{ t.city }} {{ t.mascot }}{% if t.holder_id and not mine %} ({% if t.is_ai %}AI{% else %}{{ t.holder }}{% endif %}){% endif %}{% if not in_league and t.region %} · {{ t.region }}{% endif %}{% if t.facts %} · {{ t.facts }}{% endif %}
+                {{ t.city }} {{ t.mascot }}{% if custom_names and custom_names.get(t.city ~ '|' ~ t.mascot) %} · Custom: {{ custom_names[t.city ~ '|' ~ t.mascot] }}{% endif %}{% if t.holder_id and not mine %} ({% if t.is_ai %}AI{% else %}{{ t.holder }}{% endif %}){% endif %}{% if not in_league and t.region %} · {{ t.region }}{% endif %}{% if t.facts %} · {{ t.facts }}{% endif %}
               </option>
               {% endfor %}
               </optgroup>

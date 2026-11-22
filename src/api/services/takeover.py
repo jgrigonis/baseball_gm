@@ -8,6 +8,10 @@
 # someone else's moves, and the sim, the ready check and the career record
 # would all have to agree on the day the team changed hands.
 #
+# A custom league (leagues.custom_league) only takes paid contributors, who
+# see its custom teams before they pick a team (league_custom_teams.py). A
+# fired GM coming back is already in, so they don't need to be paid now.
+#
 # The commissioner can close it with the league's Late joiners setting
 # (leagues.late_joins). A private league is still only open to people with
 # its join code; a public one to anyone.
@@ -50,8 +54,16 @@ def closed_reason(conn, league: dict, user_id: str | None = None) -> str | None:
     fired = bool(user_id) and is_fired(conn, league["id"], user_id)
     if league.get("is_practice"):
         return f"{name} is a tutorial league, so it can't take new GMs."
-    if league.get("single_player") and not fired:
-        return f"{name} has a custom team, so it's single player."
+    if (
+        league.get("custom_league")
+        and user_id
+        and not fired
+        and not _paid(conn, user_id)
+    ):
+        # A custom league is for paid contributors (league_custom_teams.py).
+        return (
+            f"{name} has custom teams, so only paid contributors can run a team in it."
+        )
     if league["state"] == "complete":
         return f"{name} is over."
     if fired and not league.get("reentry_enabled"):
@@ -66,6 +78,14 @@ def closed_reason(conn, league: dict, user_id: str | None = None) -> str | None:
     if not open_teams(conn, league["id"], user_id):
         return f"Every team in {name} already has a person running it."
     return None
+
+
+def _paid(conn, user_id: str) -> bool:
+    """Whether this person may run a team in a custom league."""
+    row = conn.execute(
+        "SELECT is_admin, is_contributor FROM users WHERE id = %s", (user_id,)
+    ).fetchone()
+    return bool(row and (row["is_admin"] or row["is_contributor"]))
 
 
 def is_fired(conn, league_id: str, user_id: str) -> bool:

@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from src.api.services import owner_review
+from src.api.services import league_custom_teams, owner_review
 from src.db.repositories.league_repo import LeagueRepository
 from src.league.league_constants import DEFAULT_INJURY_RATE
 from src.league.league_modes import get_mode, injuries_allowed
@@ -33,8 +33,17 @@ def league_info(db, league: dict) -> dict:
         "sim_period_days": league["sim_period_days"],
         "num_seasons": league["num_seasons"],
         "is_public": bool(league["is_public"]),
-        "join_code": None if league.get("single_player") else league.get("join_code"),
-        "single_player": bool(league.get("single_player")),
+        "join_code": league.get("join_code"),
+        "custom_league": bool(league.get("custom_league")),
+        # "Boston Bombers as Murderers' Row" for each custom team in.
+        "custom_teams": (
+            [
+                f"{t['city']} {t['mascot']} as {t['name']}"
+                for t in league_custom_teams.warning(db, league)
+            ]
+            if league.get("custom_league")
+            else []
+        ),
         "late_joins": bool(league.get("late_joins")),
         "is_practice": bool(league.get("is_practice")),
         "trades_enabled": trades_enabled_for(league),

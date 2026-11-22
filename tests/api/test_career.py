@@ -116,7 +116,7 @@ class TestRecord:
         career.record_league(db_conn, league["league"].id)
         assert not _rows(db_conn, league["user_id"])[0]["custom_teams"]
         db_conn.execute(
-            "UPDATE leagues SET single_player = TRUE WHERE id = %s",
+            "UPDATE leagues SET custom_league = TRUE WHERE id = %s",
             (league["league"].id,),
         )
         career.record_league(db_conn, league["league"].id)

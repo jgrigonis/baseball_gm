@@ -26,6 +26,9 @@
       the {{ joined_year }} season.
     </p>
     {% endif %}
+    {% if league.custom_league %}
+    <p class="takeover-note"><span class="custom-tag">Custom league</span> Teams tagged Custom play with custom rosters. Only paid contributors run teams here, and the league earns no badges.</p>
+    {% endif %}
     {% if error %}<div role="alert" class="takeover-note" style="color:var(--red);">{{ error }}</div>{% endif %}
     <div class="card">
       <div class="card-header"><span class="card-title">{% if fired %}Job offers{% else %}Teams you can take over{% endif %} ({{ teams | length }})</span>{% if teams | length > 1 %}<span class="takeover-dim" style="margin-left:auto;">Tap Team or Last season to sort</span>{% endif %}</div>
@@ -36,7 +39,7 @@
             {% for t in teams %}
             <tr>
               <td class="team-name" data-sort-value="{{ t.city }} {{ t.mascot }}">
-                <span class="takeover-team">{{ team_badge(t.city, t.mascot) }}<span>{{ t.city }} {{ t.mascot }}</span></span>
+                <span class="takeover-team">{{ team_badge(t.city, t.mascot) }}<span>{{ t.city }} {{ t.mascot }}</span></span>{% if custom_names.get(t.city ~ '|' ~ t.mascot) %} <span class="custom-tag" title="Plays as the custom team {{ custom_names[t.city ~ '|' ~ t.mascot] }}">Custom</span>{% endif %}
                 {% if t.message %}<div class="takeover-offer">“{{ t.message }}”</div>{% endif %}
               </td>
               <td class="wide-only" style="color:var(--text-dim);">
