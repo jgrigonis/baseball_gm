@@ -31,6 +31,7 @@ from src.api.routers import (
     news,
     owners,
     budget,
+    custom_players,
     custom_teams,
     depth,
     players,
@@ -205,6 +206,7 @@ for _module in (
     owners,
     budget,
     custom_teams,
+    custom_players,
     depth,
 ):
     app.include_router(_module.router)

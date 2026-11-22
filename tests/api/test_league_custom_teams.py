@@ -185,7 +185,7 @@ def test_apply_swaps_in_the_players_and_fills_to_26(as_user, db_conn):
 
     factory = TeamFactory(rng=random.Random(3))
     generated = [factory.generate_team(city=c, mascot=m, size=26) for c, m in teams]
-    out = lct.apply(db_conn, league["id"], generated, random.Random(4))
+    out, made = lct.apply(db_conn, league["id"], generated, random.Random(4))
     assert out[1:] == generated[1:]
     mine = out[0]
     assert (mine.city, mine.mascot) == teams[0]

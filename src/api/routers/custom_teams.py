@@ -13,8 +13,10 @@ from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from src.api.dependencies import DB, IsHTMX, User
+from src.api.services import custom_players as cp
 from src.api.services import custom_teams as ct
 from src.config import settings
+from src.db.repositories.custom_player_repo import CustomPlayerRepository
 from src.db.repositories.custom_team_repo import CustomTeamRepository
 from src.league.real_seasons import SKILLS, players
 from src.web.utils import templates
@@ -88,6 +90,20 @@ def _back(
 # ── My Teams ───────────────────────────────────────────────────────────
 
 
+def _my_players(db, user, teams: list[dict]) -> list[dict]:
+    """The user's made-up players, described, with the teams they're on."""
+    out = []
+    for row in CustomPlayerRepository(db).list_for(user["id"]):
+        p = cp.describe(row)
+        key = ct.made_key(row["id"])
+        p["on"] = [
+            t["name"] for t in teams if any(e["key"] == key for e in t["players"])
+        ]
+        p["face_svg"] = cp.face_svg(row)
+        out.append(p)
+    return out
+
+
 def _share_url(request: Request, code: str) -> str:
     base = (settings.public_base_url or str(request.base_url)).rstrip("/")
     return f"{base}/teams/shared/{code}"
@@ -97,13 +113,15 @@ def _share_url(request: Request, code: str) -> str:
 def my_teams(request: Request, db: DB, user: User, error: str = ""):
     teams = CustomTeamRepository(db).list_for(user["id"])
     for t in teams:
-        t["summary"] = ct.summary(ct.roster(t))
+        t["summary"] = ct.summary(ct.roster(t, db))
     return templates.TemplateResponse(
         request,
         "custom_teams/index.html",
         _ctx(
             user,
             teams=teams,
+            made=_my_players(db, user, teams),
+            positions=list(cp.POSITION_NAMES.items()),
             error=error,
             name_max=ct.NAME_MAX,
             share_base=_share_url(request, ""),
@@ -138,7 +156,7 @@ def shared_team(request: Request, code: str, db: DB, user: User):
     team = CustomTeamRepository(db).get_by_code(ct.normalize_code(code))
     if not team:
         return _not_found(request, user, "No team has that share code.")
-    rows = ct.roster(team)
+    rows = ct.roster(team, db)
     return templates.TemplateResponse(
         request,
         "custom_teams/shared.html",
@@ -169,9 +187,25 @@ def copy_shared(request: Request, code: str, db: DB, user: User):
 # ── One of your teams ──────────────────────────────────────────────────
 
 
-def _team_page(request, user, team, q="", club="", error="", status_code=200):
-    rows = ct.roster(team)
+def _team_page(
+    request,
+    user,
+    team,
+    q="",
+    club="",
+    error="",
+    status_code=200,
+    made_error="",
+    db=None,
+):
+    rows = ct.roster(team, db)
     on_team = {r["key"] for r in rows}
+    made = []
+    if db is not None:
+        for row in CustomPlayerRepository(db).list_for(user["id"]):
+            p = cp.describe(row)
+            p["on_team"] = p["key"] in on_team
+            made.append(p)
     search = _search(q, club)
     for r in search["results"]:
         r["on_team"] = r["key"] in on_team
@@ -187,6 +221,8 @@ def _team_page(request, user, team, q="", club="", error="", status_code=200):
             name_max=ct.NAME_MAX,
             share_url=_share_url(request, team["share_code"]),
             clubs=_club_choices(),
+            made=made,
+            made_error=made_error,
             **search,
         ),
         status_code=status_code,
@@ -195,12 +231,18 @@ def _team_page(request, user, team, q="", club="", error="", status_code=200):
 
 @router.get("/teams/{team_id}", response_class=HTMLResponse)
 def team_page(
-    request: Request, team_id: str, db: DB, user: User, q: str = "", club: str = ""
+    request: Request,
+    team_id: str,
+    db: DB,
+    user: User,
+    q: str = "",
+    club: str = "",
+    made_error: str = "",
 ):
     team = ct.owned(CustomTeamRepository(db), user, team_id)
     if not team:
         return _not_found(request, user)
-    return _team_page(request, user, team, q, club)
+    return _team_page(request, user, team, q, club, made_error=made_error, db=db)
 
 
 @router.get("/teams/{team_id}/search", response_class=HTMLResponse)
@@ -242,7 +284,7 @@ def _change(request, db, user, team_id, q, change, anchor="", club=""):
     except ct.CustomTeamError as e:
         db.rollback()
         team = ct.owned(repo, user, team_id)
-        return _team_page(request, user, team, q, club, str(e), 400)
+        return _team_page(request, user, team, q, club, str(e), 400, db=db)
     db.commit()
     return _back(team_id, q, club, anchor)
 
@@ -317,6 +359,12 @@ def delete_team(request: Request, team_id: str, db: DB, user: User):
 
 def _player_page(request, user, team, slot, error="", values=None, status_code=200):
     rows = [r for r in ct.roster(team) if r["slot"] == slot]
+    entries = team["players"]
+    if not rows and 0 <= slot < len(entries) and entries[slot].get("made"):
+        # A made-up player is edited in the player creator.
+        return RedirectResponse(
+            f"/my-players/{entries[slot]['made']}?team={team['id']}", status_code=303
+        )
     if not rows:
         return _not_found(request, user, "That player isn't on the team.")
     return templates.TemplateResponse(

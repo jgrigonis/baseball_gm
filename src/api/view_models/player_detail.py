@@ -424,6 +424,7 @@ def player_panel_data(
     return {
         **grades.model_dump(),
         "player_id": pid,
+        "face": p.get("face"),  # stored traits (made-up players), else random
         "team_id": team["id"] if team else None,
         "team_city": team["city"] if team else "—",
         "team_mascot": team["mascot"] if team else "",

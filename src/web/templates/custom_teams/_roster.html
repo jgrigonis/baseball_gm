@@ -15,10 +15,11 @@
       {% for p in members %}
       <tr id="slot-{{ p.slot }}">
         <td class="team-name">
-          {% if editable %}<a href="/teams/{{ team.id }}/players/{{ p.slot }}" title="Edit his skills">{{ p.name }}</a>{% else %}{{ p.name }}{% endif %}
+          {% if editable %}<a href="/teams/{{ team.id }}/players/{{ p.slot }}" title="{{ 'Edit him in the player creator' if p.made else 'Edit his skills' }}">{{ p.name }}</a>{% else %}{{ p.name }}{% endif %}
           {% if p.edited %}<span class="ct-edited" title="Hand-edited: {{ p.edited|map('replace', '_', ' ')|join(', ') }}">✎</span>{% endif %}
         </td>
-        <td class="num" title="{{ p.teams }}">{{ p.year }}</td>
+        {% if p.made %}<td class="num" data-sort-value="9999" title="One of {{ 'your' if editable else 'their' }} made-up players"><span class="ct-made">Made</span></td>
+        {% else %}<td class="num" title="{{ p.teams }}">{{ p.year }}</td>{% endif %}
         <td>{{ p.pos|upper }}</td>
         <td class="num">{{ p.age }}</td>
         <td>{{ p.bats }}/{{ p.throws }}</td>

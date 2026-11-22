@@ -770,7 +770,7 @@ def _lobby_custom_ctx(db, league: dict, user: dict) -> dict | None:
     chosen = league_custom_teams.assignments(db, league["id"])
     mine = []
     for t in CustomTeamRepository(db).list_for(user["id"]):
-        summary = custom_teams.summary(custom_teams.roster(t))
+        summary = custom_teams.summary(custom_teams.roster(t, db))
         mine.append({"id": t["id"], "name": t["name"], "ready": summary["ready"]})
     return {
         "refusal": league_custom_teams.refusal(db, league, user),

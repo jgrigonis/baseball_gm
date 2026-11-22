@@ -34,4 +34,16 @@
   .ct-dialog-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 6px; }
   .ct-dialog-grid div { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 12px; border: 1px solid var(--border); padding: 4px 6px; }
   .ct-dialog-grid span { color: var(--text-dim); }
+  .ct-made { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--sky); border: 1px solid var(--sky-dim); padding: 1px 5px; }
+  .ct-tabs { display: flex; gap: 0; padding: 0 14px; border-bottom: 1px solid var(--border); }
+  .ct-tabs button { background: none; border: 0; border-bottom: 2px solid transparent; color: var(--text-dim); font: inherit; font-size: 13px; font-weight: 600; padding: 8px 12px; cursor: pointer; }
+  .ct-tabs button.on { color: var(--amber); border-bottom-color: var(--amber); }
+  .mp-list { display: flex; flex-direction: column; }
+  .mp-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto auto auto; gap: 10px; align-items: center; padding: 8px 14px; border-top: 1px solid var(--border); }
+  .mp-face svg { display: block; width: 40px; height: 40px; border-radius: 4px; }
+  .mp-name { font-weight: 600; color: var(--text); text-decoration: none; }
+  .mp-name:hover { color: var(--amber); text-decoration: underline; }
+  .mp-meta { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); }
+  .mp-on { font-size: 12px; color: var(--text-dim); }
+  @media (max-width: 600px) { .mp-row { grid-template-columns: 40px minmax(0, 1fr) auto auto; } .mp-on { display: none; } }
 </style>

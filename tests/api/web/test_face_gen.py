@@ -5,6 +5,9 @@ import json
 
 from fastapi.testclient import TestClient
 
+import pytest
+
+from src.api.database import get_db
 from src.api.main import app
 from src.player.face import TRAITS, face_svg, face_url, random_traits
 
@@ -52,7 +55,15 @@ def test_random_is_the_players_face_for_an_id():
     ).json() == random_traits("p-1")
 
 
-def test_player_face_image_matches_the_card_face():
+@pytest.fixture
+def with_db(db_conn):
+    # /faces/ looks up a stored face (made-up players) first.
+    app.dependency_overrides[get_db] = lambda: db_conn
+    yield db_conn
+    app.dependency_overrides.pop(get_db, None)
+
+
+def test_player_face_image_matches_the_card_face(with_db):
     url = face_url("p-7", 31, "Tokyo", "Samurai")
     r = client.get(url)
     assert r.status_code == 200
@@ -61,6 +72,6 @@ def test_player_face_image_matches_the_card_face():
     assert r.text == face_svg("p-7", 31, "Tokyo", "Samurai")
 
 
-def test_player_face_image_without_a_known_team_is_a_plain_cap():
+def test_player_face_image_without_a_known_team_is_a_plain_cap(with_db):
     r = client.get("/faces/p-7.svg", params={"team": "Nowhere|X"})
     assert r.text == face_svg("p-7", 27, None, None)

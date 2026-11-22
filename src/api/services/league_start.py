@@ -76,7 +76,7 @@ def start_league(
 
     # A custom team's players replace that team's (single-player leagues,
     # services/league_custom_teams.py).
-    generated = league_custom_teams.apply(conn, league_id, generated, rng)
+    generated, made_players = league_custom_teams.apply(conn, league_id, generated, rng)
 
     # ── 2. Save the teams + first season ──────────────────────────────────────
     start_date = datetime.date(year, 4, 1)
@@ -86,6 +86,8 @@ def start_league(
     _, teams, season_id = bootstrapper.bootstrap(
         generated, league_id=league_id, year=year
     )
+    # Made-up players keep the face, personality and ceilings picked for them.
+    league_custom_teams.save_made(conn, made_players)
 
     # ── 3. Clear stale injury/energy state for this league ─────────────────
     # Delete only rows scoped to THIS league_id so other leagues are unaffected.
