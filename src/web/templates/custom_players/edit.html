@@ -209,7 +209,6 @@
     return '<div class="pc-fields">' +
       '<div class="wide"><label class="pc-label" for="pc-first">First name</label><div class="pc-in"><input type="text" id="pc-first" data-f="first_name" maxlength="' + C.name_max + '" value="' + esc(P.first_name) + '">' + lockBtn('first_name') + '</div></div>' +
       '<div class="wide"><label class="pc-label" for="pc-last">Last name</label><div class="pc-in"><input type="text" id="pc-last" data-f="last_name" maxlength="' + C.name_max + '" value="' + esc(P.last_name) + '"><button type="button" class="btn btn-secondary admin-small" data-act="name" title="Random name">🎲</button>' + lockBtn('last_name') + '</div></div>' +
-      '<div class="wide"><label class="pc-label" for="pc-pos">Position he was built for</label><div class="pc-in"><select id="pc-pos" data-f="position">' + C.positions.map(function (p) { return '<option value="' + p[0] + '"' + (P.position === p[0] ? ' selected' : '') + '>' + p[1] + ' · ' + p[2] + '</option>'; }).join('') + '</select></div></div>' +
       '<div><label class="pc-label" for="pc-age">Age</label><input type="number" id="pc-age" data-f="age" min="' + C.age_range[0] + '" max="' + C.age_range[1] + '" value="' + P.age + '" style="width:100%"></div>' +
       '<div><span class="pc-label">Bats / Throws</span><div style="display:flex;gap:4px;flex-wrap:wrap">' + seg('bats', ['L', 'R', 'S']) + seg('throws', ['L', 'R']) + '</div></div>' +
       '<div class="wide"><label class="pc-label" for="pc-region">From</label><select id="pc-region" data-f="home_region" style="width:100%">' + C.regions.map(function (r) { return '<option' + (P.home_region === r ? ' selected' : '') + '>' + esc(r) + '</option>'; }).join('') + '</select></div>' +
@@ -217,7 +216,7 @@
     '</div>';
   }
   function positionStep() {
-    return '<div class="pc-card"><div class="pc-card-h"><h3>Roll a player for a position</h3></div><div class="pc-card-b">' +
+    return '<div class="pc-card"><div class="pc-card-h"><h3>Roll a new player by position</h3></div><div class="pc-card-b">' +
       '<div class="pc-tiles-pos">' + C.positions.map(function (p) { return '<button type="button" data-tile="' + p[0] + '" class="' + (posPick === p[0] ? 'on' : '') + '"><b>' + p[1] + '</b><span>' + p[2] + '</span></button>'; }).join('') +
       '<button type="button" data-tile="random" class="rand' + (posPick === 'random' ? ' on' : '') + '"><b>🎲</b><span>Surprise me</span></button></div>' +
       '<p class="pc-small" style="margin:10px 0 0">Each pick rolls a new player built for that position, with a random name, face and personality. Pick again for another one. 🔒 locked names and ratings stay put.</p>' +
@@ -300,7 +299,7 @@
     return '<div class="pc-card"><div class="pc-card-h"><h3>' + (DATA.made_id ? 'Save your changes' : 'Ready to save') + '</h3></div><div class="pc-card-b pc-review">' +
       '<div class="pc-look-face">' + faceSvg + '</div><div><dl>' +
       '<dt>Name</dt><dd>' + esc(P.first_name + ' ' + P.last_name) + '</dd>' +
-      '<dt>Built for</dt><dd>' + POSNAME[P.position] + '</dd>' +
+      '<dt>Position</dt><dd>' + POSNAME[P.position] + '</dd>' +
       '<dt>Age, B/T</dt><dd>' + P.age + ', ' + P.bats + '/' + P.throws + '</dd>' +
       '<dt>Overall</dt><dd><span class="grade ' + gradeClass(g[0]) + '">' + g[0] + '</span> <span class="pc-small">' + g[1] + '</span></dd>' +
       '<dt>Best at</dt><dd>' + top + '</dd>' +
