@@ -4,9 +4,10 @@ Player faces: a small illustrated head-and-shoulders portrait, drawn as
 inline SVG from simple shapes.
 
 A face is a small set of traits (TRAITS): skin tone, face shape, eyes,
-brows, nose, mouth, hair, facial hair and so on. Nothing is stored yet: a
-hash of the player's id seeds random traits, so a player always gets the
-same face. A face built by hand on /face_gen (routers/face_gen.py) is the
+brows, nose, mouth, hair, facial hair and so on. Most players have none
+stored (players.face is NULL): a hash of the player's id seeds random
+traits, so a player always gets the same face. A made-up player
+(services/custom_players.py) keeps the face picked for him in players.face. A face built by hand on /face_gen (routers/face_gen.py) is the
 same traits as a small JSON dict. Two things come from outside the traits:
 
 - The team. He wears its cap (crown, brim, button and logo taken from the
@@ -920,6 +921,7 @@ def player_face(player: dict, size: str = "lg") -> Markup:
             player.get("age"),
             player.get("team_city"),
             player.get("team_mascot"),
+            player.get("face"),  # stored traits (made-up players), else random
         )
     )
     name = f"{player.get('first_name', '')} {player.get('last_name', '')}".strip()

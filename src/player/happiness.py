@@ -143,7 +143,7 @@ class Personality:
     drives: dict[str, int]
     traits: dict[str, int]
     climate: str | None = None
-    ruiner: bool = False  # a morale ruiner (not stored: seeded by his id)
+    ruiner: bool = False  # a morale ruiner (seeded by his id unless stored)
 
     def as_row(self) -> dict:
         return {
@@ -158,7 +158,12 @@ class Personality:
         drives = {d: int((row.get("drives") or {}).get(d, 20)) for d in DRIVES}
         traits = {t: int((row.get("traits") or {}).get(t, 50)) for t in TRAITS}
         pid = row.get("player_id")
-        ruiner = bool(pid) and is_morale_ruiner(pid, traits)
+        # Stored for made-up players (migration 151); everyone else's is
+        # drawn from his id.
+        if row.get("ruiner") is not None:
+            ruiner = bool(row["ruiner"])
+        else:
+            ruiner = bool(pid) and is_morale_ruiner(pid, traits)
         return cls(row["type"], drives, traits, row.get("climate"), ruiner)
 
 

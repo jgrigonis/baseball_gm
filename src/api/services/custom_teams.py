@@ -11,6 +11,8 @@ Custom teams: a contributor's own team of real player-seasons
 - A share code opens a read-only view; "Save a copy" makes an independent
   team for the person who opened it.
 - Custom teams only play in single-player leagues (part 3).
+- A team can also hold the owner's made-up players
+  (services/custom_players.py), as {"key": "made:<id>", "made": "<id>"}.
 """
 
 from __future__ import annotations
@@ -123,11 +125,29 @@ def describe(season: players.PlayerSeason, skills: dict | None = None) -> dict:
     }
 
 
-def roster(team: dict) -> list[dict]:
+def made_key(made_id: str) -> str:
+    return f"made:{made_id}"
+
+
+def roster(team: dict, db=None) -> list[dict]:
     """The team's players, described, in the order they were added. A slot
-    is the player's index in team["players"]."""
+    is the player's index in team["players"]. Made-up players need db to be
+    looked up; without it they're left out."""
+    from src.api.services import custom_players as cp
+    from src.db.repositories.custom_player_repo import CustomPlayerRepository
+
+    made_ids = [e["made"] for e in team["players"] if e.get("made")]
+    made = CustomPlayerRepository(db).get_many(made_ids) if db and made_ids else {}
     out = []
     for slot, entry in enumerate(team["players"]):
+        if entry.get("made"):
+            found = made.get(entry["made"])
+            if found is None:
+                continue  # deleted, or no db to look him up
+            row = cp.describe(found)
+            row["slot"] = slot
+            out.append(row)
+            continue
         season = players.get(entry["key"])
         if season is None:
             continue  # a season the data no longer has
@@ -188,6 +208,30 @@ def add_player(repo: CustomTeamRepository, team: dict, key: str) -> None:
     repo.save_players(team["id"], entries)
 
 
+def add_made(repo: CustomTeamRepository, team: dict, made: dict) -> None:
+    """Put one of the owner's made-up players on the team."""
+    entries = list(team["players"])
+    if made["owner_id"] != team["owner_id"]:
+        raise CustomTeamError("That isn't one of your players.")
+    if len(entries) >= ROSTER_MAX:
+        raise CustomTeamError(f"A team holds {ROSTER_MAX} players. Remove one first.")
+    key = made_key(made["id"])
+    if any(e["key"] == key for e in entries):
+        name = f"{made['first_name']} {made['last_name']}"
+        raise CustomTeamError(f"{name} is already on the team.")
+    entries.append({"key": key, "made": made["id"]})
+    repo.save_players(team["id"], entries)
+
+
+def drop_made(repo: CustomTeamRepository, owner_id: str, made_id: str) -> None:
+    """Take a deleted made-up player off every one of the owner's teams."""
+    key = made_key(made_id)
+    for team in repo.list_for(owner_id):
+        kept = [e for e in team["players"] if e["key"] != key]
+        if len(kept) != len(team["players"]):
+            repo.save_players(team["id"], kept)
+
+
 def remove_player(repo: CustomTeamRepository, team: dict, slot: int) -> None:
     entries = list(team["players"])
     if not 0 <= slot < len(entries):
@@ -234,13 +278,29 @@ def reset_skills(repo: CustomTeamRepository, team: dict, slot: int) -> None:
 
 
 def save_copy(repo: CustomTeamRepository, user: dict, team: dict) -> str:
-    """A copy of someone's shared team, now the user's own to change."""
+    """A copy of someone's shared team, now the user's own to change. Its
+    made-up players are copied into the user's own players too, so editing
+    them doesn't touch the original owner's."""
+    from src.db.repositories.custom_player_repo import CustomPlayerRepository
+
     if not can_build(user):
         raise CustomTeamError("Saving a copy is for paid contributors.")
+    made_repo = CustomPlayerRepository(repo.db)
+    made = made_repo.get_many(e["made"] for e in team["players"] if e.get("made"))
+    entries = []
+    for e in team["players"]:
+        if not e.get("made"):
+            entries.append(dict(e))
+        elif e["made"] in made:
+            if made[e["made"]]["owner_id"] == user["id"]:
+                new_id = e["made"]  # their own team: keep the same player
+            else:
+                new_id = made_repo.create(user["id"], made[e["made"]])
+            entries.append({"key": made_key(new_id), "made": new_id})
     return repo.create(
         user["id"],
         team["name"],
         new_code(repo),
-        [dict(e) for e in team["players"]],
+        entries,
         copied_from=team["id"],
     )

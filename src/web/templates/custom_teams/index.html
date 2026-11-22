@@ -1,5 +1,5 @@
 {# custom_teams/index.html — My Teams: your custom teams of real player-seasons
-   (routers/custom_teams.py). #}
+   and your made-up players (routers/custom_teams.py, routers/custom_players.py). #}
 {% extends "base.html" %}
 {% block title %}My Teams — Baseball GM{% endblock %}
 {% block main %}
@@ -35,9 +35,39 @@
     </table>
   </div>
   {% endif %}
+
+  <div class="card ct-card" id="my-players">
+    <div class="ct-card-title" style="display:flex;justify-content:space-between;align-items:center;gap:8px;">My Players {% if made %}<span class="admin-dim">{{ made|length }}</span>{% endif %}</div>
+    <div class="card-body" style="padding-top:4px;">
+      <p style="margin:0 0 10px;">Make your own players: pick a position or roll a random one, then change anything about him. Put them on any of your teams next to real players.</p>
+      <form method="GET" action="/my-players/new" class="ct-row">
+        <select name="pos" aria-label="Position" style="flex:0 1 240px;min-width:0;">
+          <option value="">🎲 Random position</option>
+          {% for code, label in positions %}<option value="{{ code }}">{{ code|upper }} · {{ label }}</option>{% endfor %}
+        </select>
+        <button type="submit" class="btn btn-primary">New player</button>
+      </form>
+    </div>
+    {% if made %}
+    <div class="mp-list">
+      {% for p in made %}
+      <div class="mp-row">
+        <span class="mp-face">{{ p.face_svg|safe }}</span>
+        <div style="min-width:0;">
+          <a class="mp-name" href="/my-players/{{ p.made_id }}">{{ p.name }}</a>
+          <div class="mp-meta">{{ p.pos|upper }} · age {{ p.age }} · {{ p.type }}</div>
+        </div>
+        <span class="mp-on">{% if p.on %}On {{ p.on|join(', ') }}{% else %}Not on a team{% endif %}</span>
+        <span class="grade grade-{{ grade_class(p.grade) }}" title="Overall {{ p.overall }}">{{ p.grade }}</span>
+        <a href="/my-players/{{ p.made_id }}" class="btn btn-secondary admin-small">Edit</a>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
   {% else %}
   <div class="card ct-card"><div class="card-body">
-    Building custom teams is for paid contributors. You can still look at a team someone shares with you.
+    Building custom teams and making players is for paid contributors. You can still look at a team someone shares with you.
   </div></div>
   {% endif %}
 

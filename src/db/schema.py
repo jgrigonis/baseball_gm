@@ -133,6 +133,28 @@ CREATE TABLE IF NOT EXISTS custom_teams (
 );
 CREATE INDEX IF NOT EXISTS idx_custom_teams_owner ON custom_teams(owner_id);
 
+-- A contributor's made-up players (migration 151, services/custom_players.py).
+-- A custom team names one as {{"made": "<id>"}} in its players list.
+CREATE TABLE IF NOT EXISTS custom_players (
+    id           TEXT PRIMARY KEY,
+    owner_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    first_name   TEXT NOT NULL,
+    last_name    TEXT NOT NULL,
+    position     TEXT NOT NULL,   -- affinity position (src/player/positions.py)
+    bats         TEXT NOT NULL,
+    throws       TEXT NOT NULL,
+    age          INTEGER NOT NULL,
+    skills       JSONB NOT NULL,  -- skill -> 1..100
+    caps         JSONB NOT NULL,  -- talent ceilings, skill -> 1..100
+    personality  JSONB NOT NULL,  -- type, drives, traits, climate, ruiner
+    face         JSONB NOT NULL,  -- face traits (src/player/face.py)
+    home_region  TEXT NOT NULL,
+    jersey_prefs TEXT[] NOT NULL DEFAULT '{{}}',
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_custom_players_owner ON custom_players(owner_id);
+
 CREATE TABLE IF NOT EXISTS email_verifications (
     id           TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -186,6 +208,7 @@ CREATE TABLE IF NOT EXISTS players (
     league_id  TEXT,
     jersey_prefs TEXT[], -- numbers he wants, favorite first (src/player/jersey_numbers.py)
     home_region TEXT,    -- a team pool region he's from (src/player/home_region.py)
+    face       JSONB,    -- stored face traits (src/player/face.py); NULL = random from his id (migration 151)
     created_at TEXT DEFAULT (NOW()),
     updated_at TEXT,
 
@@ -1713,7 +1736,8 @@ CREATE TABLE IF NOT EXISTS player_personality (
     type      TEXT NOT NULL,       -- public player type (src/player/happiness.py TYPES)
     drives    JSONB NOT NULL,      -- drive -> weight 0..100
     traits    JSONB NOT NULL,      -- ego, temper, loyalty 0..100
-    climate   TEXT                 -- favorite climate, if he has one
+    climate   TEXT,                -- favorite climate, if he has one
+    ruiner    BOOLEAN              -- morale ruiner; NULL = drawn from his id (migration 151)
 );
 
 -- One row per player per season: his mood and what's behind it.

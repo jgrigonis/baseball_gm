@@ -15,6 +15,12 @@ Taking every custom team out again in the lobby lifts that.
 At the start (league_start.py), apply() swaps each custom team's players in.
 A team short of 26 is filled to 26 with the generated team's own players:
 pitchers if it has fewer than 13, hitters otherwise.
+
+Made-up players (services/custom_players.py) are copied in whole when the
+team goes in ({"key": "made:<id>", "made": id, "player": {...}}). apply()
+also says what the game would otherwise draw from a new player's id (face,
+personality, morale ruiner, home region, jersey wishes) and his ceilings;
+save_made() writes those once the players are saved.
 """
 
 from __future__ import annotations
@@ -23,9 +29,12 @@ import random
 
 from psycopg.types.json import Jsonb
 
+from src.api.services import custom_players as cp
 from src.api.services import custom_teams as ct
 from src.api.services import lobby_teams
+from src.db.repositories.custom_player_repo import CustomPlayerRepository
 from src.db.repositories.custom_team_repo import CustomTeamRepository
+from src.db.repositories.talent_cap_repo import TalentCapRepository
 from src.db.repositories.ready_check_repo import ReadyCheckRepository
 from src.league.real_seasons import players
 from src.team.team_record import TeamRecord
@@ -95,7 +104,7 @@ def assign(
         team = ct.owned(CustomTeamRepository(conn), user, custom_team_id)
         if not team:
             raise CustomTeamRefused("That isn't one of your custom teams.")
-        rows = ct.roster(team)
+        rows = ct.roster(team, conn)
         summary = ct.summary(rows)
         if not summary["ready"]:
             raise CustomTeamRefused(
@@ -111,13 +120,32 @@ def assign(
                 mascot,
                 team["id"],
                 team["name"],
-                Jsonb([dict(e) for e in team["players"]]),
+                Jsonb(_copies(conn, team["players"])),
             ),
         )
     _sync_single_player(conn, league["id"])
 
 
+def _copies(conn, entries: list[dict]) -> list[dict]:
+    """The team's players as the league keeps them: made-up players copied
+    whole (a deleted one is left out)."""
+    made = CustomPlayerRepository(conn).get_many(
+        e["made"] for e in entries if e.get("made")
+    )
+    out = []
+    for e in entries:
+        if not e.get("made"):
+            out.append(dict(e))
+        elif e["made"] in made:
+            out.append({**e, "player": cp.snapshot(made[e["made"]])})
+    return out
+
+
 def _record(entry: dict, rng: random.Random):
+    if entry.get("player"):
+        return cp.record(entry["player"], rng)
+    if entry.get("made"):
+        return None  # a made-up player without his copy
     season = players.get(entry["key"])
     return season.record(rng, entry.get("skills")) if season else None
 
@@ -128,18 +156,27 @@ def _is_pitcher(p) -> bool:
 
 def apply(
     conn, league_id: str, teams: list[TeamRecord], rng: random.Random
-) -> list[TeamRecord]:
-    """The league's starting teams with each custom team's players in."""
+) -> tuple[list[TeamRecord], dict[str, dict]]:
+    """The league's starting teams with each custom team's players in, and
+    each made-up player's copy by his new player id (for save_made)."""
     chosen = assignments(conn, league_id)
+    made: dict[str, dict] = {}
     if not chosen:
-        return teams
+        return teams, made
     out = []
     for team in teams:
         entry = chosen.get((team.city, team.mascot))
         if not entry:
             out.append(team)
             continue
-        mine = [r for r in (_record(e, rng) for e in entry["players"]) if r]
+        mine = []
+        for e in entry["players"]:
+            rec = _record(e, rng)
+            if rec is None:
+                continue
+            mine.append(rec)
+            if e.get("player"):
+                made[rec.id] = e["player"]
         pitchers = sum(_is_pitcher(p) for p in mine)
         want_p = max(PITCHERS - pitchers, 0)
         spare_p = [p for p in team.players if _is_pitcher(p)]
@@ -156,4 +193,42 @@ def apply(
                 players=tuple(mine + fill),
             )
         )
-    return out
+    return out, made
+
+
+def save_made(conn, made: dict[str, dict]) -> None:
+    """Give each saved made-up player what was picked for him, in place of
+    what the game drew from his id: face, home region, jersey wishes,
+    personality and morale ruiner, and his talent ceilings."""
+    for pid, snap in made.items():
+        pers = snap["personality"]
+        conn.execute(
+            """UPDATE players SET face = %s, home_region = %s, jersey_prefs = %s
+               WHERE id = %s""",
+            (
+                Jsonb(snap["face"]),
+                snap["home_region"],
+                snap["jersey_prefs"] or None,
+                pid,
+            ),
+        )
+        conn.execute(
+            """INSERT INTO player_personality
+                   (player_id, type, drives, traits, climate, ruiner)
+               VALUES (%s, %s, %s, %s, %s, %s)
+               ON CONFLICT (player_id) DO UPDATE SET
+                   type = EXCLUDED.type, drives = EXCLUDED.drives,
+                   traits = EXCLUDED.traits, climate = EXCLUDED.climate,
+                   ruiner = EXCLUDED.ruiner""",
+            (
+                pid,
+                pers["type"],
+                Jsonb(pers["drives"]),
+                Jsonb(pers["traits"]),
+                pers.get("climate"),
+                bool(pers.get("ruiner")),
+            ),
+        )
+        TalentCapRepository(conn).update_talent_caps(
+            pid, {s: int(v) for s, v in snap["caps"].items()}
+        )

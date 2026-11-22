@@ -1,0 +1,485 @@
+{# custom_players/edit.html — the player creator (routers/custom_players.py).
+   One page that lays itself out by width (Josh, 2026-11-22, "B + C"):
+   wide screens walk through numbered steps with Next / Back and rating
+   sliders; narrow screens get the same steps as tabs, ratings as tiles with
+   − / +, the player's card pinned on top and New player / Save at the
+   bottom. Everything is edited here and saved as JSON. #}
+{% extends "base.html" %}
+{% block title %}{{ 'Edit ' ~ player.first_name ~ ' ' ~ player.last_name if made_id else 'New player' }} — My Players — Baseball GM{% endblock %}
+{% block main %}
+<style>
+  .pc-wrap { max-width: 1100px; }
+  .pc-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .pc-steps { display: flex; margin: 0 0 12px; }
+  .pc-steps button { flex: 1; border: 1px solid var(--border); background: var(--bg-2); color: var(--text-dim); font: inherit; font-size: 13px; font-weight: 600; padding: 8px 6px; cursor: pointer; }
+  .pc-steps button + button { border-left: 0; }
+  .pc-steps button.on { background: var(--amber); color: #1a1405; border-color: var(--amber); }
+  .pc-steps button.done { color: var(--green); }
+  .pc-steps .n { font-family: var(--font-mono); margin-right: 4px; }
+  .pc-mini { position: sticky; top: 0; z-index: 4; background: var(--bg); padding-bottom: 10px; }
+  .pc-mini-card { display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: var(--bg-2); border: 1px solid var(--border); }
+  .pc-face { width: 58px; flex: none; }
+  .pc-face svg { display: block; width: 100%; height: auto; }
+  .pc-name { font-family: var(--font-display); font-size: 22px; color: var(--text-hi); line-height: 1.05; }
+  .pc-line { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); margin-top: 3px; }
+  .pc-grade { font-family: var(--font-mono); font-size: 20px; font-weight: 600; min-width: 46px; text-align: center; padding: 4px 6px; border: 1px solid var(--border); background: var(--bg-3); }
+  .pc-card { background: var(--bg-2); border: 1px solid var(--border); margin-bottom: 14px; }
+  .pc-card-h { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .pc-card-h h3 { margin: 0; flex: 1; font-family: var(--font-display); font-size: 18px; color: var(--text-hi); letter-spacing: .03em; }
+  .pc-card-b { padding: 12px 14px; }
+  .pc-small { font-size: 12px; color: var(--text-dim); }
+  .pc-label { display: block; font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-dim); margin-bottom: 4px; }
+  .pc-group { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--amber); margin: 14px 0 6px; display: flex; gap: 8px; align-items: baseline; }
+  .pc-group:first-child { margin-top: 0; }
+  .pc-group span { color: var(--text-dim); text-transform: none; letter-spacing: 0; font-family: var(--font-sans); }
+  .pc-card input[type=text], .pc-card input[type=number], .pc-card select { background: var(--tile, var(--bg)); border: 1px solid var(--border-hi); color: var(--text); height: 30px; padding: 0 8px; font: inherit; min-width: 0; }
+  .pc-card input[type=number] { width: 54px; text-align: right; font-family: var(--font-mono); padding: 0 4px; }
+  .pc-card input[type=range] { accent-color: var(--amber); width: 100%; min-width: 0; }
+  .pc-dice { font-size: 12px; }
+  .pc-tiles-pos { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+  .pc-tiles-pos button { height: 70px; border: 1px solid var(--border-hi); background: var(--bg); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--text); font: inherit; }
+  .pc-tiles-pos button b { font-family: var(--font-display); font-size: 24px; color: var(--text-hi); }
+  .pc-tiles-pos button span { font-size: 11px; color: var(--text-dim); text-align: center; }
+  .pc-tiles-pos button.on { border-color: var(--amber); background: var(--amber-lo); }
+  .pc-tiles-pos button.rand { border-style: dashed; }
+  .pc-fields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .pc-fields .wide { grid-column: span 2; }
+  .pc-in { display: flex; gap: 4px; }
+  .pc-in input, .pc-in select { flex: 1; width: 100%; }
+  .pc-seg { display: inline-flex; border: 1px solid var(--border-hi); }
+  .pc-seg button { border: 0; background: var(--bg); color: var(--text); padding: 0 10px; height: 28px; cursor: pointer; font-family: var(--font-mono); font-size: 12px; }
+  .pc-seg button + button { border-left: 1px solid var(--border-hi); }
+  .pc-seg button.on { background: var(--amber); color: #1a1405; font-weight: 600; }
+  .pc-lock { width: 26px; height: 26px; border: 1px solid transparent; background: transparent; cursor: pointer; opacity: .35; font-size: 13px; padding: 0; color: inherit; flex: none; }
+  .pc-lock.on { opacity: 1; border-color: var(--amber-dim); background: var(--amber-lo); }
+  .pc-sk-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 26px; }
+  .pc-sk { display: grid; grid-template-columns: 110px minmax(0, 1fr) 54px 26px; gap: 8px; align-items: center; padding: 3px 0; }
+  .pc-ceil .pc-sk { grid-template-columns: 110px minmax(0, 1fr) 54px 60px 26px; }
+  .pc-sk label { font-size: 13px; }
+  .pc-sk.edited label::after { content: " •"; color: var(--amber); }
+  .pc-cap { display: none; align-items: center; gap: 3px; font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); }
+  .pc-ceil .pc-cap { display: flex; }
+  .pc-card .pc-cap input { width: 42px; height: 24px; font-size: 11px; }
+  .v-hi { color: var(--green); } .v-lo { color: #f0954f; } .v-xlo { color: var(--red); }
+  .pc-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .pc-tile { background: var(--bg); border: 1px solid var(--border); padding: 6px 4px 5px; text-align: center; position: relative; cursor: pointer; }
+  .pc-tile .ab { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); }
+  .pc-tile .val { font-family: var(--font-display); font-size: 26px; line-height: 1.05; display: block; }
+  .pc-tile .cap { display: none; font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); }
+  .pc-ceil .pc-tile .cap { display: block; }
+  .pc-tile .stp { display: flex; justify-content: center; gap: 4px; margin-top: 3px; }
+  .pc-tile .stp button { width: 30px; height: 26px; border: 1px solid var(--border-hi); background: var(--bg-3); color: var(--text); cursor: pointer; font-size: 14px; padding: 0; line-height: 1; }
+  .pc-tile.sel { border-color: var(--amber); }
+  .pc-tile.edited::after { content: ""; position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--amber); }
+  .pc-tslider { display: grid; grid-template-columns: 90px minmax(0, 1fr) 34px; gap: 10px; align-items: center; margin-top: 10px; background: var(--bg); border: 1px solid var(--border); padding: 8px 10px; }
+  .pc-tslider .cap-row { display: none; }
+  .pc-ceil .pc-tslider .cap-row { display: contents; }
+  .pc-types { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .pc-types button { text-align: left; padding: 7px 8px; border: 1px solid var(--border); background: var(--bg); cursor: pointer; line-height: 1.25; color: var(--text); font: inherit; }
+  .pc-types button b { display: block; font-size: 13px; }
+  .pc-types button span { font-size: 11px; color: var(--text-dim); }
+  .pc-types button.on { border-color: var(--amber); background: var(--amber-lo); }
+  .pc-trait { display: grid; grid-template-columns: 110px minmax(0, 1fr) 96px; gap: 10px; align-items: center; padding: 4px 0; }
+  .pc-word { font-size: 12px; color: var(--text-dim); text-align: right; }
+  .pc-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .pc-chip { border: 1px solid var(--border-hi); background: var(--bg); color: var(--text); padding: 4px 10px; font: inherit; font-size: 12px; cursor: pointer; }
+  .pc-chip.on { background: var(--amber); color: #1a1405; border-color: var(--amber); font-weight: 600; }
+  .pc-switch { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; }
+  .pc-switch input { accent-color: var(--amber); width: 16px; height: 16px; }
+  .pc-sw { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pc-sw button { width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; }
+  .pc-sw button.on { border-color: var(--amber); box-shadow: 0 0 0 2px var(--bg-2) inset; }
+  .pc-look { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 18px; }
+  .pc-look-face svg { display: block; width: 100%; height: auto; }
+  .pc-more summary { cursor: pointer; color: var(--text-dim); font-size: 13px; margin-top: 12px; }
+  .pc-more-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 16px; margin-top: 8px; }
+  .pc-more-grid label { font-size: 11px; color: var(--text-dim); display: block; }
+  .pc-review { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 18px; }
+  .pc-review dl { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 6px 10px; margin: 0; font-size: 13px; }
+  .pc-review dt { color: var(--text-dim); }
+  .pc-review dd { margin: 0; }
+  .pc-nav { display: flex; justify-content: space-between; gap: 8px; margin: 0 0 14px; }
+  .pc-bar { display: none; }
+  .pc-ph { display: none; }
+  .pc-error { color: var(--red); font-family: var(--font-mono); font-size: 12px; margin: 0 0 10px; }
+  @media (max-width: 760px) {
+    .pc-dk { display: none !important; }
+    .pc-ph { display: block; }
+    .pc-steps { overflow-x: auto; border-bottom: 1px solid var(--border); }
+    .pc-steps button { flex: 1 0 auto; background: transparent; border: 0; border-bottom: 2px solid transparent; padding: 9px 8px; }
+    .pc-steps button.on { background: transparent; color: var(--amber); border-color: var(--amber); }
+    .pc-steps button.done { color: var(--text-dim); }
+    .pc-steps .n { display: none; }
+    .pc-nav { display: none; }
+    .pc-mini-card { padding: 6px 10px; }
+    .pc-face { width: 44px; }
+    .pc-name { font-size: 19px; }
+    .pc-tiles-pos { grid-template-columns: repeat(4, 1fr); }
+    .pc-tiles-pos button { height: 60px; }
+    .pc-fields { grid-template-columns: 1fr 1fr; }
+    .pc-types { grid-template-columns: 1fr 1fr; }
+    .pc-trait { grid-template-columns: 84px minmax(0, 1fr) 80px; }
+    .pc-look { grid-template-columns: 1fr; }
+    .pc-look-face { display: none; }
+    .pc-more-grid { grid-template-columns: 1fr 1fr; }
+    .pc-review { grid-template-columns: 1fr; }
+    .pc-review .pc-look-face { display: block; max-width: 150px; }
+    .pc-bar { display: flex; position: sticky; bottom: 0; gap: 6px; background: var(--bg); border-top: 1px solid var(--border); padding: 8px 0; z-index: 5; }
+    .pc-bar .btn { flex: 1; justify-content: center; }
+  }
+</style>
+<div class="page-content"><div class="content-inner pc-wrap">
+  <div class="page-header pc-head">
+    <h1 class="page-title">{{ 'Edit player' if made_id else 'New player' }}</h1>
+    <a href="{{ '/teams/' ~ team.id if team else '/teams/#my-players' }}" class="btn btn-secondary">← {{ team.name if team else 'My Teams' }}</a>
+  </div>
+  <div class="pc-steps" id="pc-steps" role="tablist"></div>
+  <div class="pc-mini"><div class="pc-mini-card">
+    <div class="pc-face" id="pc-mini-face">{{ face_svg|safe }}</div>
+    <div style="flex:1;min-width:0;"><div class="pc-name" id="pc-mini-name"></div><div class="pc-line" id="pc-mini-line"></div></div>
+    <div class="pc-grade" id="pc-mini-grade" title="Overall"></div>
+  </div></div>
+  <div id="pc-body"></div>
+  <div class="pc-nav" id="pc-nav"></div>
+  <div class="pc-bar"><button type="button" class="btn btn-secondary" data-act="new">🎲 New player</button><button type="button" class="btn btn-primary" data-act="save">Save player</button></div>
+</div></div>
+<script id="pc-data" type="application/json">{{ {"player": player, "config": config, "made_id": made_id, "team": ({"id": team.id, "name": team.name} if team else None), "teams": teams, "on_teams": on_teams, "roster_max": roster_max} | tojson }}</script>
+<script>
+(function () {
+  var DATA = JSON.parse(document.getElementById('pc-data').textContent);
+  var C = DATA.config;
+  var P = DATA.player, ORIG = JSON.parse(JSON.stringify(P));
+  var STEPS = ['Position', 'Ratings', 'Personality', 'Look', 'Save'];
+  var step = DATA.made_id ? 1 : 0;
+  var posPick = DATA.made_id ? P.position : (new URLSearchParams(location.search).get('pos') || 'random');
+  var locks = {};
+  var ceilOn = false;
+  var sel = 'contact';
+  var putOn = DATA.team ? DATA.team.id : '';
+  var faceSvg = document.getElementById('pc-mini-face').innerHTML;
+  var dirty = false;
+  var POSNAME = {}; C.positions.forEach(function (p) { POSNAME[p[0]] = p[2]; });
+
+  function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  function isPitcher() { return P.position === 'sp' || P.position === 'rp'; }
+  function vcls(v) { return v >= 70 ? 'v-hi' : v >= 45 ? '' : v >= 25 ? 'v-lo' : 'v-xlo'; }
+  function gradeClass(g) { return 'grade-' + (g.slice(-1) === '+' ? g[0] + '-plus' : g.slice(-1) === '-' ? g[0] + '-minus' : g); }
+  function title(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+  function traitWord(v) { return v >= 80 ? 'Very high' : v >= 60 ? 'High' : v >= 40 ? 'Average' : v >= 20 ? 'Low' : 'Very low'; }
+  function driveWord(v) { return v >= 80 ? 'Cares a lot' : v >= 55 ? 'Cares' : v >= 30 ? 'Some' : 'Little'; }
+
+  // The overall grade, as PlayerEvaluator.rate_player and custom_teams.grade work it out.
+  function grade() {
+    var W = C.role_weights, s = P.skills, r = {};
+    Object.keys(W).forEach(function (role) {
+      var t = 0, sc = 0;
+      Object.keys(W[role]).forEach(function (k) { t += W[role][k]; sc += s[k] * W[role][k]; });
+      r[role] = t ? clamp(Math.round(sc / t), 0, 100) : 0;
+    });
+    if (P.throws === 'L') C.lhcap[0].forEach(function (p) { if (p in r) r[p] = Math.min(r[p], C.lhcap[1]); });
+    var dv = Math.max.apply(null, ['cf', 'rf', 'lf', 'c', '1b', '2b', 'ss', '3b'].map(function (p) { return r[p]; }));
+    var ow = Object.assign({}, W.overall_offense, {arm: 1}), sc = 0, t = 0;
+    Object.keys(ow).forEach(function (k) { sc += s[k] * ow[k]; t += ow[k]; });
+    sc += dv * 3; t += 3;
+    var kind = isPitcher() ? 'pitcher' : 'hitter';
+    var v = kind === 'pitcher' ? Math.max(r.sp, r.rp) : clamp(Math.round(sc / t), 0, 100);
+    var cuts = C.cutoffs[kind];
+    for (var i = 0; i < cuts.length; i++) if (v >= cuts[i]) return [C.grades[i], v];
+    return ['F', v];
+  }
+
+  function groups() {
+    var g = C.groups.slice();
+    if (isPitcher()) g = [g[3], g[1], g[0], g[2]];
+    return g;
+  }
+  function lineText() { return P.position.toUpperCase() + ' · age ' + P.age + ' · B/T ' + P.bats + '/' + P.throws + ' · ' + P.personality.type; }
+
+  function touch() { dirty = true; }
+
+  // ── the parts of the page ──
+  function lockBtn(k) {
+    return '<button type="button" class="pc-lock' + (locks[k] ? ' on' : '') + '" data-lock="' + k + '" title="' + (locks[k] ? 'Locked: New player keeps it' : 'Lock it so New player keeps it') + '">' + (locks[k] ? '🔒' : '🔓') + '</button>';
+  }
+  function seg(f, opts) {
+    return '<span class="pc-seg">' + opts.map(function (o) { return '<button type="button" data-seg="' + f + '" data-v="' + o + '" class="' + (P[f] === o ? 'on' : '') + '">' + o + '</button>'; }).join('') + '</span>';
+  }
+  function basics() {
+    return '<div class="pc-fields">' +
+      '<div class="wide"><label class="pc-label" for="pc-first">First name</label><div class="pc-in"><input type="text" id="pc-first" data-f="first_name" maxlength="' + C.name_max + '" value="' + esc(P.first_name) + '">' + lockBtn('first_name') + '</div></div>' +
+      '<div class="wide"><label class="pc-label" for="pc-last">Last name</label><div class="pc-in"><input type="text" id="pc-last" data-f="last_name" maxlength="' + C.name_max + '" value="' + esc(P.last_name) + '"><button type="button" class="btn btn-secondary admin-small" data-act="name" title="Random name">🎲</button>' + lockBtn('last_name') + '</div></div>' +
+      '<div class="wide"><label class="pc-label" for="pc-pos">Position he was built for</label><div class="pc-in"><select id="pc-pos" data-f="position">' + C.positions.map(function (p) { return '<option value="' + p[0] + '"' + (P.position === p[0] ? ' selected' : '') + '>' + p[1] + ' · ' + p[2] + '</option>'; }).join('') + '</select></div></div>' +
+      '<div><label class="pc-label" for="pc-age">Age</label><input type="number" id="pc-age" data-f="age" min="' + C.age_range[0] + '" max="' + C.age_range[1] + '" value="' + P.age + '" style="width:100%"></div>' +
+      '<div><span class="pc-label">Bats / Throws</span><div style="display:flex;gap:4px;flex-wrap:wrap">' + seg('bats', ['L', 'R', 'S']) + seg('throws', ['L', 'R']) + '</div></div>' +
+      '<div class="wide"><label class="pc-label" for="pc-region">From</label><select id="pc-region" data-f="home_region" style="width:100%">' + C.regions.map(function (r) { return '<option' + (P.home_region === r ? ' selected' : '') + '>' + esc(r) + '</option>'; }).join('') + '</select></div>' +
+      '<div class="wide"><label class="pc-label" for="pc-jersey">Jersey numbers he wants</label><input type="text" id="pc-jersey" data-f="jersey_prefs" value="' + esc(P.jersey_prefs.join(', ')) + '" style="width:100%" placeholder="Up to 3, favorite first"></div>' +
+    '</div>';
+  }
+  function positionStep() {
+    return '<div class="pc-card"><div class="pc-card-h"><h3>Roll a player for a position</h3></div><div class="pc-card-b">' +
+      '<div class="pc-tiles-pos">' + C.positions.map(function (p) { return '<button type="button" data-tile="' + p[0] + '" class="' + (posPick === p[0] ? 'on' : '') + '"><b>' + p[1] + '</b><span>' + p[2] + '</span></button>'; }).join('') +
+      '<button type="button" data-tile="random" class="rand' + (posPick === 'random' ? ' on' : '') + '"><b>🎲</b><span>Surprise me</span></button></div>' +
+      '<p class="pc-small" style="margin:10px 0 0">Each pick rolls a new player built for that position, with a random name, face and personality. Pick again for another one. 🔒 locked names and ratings stay put.</p>' +
+      '</div></div>' +
+      '<div class="pc-card"><div class="pc-card-h"><h3>Name and basics</h3></div><div class="pc-card-b">' + basics() + '</div></div>';
+  }
+  function ratingsHead() {
+    return '<label class="pc-switch pc-small" title="Ceilings are the most each skill can grow to. Other players\' stay hidden."><input type="checkbox" data-act="ceil"' + (ceilOn ? ' checked' : '') + '> Set ceilings</label>' +
+      '<button type="button" class="btn btn-secondary admin-small" data-act="rollSkills">🎲 Ratings</button>';
+  }
+  function sliderRow(k) {
+    var v = P.skills[k], cap = Math.max(P.caps[k] || v, v), ed = v !== ORIG.skills[k] || cap !== ORIG.caps[k];
+    return '<div class="pc-sk' + (ed ? ' edited' : '') + '"><label for="sk-' + k + '" title="' + C.abbr[k] + '">' + C.skills[k] + '</label>' +
+      '<input type="range" min="1" max="100" value="' + v + '" data-sk="' + k + '" aria-label="' + C.skills[k] + '">' +
+      '<input type="number" id="sk-' + k + '" min="1" max="100" value="' + v + '" data-skn="' + k + '" class="' + vcls(v) + '">' +
+      '<span class="pc-cap" title="Ceiling: the most he can grow to">↑<input type="number" min="1" max="100" value="' + cap + '" data-cap="' + k + '" aria-label="' + C.skills[k] + ' ceiling"></span>' +
+      lockBtn(k) + '</div>';
+  }
+  function tile(k) {
+    var v = P.skills[k], cap = Math.max(P.caps[k] || v, v), ed = v !== ORIG.skills[k] || cap !== ORIG.caps[k];
+    return '<div class="pc-tile' + (sel === k ? ' sel' : '') + (ed ? ' edited' : '') + '" data-tsel="' + k + '"><span class="ab">' + C.abbr[k] + '</span><span class="val ' + vcls(v) + '">' + v + '</span><span class="cap">↑' + cap + '</span>' +
+      '<div class="stp"><button type="button" data-step="' + k + '" data-d="-1" aria-label="' + C.skills[k] + ' down">−</button><button type="button" data-step="' + k + '" data-d="1" aria-label="' + C.skills[k] + ' up">+</button></div></div>';
+  }
+  function ratingsStep() {
+    var g = groups();
+    var block = function (gs) { return gs.map(function (x) { return '<div class="pc-group">' + x[0] + '</div>' + x[1].map(sliderRow).join(''); }).join(''); };
+    var cap = Math.max(P.caps[sel] || P.skills[sel], P.skills[sel]);
+    return '<div class="pc-card' + (ceilOn ? ' pc-ceil' : '') + '"><div class="pc-card-h"><h3>Ratings</h3>' + ratingsHead() + '</div><div class="pc-card-b">' +
+      '<div class="pc-dk pc-sk-cols"><div>' + block(g.slice(0, 2)) + '</div><div>' + block(g.slice(2)) + '</div></div>' +
+      '<div class="pc-ph">' + g.map(function (x) { return '<div class="pc-group">' + x[0] + '</div><div class="pc-tiles">' + x[1].map(tile).join('') + '</div>'; }).join('') +
+      '<div class="pc-tslider"><b>' + C.skills[sel] + '</b><input type="range" min="1" max="100" value="' + P.skills[sel] + '" data-sk="' + sel + '" aria-label="' + C.skills[sel] + '"><span class="pc-tval ' + vcls(P.skills[sel]) + '" style="font-family:var(--font-mono);text-align:right">' + P.skills[sel] + '</span>' +
+      '<span class="cap-row"><span class="pc-small">Ceiling</span><input type="range" min="1" max="100" value="' + cap + '" data-capr="' + sel + '" aria-label="' + C.skills[sel] + ' ceiling"><span class="pc-tcap" style="font-family:var(--font-mono);text-align:right">' + cap + '</span></span></div>' +
+      '<p class="pc-small" style="margin:8px 0 0">Tap a tile to put it on the slider, or use − / +.</p></div>' +
+      (ceilOn ? '<p class="pc-small" style="margin:10px 0 0">A ceiling is the most a skill can grow to as he develops. It can\'t be lower than where he is now.</p>' : '') +
+      '</div></div>';
+  }
+  function personalityStep() {
+    var pe = P.personality;
+    var traitRow = function (t) { return '<div class="pc-trait"><label title="' + esc(C.trait_help[t]) + '">' + title(t) + '</label><input type="range" min="0" max="100" value="' + pe.traits[t] + '" data-tr="' + t + '" aria-label="' + title(t) + '"><span class="pc-word">' + traitWord(pe.traits[t]) + ' <span style="font-family:var(--font-mono)">' + pe.traits[t] + '</span></span></div>'; };
+    var driveRow = function (d) { return '<div class="pc-trait"><label>' + C.drive_labels[d] + '</label><input type="range" min="0" max="100" value="' + pe.drives[d] + '" data-dr="' + d + '" aria-label="' + C.drive_labels[d] + '"><span class="pc-word">' + driveWord(pe.drives[d]) + ' <span style="font-family:var(--font-mono)">' + pe.drives[d] + '</span></span></div>'; };
+    return '<div class="pc-card"><div class="pc-card-h"><h3>Personality</h3><button type="button" class="btn btn-secondary admin-small" data-act="rollPers">🎲 Personality</button></div><div class="pc-card-b">' +
+      '<span class="pc-label">Player type <span style="text-transform:none;letter-spacing:0">(every GM sees it)</span></span>' +
+      '<div class="pc-types">' + Object.keys(C.types).map(function (n) { return '<button type="button" data-type="' + esc(n) + '" class="' + (pe.type === n ? 'on' : '') + '"><b>' + esc(n) + '</b><span>' + esc(C.types[n].blurb) + '</span></button>'; }).join('') + '</div>' +
+      '<div class="pc-group" style="margin-top:16px">Traits <span>hidden from other GMs, like any player\'s</span></div>' + C.traits.map(traitRow).join('') +
+      '<div class="pc-group" style="margin-top:14px">What he cares about <span>drives his mood</span></div>' + C.drives.map(driveRow).join('') +
+      '<div class="pc-group" style="margin-top:14px">Favorite climate</div>' +
+      '<div class="pc-chips">' + [''].concat(C.climates).map(function (c) { return '<button type="button" class="pc-chip' + ((pe.climate || '') === c ? ' on' : '') + '" data-cl="' + c + '">' + (c ? title(c) : 'No preference') + '</button>'; }).join('') + '</div>' +
+      '<div style="margin-top:14px"><label class="pc-switch"><input type="checkbox" data-act="ruiner"' + (pe.ruiner ? ' checked' : '') + '> Morale ruiner <span class="pc-small">— when he\'s unhappy, the clubhouse sinks with him</span></label></div>' +
+      '</div></div>';
+  }
+  function lookStep() {
+    var F = P.face;
+    var sw = function (k) { return '<div class="pc-sw">' + C.face_colors[k].map(function (c) { return '<button type="button" class="' + (F[k] === c ? 'on' : '') + '" style="background:' + c + '" data-face="' + k + '" data-v="' + c + '" aria-label="' + k + ' ' + c + '"></button>'; }).join('') + '</div>'; };
+    var ch = function (k) { return '<div class="pc-chips">' + C.face_choices[k].map(function (o) { return '<button type="button" class="pc-chip' + (F[k] === o ? ' on' : '') + '" data-face="' + k + '" data-v="' + o + '">' + title(o) + '</button>'; }).join('') + '</div>'; };
+    var bl = function (k, l) { return '<label class="pc-switch"><input type="checkbox" data-faceb="' + k + '"' + (F[k] ? ' checked' : '') + '> ' + l + '</label>'; };
+    return '<div class="pc-card"><div class="pc-card-h"><h3>Look</h3><button type="button" class="btn btn-secondary admin-small" data-act="rollFace">🎲 New face</button></div><div class="pc-card-b pc-look">' +
+      '<div class="pc-look-face" id="pc-look-face">' + faceSvg + '</div><div>' +
+      '<p class="pc-small" style="margin:0 0 10px">He wears his team\'s cap and jersey once he\'s on one, and his hair grays with age.</p>' +
+      '<span class="pc-label">Skin tone</span>' + sw('skin') +
+      '<span class="pc-label" style="margin-top:10px">Hair</span>' + sw('hair') +
+      '<span class="pc-label" style="margin-top:10px">Eyes</span>' + sw('eyes') +
+      '<span class="pc-label" style="margin-top:10px">Facial hair</span>' + ch('facial_hair') +
+      '<span class="pc-label" style="margin-top:10px">Mouth</span>' + ch('mouth') +
+      '<span class="pc-label" style="margin-top:10px">Nose</span>' + ch('nose') +
+      '<div style="display:flex;gap:18px;margin-top:10px;flex-wrap:wrap">' + bl('long_hair', 'Long hair') + bl('eye_black', 'Eye black') + bl('mole', 'Mole') + '</div>' +
+      '<details class="pc-more"><summary>Every other face control</summary><div class="pc-more-grid">' +
+      C.face_ranges.map(function (r) { return '<div><label for="fr-' + r.key + '">' + esc(r.label) + '</label><input type="range" id="fr-' + r.key + '" min="' + r.lo + '" max="' + r.hi + '" step="0.01" value="' + F[r.key] + '" data-fr="' + r.key + '"></div>'; }).join('') +
+      '</div></details></div></div></div>';
+  }
+  function saveStep() {
+    var g = grade();
+    var top = Object.keys(P.skills).sort(function (a, b) { return P.skills[b] - P.skills[a]; }).slice(0, 4).map(function (k) { return C.skills[k] + ' ' + P.skills[k]; }).join(', ');
+    var teamPick = '';
+    if (!DATA.made_id) {
+      teamPick = '<dt>Put him on</dt><dd><select data-act="team" aria-label="Put him on a team"><option value="">Just save him to My Players</option>' +
+        DATA.teams.map(function (t) { var full = t.size >= DATA.roster_max; return '<option value="' + t.id + '"' + (putOn === t.id ? ' selected' : '') + (full ? ' disabled' : '') + '>' + esc(t.name) + ' (' + t.size + '/' + DATA.roster_max + (full ? ', full' : '') + ')</option>'; }).join('') + '</select></dd>';
+    } else {
+      teamPick = '<dt>On</dt><dd>' + (DATA.on_teams.length ? esc(DATA.on_teams.join(', ')) : 'Not on a team yet') + '</dd>';
+    }
+    return '<div class="pc-card"><div class="pc-card-h"><h3>' + (DATA.made_id ? 'Save your changes' : 'Ready to save') + '</h3></div><div class="pc-card-b pc-review">' +
+      '<div class="pc-look-face">' + faceSvg + '</div><div><dl>' +
+      '<dt>Name</dt><dd>' + esc(P.first_name + ' ' + P.last_name) + '</dd>' +
+      '<dt>Built for</dt><dd>' + POSNAME[P.position] + '</dd>' +
+      '<dt>Age, B/T</dt><dd>' + P.age + ', ' + P.bats + '/' + P.throws + '</dd>' +
+      '<dt>Overall</dt><dd><span class="grade ' + gradeClass(g[0]) + '">' + g[0] + '</span> <span class="pc-small">' + g[1] + '</span></dd>' +
+      '<dt>Best at</dt><dd>' + top + '</dd>' +
+      '<dt>Type</dt><dd>' + esc(P.personality.type) + (P.personality.ruiner ? ' · morale ruiner' : '') + '</dd>' +
+      '<dt>From</dt><dd>' + esc(P.home_region) + (P.personality.climate ? ', likes ' + P.personality.climate + ' weather' : '') + '</dd>' +
+      teamPick + '</dl>' +
+      (DATA.made_id ? '<p class="pc-small" style="margin:12px 0 0">Changes reach his custom teams right away. A league that already started keeps him as he was.</p>' : '') +
+      '<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn btn-primary" data-act="save">Save player</button>' +
+      (DATA.made_id ? '' : '<button type="button" class="btn btn-secondary" data-act="saveAnother">Save and make another</button>') + '</div>' +
+      (DATA.made_id ? '<form method="POST" action="/my-players/' + DATA.made_id + '/delete" style="margin-top:16px" data-confirm="Delete ' + esc(P.first_name + ' ' + P.last_name) + '?" data-confirm-text="He comes off your teams too. Leagues he already plays in keep him." data-confirm-ok="Delete" data-confirm-tone="danger"><button type="submit" class="btn btn-secondary" style="color:var(--red)">Delete player</button></form>' : '') +
+      '</div></div></div>';
+  }
+
+  function renderMini() {
+    var g = grade();
+    document.getElementById('pc-mini-name').textContent = P.first_name + ' ' + P.last_name;
+    document.getElementById('pc-mini-line').textContent = lineText();
+    var el = document.getElementById('pc-mini-grade');
+    el.textContent = g[0]; el.className = 'pc-grade grade ' + gradeClass(g[0]); el.title = 'Overall ' + g[1] + ' as a ' + (isPitcher() ? 'pitcher' : 'hitter');
+  }
+  function render() {
+    document.getElementById('pc-steps').innerHTML = STEPS.map(function (s, i) {
+      return '<button type="button" role="tab" aria-selected="' + (i === step) + '" data-step-to="' + i + '" class="' + (i === step ? 'on' : i < step ? 'done' : '') + '"><span class="n">' + (i + 1) + '</span>' + s + '</button>';
+    }).join('');
+    var body = [positionStep, ratingsStep, personalityStep, lookStep, saveStep][step]();
+    document.getElementById('pc-body').innerHTML = body;
+    document.getElementById('pc-nav').innerHTML = '<button type="button" class="btn btn-secondary" data-nav="-1"' + (step === 0 ? ' disabled' : '') + '>← Back</button>' +
+      (step < 4 ? '<button type="button" class="btn btn-primary" data-nav="1">Next: ' + STEPS[step + 1] + ' →</button>' : '');
+    renderMini();
+  }
+
+  // ── the face, drawn by the server as it changes ──
+  var faceTimer = null, faceReq = 0;
+  function redrawFace() {
+    clearTimeout(faceTimer);
+    faceTimer = setTimeout(function () {
+      var n = ++faceReq;
+      fetch('/face_gen/svg?age=' + P.age + '&traits=' + encodeURIComponent(JSON.stringify(P.face)))
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (n !== faceReq) return;
+          faceSvg = d.svg;
+          document.getElementById('pc-mini-face').innerHTML = faceSvg;
+          document.querySelectorAll('.pc-look-face').forEach(function (el) { el.innerHTML = faceSvg; });
+        });
+    }, 120);
+  }
+
+  // ── rolling ──
+  function getJSON(url) {
+    return fetch(url).then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || 'Something went wrong.'); return d; }); });
+  }
+  function rollPlayer(pos) {
+    var p = pos === 'random' ? '' : pos;
+    return getJSON('/my-players/roll?pos=' + encodeURIComponent(p)).then(function (n) {
+      Object.keys(locks).forEach(function (k) {
+        if (!locks[k]) return;
+        if (k in P.skills) { n.skills[k] = P.skills[k]; n.caps[k] = Math.max(P.caps[k], P.skills[k]); }
+        else n[k] = P[k];
+      });
+      P = n; ORIG = JSON.parse(JSON.stringify(n)); dirty = true;
+      render(); redrawFace();
+    }).catch(function (e) { gmToast(e.message, 'error'); });
+  }
+  function confirmReplace() {
+    if (!DATA.made_id) return Promise.resolve(true);
+    return gmConfirm({title: 'Roll a new player?', lines: ['This replaces ' + P.first_name + ' ' + P.last_name + ' when you save. Locked names and ratings stay.'], ok: 'Roll'});
+  }
+  function rollPart(part) {
+    if (part === 'rollFace') {
+      return getJSON('/face_gen/random').then(function (f) { P.face = f; touch(); render(); redrawFace(); });
+    }
+    return getJSON('/my-players/roll?pos=' + P.position + '&age=' + P.age).then(function (n) {
+      if (part === 'rollSkills') {
+        Object.keys(P.skills).forEach(function (k) { if (!locks[k]) { P.skills[k] = n.skills[k]; P.caps[k] = n.caps[k]; } });
+      } else if (part === 'rollPers') {
+        P.personality = n.personality;
+      }
+      touch(); render();
+    }).catch(function (e) { gmToast(e.message, 'error'); });
+  }
+
+  // ── saving ──
+  function save(another) {
+    var url = DATA.made_id ? '/my-players/' + DATA.made_id : '/my-players/';
+    fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({player: P, team: putOn})})
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d.error) { gmAlert("He wasn't saved", d.error); return; }
+        dirty = false;
+        if (d.warning) gmToast(d.warning, 'error');
+        if (another) {
+          gmToast(P.first_name + ' ' + P.last_name + ' saved', 'ok');
+          var q = new URLSearchParams(); if (DATA.team) q.set('team', DATA.team.id); q.set('pos', posPick);
+          location.href = '/my-players/new?' + q.toString();
+        } else {
+          location.href = d.url;
+        }
+      })
+      .catch(function () { gmAlert("He wasn't saved", 'The server didn\'t answer. Try again.'); });
+  }
+
+  // ── events ──
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('button, .pc-tile');
+    if (!t || !t.closest('.pc-wrap')) return;
+    var d = t.dataset;
+    if (d.stepTo) { step = +d.stepTo; render(); return; }
+    if (d.nav) { step = clamp(step + +d.nav, 0, 4); render(); window.scrollTo(0, 0); return; }
+    if (d.lock) { locks[d.lock] = !locks[d.lock]; render(); return; }
+    if (d.tile) { posPick = d.tile; confirmReplace().then(function (ok) { if (ok) rollPlayer(d.tile); else render(); }); return; }
+    if (d.act === 'new') { confirmReplace().then(function (ok) { if (ok) rollPlayer(step === 0 ? posPick : P.position); }); return; }
+    if (d.act === 'name') { getJSON('/my-players/name').then(function (n) { P.first_name = n.first_name; P.last_name = n.last_name; touch(); render(); }); return; }
+    if (d.act === 'save') { save(false); return; }
+    if (d.act === 'saveAnother') { save(true); return; }
+    if (d.act && d.act.indexOf('roll') === 0) { rollPart(d.act); return; }
+    if (d.seg) { P[d.seg] = d.v; touch(); render(); return; }
+    if (d.type) { P.personality.type = d.type; touch(); render(); return; }
+    if ('cl' in d) { P.personality.climate = d.cl || null; touch(); render(); return; }
+    if (d.face) { P.face[d.face] = d.v; touch(); render(); redrawFace(); return; }
+    if (d.step) {
+      var k = d.step; P.skills[k] = clamp(P.skills[k] + +d.d, 1, 100);
+      P.caps[k] = Math.max(P.caps[k], P.skills[k]); sel = k; touch(); render(); return;
+    }
+    if (d.tsel) { sel = d.tsel; render(); return; }
+  });
+  document.addEventListener('input', function (e) {
+    var t = e.target, d = t.dataset;
+    if (d.sk) {
+      var k = d.sk, v = +t.value; P.skills[k] = v; if (P.caps[k] < v) P.caps[k] = v; touch();
+      var row = t.closest('.pc-sk');
+      if (row) { var n = row.querySelector('[data-skn]'); n.value = v; n.className = vcls(v); var c = row.querySelector('[data-cap]'); if (c) c.value = P.caps[k]; row.classList.add('edited'); }
+      var box = t.closest('.pc-tslider');
+      if (box) {
+        var tv = box.querySelector('.pc-tval'); tv.textContent = v; tv.className = 'pc-tval ' + vcls(v);
+        var cr = box.querySelector('[data-capr]'); if (cr) { cr.value = P.caps[k]; box.querySelector('.pc-tcap').textContent = P.caps[k]; }
+        var tl = document.querySelector('.pc-tile[data-tsel="' + k + '"]');
+        if (tl) { var tval = tl.querySelector('.val'); tval.textContent = v; tval.className = 'val ' + vcls(v); tl.querySelector('.cap').textContent = '↑' + P.caps[k]; tl.classList.add('edited'); }
+      }
+      renderMini(); return;
+    }
+    if (d.capr) {
+      var kk = d.capr, cv = Math.max(+t.value, P.skills[kk]); P.caps[kk] = cv; touch();
+      t.closest('.pc-tslider').querySelector('.pc-tcap').textContent = cv;
+      var tl2 = document.querySelector('.pc-tile[data-tsel="' + kk + '"]'); if (tl2) tl2.querySelector('.cap').textContent = '↑' + cv;
+      return;
+    }
+    if (d.tr) { P.personality.traits[d.tr] = +t.value; touch(); t.nextElementSibling.innerHTML = traitWord(+t.value) + ' <span style="font-family:var(--font-mono)">' + t.value + '</span>'; return; }
+    if (d.dr) { P.personality.drives[d.dr] = +t.value; touch(); t.nextElementSibling.innerHTML = driveWord(+t.value) + ' <span style="font-family:var(--font-mono)">' + t.value + '</span>'; return; }
+    if (d.fr) { P.face[d.fr] = +t.value; touch(); redrawFace(); return; }
+  });
+  document.addEventListener('change', function (e) {
+    var t = e.target, d = t.dataset;
+    if (d.skn) { var k = d.skn; P.skills[k] = clamp(+t.value || 1, 1, 100); P.caps[k] = Math.max(P.caps[k], P.skills[k]); touch(); render(); return; }
+    if (d.cap) { var c = d.cap; P.caps[c] = clamp(Math.max(+t.value || 1, P.skills[c]), 1, 100); touch(); render(); return; }
+    if (d.capr) { render(); return; }
+    if (d.f) {
+      var f = d.f;
+      if (f === 'age') { P.age = clamp(+t.value || C.age_range[0], C.age_range[0], C.age_range[1]); redrawFace(); }
+      else if (f === 'jersey_prefs') P.jersey_prefs = t.value.split(/[\s,]+/).filter(Boolean).slice(0, 3);
+      else P[f] = t.value;
+      touch(); render(); return;
+    }
+    if (d.act === 'ceil') {
+      ceilOn = t.checked;
+      if (!ceilOn) gmToast('Ceilings you set are kept. Turn this back on to change them.');
+      render(); return;
+    }
+    if (d.act === 'ruiner') { P.personality.ruiner = t.checked; touch(); render(); return; }
+    if (d.act === 'team') { putOn = t.value; return; }
+    if (d.faceb) { P.face[d.faceb] = t.checked; touch(); redrawFace(); return; }
+  });
+  // Names update the card as they're typed.
+  document.addEventListener('input', function (e) {
+    var f = e.target.dataset && e.target.dataset.f;
+    if (f === 'first_name' || f === 'last_name') { P[f] = e.target.value; touch(); renderMini(); }
+  });
+
+  render();
+})();
+</script>
+{% endblock %}
