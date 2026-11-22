@@ -40,9 +40,9 @@ class LeagueRepository:
                 sim_period_days, num_seasons, is_public, is_practice, trade_vote,
                 trades_enabled, pick_trades, injuries_enabled, backstory_years, weighted_schedule,
                 late_joins, real_season, owner_firing, injury_rate, pick_timer_sec,
-                state, commissioner_gm_id)
+                custom_league, state, commissioner_gm_id)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'lobby', NULL)""",
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'lobby', NULL)""",
             (
                 league_id,
                 name,
@@ -69,12 +69,13 @@ class LeagueRepository:
                 settings.get("owner_firing", False),
                 settings.get("injury_rate", DEFAULT_INJURY_RATE),
                 settings.get("pick_timer_sec", 90),
+                settings.get("custom_league", False),
             ),
         )
 
     def get_by_join_code(self, code: str) -> dict | None:
         row = self.conn.execute(
-            "SELECT id, name, state, single_player FROM leagues WHERE join_code = %s",
+            "SELECT id, name, state, custom_league FROM leagues WHERE join_code = %s",
             (code,),
         ).fetchone()
         return dict(row) if row else None

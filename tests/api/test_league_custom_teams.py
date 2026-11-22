@@ -1,5 +1,5 @@
 # tests/api/test_league_custom_teams.py
-"""Custom teams in a single-player league's lobby
+"""Custom leagues: who can join, the warning, and custom teams in the lobby
 (services/league_custom_teams.py)."""
 
 import random
@@ -67,8 +67,13 @@ def _custom_team(db, user, keys=READY, name="Super Team", edits=None):
     return repo.create(user["id"], name, uuid.uuid4().hex[:8].upper(), entries)
 
 
-def _league(client, db):
-    r = client.post("/leagues/new", data={"name": "Solo", "is_public": "true"})
+def _league(client, db, custom=True, public=True):
+    data = {"name": "Friday Night Ball"}
+    if public:
+        data["is_public"] = "true"
+    if custom:
+        data["custom_league"] = "true"
+    r = client.post("/leagues/new", data=data)
     league_id = r.headers["location"].split("/")[2]
     return LeagueRepository(db).get_by_id(league_id)
 
@@ -80,57 +85,228 @@ def _pick(client, league_id, team, custom_id):
     )
 
 
-def test_a_custom_team_makes_the_league_single_player(as_user, db_conn):
-    josh = _user(db_conn)
-    client = as_user(josh)
-    league = _league(client, db_conn)
-    team_id = _custom_team(db_conn, josh)
-    html = client.get(f"/leagues/{league['id']}/").text
-    assert "Custom Teams" in html and "Super Team" in html
-
-    first = lobby_teams.league_teams(db_conn, league["id"])[0]
-    r = _pick(client, league["id"], first, team_id)
-    assert r.status_code == 303
-    league = LeagueRepository(db_conn).get_by_id(league["id"])
-    assert league["single_player"] and not league["is_public"]
-    assert not league["late_joins"]
-    chosen = lct.assignments(db_conn, league["id"])[first]
-    assert chosen["name"] == "Super Team" and len(chosen["players"]) == len(READY)
-
-    html = client.get(f"/leagues/{league['id']}/").text
-    assert "nobody else can join" in html
-    assert league["join_code"] not in html
-    # No Make public / Allow buttons: they can't be turned on.
-    assert "/settings/is_public" not in html
-    assert "/settings/late_joins" not in html
-
-    # The code no longer lets anyone in.
-    pat = _user(db_conn, contributor=False)
-    other = as_user(pat)
-    r = other.post("/leagues/join", data={"join_code": league["join_code"]})
-    assert "single player" in r.text
-    other.post(f"/leagues/{league['id']}/join")
-    assert not db_conn.execute(
-        "SELECT 1 FROM gms WHERE league_id = %s AND user_id = %s",
-        (league["id"], pat["id"]),
+def _in(db, league_id, user):
+    return db.execute(
+        "SELECT * FROM gms WHERE league_id = %s AND user_id = %s",
+        (league_id, user["id"]),
     ).fetchone()
 
-    # Taking it off again opens the league back up.
+
+def _gm_team(db, league_id, user):
+    gm = _in(db, league_id, user)
+    return (gm["lobby_city"], gm["lobby_mascot"])
+
+
+def _ai_team(db, league_id):
+    gm = db.execute(
+        """SELECT lobby_city, lobby_mascot FROM gms
+           WHERE league_id = %s AND is_ai AND lobby_city IS NOT NULL LIMIT 1""",
+        (league_id,),
+    ).fetchone()
+    return (gm["lobby_city"], gm["lobby_mascot"])
+
+
+def test_custom_league_is_set_at_creation(as_user, db_conn):
+    josh = _user(db_conn)
+    league = _league(as_user(josh), db_conn)
+    assert league["custom_league"]
+    assert not _league(as_user(josh), db_conn, custom=False)["custom_league"]
+    # Only paid contributors can make one.
+    pat = _user(db_conn, contributor=False)
+    r = as_user(pat).post(
+        "/leagues/new", data={"name": "Nope", "custom_league": "true"}
+    )
+    assert r.status_code == 403
+    assert "(paid contributors)" in as_user(pat).get("/leagues/new").text
+
+
+def test_custom_teams_only_go_in_custom_leagues(as_user, db_conn):
+    josh = _user(db_conn)
     client = as_user(josh)
-    _pick(client, league["id"], first, "")
-    assert not LeagueRepository(db_conn).get_by_id(league["id"])["single_player"]
+    league = _league(client, db_conn, custom=False)
+    html = client.get(f"/leagues/{league['id']}/").text
+    assert "Tick Custom league" in html
+    r = _pick(
+        client,
+        league["id"],
+        _gm_team(db_conn, league["id"], josh),
+        _custom_team(db_conn, josh),
+    )
+    assert "custom_error=" in r.headers["location"]
     assert lct.assignments(db_conn, league["id"]) == {}
 
 
-def test_commissioner_cannot_reopen_a_single_player_league(as_user, db_conn):
+def test_a_custom_league_stays_open_and_public(as_user, db_conn):
     josh = _user(db_conn)
     client = as_user(josh)
     league = _league(client, db_conn)
-    first = lobby_teams.league_teams(db_conn, league["id"])[0]
-    _pick(client, league["id"], first, _custom_team(db_conn, josh))
-    r = client.post(f"/leagues/{league['id']}/settings/is_public", data={"on": "true"})
-    assert r.status_code == 422
-    assert not LeagueRepository(db_conn).get_by_id(league["id"])["is_public"]
+    _pick(
+        client,
+        league["id"],
+        _gm_team(db_conn, league["id"], josh),
+        _custom_team(db_conn, josh),
+    )
+    league = LeagueRepository(db_conn).get_by_id(league["id"])
+    assert league["is_public"] and league["late_joins"]
+    html = client.get(f"/leagues/{league['id']}/").text
+    assert league["join_code"] in html
+    assert "/settings/is_public" in html
+    assert "Custom league" in html and "Super Team" in html
+
+
+def test_paid_join_by_code_sees_the_custom_teams_first(as_user, db_conn):
+    josh, pat = _user(db_conn), _user(db_conn)
+    client = as_user(josh)
+    league = _league(client, db_conn)
+    _pick(
+        client,
+        league["id"],
+        _gm_team(db_conn, league["id"], josh),
+        _custom_team(db_conn, josh),
+    )
+
+    other = as_user(pat)
+    r = other.post("/leagues/join", data={"join_code": league["join_code"]})
+    assert r.status_code == 200
+    assert "This league has custom players" in r.text and "Super Team" in r.text
+    assert 'name="understood"' in r.text
+    assert not _in(db_conn, league["id"], pat)
+
+    r = other.post(
+        "/leagues/join", data={"join_code": league["join_code"], "understood": "true"}
+    )
+    assert r.status_code == 302 and _in(db_conn, league["id"], pat)
+
+
+def test_unpaid_join_by_code_can_only_watch(as_user, db_conn):
+    josh = _user(db_conn)
+    league = _league(as_user(josh), db_conn, public=False)
+    pat = _user(db_conn, contributor=False)
+    other = as_user(pat)
+    for understood in ("", "true"):
+        r = other.post(
+            "/leagues/join",
+            data={"join_code": league["join_code"], "understood": understood},
+        )
+        assert "For paid contributors" in r.text and "Watch it" in r.text
+    assert not _in(db_conn, league["id"], pat)
+    assert LeagueRepository(db_conn).is_watcher(league["id"], pat["id"])
+
+
+def test_join_tab(as_user, db_conn):
+    josh = _user(db_conn)
+    league = _league(as_user(josh), db_conn)
+
+    pat = _user(db_conn, contributor=False)
+    other = as_user(pat)
+    html = other.get("/leagues/?tab=join").text
+    assert "Paid only" in html and ">Custom<" in html
+    r = other.post(f"/leagues/{league['id']}/join")
+    assert "cant_join=" in r.headers["location"]
+    assert not _in(db_conn, league["id"], pat)
+    html = other.get(r.headers["location"]).text
+    assert "only paid contributors can run a team" in html
+
+    sam = _user(db_conn)
+    paid = as_user(sam)
+    assert "Paid only" not in paid.get("/leagues/?tab=join").text
+    r = paid.post(f"/leagues/{league['id']}/join")
+    assert r.status_code == 200 and "This league has custom players" in r.text
+    assert not _in(db_conn, league["id"], sam)
+    r = paid.post(f"/leagues/{league['id']}/join", data={"understood": "true"})
+    assert r.status_code == 302 and _in(db_conn, league["id"], sam)
+
+
+def test_each_paid_person_sets_their_own_team(as_user, db_conn):
+    josh, pat = _user(db_conn), _user(db_conn)
+    client = as_user(josh)
+    league = _league(client, db_conn)
+    as_user(pat).post(
+        "/leagues/join", data={"join_code": league["join_code"], "understood": "true"}
+    )
+    lid = league["id"]
+    pats, ai = _gm_team(db_conn, lid, pat), _ai_team(db_conn, lid)
+
+    # Pat can set his own team, not an AI GM's or Josh's.
+    # (Refusals go straight to the service: the route's rollback would undo
+    # this test's setup.)
+    other = as_user(pat)
+    mine = _custom_team(db_conn, pat, name="Pat's Picks")
+    for team in (ai, _gm_team(db_conn, lid, josh)):
+        with pytest.raises(lct.CustomTeamRefused, match="your own team"):
+            lct.assign(db_conn, league, pat, *team, mine)
+    assert "custom_error=" not in _pick(other, lid, pats, mine).headers["location"]
+    assert lct.assignments(db_conn, lid)[pats]["user_id"] == pat["id"]
+    assert "Your team:" in other.get(f"/leagues/{lid}/").text
+
+    # The commissioner can set AI GMs' teams, not Pat's.
+    client = as_user(josh)
+    theirs = _custom_team(db_conn, josh)
+    with pytest.raises(lct.CustomTeamRefused, match="AI GMs' teams"):
+        lct.assign(db_conn, league, josh, *pats, theirs)
+    assert "custom_error=" not in _pick(client, lid, ai, theirs).headers["location"]
+    assert set(lct.assignments(db_conn, lid)) == {pats, ai}
+
+    # Picking another team takes Pat's custom team off his old one.
+    others = [
+        t
+        for t in lobby_teams.league_teams(db_conn, lid)
+        if t not in (pats, ai, _gm_team(db_conn, lid, josh))
+    ]
+    as_user(pat).post(
+        f"/leagues/{lid}/lobby/team", data={"team": f"{others[0][0]}|{others[0][1]}"}
+    )
+    assert set(lct.assignments(db_conn, lid)) == {ai}
+
+
+def test_leaving_the_lobby_takes_your_custom_team_off(as_user, db_conn):
+    from src.api.services.leave_league import leave_league
+
+    josh, pat = _user(db_conn), _user(db_conn)
+    league = _league(as_user(josh), db_conn)
+    as_user(pat).post(
+        "/leagues/join", data={"join_code": league["join_code"], "understood": "true"}
+    )
+    pats = _gm_team(db_conn, league["id"], pat)
+    _pick(as_user(pat), league["id"], pats, _custom_team(db_conn, pat))
+    assert pats in lct.assignments(db_conn, league["id"])
+    leave_league(db_conn, league["id"], _in(db_conn, league["id"], pat)["id"])
+    assert lct.assignments(db_conn, league["id"]) == {}
+
+
+def test_someone_no_longer_paid_keeps_their_seat(as_user, db_conn):
+    josh, pat = _user(db_conn), _user(db_conn)
+    league = _league(as_user(josh), db_conn)
+    as_user(pat).post(
+        "/leagues/join", data={"join_code": league["join_code"], "understood": "true"}
+    )
+    lapsed = dict(pat, is_contributor=False)
+    db_conn.execute(
+        "UPDATE users SET is_contributor = FALSE WHERE id = %s", (pat["id"],)
+    )
+    other = as_user(lapsed)
+    assert _in(db_conn, league["id"], pat)
+    assert other.get(f"/leagues/{league['id']}/").status_code == 200
+    with pytest.raises(lct.CustomTeamRefused, match="paid contributors"):
+        lct.assign(
+            db_conn,
+            league,
+            lapsed,
+            *_gm_team(db_conn, league["id"], pat),
+            _custom_team(db_conn, pat),
+        )
+
+
+def test_taking_over_needs_paid(as_user, db_conn):
+    from src.api.services import takeover
+
+    josh = _user(db_conn)
+    league = _league(as_user(josh), db_conn)
+    started = dict(league, state="offseason")
+    pat, sam = _user(db_conn, contributor=False), _user(db_conn)
+    assert "paid contributors" in takeover.closed_reason(db_conn, started, pat["id"])
+    reason = takeover.closed_reason(db_conn, started, sam["id"]) or ""
+    assert "paid contributors" not in reason
 
 
 def test_a_team_that_is_not_ready_is_refused(as_user, db_conn):
@@ -142,7 +318,6 @@ def test_a_team_that_is_not_ready_is_refused(as_user, db_conn):
     r = _pick(client, league["id"], first, short)
     assert "custom_error=" in r.headers["location"]
     assert lct.assignments(db_conn, league["id"]) == {}
-    assert not LeagueRepository(db_conn).get_by_id(league["id"])["single_player"]
 
 
 def test_only_your_own_custom_teams(as_user, db_conn):
@@ -155,23 +330,9 @@ def test_only_your_own_custom_teams(as_user, db_conn):
     assert lct.assignments(db_conn, league["id"]) == {}
 
 
-def test_not_once_someone_else_has_joined(as_user, db_conn):
-    josh = _user(db_conn)
-    client = as_user(josh)
-    league = _league(client, db_conn)
-    as_user(_user(db_conn, contributor=False)).post(
-        "/leagues/join", data={"join_code": league["join_code"]}
-    )
-    client = as_user(josh)
-    first = lobby_teams.league_teams(db_conn, league["id"])[0]
-    r = _pick(client, league["id"], first, _custom_team(db_conn, josh))
-    assert "custom_error=" in r.headers["location"]
-    assert "others have joined" in client.get(f"/leagues/{league['id']}/").text
-
-
-def test_non_contributors_get_no_card(as_user, db_conn):
+def test_non_contributors_get_no_card_in_an_ordinary_league(as_user, db_conn):
     client = as_user(_user(db_conn, contributor=False))
-    league = _league(client, db_conn)
+    league = _league(client, db_conn, custom=False)
     assert "Custom Teams" not in client.get(f"/leagues/{league['id']}/").text
 
 

@@ -74,7 +74,7 @@ def start_league(
             for city, mascot in lobby_teams.league_teams(conn, league_id)
         ]
 
-    # A custom team's players replace that team's (single-player leagues,
+    # A custom team's players replace that team's (custom leagues,
     # services/league_custom_teams.py).
     generated, made_players = league_custom_teams.apply(conn, league_id, generated, rng)
 

@@ -1,0 +1,72 @@
+{# templates/leagues/custom_league.html
+   On the way into a custom league (services/league_custom_teams.py): from a
+   join code, the Join tab, or the take-over page. A paid contributor sees
+   its custom teams and what that means, and joins once they tick that they
+   understand. Anyone else is told it's for paid contributors, and can watch. #}
+{% extends "base.html" %}
+{% block title %}Custom League — Baseball GM{% endblock %}
+{% block main %}
+<div class="page-content"><div class="content-inner" style="max-width:620px;">
+  <div class="page-header"><h1 class="page-title">{{ league.name }}</h1></div>
+  <div class="card custom-warn">
+    <div class="card-header"><span class="card-title" style="color:var(--amber);">⚠ Custom league</span></div>
+    <div class="card-body custom-warn-body">
+      {% if paid %}
+      <h2 class="custom-warn-big">This league has custom players</h2>
+      <p>It's a custom league: teams here can play with rosters built by hand, from real player-seasons, made-up players and edited ratings, instead of the league's own drafted players.</p>
+      {% if teams %}
+      <div class="custom-warn-teams">
+        {% for t in teams %}
+        <div class="custom-warn-team">
+          <div><span class="custom-warn-name">{{ team_badge(t.city, t.mascot) }} {{ t.city }} {{ t.mascot }}</span> <span class="custom-warn-dim">play as</span> <b style="color:var(--amber);">{{ t.name }}</b></div>
+          <div class="custom-warn-meta">{{ t.size }} players{% if t.made %} · {{ t.made }} made up{% endif %}{% if t.edited %} · {{ t.edited }} with edited ratings{% endif %}{% if not t.made and not t.edited %} · real player-seasons only{% endif %} · run by {{ t.run_by }}{% if t.put_in_by and t.put_in_by != t.run_by %} · put in by {{ t.put_in_by }}{% endif %}</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="custom-warn-dim">No custom teams are in yet{% if not started %}: paid contributors can put theirs in until the league starts{% endif %}.</p>
+      {% endif %}
+      <ul class="custom-warn-list">
+        <li><b>Custom teams can be far stronger</b> than anything a draft could build.</li>
+        <li>{% if not started %}Everyone can put a custom team on the team they run, and the commissioner on AI GMs' teams, until the league starts.{% else %}Custom teams were set before the league started and stay in.{% endif %}</li>
+        <li>Only <b>paid contributors</b> can run a team in this league.</li>
+        <li>A custom league <b>earns no badges</b>.</li>
+      </ul>
+      <form method="{{ method }}" action="{{ action }}" class="custom-warn-form">
+        {% for k, v in hidden.items() %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
+        <label class="toggle-row"><input type="checkbox" name="understood" value="true" required> <span>I understand this league has custom teams and custom players.</span></label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button type="submit" class="btn btn-primary">{% if started %}Pick a team →{% else %}Join {{ league.name }} →{% endif %}</button>
+          <a href="/leagues/" class="btn btn-secondary">Back</a>
+        </div>
+      </form>
+      {% else %}
+      <h2 class="custom-warn-big">For paid contributors</h2>
+      <p>{{ league.name }} has custom teams{% if teams %} ({{ teams | map(attribute='name') | join(', ') }}){% endif %}, so only paid contributors can run a team in it.{% if can_watch %} You can still watch it, from the Watch tab of your Leagues page.{% endif %}</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        {% if can_watch %}<a href="{{ watch_url }}" class="btn btn-primary">Watch it →</a>{% endif %}
+        <a href="/leagues/" class="btn btn-secondary">Back</a>
+      </div>
+      <p class="custom-warn-dim">Paid contributors build custom teams and players, and start real-season leagues.</p>
+      {% endif %}
+    </div>
+  </div>
+</div></div>
+<style>
+.custom-warn { border-color: var(--amber-dim); }
+.custom-warn-body { display: flex; flex-direction: column; gap: 12px; line-height: 1.5; }
+.custom-warn-body p { margin: 0; }
+.custom-warn-big { font-family: var(--font-display); font-size: 26px; text-transform: uppercase; color: var(--text-hi); margin: 0; line-height: 1.1; }
+.custom-warn-teams { border: 1px solid var(--border); background: var(--bg-3); }
+.custom-warn-team { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+.custom-warn-team:last-child { border-bottom: none; }
+.custom-warn-name { font-weight: 600; color: var(--text-hi); white-space: nowrap; }
+.custom-warn-meta { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+.custom-warn-dim { color: var(--text-dim); font-size: 12px; }
+.custom-warn-list { margin: 0; padding-left: 18px; color: var(--text-dim); }
+.custom-warn-list li { margin: 3px 0; }
+.custom-warn-list b { color: var(--text); }
+.custom-warn-form { display: flex; flex-direction: column; gap: 12px; margin: 0; }
+.custom-warn-form .toggle-row { align-items: flex-start; }
+</style>
+{% endblock %}

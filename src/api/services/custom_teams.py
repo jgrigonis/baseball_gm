@@ -10,7 +10,8 @@ Custom teams: a contributor's own team of real player-seasons
   1 to 100; "Reset" goes back to the real rating.
 - A share code opens a read-only view; "Save a copy" makes an independent
   team for the person who opened it.
-- Custom teams only play in single-player leagues (part 3).
+- Custom teams only play in custom leagues, which only paid contributors
+  can join (league_custom_teams.py).
 - A team can also hold the owner's made-up players
   (services/custom_players.py), as {"key": "made:<id>", "made": "<id>"}.
 """

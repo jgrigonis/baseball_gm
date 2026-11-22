@@ -2,15 +2,21 @@
 """
 Custom teams in a league (services/custom_teams.py builds them).
 
-In a lobby with only its commissioner as a person, a commissioner who can
-build custom teams puts one of their ready teams on any of the league's
-teams. The league keeps that team's city, name and uniforms; only the
-players change. The players are copied when they're put in, so later edits
-to the custom team don't reach the league.
+Custom teams only go in a custom league: the commissioner makes a league
+one when creating it (leagues.custom_league, a paid contributor's choice on
+the New League form), and it stays one for good, custom teams or not
+(Josh, 2026-11-22). Only paid contributors (and admins) can run a team in a
+custom league: may_join() guards every way in (join code, the Join tab,
+taking over between seasons), and they see warning() first. Anyone can
+watch. Someone already in keeps their seat if they stop being paid; they just
+can't put custom teams in any more.
 
-A league with a custom team is single player (leagues.single_player): it's
-private, takes no late joiners, hides its join code and refuses joins.
-Taking every custom team out again in the lobby lifts that.
+In a custom league's lobby, each paid person can put one of their ready
+custom teams on the team they run, and the commissioner can also put them
+on teams AI GMs hold. The league keeps that team's city, name and uniforms;
+only the players change. The players are copied when they're put in, so
+later edits to the custom team don't reach the league. A person who picks
+another team or leaves the lobby takes theirs off their old team.
 
 At the start (league_start.py), apply() swaps each custom team's players in.
 A team short of 26 is filled to 26 with the generated team's own players:
@@ -35,12 +41,13 @@ from src.api.services import lobby_teams
 from src.db.repositories.custom_player_repo import CustomPlayerRepository
 from src.db.repositories.custom_team_repo import CustomTeamRepository
 from src.db.repositories.talent_cap_repo import TalentCapRepository
-from src.db.repositories.ready_check_repo import ReadyCheckRepository
 from src.league.real_seasons import players
 from src.team.team_record import TeamRecord
 
 ROSTER = 26
 PITCHERS = 13
+
+PAID_ONLY = "has custom teams, so only paid contributors can run a team in it."
 
 
 class CustomTeamRefused(ValueError):
@@ -49,41 +56,107 @@ class CustomTeamRefused(ValueError):
 
 def assignments(conn, league_id: str) -> dict[tuple[str, str], dict]:
     rows = conn.execute(
-        """SELECT city, mascot, custom_team_id, name, players
+        """SELECT city, mascot, custom_team_id, name, players, user_id
            FROM league_custom_teams WHERE league_id = %s""",
         (league_id,),
     ).fetchall()
     return {(r["city"], r["mascot"]): dict(r) for r in rows}
 
 
+# ── who can join ───────────────────────────────────────────────────────
+
+
+def may_join(user: dict | None, league: dict) -> bool:
+    """Whether this person may run a team in the league: anyone in an
+    ordinary league, only paid contributors (or admins) in a custom one."""
+    return not league.get("custom_league") or ct.can_build(user)
+
+
+def paid_only(league: dict) -> str:
+    """Why someone who isn't paid can't join a custom league."""
+    return f"{league['name']} {PAID_ONLY}"
+
+
+def _holders(conn, league_id: str) -> dict[tuple[str, str], dict]:
+    """Who runs each team, by (city, mascot): the GM dealt it in the lobby,
+    or the GM whose team it is once the league has started."""
+    rows = conn.execute(
+        """SELECT g.id, g.user_id, g.display_name, g.is_ai,
+                  COALESCE(t.city, g.lobby_city) AS city,
+                  COALESCE(t.mascot, g.lobby_mascot) AS mascot
+           FROM gms g LEFT JOIN teams t ON t.id = g.team_id
+           WHERE g.league_id = %s AND g.fired_at IS NULL""",
+        (league_id,),
+    ).fetchall()
+    return {(r["city"], r["mascot"]): dict(r) for r in rows if r["city"]}
+
+
+def warning(conn, league: dict, user_id: str | None = None) -> list[dict]:
+    """The custom teams a joiner is told about: each league team that plays
+    as a custom team, who runs it, who put it in, and how many of its
+    players are made up or have edited ratings. Whether it's the joiner's
+    own (mine) is filled in by the caller when it knows."""
+    holders = _holders(conn, league["id"])
+    by_user = {
+        h["user_id"]: h["display_name"] for h in holders.values() if h["user_id"]
+    }
+    out = []
+    for (city, mascot), a in sorted(assignments(conn, league["id"]).items()):
+        holder = holders.get((city, mascot))
+        entries = a["players"] or []
+        out.append(
+            {
+                "city": city,
+                "mascot": mascot,
+                "name": a["name"],
+                "size": len(entries),
+                "made": sum(1 for e in entries if e.get("made")),
+                "edited": sum(1 for e in entries if e.get("skills")),
+                "run_by": (
+                    "AI GM" if not holder or holder["is_ai"] else holder["display_name"]
+                ),
+                "put_in_by": by_user.get(a.get("user_id")),
+                "mine": bool(user_id and holder and holder["user_id"] == user_id),
+            }
+        )
+    return out
+
+
+# ── putting custom teams in ────────────────────────────────────────────
+
+
 def refusal(conn, league: dict, user: dict) -> str | None:
     """Why this person can't put custom teams in this league, or None."""
+    if not league.get("custom_league"):
+        return "Custom teams go in custom leagues, set when the league is created."
     if not ct.can_build(user):
         return "Custom teams are for paid contributors."
     if league["state"] != "lobby":
         return "Custom teams go in before the league starts."
     if league.get("is_practice"):
         return "Tutorial leagues use generated teams."
-    if ReadyCheckRepository(conn).human_gm_count(league["id"]) > 1:
-        return "Custom teams are for single-player leagues, and others have joined."
     return None
 
 
-def _sync_single_player(conn, league_id: str) -> None:
-    has = conn.execute(
-        "SELECT 1 FROM league_custom_teams WHERE league_id = %s LIMIT 1",
-        (league_id,),
+def settable(conn, league: dict, user: dict) -> list[tuple[str, str]]:
+    """The league teams this person may put a custom team on (or take one
+    off): the one they run, and for the commissioner the AI GMs' teams too."""
+    gm = conn.execute(
+        "SELECT id, lobby_city, lobby_mascot FROM gms WHERE league_id = %s AND user_id = %s",
+        (league["id"], user["id"]),
     ).fetchone()
-    if has:
-        conn.execute(
-            """UPDATE leagues SET single_player = TRUE, is_public = FALSE,
-                      late_joins = FALSE WHERE id = %s""",
-            (league_id,),
-        )
-    else:
-        conn.execute(
-            "UPDATE leagues SET single_player = FALSE WHERE id = %s", (league_id,)
-        )
+    if not gm:
+        return []
+    commish = league["commissioner_gm_id"] == str(gm["id"])
+    holders = _holders(conn, league["id"])
+    out = []
+    for key in lobby_teams.league_teams(conn, league["id"]):
+        h = holders.get(key)
+        if h and h["id"] == gm["id"]:
+            out.insert(0, key)  # their own team first
+        elif commish and (not h or h["is_ai"]):
+            out.append(key)
+    return out
 
 
 def assign(
@@ -96,6 +169,11 @@ def assign(
         raise CustomTeamRefused(reason)
     if (city, mascot) not in lobby_teams.league_teams(conn, league["id"]):
         raise CustomTeamRefused("That team isn't in this league.")
+    if (city, mascot) not in settable(conn, league, user):
+        raise CustomTeamRefused(
+            "You can set the custom team for your own team"
+            + (" and the AI GMs' teams." if _is_commish(conn, league, user) else ".")
+        )
     conn.execute(
         "DELETE FROM league_custom_teams WHERE league_id = %s AND city = %s AND mascot = %s",
         (league["id"], city, mascot),
@@ -112,8 +190,8 @@ def assign(
             )
         conn.execute(
             """INSERT INTO league_custom_teams
-                   (league_id, city, mascot, custom_team_id, name, players)
-               VALUES (%s, %s, %s, %s, %s, %s)""",
+                   (league_id, city, mascot, custom_team_id, name, players, user_id)
+               VALUES (%s, %s, %s, %s, %s, %s, %s)""",
             (
                 league["id"],
                 city,
@@ -121,9 +199,31 @@ def assign(
                 team["id"],
                 team["name"],
                 Jsonb(_copies(conn, team["players"])),
+                user["id"],
             ),
         )
-    _sync_single_player(conn, league["id"])
+
+
+def _is_commish(conn, league: dict, user: dict) -> bool:
+    gm = conn.execute(
+        "SELECT id FROM gms WHERE league_id = %s AND user_id = %s",
+        (league["id"], user["id"]),
+    ).fetchone()
+    return bool(gm and league["commissioner_gm_id"] == str(gm["id"]))
+
+
+def take_off(
+    conn, league_id: str, user_id: str, city: str | None, mascot: str | None
+) -> None:
+    """A person leaving a lobby team (another pick, or leaving the league)
+    takes the custom team they put on it with them."""
+    if not user_id or not city:
+        return
+    conn.execute(
+        """DELETE FROM league_custom_teams
+           WHERE league_id = %s AND city = %s AND mascot = %s AND user_id = %s""",
+        (league_id, city, mascot, user_id),
+    )
 
 
 def _copies(conn, entries: list[dict]) -> list[dict]:

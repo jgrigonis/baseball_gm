@@ -65,7 +65,7 @@
            its name, which edits in place. #}
         <tr{% if mine %} class="league-row" data-href="/leagues/{{ l.id }}/" tabindex="0" aria-label="Open {{ l.name }}"{% endif %}>
           {# The team the GM runs there, once the lobby is over and they have one. #}
-          <td class="team-name" data-sort-value="{{ l.name }}">{% if mine and l.team_city and l.state != 'lobby' %}<span class="league-team" title="{{ l.team_city }} {{ l.team_mascot }}">{{ team_badge(l.team_city, l.team_mascot) }}</span>{% endif %}{% if mine and l.is_commissioner %}<span class="league-name-wrap"><span class="league-name" contenteditable="true" spellcheck="false" role="textbox" aria-label="League name, edit to rename" title="Click to rename" data-league-id="{{ l.id }}" data-original="{{ l.name }}">{{ l.name }}</span><button type="button" class="btn btn-primary league-name-save" hidden>Save</button></span>{% else %}{{ l.name }}{% endif %}</td>
+          <td class="team-name" data-sort-value="{{ l.name }}">{% if mine and l.team_city and l.state != 'lobby' %}<span class="league-team" title="{{ l.team_city }} {{ l.team_mascot }}">{{ team_badge(l.team_city, l.team_mascot) }}</span>{% endif %}{% if mine and l.is_commissioner %}<span class="league-name-wrap"><span class="league-name" contenteditable="true" spellcheck="false" role="textbox" aria-label="League name, edit to rename" title="Click to rename" data-league-id="{{ l.id }}" data-original="{{ l.name }}">{{ l.name }}</span><button type="button" class="btn btn-primary league-name-save" hidden>Save</button></span>{% else %}{{ l.name }}{% endif %}{% if l.custom_league %} <span class="custom-tag" title="A custom league: teams can play with custom rosters, and only paid contributors can run a team in it">Custom</span>{% endif %}</td>
           <td class="wide-only" style="font-family:var(--font-mono);color:var(--text-dim);" data-sort-value="{{ l.current_year or 0 }}">{{ l.current_year or '—' }}</td>
           {% if active_tab != 'tutorial' %}<td class="wide-only" style="color:var(--text-dim);">{{ l.mode | replace('_', ' ') | title }}</td>{% endif %}
           <td><span class="topbar-state state-{{ l.state }}" style="font-size:10px;padding:2px 6px;">{{ l.state_label }}</span></td>
@@ -75,6 +75,8 @@
           <td style="text-align:right;display:flex;gap:6px;justify-content:flex-end;align-items:center;">
             {% if mine %}
             <button data-league-id="{{ l.id }}" data-league-name="{{ l.name }}" data-started="{{ 'yes' if l.state != 'lobby' else '' }}" data-fired="{{ 'yes' if l.fired else '' }}" data-last="{{ 'yes' if l.people <= 1 else '' }}" onclick="leaveLeague(this)" class="btn btn-danger" style="font-size:10px;padding:4px 10px;">Leave</button>
+            {% elif active_tab == 'join' and l.custom_league and not paid %}
+            <button type="button" class="btn btn-secondary" disabled style="font-size:10px;padding:4px 10px;" title="It has custom teams, so only paid contributors can run a team in it">Paid only</button>
             {% elif active_tab == 'join' %}
             <form method="POST" action="/leagues/{{ l.id }}/join" style="display:inline;">
               <button type="submit" class="btn btn-primary" style="font-size:10px;padding:4px 10px;"{% if l.takeover %} title="It has started: pick a team an AI GM runs"{% endif %}>{{ 'Pick a team →' if l.takeover else 'Join →' }}</button>

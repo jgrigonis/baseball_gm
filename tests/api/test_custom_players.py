@@ -276,7 +276,7 @@ def test_a_league_starts_with_a_made_player_as_he_was_made(as_user, db_conn):
     )
     ct.add_made(repo, repo.get(team_id), CustomPlayerRepository(db_conn).get(made))
 
-    r = client.post("/leagues/new", data={"name": "Solo"})
+    r = client.post("/leagues/new", data={"name": "Solo", "custom_league": "true"})
     league = LeagueRepository(db_conn).get_by_id(r.headers["location"].split("/")[2])
     first = lobby_teams.league_teams(db_conn, league["id"])[0]
     lct.assign(db_conn, league, josh, *first, team_id)

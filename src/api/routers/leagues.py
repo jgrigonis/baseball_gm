@@ -144,7 +144,9 @@ def leagues_index(
             "active_tab": active,
             "leagues": groups[active],
             "brand_new": not mine,
-            "join_error": cant_join_reason(db, cant_join) if cant_join else None,
+            # A custom league's Join button is for paid contributors only.
+            "paid": custom_teams.can_build(user),
+            "join_error": cant_join_reason(db, cant_join, user) if cant_join else None,
         },
     )
     if chosen:
@@ -159,14 +161,17 @@ def leagues_index(
     return resp
 
 
-def cant_join_reason(db, league_id: str) -> str:
+def cant_join_reason(db, league_id: str, user: dict | None = None) -> str:
     """Why a join from a stale Join tab (or take-over page) didn't go through:
-    the league went private, closed to late joiners, or is gone. The league
-    is looked up again, so the message says what's true now."""
+    the league went private, closed to late joiners, is gone, or is a custom
+    league and they aren't paid. The league is looked up again, so the
+    message says what's true now."""
     league = LeagueRepository(db).get_by_id(league_id)
     if not league:
         return "That league doesn't exist anymore, so you didn't join it."
     name = league["name"]
+    if not league_custom_teams.may_join(user, league):
+        return f"You didn't join {name}. {league_custom_teams.paid_only(league)}"
     if not league["is_public"]:
         return (
             f"{name} was made private, so you didn't join it. Ask its"
@@ -183,6 +188,40 @@ def _cant_join(league_id: str) -> RedirectResponse:
     """Back to a fresh Join tab, with a note on why the join failed."""
     return RedirectResponse(
         f"/leagues/?tab=join&cant_join={league_id}", status_code=303
+    )
+
+
+def _custom_page(
+    request,
+    db,
+    league: dict,
+    user: dict,
+    paid: bool = True,
+    action: str = "",
+    hidden: dict | None = None,
+    method: str = "post",
+):
+    """The page someone sees on the way into a custom league
+    (services/league_custom_teams.py): its custom teams and what that
+    means, with Join once they tick that they understand. Someone who
+    isn't a paid contributor gets why not, and Watch."""
+    return templates.TemplateResponse(
+        request,
+        "leagues/custom_league.html",
+        {
+            "league": league,
+            "paid": paid,
+            "teams": league_custom_teams.warning(db, league, user["id"]),
+            "started": league["state"] != "lobby",
+            "action": action,
+            "hidden": hidden or {},
+            "method": method,
+            "watch_url": f"/leagues/{league['id']}/",
+            "can_watch": bool(
+                league["is_public"]
+                or LeagueRepository(db).is_watcher(league["id"], user["id"])
+            ),
+        },
     )
 
 
@@ -213,6 +252,8 @@ def new_league_page(request: Request, user: User):
             "real_seasons": real_seasons.available(),
             # Real seasons are for paid contributors (others can join one).
             "can_real_season": custom_teams.can_build(user),
+            # So are custom leagues, and only paid contributors join those.
+            "can_custom_league": custom_teams.can_build(user),
         },
     )
 
@@ -244,6 +285,7 @@ def new_league(
     backstory_years: int = Form(DEFAULT_BACKSTORY_YEARS),
     real_season: str = Form(""),
     pick_timer_sec: int = Form(90),
+    custom_league: bool = Form(False),
 ):
     if get_mode(mode).pace:  # Long Form: Confirmed only
         pace_control = get_mode(mode).pace
@@ -268,6 +310,10 @@ def new_league(
         # A real season is all 30 of its clubs and has no made-up past.
         num_teams = real_seasons.TEAMS
         backstory_years = 0
+    if custom_league and not custom_teams.can_build(user):
+        raise HTTPException(
+            status_code=403, detail="Custom leagues are for paid contributors."
+        )
     if num_teams not in divisions.TEAM_COUNTS:
         raise ValueError(f"A league can't have {num_teams} teams.")
     if pace_control not in ("timer", "confirmed"):
@@ -330,6 +376,7 @@ def new_league(
             ),
             "injury_rate": injury_rate,
             "pick_timer_sec": pick_timer_sec,
+            "custom_league": custom_league,
         },
     )
     # 2. GM setup
@@ -393,6 +440,7 @@ def join_league(
     db: DB,
     user: User,
     join_code: str = Form(...),
+    understood: bool = Form(False),
 ):
     league_repo = LeagueRepository(db)
     gm_repo = GMRepository(db)
@@ -411,14 +459,13 @@ def join_league(
     existing_gm = gm_repo.get_by_user_and_league(user["id"], league["id"])
     if existing_gm:
         return RedirectResponse(f"/leagues/{league['id']}/", status_code=302)
-    if league.get("single_player"):
-        return templates.TemplateResponse(
-            request,
-            "leagues/join.html",
-            {
-                "error": f"{league['name']} has a custom team, so it's single player.",
-                "join_code": join_code,
-            },
+    # A custom league is for paid contributors; the code still lets anyone
+    # else watch it.
+    if not league_custom_teams.may_join(user, league):
+        league_repo.add_watcher(league["id"], user["id"])
+        db.commit()
+        return _custom_page(
+            request, db, league_repo.get_by_id(league["id"]), user, paid=False
         )
 
     # A running league takes new GMs between seasons: they pick a team an
@@ -442,6 +489,17 @@ def join_league(
             f"/leagues/{league['id']}/take-over?code={join_code}", status_code=302
         )
 
+    # A paid person sees the custom teams before anything is joined.
+    if league.get("custom_league") and not understood:
+        return _custom_page(
+            request,
+            db,
+            league_repo.get_by_id(league["id"]),
+            user,
+            action="/leagues/join",
+            hidden={"join_code": join_code},
+        )
+
     # 3. Join the league using our clean GM creator
     gm_repo.create_gm(
         league_id=league["id"],
@@ -456,9 +514,11 @@ def join_league(
 
 @router.post("/leagues/{league_id}/join")
 def join_public_league(
+    request: Request,
     league_id: str,
     db: DB,
     user: User,
+    understood: bool = Form(False),
 ):
     """Join a public league from the leagues page, no code needed."""
     league = LeagueRepository(db).get_by_id(league_id)
@@ -469,7 +529,7 @@ def join_public_league(
     # Someone who entered a private league's code can still join from it.
     if (
         not league
-        or league.get("single_player")
+        or not league_custom_teams.may_join(user, league)
         or not (
             league["is_public"]
             or LeagueRepository(db).is_watcher(league_id, user["id"])
@@ -480,6 +540,10 @@ def join_public_league(
         if takeover.closed_reason(db, league):
             return _cant_join(league_id)
         return RedirectResponse(f"/leagues/{league_id}/take-over", status_code=302)
+    if league.get("custom_league") and not understood:
+        return _custom_page(
+            request, db, league, user, action=f"/leagues/{league_id}/join"
+        )
 
     gm_repo.create_gm(
         league_id=league_id,
@@ -523,6 +587,13 @@ def _takeover_page(request, db, league, code, user_id, error=None):
             "closed": takeover.closed_reason(db, league, user_id),
             "teams": takeover.open_teams(db, league["id"], user_id),
             "joined_year": takeover.joined_year(db, league),
+            # Teams that play as a custom team, "City|Mascot" -> its name.
+            "custom_names": {
+                f"{c}|{m}": a["name"]
+                for (c, m), a in league_custom_teams.assignments(
+                    db, league["id"]
+                ).items()
+            },
             # Back from a firing (src/api/services/firing.py).
             "fired": firing.latest(db, league["id"], user_id) if fired else None,
         },
@@ -531,7 +602,12 @@ def _takeover_page(request, db, league, code, user_id, error=None):
 
 @router.get("/leagues/{league_id}/take-over", response_class=HTMLResponse)
 def take_over_page(
-    request: Request, league_id: str, db: DB, user: User, code: str = ""
+    request: Request,
+    league_id: str,
+    db: DB,
+    user: User,
+    code: str = "",
+    understood: bool = False,
 ):
     """Pick a team an AI GM runs, to join a league that has started."""
     league = _takeover_league(db, league_id, code, user["id"])
@@ -540,6 +616,21 @@ def take_over_page(
     mine = GMRepository(db).get_by_user_and_league(user["id"], league_id)
     if mine and not mine["fired_at"]:
         return RedirectResponse(f"/leagues/{league_id}/", status_code=302)
+    # A custom league: someone new sees its custom teams first (a fired GM
+    # coming back already has). Without paid, they can only watch.
+    if league.get("custom_league") and not mine:
+        if not league_custom_teams.may_join(user, league):
+            return _custom_page(request, db, league, user, paid=False)
+        if not understood:
+            return _custom_page(
+                request,
+                db,
+                league,
+                user,
+                action=f"/leagues/{league_id}/take-over",
+                hidden={"code": code} if code else {},
+                method="get",
+            )
     return _takeover_page(request, db, league, code, user["id"])
 
 
@@ -584,11 +675,7 @@ def commissioner_setting(
     league = league_repo.get_by_id(league_id)
     if not league or league["commissioner_gm_id"] != gm["id"]:
         return JSONResponse({"detail": "Forbidden"}, status_code=403)
-    if (
-        setting not in COMMISSIONER_SETTINGS
-        or league["is_practice"]
-        or (on and league.get("single_player"))
-    ):
+    if setting not in COMMISSIONER_SETTINGS or league["is_practice"]:
         return JSONResponse({"detail": "Not a setting you can change"}, status_code=422)
     league_repo.update_settings(league_id, {setting: on})
     db.commit()
@@ -747,7 +834,7 @@ def dashboard(
             "settings_next": f"/leagues/{league_id}/",
             "info": league_info(db, league),
             "coach": coach_ctx(db, league),
-            "custom": _lobby_custom_ctx(db, league, user) if is_commish else None,
+            "custom": _lobby_custom_ctx(db, league, user, bool(is_commish)),
             "custom_error": custom_error,
         }
     )
@@ -762,28 +849,34 @@ def dashboard(
     )
 
 
-def _lobby_custom_ctx(db, league: dict, user: dict) -> dict | None:
-    """The lobby's Custom teams card, for a commissioner who can build them
-    (services/league_custom_teams.py)."""
-    if not custom_teams.can_build(user):
-        return None
-    chosen = league_custom_teams.assignments(db, league["id"])
+def _lobby_custom_ctx(db, league: dict, user: dict, is_commish: bool) -> dict | None:
+    """The lobby's Custom Teams card (services/league_custom_teams.py): in a
+    custom league, for everyone in it, with the custom teams in so far and,
+    for a paid person, the teams they can set (their own, and the AI GMs'
+    for the commissioner). In an ordinary league, only a paid commissioner
+    sees it, saying custom teams need a custom league."""
+    can = custom_teams.can_build(user)
+    if not league.get("custom_league"):
+        if not (is_commish and can):
+            return None
+        return {"custom_league": False}
+    settable = league_custom_teams.settable(db, league, user) if can else []
     mine = []
-    for t in CustomTeamRepository(db).list_for(user["id"]):
-        summary = custom_teams.summary(custom_teams.roster(t, db))
-        mine.append({"id": t["id"], "name": t["name"], "ready": summary["ready"]})
+    if can:
+        for t in CustomTeamRepository(db).list_for(user["id"]):
+            summary = custom_teams.summary(custom_teams.roster(t, db))
+            mine.append({"id": t["id"], "name": t["name"], "ready": summary["ready"]})
     return {
+        "custom_league": True,
         "refusal": league_custom_teams.refusal(db, league, user),
-        "teams": [
-            {
-                "city": city,
-                "mascot": mascot,
-                "chosen": chosen.get((city, mascot)),
-            }
-            for city, mascot in lobby_teams.league_teams(db, league["id"])
+        "is_commish": is_commish,
+        "chosen": [
+            {**w, "can_remove": (w["city"], w["mascot"]) in settable}
+            for w in league_custom_teams.warning(db, league, user["id"])
         ],
+        "settable": [{"city": c, "mascot": m} for c, m in settable],
         "mine": mine,
-        "any": bool(chosen),
+        "can": can,
     }
 
 
@@ -797,10 +890,11 @@ def lobby_custom_team(
     team: str = Form(...),
     custom_team_id: str = Form(""),
 ):
-    """The commissioner puts one of their custom teams on a lobby team
-    ("City|Mascot"), or takes it off with an empty id."""
+    """A paid person puts one of their custom teams on their own lobby team,
+    or the commissioner on an AI GM's ("City|Mascot"); an empty id takes it
+    off (league_custom_teams.assign says who may set which)."""
     league = LeagueRepository(db).get_by_id(league_id)
-    if not league or league["commissioner_gm_id"] != str(gm["id"]):
+    if not league:
         return JSONResponse({"detail": "Forbidden"}, status_code=403)
     if sim_jobs.league_has_job(db, league_id):
         return RedirectResponse(f"/leagues/{league_id}/", status_code=303)
@@ -1123,8 +1217,14 @@ def _lobby_gms_context(gm_repo: GMRepository, league, gm) -> dict:
         "ai_slots": max(league["num_teams"] - len(humans) - len(ai_gms), 0),
         "is_commissioner": league["commissioner_gm_id"] == str(gm["id"]),
         "num_teams": league["num_teams"],
-        # A single-player league (a custom team) has no code to hand out.
-        "join_code": None if league.get("single_player") else league.get("join_code"),
+        "join_code": league.get("join_code"),
+        # Lobby teams that play as a custom team, "City|Mascot" -> its name.
+        "custom_names": {
+            f"{c}|{m}": a["name"]
+            for (c, m), a in league_custom_teams.assignments(
+                gm_repo.conn, league["id"]
+            ).items()
+        },
         # The join code's tip says whether it still works after the start.
         "late_joins": bool(league.get("late_joins")),
         "current_gm_id": str(gm["id"]),
@@ -1214,6 +1314,15 @@ def pick_lobby_team(
     if sim_jobs.league_has_job(db, league_id):
         pass  # the league is starting: teams are being handed out
     elif lobby_teams.pick(db, league_id, str(gm["id"]), city, mascot):
+        if (gm.get("lobby_city"), gm.get("lobby_mascot")) != (city, mascot):
+            # A custom team they put on their old team leaves with them.
+            league_custom_teams.take_off(
+                db,
+                league_id,
+                gm.get("user_id"),
+                gm.get("lobby_city"),
+                gm.get("lobby_mascot"),
+            )
         db.commit()
     else:
         db.rollback()

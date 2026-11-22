@@ -5,7 +5,7 @@ player creator and put on custom teams next to real player-seasons.
 
 - Making or editing one needs the Paid Contributor flag, or an admin, the
   same gate as custom teams (services/custom_teams.py). Like custom teams,
-  they only ever play in single-player leagues.
+  they only play in custom leagues (league_custom_teams.py).
 - "Roll" makes a random player the way the game makes its own: a position
   (picked, or drawn), base skills for it at 17 (PlayerFactory), talent
   ceilings, then aged to a roster age like TeamFactory does. He gets a

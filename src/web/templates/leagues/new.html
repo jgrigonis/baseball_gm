@@ -51,6 +51,14 @@
       </label>
       <span class="mode-note">Off: only people with the join code can find it. You can change this later on the League page.</span>
     </div>
+    <div class="field">
+      <label for="custom-league">Custom League</label>
+      <label class="toggle-row">
+        <input type="checkbox" name="custom_league" id="custom-league" value="true"{% if not can_custom_league %} disabled{% endif %}>
+        <span>Allow custom teams (My Teams){% if not can_custom_league %} (paid contributors){% endif %}</span>
+      </label>
+      <span class="mode-note">Each person can put one of their custom teams on the team they run, and you on AI GMs' teams, until the league starts. Only paid contributors can join a custom league, and they see its custom teams first. It earns no badges. Set once, when the league is created.</span>
+    </div>
     <details class="advanced-settings">
       <summary>Advanced settings</summary>
       <div class="advanced-body">

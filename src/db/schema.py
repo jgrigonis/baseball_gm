@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS leagues (
     records_seeded       BOOLEAN NOT NULL DEFAULT FALSE, -- record book caught up once (services/records/play.py, migration 125)
     weighted_schedule    BOOLEAN NOT NULL DEFAULT FALSE, -- division rivals play more often (src/league/weighted_schedule.py)
     real_season          INTEGER,  -- starts with this MLB season's players (src/league/real_seasons/, migration 095)
-    single_player        BOOLEAN NOT NULL DEFAULT FALSE, -- has a custom team: nobody else can join (migration 096)
+    custom_league        BOOLEAN NOT NULL DEFAULT FALSE, -- set at creation: custom teams allowed, only paid contributors join (migration 152)
     fa_bidding           BOOLEAN NOT NULL DEFAULT FALSE, -- free agent bids open: from the draft until they settle in the preseason (migration 120)
     created_at TEXT DEFAULT (NOW())
 );
@@ -853,8 +853,9 @@ CREATE TABLE IF NOT EXISTS league_lobby_teams (
     PRIMARY KEY (league_id, city, mascot)
 );
 
--- A custom team's players (a copy) put on one of a single-player lobby's
--- teams by its commissioner; used when the league starts (migration 096).
+-- A custom team's players (a copy) put on one of a custom league lobby's
+-- teams by a paid person (their own team) or the commissioner (AI teams);
+-- used when the league starts (migrations 096, 152).
 CREATE TABLE IF NOT EXISTS league_custom_teams (
     league_id      TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
     city           TEXT NOT NULL,
@@ -862,6 +863,7 @@ CREATE TABLE IF NOT EXISTS league_custom_teams (
     custom_team_id TEXT,
     name           TEXT NOT NULL,
     players        JSONB NOT NULL,
+    user_id        TEXT,                  -- who put it in (migration 152)
     PRIMARY KEY (league_id, city, mascot)
 );
 

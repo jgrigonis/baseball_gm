@@ -1,7 +1,8 @@
 # src/api/services/leave_league.py
 #
-# A GM leaving a league. In the lobby they just drop off the list, since AI
-# GMs only fill the empty teams when the league starts. Once the league has
+# A GM leaving a league. In the lobby they just drop off the list (with the
+# custom team they put on their team, if any), since AI GMs only fill the
+# empty teams when the league starts. Once the league has
 # started, their team carries on under AI control: the GM row becomes an AI
 # GM, so the team keeps its draft picks, results and standings, and the
 # ready-check and injury news stop counting it. Their open trade offers are
@@ -20,7 +21,7 @@ from __future__ import annotations
 
 import random
 
-from src.api.services import badges, career, personas, trades
+from src.api.services import badges, career, league_custom_teams, personas, trades
 from src.db.locks import league_lock
 from src.db.repositories.gm_repo import GMRepository
 from src.db.repositories.league_repo import LeagueRepository
@@ -52,6 +53,14 @@ def leave_league(conn, league_id: str, gm_id: str) -> None:
             )
 
         if league["state"] == "lobby":
+            # A custom team they put on their team leaves with them.
+            league_custom_teams.take_off(
+                conn,
+                league_id,
+                (gm or {}).get("user_id"),
+                (gm or {}).get("lobby_city"),
+                (gm or {}).get("lobby_mascot"),
+            )
             gm_repo.delete_gm(gm_id)
         else:
             # Their record so far, before the team stops being theirs (and
