@@ -76,9 +76,7 @@ def start_league(
 
     # A custom team's players replace that team's (single-player leagues,
     # services/league_custom_teams.py).
-    generated, made_players = league_custom_teams.apply(
-        conn, league_id, generated, rng
-    )
+    generated, made_players = league_custom_teams.apply(conn, league_id, generated, rng)
 
     # ── 2. Save the teams + first season ──────────────────────────────────────
     start_date = datetime.date(year, 4, 1)
