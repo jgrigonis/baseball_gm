@@ -95,6 +95,18 @@ def test_a_rolled_player_is_complete_and_saves_as_is():
         }
 
 
+def test_a_roll_grows_him_to_the_age_picked():
+    # Made at 17 and aged up: a 17-year-old is raw, a 28-year-old isn't.
+    young = [cp.roll(random.Random(i), position="ss", age=17) for i in range(20)]
+    prime = [cp.roll(random.Random(i), position="ss", age=28) for i in range(20)]
+    assert {p["age"] for p in young} == {17} and {p["age"] for p in prime} == {28}
+
+    def avg(ps):
+        return sum(sum(p["skills"].values()) for p in ps) / len(ps)
+
+    assert avg(prime) > avg(young)
+
+
 def test_clean_says_what_to_fix():
     p = _rolled()
     bad = copy.deepcopy(p)

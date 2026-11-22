@@ -36,6 +36,10 @@
   .pc-card input[type=number] { width: 54px; text-align: right; font-family: var(--font-mono); padding: 0 4px; }
   .pc-card input[type=range] { accent-color: var(--amber); width: 100%; min-width: 0; }
   .pc-dice { font-size: 12px; }
+  .pc-age-pick { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .pc-age-pick .pc-label { margin: 0; display: inline; }
+  .pc-age-pick select { width: auto; min-width: 150px; flex: 0 0 auto; }
+  .pc-age-ro { height: 30px; display: flex; align-items: center; color: var(--text-hi); }
   .pc-tiles-pos { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
   .pc-tiles-pos button { height: 70px; border: 1px solid var(--border-hi); background: var(--bg); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--text); font: inherit; }
   .pc-tiles-pos button b { font-family: var(--font-display); font-size: 24px; color: var(--text-hi); }
@@ -152,6 +156,10 @@
   var STEPS = ['Position', 'Ratings', 'Personality', 'Look', 'Save'];
   var step = DATA.made_id ? 1 : 0;
   var posPick = DATA.made_id ? P.position : (new URLSearchParams(location.search).get('pos') || 'random');
+  // Age is picked before the roll: he's made at 17 and grown to it, so his
+  // ratings fit his age. After the roll it can't change (it would only move
+  // his hair and his future growth, not what he can do now).
+  var agePick = DATA.made_id ? String(P.age) : (new URLSearchParams(location.search).get('age') || 'random');
   var locks = {};
   var ceilOn = false;
   var sel = 'contact';
@@ -209,17 +217,21 @@
     return '<div class="pc-fields">' +
       '<div class="wide"><label class="pc-label" for="pc-first">First name</label><div class="pc-in"><input type="text" id="pc-first" data-f="first_name" maxlength="' + C.name_max + '" value="' + esc(P.first_name) + '">' + lockBtn('first_name') + '</div></div>' +
       '<div class="wide"><label class="pc-label" for="pc-last">Last name</label><div class="pc-in"><input type="text" id="pc-last" data-f="last_name" maxlength="' + C.name_max + '" value="' + esc(P.last_name) + '"><button type="button" class="btn btn-secondary admin-small" data-act="name" title="Random name">🎲</button>' + lockBtn('last_name') + '</div></div>' +
-      '<div><label class="pc-label" for="pc-age">Age</label><input type="number" id="pc-age" data-f="age" min="' + C.age_range[0] + '" max="' + C.age_range[1] + '" value="' + P.age + '" style="width:100%"></div>' +
+      '<div><span class="pc-label">Age</span><div class="pc-age-ro" title="Pick an age above to roll a player at another age">' + P.age + '</div></div>' +
       '<div><span class="pc-label">Bats / Throws</span><div style="display:flex;gap:4px;flex-wrap:wrap">' + seg('bats', ['L', 'R', 'S']) + seg('throws', ['L', 'R']) + '</div></div>' +
       '<div class="wide"><label class="pc-label" for="pc-region">From</label><select id="pc-region" data-f="home_region" style="width:100%">' + C.regions.map(function (r) { return '<option' + (P.home_region === r ? ' selected' : '') + '>' + esc(r) + '</option>'; }).join('') + '</select></div>' +
       '<div class="wide"><label class="pc-label" for="pc-jersey">Jersey numbers he wants</label><input type="text" id="pc-jersey" data-f="jersey_prefs" value="' + esc(P.jersey_prefs.join(', ')) + '" style="width:100%" placeholder="Up to 3, favorite first"></div>' +
     '</div>';
   }
   function positionStep() {
+    var ages = '<option value="random"' + (agePick === 'random' ? ' selected' : '') + '>🎲 Random (' + C.roll_ages[0] + '–' + C.roll_ages[1] + ')</option>';
+    for (var a = C.age_range[0]; a <= C.age_range[1]; a++) ages += '<option value="' + a + '"' + (agePick === String(a) ? ' selected' : '') + '>' + a + '</option>';
     return '<div class="pc-card"><div class="pc-card-h"><h3>Roll a new player by position</h3></div><div class="pc-card-b">' +
+      '<div class="pc-age-pick"><label class="pc-label" for="pc-age">Age</label><select id="pc-age" data-agepick>' + ages + '</select>' +
+      '<span class="pc-small">He starts at 17 and grows to this age, so his ratings fit it.</span></div>' +
       '<div class="pc-tiles-pos">' + C.positions.map(function (p) { return '<button type="button" data-tile="' + p[0] + '" class="' + (posPick === p[0] ? 'on' : '') + '"><b>' + p[1] + '</b><span>' + p[2] + '</span></button>'; }).join('') +
       '<button type="button" data-tile="random" class="rand' + (posPick === 'random' ? ' on' : '') + '"><b>🎲</b><span>Surprise me</span></button></div>' +
-      '<p class="pc-small" style="margin:10px 0 0">Each pick rolls a new player built for that position, with a random name, face and personality. Pick again for another one. 🔒 locked names and ratings stay put.</p>' +
+      '<p class="pc-small" style="margin:10px 0 0">Each pick rolls a new player built for that position at that age, with a random name, face and personality. Pick again for another one. 🔒 locked names and ratings stay put.</p>' +
       '</div></div>' +
       '<div class="pc-card"><div class="pc-card-h"><h3>Name and basics</h3></div><div class="pc-card-b">' + basics() + '</div></div>';
   }
@@ -354,7 +366,8 @@
   }
   function rollPlayer(pos) {
     var p = pos === 'random' ? '' : pos;
-    return getJSON('/my-players/roll?pos=' + encodeURIComponent(p)).then(function (n) {
+    var age = agePick === 'random' ? '' : '&age=' + agePick;
+    return getJSON('/my-players/roll?pos=' + encodeURIComponent(p) + age).then(function (n) {
       Object.keys(locks).forEach(function (k) {
         if (!locks[k]) return;
         if (k in P.skills) { n.skills[k] = P.skills[k]; n.caps[k] = Math.max(P.caps[k], P.skills[k]); }
@@ -393,7 +406,7 @@
         if (d.warning) gmToast(d.warning, 'error');
         if (another) {
           gmToast(P.first_name + ' ' + P.last_name + ' saved', 'ok');
-          var q = new URLSearchParams(); if (DATA.team) q.set('team', DATA.team.id); q.set('pos', posPick);
+          var q = new URLSearchParams(); if (DATA.team) q.set('team', DATA.team.id); q.set('pos', posPick); q.set('age', agePick);
           location.href = '/my-players/new?' + q.toString();
         } else {
           location.href = d.url;
@@ -456,10 +469,14 @@
     if (d.skn) { var k = d.skn; P.skills[k] = clamp(+t.value || 1, 1, 100); P.caps[k] = Math.max(P.caps[k], P.skills[k]); touch(); render(); return; }
     if (d.cap) { var c = d.cap; P.caps[c] = clamp(Math.max(+t.value || 1, P.skills[c]), 1, 100); touch(); render(); return; }
     if (d.capr) { render(); return; }
+    if ('agepick' in d) {
+      var was = agePick; agePick = t.value;
+      confirmReplace().then(function (ok) { if (ok) rollPlayer(posPick); else { agePick = was; render(); } });
+      return;
+    }
     if (d.f) {
       var f = d.f;
-      if (f === 'age') { P.age = clamp(+t.value || C.age_range[0], C.age_range[0], C.age_range[1]); redrawFace(); }
-      else if (f === 'jersey_prefs') P.jersey_prefs = t.value.split(/[\s,]+/).filter(Boolean).slice(0, 3);
+      if (f === 'jersey_prefs') P.jersey_prefs = t.value.split(/[\s,]+/).filter(Boolean).slice(0, 3);
       else P[f] = t.value;
       touch(); render(); return;
     }

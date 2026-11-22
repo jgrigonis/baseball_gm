@@ -359,6 +359,7 @@ def creator_config() -> dict:
             if t.kind == "range"
         ],
         "age_range": [AGE_MIN, AGE_MAX],
+        "roll_ages": list(ROLL_AGES),
         "name_max": NAME_MAX,
     }
 
